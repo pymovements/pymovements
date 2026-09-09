@@ -191,8 +191,8 @@ def test_tsplot_handles_nan_inf_variations(gaze, bad_x, bad_y):
 def test_tsplot_default_channels_unnest_list_columns(gaze):
     fig, _ = tsplot(gaze=gaze)
 
+    # 'time' is the x-axis, not a channel, so it is not auto-selected
     assert [ax.get_ylabel() for ax in fig.axes] == [
-        'time',
         'pixel_x', 'pixel_y',
         'position_x', 'position_y',
         'velocity_x', 'velocity_y',
@@ -357,3 +357,82 @@ def test_tsplot_events_duplicate_event_names_deduplicated_in_legend():
     assert len(ax.patches) == 3
     legend = fig.legend()
     assert [text.get_text() for text in legend.get_texts()] == ['fixation', 'saccade']
+
+
+def test_tsplot_does_not_plot_time_column_as_channel():
+    gaze = Gaze(
+        samples=pl.DataFrame(
+            {
+                'time': [float(i) for i in range(10)],
+                'pixel': [[float(i), 2.0 * i] for i in range(10)],
+            },
+        ),
+    )
+
+    fig, _ = tsplot(gaze=gaze)
+
+    assert [ax.get_ylabel() for ax in fig.axes] == ['pixel_x', 'pixel_y']
+
+
+def test_tsplot_breaks_line_at_gap_from_absent_rows():
+    # samples 30..59 are missing as absent rows (tracker gap / drop_nulls())
+    times = [i for i in range(100) if not (30 <= i < 60)]
+    gaze = Gaze(
+        samples=pl.DataFrame(
+            {
+                'time': [float(t) for t in times],
+                'pixel': [[float(t), 2.0 * t] for t in times],
+            },
+        ),
+    )
+
+    _, ax = tsplot(gaze=gaze, channels='pixel')
+
+    line = ax.get_lines()[0]
+    xdata = np.asarray(line.get_xdata(), dtype='float64')
+    ydata = np.asarray(line.get_ydata(), dtype='float64')
+
+    # exactly one NaN break, sitting inside the gap, so matplotlib does not
+    # draw a segment across it
+    nan_positions = np.flatnonzero(np.isnan(ydata))
+    assert nan_positions.size == 1
+    (break_idx,) = nan_positions
+    assert 29 < xdata[break_idx] < 60
+    assert xdata[break_idx - 1] == 29.0
+    assert xdata[break_idx + 1] == 60.0
+
+
+def test_tsplot_keeps_gap_from_null_rows_visible():
+    # samples 30..59 present as rows but null -> already NaN, must stay NaN
+    pixel = [
+        [float(i), 2.0 * i] if not (30 <= i < 60) else None
+        for i in range(100)
+    ]
+    gaze = Gaze(
+        samples=pl.DataFrame(
+            {'time': [float(i) for i in range(100)], 'pixel': pixel},
+        ),
+    )
+
+    _, ax = tsplot(gaze=gaze, channels='pixel')
+
+    ydata = np.asarray(ax.get_lines()[0].get_ydata(), dtype='float64')
+    assert np.isnan(ydata).any()
+
+
+def test_tsplot_no_gap_leaves_samples_untouched():
+    n = 50
+    gaze = Gaze(
+        samples=pl.DataFrame(
+            {
+                'time': [float(i) for i in range(n)],
+                'pixel': [[float(i), 2.0 * i] for i in range(n)],
+            },
+        ),
+    )
+
+    _, ax = tsplot(gaze=gaze, channels='pixel')
+
+    xdata = np.asarray(ax.get_lines()[0].get_xdata(), dtype='float64')
+    assert xdata.shape == (n,)
+    assert not np.isnan(np.asarray(ax.get_lines()[0].get_ydata(), dtype='float64')).any()

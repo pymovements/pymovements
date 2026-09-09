@@ -112,13 +112,20 @@ def tsplot(
         If array has more than two dimensions.
     """
     if channels is None:
-        # Select all numeric (and nested numeric) channels
+        # Select all numeric (and nested numeric) channels. The ``time`` column
+        # is the x-axis, not a signal, so it is never auto-selected even though
+        # it is a (Duration) numeric column.
         channels = [
             c
             for c in gaze.samples.columns
-            if gaze.samples[c].dtype.is_numeric()
-            or isinstance(gaze.samples[c].dtype, pl.Duration) or (
-                gaze.samples[c].dtype == pl.List and gaze.samples[c].dtype.inner.is_numeric()
+            if c != 'time'
+            and (
+                gaze.samples[c].dtype.is_numeric()
+                or isinstance(gaze.samples[c].dtype, pl.Duration)
+                or (
+                    gaze.samples[c].dtype == pl.List
+                    and gaze.samples[c].dtype.inner.is_numeric()
+                )
             )
         ]
 
@@ -184,6 +191,10 @@ def tsplot(
         if isinstance(time_series.dtype, pl.Duration):
             time_series = duration_to_ms(time_series)
         t = time_series.to_numpy()
+        # Break the line at temporal gaps so that missing samples encoded as
+        # absent rows (tracker gaps, drop_nulls()) show up as gaps instead of
+        # a straight line drawn across them.
+        t, arr = _insert_gap_breaks(t, arr)
     else:
         t = np.arange(arr.shape[1])
     xlims = t.min(), t.max()
@@ -277,6 +288,60 @@ def tsplot(
         fig.savefig(savepath)
 
     return fig, axs[0]
+
+
+def _insert_gap_breaks(
+        t: np.ndarray,
+        arr: np.ndarray,
+        *,
+        gap_factor: float = 1.5,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Insert a NaN sample after every temporal gap in ``t``.
+
+    ``tsplot`` connects consecutive samples with a straight line. When the
+    recording skips samples but the surviving rows stay adjacent -- a tracker
+    dropping samples during a blink, or data cleaned with ``drop_nulls()`` --
+    that line is drawn straight across the gap and hides it. Splitting the line
+    with a NaN at each discontinuity keeps the gap visible.
+
+    A step larger than ``gap_factor`` times the median positive sample step
+    counts as a gap. ``t`` and ``arr`` are returned unchanged when there are
+    fewer than three samples or no gap is found.
+
+    Parameters
+    ----------
+    t: np.ndarray
+        One-dimensional array of sample times, shape ``(n_samples,)``.
+    arr: np.ndarray
+        Channel values, shape ``(n_channels, n_samples)``.
+    gap_factor: float
+        Multiple of the median sample step above which a step is a gap.
+        (default: 1.5)
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        ``t`` and ``arr`` with a NaN column inserted after each gap.
+    """
+    if t.shape[0] < 3:
+        return t, arr
+
+    t_float = np.asarray(t, dtype='float64')
+    steps = np.diff(t_float)
+    positive_steps = steps[np.isfinite(steps) & (steps > 0)]
+    if positive_steps.size == 0:
+        return t, arr
+
+    median_step = float(np.median(positive_steps))
+    gap_starts = np.flatnonzero(steps > gap_factor * median_step)
+    if gap_starts.size == 0:
+        return t, arr
+
+    insert_positions = gap_starts + 1
+    break_times = t_float[gap_starts] + median_step
+    t_out = np.insert(t_float, insert_positions, break_times)
+    arr_out = np.insert(arr.astype('float64'), insert_positions, np.nan, axis=1)
+    return t_out, arr_out
 
 
 def _compute_ylims(
