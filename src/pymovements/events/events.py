@@ -1172,6 +1172,7 @@ class Events:
             word_locations=word_locations,
             algorithm_kwargs=algorithm_kwargs,
             fixation_name=fixation_name,
+            aoi_column=aois.aoi_column,
         )
         if inplace:
             self.frame = corrected_frame

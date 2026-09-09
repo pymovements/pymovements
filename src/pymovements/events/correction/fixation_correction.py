@@ -102,6 +102,20 @@ ALL_DRIFT_ALGORITHMS: list[str] = list(_DRIFT_ALGORITHMS)
 _CHARACTER_LEVEL_COLUMNS = ('char', 'character', 'char_idx_in_line')
 
 
+def _character_level_columns(aoi_column: str | None) -> tuple[str, ...]:
+    """Resolve the columns whose presence marks a character-level AOI frame.
+
+    With a known AOI content column, a frame is character-level exactly if its content
+    column is finer than words; without one, the conventional character column names
+    serve as heuristic markers.
+    """
+    if aoi_column is None:
+        return _CHARACTER_LEVEL_COLUMNS
+    if aoi_column == 'word':
+        return ()
+    return (aoi_column,)
+
+
 def _min_fixation_count(algorithms: set[str], n_lines: int) -> int:
     """Minimum number of fixations the given drift algorithms need to run."""
     minimum = 1
@@ -321,6 +335,7 @@ def _correct_single(
     word_locations: pl.Series | None,
     algorithm_kwargs: dict[str, Any],
     location: str | pl.Expr,
+    aoi_column: str | None,
 ) -> pl.Series:
     """Correct fixation locations with a single drift algorithm."""
     if algorithm in {'compare', 'warp'}:
@@ -331,7 +346,9 @@ def _correct_single(
                     "('start_x', 'end_x') in aois DataFrame or the "
                     "'word_locations' parameter.",
                 )
-            word_locations = get_word_locations_from_aois(aois, _CHARACTER_LEVEL_COLUMNS)
+            word_locations = get_word_locations_from_aois(
+                aois, _character_level_columns(aoi_column),
+            )
         target: pl.Series | list[float] = word_locations
     else:
         target = get_lines_of_text_from_aois(aois)
@@ -355,10 +372,13 @@ def _correct_ensemble(
     word_locations: pl.Series | None,
     algorithm_kwargs: dict[str, Any],
     location: str | pl.Expr,
+    aoi_column: str | None,
 ) -> pl.Series:
     """Correct fixation locations by majority voting across the candidate algorithms."""
     if {'compare', 'warp'} & set(candidate_algos) and word_locations is None:
-        word_locations = get_word_locations_from_aois(aois, _CHARACTER_LEVEL_COLUMNS)
+        word_locations = get_word_locations_from_aois(
+            aois, _character_level_columns(aoi_column),
+        )
 
     # Vote on line indices rather than raw y-coordinates so that candidate algorithms cannot
     # split votes through differing float representations of the same text line.
@@ -388,14 +408,16 @@ def _correct_ensemble(
     ).to_series()
 
 
-def _fixation_location(fixations: pl.DataFrame) -> str | pl.Expr:
+def _fixation_location(fixations: pl.DataFrame, location_column: str) -> str | pl.Expr:
     """Resolve the location column or expression of a fixations dataframe.
 
     Parameters
     ----------
     fixations: pl.DataFrame
-        Fixations dataframe holding either a 'location' column of [x, y] lists or
-        'location_x' and 'location_y' component columns.
+        Fixations dataframe holding either a location column of [x, y] lists or its
+        '_x' and '_y' component columns.
+    location_column: str
+        Name of the column holding the [x, y] fixation locations.
 
     Returns
     -------
@@ -407,11 +429,16 @@ def _fixation_location(fixations: pl.DataFrame) -> str | pl.Expr:
     ValueError
         If no location coordinates are found.
     """
-    if 'location' in fixations.columns and fixations['location'].dtype != pl.Null:
-        return 'location'
-    if 'location_x' in fixations.columns and 'location_y' in fixations.columns:
-        return pl.concat_list([pl.col('location_x'), pl.col('location_y')])
-    raise ValueError('No valid location coordinates found in events dataframe.')
+    if location_column in fixations.columns and fixations[location_column].dtype != pl.Null:
+        return location_column
+    x_column, y_column = f'{location_column}_x', f'{location_column}_y'
+    if x_column in fixations.columns and y_column in fixations.columns:
+        return pl.concat_list([pl.col(x_column), pl.col(y_column)])
+    raise ValueError(
+        f"No valid location coordinates found in events dataframe: expected a "
+        f"'{location_column}' column of [x, y] lists or '{x_column}' and "
+        f"'{y_column}' component columns.",
+    )
 
 
 def correct_fixation_locations(
@@ -422,6 +449,8 @@ def correct_fixation_locations(
     word_locations: pl.Series | None = None,
     algorithm_kwargs: dict[str, Any] | None = None,
     fixation_name: str = 'fixation',
+    location_column: str = 'location',
+    aoi_column: str | None = None,
 ) -> pl.Series:
     """Correct fixations based on the specified drift algorithm and AOIs.
 
@@ -430,7 +459,12 @@ def correct_fixation_locations(
     events: pl.DataFrame
         Gaze events dataframe.
     aois: pl.DataFrame
-        AOIs dataframe for line position extraction.
+        AOIs dataframe for line position extraction. Text line positions are derived
+        from the 'start_y' (or 'top_left_y') and 'height' columns, with 'height'
+        derived from 'start_y' and 'end_y' if missing. AOIs are grouped into lines by
+        a 'line_idx' column if present, otherwise by their y-coordinate. The DTW-based
+        algorithms additionally use the word X coordinate columns 'start_x' and
+        'end_x', with 'end_x' derived from 'start_x' and 'width' if missing.
     algorithm: str | list[str]
         Name of a single drift algorithm or a list of algorithm names to combine via Wisdom of
         the Crowd (WoC) ensemble correction. Default is 'wisdom_of_the_crowd' (or 'woc'), which
@@ -462,6 +496,16 @@ def correct_fixation_locations(
         Name of the fixation events to correct. Only events matching this name exactly are
         corrected; unlike :py:meth:`~pymovements.Events.map_to_aois`, no prefix matching
         is applied. (default: 'fixation')
+    location_column: str
+        Name of the events column holding the [x, y] fixation locations. If missing, the
+        component columns '<location_column>_x' and '<location_column>_y' are used
+        instead. (default: 'location')
+    aoi_column: str | None
+        Name of the aois column holding the AOI content. A frame holding a 'word' column
+        next to a content column other than 'word' is treated as character-level and its
+        AOIs are aggregated to one location per word. If None, character-level frames are
+        recognized by a 'word' column next to one of the conventional character columns
+        'char', 'character' or 'char_idx_in_line'. (default: None)
 
     Returns
     -------
@@ -518,22 +562,24 @@ def correct_fixation_locations(
     aois = normalize_aois(aois)
 
     fixations = events.filter(pl.col('name') == fixation_name)
-    location = _fixation_location(fixations)
+    location = _fixation_location(fixations, location_column)
 
     has_word_coords = word_locations is not None or has_word_x_coords(aois)
 
     candidate_algos, ensemble = _resolve_algorithms(algorithm, has_word_coords, right_to_left)
     if not ensemble:
-        return _correct_single(
+        corrected = _correct_single(
             fixations, aois, candidate_algos[0],
             directionality=directionality, word_locations=word_locations,
-            algorithm_kwargs=algorithm_kwargs, location=location,
+            algorithm_kwargs=algorithm_kwargs, location=location, aoi_column=aoi_column,
         )
-    return _correct_ensemble(
-        fixations, aois, candidate_algos,
-        directionality=directionality, word_locations=word_locations,
-        algorithm_kwargs=algorithm_kwargs, location=location,
-    )
+    else:
+        corrected = _correct_ensemble(
+            fixations, aois, candidate_algos,
+            directionality=directionality, word_locations=word_locations,
+            algorithm_kwargs=algorithm_kwargs, location=location, aoi_column=aoi_column,
+        )
+    return corrected.rename(location_column)
 
 
 def _check_not_already_corrected(events: pl.DataFrame, fixation_name: str) -> None:
@@ -590,6 +636,8 @@ def _correct_trial(
     word_locations: pl.Series | None,
     algorithm_kwargs: dict[str, Any] | None,
     fixation_name: str,
+    location_column: str,
+    aoi_column: str | None,
 ) -> pl.Series | None:
     """Correct the fixations of a single trial, or return None if the trial is skipped."""
     n_lines = count_text_lines(trial_aois, word_locations)
@@ -617,6 +665,7 @@ def _correct_trial(
         fixation_events, trial_aois, algorithm=algorithm,
         directionality=directionality, word_locations=word_locations,
         algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,
+        location_column=location_column, aoi_column=aoi_column,
     )
 
 
@@ -641,6 +690,7 @@ def _apply_corrections(
     corrected_indices: list[int],
     corrected_locations: list[pl.Series],
     algo_name: str,
+    location_column: str,
 ) -> pl.DataFrame:
     """Join the corrected locations onto the events and update the location columns."""
     updates = pl.DataFrame({
@@ -653,36 +703,40 @@ def _apply_corrections(
         .sort('__fixation_correction_index')
     )
 
+    x_column, y_column = f'{location_column}_x', f'{location_column}_y'
     is_corrected = pl.col('__corrected_location').is_not_null()
     update_columns = []
-    if 'location' in events.columns and events['location'].dtype != pl.Null:
+    if location_column in events.columns and events[location_column].dtype != pl.Null:
         update_columns.append(
-            _preserved_column(events, 'location_original', pl.col('location'), pl.List(pl.Float64)),
+            _preserved_column(
+                events, f'{location_column}_original',
+                pl.col(location_column), pl.List(pl.Float64),
+            ),
         )
         update_columns.append(
             pl.when(is_corrected)
             .then(pl.col('__corrected_location'))
-            .otherwise(pl.col('location'))
-            .alias('location'),
+            .otherwise(pl.col(location_column))
+            .alias(location_column),
         )
-    if 'location_x' in events.columns and 'location_y' in events.columns:
+    if x_column in events.columns and y_column in events.columns:
         update_columns.append(
-            _preserved_column(events, 'location_x_original', pl.col('location_x'), pl.Float64),
+            _preserved_column(events, f'{x_column}_original', pl.col(x_column), pl.Float64),
         )
         update_columns.append(
-            _preserved_column(events, 'location_y_original', pl.col('location_y'), pl.Float64),
+            _preserved_column(events, f'{y_column}_original', pl.col(y_column), pl.Float64),
         )
         update_columns.append(
             pl.when(is_corrected)
             .then(pl.col('__corrected_location').list.get(0))
-            .otherwise(pl.col('location_x'))
-            .alias('location_x'),
+            .otherwise(pl.col(x_column))
+            .alias(x_column),
         )
         update_columns.append(
             pl.when(is_corrected)
             .then(pl.col('__corrected_location').list.get(1))
-            .otherwise(pl.col('location_y'))
-            .alias('location_y'),
+            .otherwise(pl.col(y_column))
+            .alias(y_column),
         )
     update_columns.append(
         _preserved_column(events, 'correction_algorithm', pl.lit(algo_name), pl.Utf8),
@@ -704,6 +758,8 @@ def correct_fixations(
     word_locations: pl.Series | None = None,
     algorithm_kwargs: dict[str, Any] | None = None,
     fixation_name: str = 'fixation',
+    location_column: str = 'location',
+    aoi_column: str | None = None,
 ) -> pl.DataFrame:
     """Correct fixation locations per trial using the specified drift algorithm.
 
@@ -722,7 +778,12 @@ def correct_fixations(
     events: pl.DataFrame
         Polars DataFrame containing gaze events.
     aois: pl.DataFrame
-        Stimulus AOIs DataFrame.
+        Stimulus AOIs DataFrame. Text line positions are derived from the 'start_y' (or
+        'top_left_y') and 'height' columns, with 'height' derived from 'start_y' and
+        'end_y' if missing. AOIs are grouped into lines by a 'line_idx' column if
+        present, otherwise by their y-coordinate. The DTW-based algorithms additionally
+        use the word X coordinate columns 'start_x' and 'end_x', with 'end_x' derived
+        from 'start_x' and 'width' if missing.
     algorithm: str | list[str]
         Name of drift algorithm or list of algorithm names. Default is 'wisdom_of_the_crowd'.
         If word X coordinates ('start_x', 'end_x') are not present in aois, 'compare' and 'warp'
@@ -759,6 +820,17 @@ def correct_fixations(
         corrected; unlike :py:meth:`~pymovements.Events.map_to_aois`, no prefix matching
         is applied. If no events match, a UserWarning is emitted and the events dataframe
         is returned unchanged. (default: 'fixation')
+    location_column: str
+        Name of the events column holding the [x, y] fixation locations, with
+        '<location_column>_x' and '<location_column>_y' as the component column
+        fallback. The bookkeeping columns preserving the original locations derive
+        their '_original' names from this parameter accordingly. (default: 'location')
+    aoi_column: str | None
+        Name of the aois column holding the AOI content. A frame holding a 'word' column
+        next to a content column other than 'word' is treated as character-level and its
+        AOIs are aggregated to one location per word. If None, character-level frames are
+        recognized by a 'word' column next to one of the conventional character columns
+        'char', 'character' or 'char_idx_in_line'. (default: None)
 
     Returns
     -------
@@ -850,6 +922,7 @@ def correct_fixations(
             requested_algorithms=requested_algorithms, trial_columns=trial_columns,
             directionality=directionality, word_locations=word_locations,
             algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,
+            location_column=location_column, aoi_column=aoi_column,
         )
         if corrected_locs is None:
             continue
@@ -870,4 +943,5 @@ def correct_fixations(
 
     return _apply_corrections(
         events, indexed_events, corrected_indices, corrected_locations, algo_name,
+        location_column,
     )

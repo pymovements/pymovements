@@ -571,6 +571,32 @@ def test_correct_fixations_custom_fixation_name(sample_events_and_aois):
     assert corrected_rows['name'].to_list() == ['fixation_left'] * 6
 
 
+def test_correct_fixations_custom_location_column(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    events_renamed = events_df.rename({'location': 'fixation_location'})
+    res_df = correct_fixations(
+        events_renamed, aois_df, algorithm='attach', location_column='fixation_location',
+    )
+    corrected_y = [location[1] for location in res_df['fixation_location'].to_list()]
+    assert corrected_y == [100.0, 100.0, 200.0, 200.0, 300.0, 300.0]
+    assert res_df['fixation_location_original'].to_list() == events_df['location'].to_list()
+    assert res_df['correction_algorithm'].to_list() == ['attach'] * 6
+
+
+def test_correct_fixation_locations_custom_location_column_components(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    events_components = events_df.select(
+        'trial', 'name', 'onset',
+        pl.col('location').list.get(0).alias('fix_x'),
+        pl.col('location').list.get(1).alias('fix_y'),
+    )
+    locs = correct_fixation_locations(
+        events_components, aois_df, algorithm='attach', location_column='fix',
+    )
+    assert locs.name == 'fix'
+    assert corrected_ys(locs) == [100.0, 100.0, 200.0, 200.0, 300.0, 300.0]
+
+
 def test_events_correct_fixations(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     events = pm.Events(events_df, trial_columns='trial')
@@ -881,6 +907,65 @@ def test_correct_fixation_locations_warp_character_level_aois():
     })
     locs_word = correct_fixation_locations(events_df, aois_word_level, algorithm='warp')
     assert locs_char.to_list() == locs_word.to_list()
+
+
+@pytest.fixture
+def letter_level_events_and_aois():
+    """Return events and character-level AOIs with an unconventional content column.
+
+    Two lines each hold a single three-character word, with all six fixations hovering
+    near line 1: treating each character as its own word drags half of the fixations
+    onto line 2, while word aggregation only forces the final fixation there.
+    """
+    events_df = pl.DataFrame({
+        'name': ['fixation'] * 6,
+        'location': [
+            [110.0, 105.0], [130.0, 104.0], [150.0, 106.0],
+            [110.0, 108.0], [130.0, 109.0], [150.0, 111.0],
+        ],
+    })
+    start_x = [100.0, 120.0, 140.0] * 2
+    aois_df = pl.DataFrame({
+        'letter': ['T', 'h', 'e', 'c', 'a', 't'],
+        'word': ['The'] * 3 + ['cat'] * 3,
+        'start_x': start_x,
+        'end_x': [x + 20.0 for x in start_x],
+        'start_y': [80.0] * 3 + [180.0] * 3,
+        'height': [40.0] * 6,
+    })
+    return events_df, aois_df
+
+
+def test_correct_fixation_locations_warp_custom_aoi_column(letter_level_events_and_aois):
+    events_df, aois_df = letter_level_events_and_aois
+
+    # The unconventional character column name eludes the marker heuristic, so each
+    # character counts as its own word.
+    locs_heuristic = correct_fixation_locations(events_df, aois_df, algorithm='warp')
+    assert corrected_ys(locs_heuristic) == [100.0, 100.0, 100.0, 200.0, 200.0, 200.0]
+
+    # Naming the content column recognizes the frame as character-level and aggregates
+    # the characters per word again.
+    locs = correct_fixation_locations(
+        events_df, aois_df, algorithm='warp', aoi_column='letter',
+    )
+    assert corrected_ys(locs) == [100.0, 100.0, 100.0, 100.0, 100.0, 200.0]
+
+
+def test_events_correct_fixations_warp_custom_aoi_column(letter_level_events_and_aois):
+    events_df, aois_df = letter_level_events_and_aois
+    stimulus = pm.stimulus.TextStimulus(
+        aois=aois_df,
+        aoi_column='letter',
+        start_x_column='start_x',
+        start_y_column='start_y',
+        end_x_column='end_x',
+        height_column='height',
+    )
+    events = pm.Events(events_df)
+    events.correct_fixations(stimulus, algorithm='warp')
+    corrected = [location[1] for location in events.frame['location'].to_list()]
+    assert corrected == [100.0, 100.0, 100.0, 100.0, 100.0, 200.0]
 
 
 def test_correct_fixation_locations_warp_returns_line_centers():

@@ -25,11 +25,12 @@ from collections.abc import Sequence
 
 import polars as pl
 
+from pymovements._utils._expressions import as_expr
+
 
 def location_expr(location: str | pl.Expr) -> pl.Expr:
     """Resolve a location argument to an expression of [x, y] lists."""
-    expr = pl.col(location) if isinstance(location, str) else location
-    return expr.cast(pl.List(pl.Float64))
+    return as_expr(location).cast(pl.List(pl.Float64))
 
 
 def location_x(location: str | pl.Expr) -> pl.Expr:
