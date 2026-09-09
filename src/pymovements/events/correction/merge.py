@@ -34,13 +34,6 @@ from pymovements.events.correction._utils import locations_to_lists
 from pymovements.events.correction._utils import map_locations
 from pymovements.events.correction._utils import to_line_values
 
-_MERGE_PHASES = [
-    {'min_i': 3, 'min_j': 3, 'no_constraints': False},  # Phase 1
-    {'min_i': 1, 'min_j': 3, 'no_constraints': False},  # Phase 2
-    {'min_i': 1, 'min_j': 1, 'no_constraints': False},  # Phase 3
-    {'min_i': 1, 'min_j': 1, 'no_constraints': True},   # Phase 4
-]
-
 
 def merge(
     line_ys: pl.Series | Sequence[float],
@@ -161,7 +154,13 @@ def _merge_core(
 
     # Iteratively merge the pair of sequences with the best line fit, relaxing the
     # sequence length and fit quality constraints phase by phase.
-    for phase in _MERGE_PHASES:
+    merge_phases = [
+        {'min_i': 3, 'min_j': 3, 'no_constraints': False},  # Phase 1
+        {'min_i': 1, 'min_j': 3, 'no_constraints': False},  # Phase 2
+        {'min_i': 1, 'min_j': 1, 'no_constraints': False},  # Phase 3
+        {'min_i': 1, 'min_j': 1, 'no_constraints': True},   # Phase 4
+    ]
+    for phase in merge_phases:
         while len(sequences) > m:
             best_merger = None
             best_error = math.inf
