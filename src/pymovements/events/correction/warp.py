@@ -26,7 +26,7 @@ from functools import partial
 import polars as pl
 
 from pymovements.events.correction._dynamic_time_warping import dynamic_time_warping_points
-from pymovements.events.correction._utils import map_per_trial
+from pymovements.events.correction._utils import map_locations
 
 
 def warp(
@@ -55,7 +55,7 @@ def warp(
     """
     word_points = word_locations.cast(pl.List(pl.Float64)).to_list()
     core = partial(_warp_core, word_points=word_points)
-    return map_per_trial(location, core, 'y_warp')
+    return map_locations(location, core, 'y_warp')
 
 
 def _warp_core(locations: pl.Series, *, word_points: list[list[float]]) -> pl.Series:

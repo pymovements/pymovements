@@ -28,7 +28,7 @@ from statistics import fmean
 import polars as pl
 
 from pymovements.events.correction._utils import locations_to_lists
-from pymovements.events.correction._utils import map_per_trial
+from pymovements.events.correction._utils import map_locations
 from pymovements.events.correction._utils import nearest_index
 from pymovements.events.correction._utils import to_line_values
 
@@ -90,7 +90,7 @@ def slice(
         n_thresh=n_thresh,
         line_height=line_height,
     )
-    return map_per_trial(location, core, 'y_slice')
+    return map_locations(location, core, 'y_slice')
 
 
 def _run_offset(

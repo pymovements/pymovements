@@ -27,7 +27,7 @@ import polars as pl
 from sklearn.cluster import KMeans
 
 from pymovements.events.correction._utils import locations_to_lists
-from pymovements.events.correction._utils import map_per_trial
+from pymovements.events.correction._utils import map_locations
 from pymovements.events.correction._utils import to_line_values
 
 
@@ -56,7 +56,7 @@ def cluster(
     """
     line_values = to_line_values(line_ys)
     core = partial(_cluster_core, line_values=line_values)
-    return map_per_trial(location, core, 'y_cluster')
+    return map_locations(location, core, 'y_cluster')
 
 
 def _cluster_core(locations: pl.Series, *, line_values: list[float]) -> pl.Series:

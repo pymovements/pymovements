@@ -31,12 +31,8 @@ import polars as pl
 
 from pymovements.events.correction._utils import is_right_to_left
 from pymovements.events.correction._utils import locations_to_lists
-from pymovements.events.correction._utils import map_per_trial
+from pymovements.events.correction._utils import map_locations
 from pymovements.events.correction._utils import to_line_values
-
-_RANK_WARNING: type[Warning] = getattr(
-    getattr(np, 'exceptions', np), 'RankWarning', RuntimeWarning,
-)
 
 _MERGE_PHASES = [
     {'min_i': 3, 'min_j': 3, 'no_constraints': False},  # Phase 1
@@ -99,7 +95,7 @@ def merge(
         g_thresh=g_thresh,
         e_thresh=e_thresh,
     )
-    return map_per_trial(location, core, 'y_merge')
+    return map_locations(location, core, 'y_merge')
 
 
 def _fit_line_error(x_values: list[float], y_values: list[float]) -> tuple[float, float]:
@@ -107,8 +103,11 @@ def _fit_line_error(x_values: list[float], y_values: list[float]) -> tuple[float
     # Fitting a line through two-fixation candidates is expected in the unconstrained
     # merging phase and may be poorly conditioned; the resulting RankWarnings carry no
     # information for the user.
+    rank_warning: type[Warning] = getattr(
+        getattr(np, 'exceptions', np), 'RankWarning', RuntimeWarning,
+    )
     with warnings.catch_warnings():
-        warnings.simplefilter('ignore', _RANK_WARNING)
+        warnings.simplefilter('ignore', rank_warning)
         gradient, intercept = np.polyfit(x_values, y_values, 1)
     residuals = [
         y - (gradient * x + intercept) for x, y in zip(x_values, y_values)

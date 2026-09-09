@@ -29,7 +29,7 @@ from sklearn.cluster import KMeans
 
 from pymovements.events.correction._utils import is_right_to_left
 from pymovements.events.correction._utils import locations_to_lists
-from pymovements.events.correction._utils import map_per_trial
+from pymovements.events.correction._utils import map_locations
 from pymovements.events.correction._utils import nearest_line_y
 from pymovements.events.correction._utils import to_line_values
 
@@ -71,7 +71,7 @@ def split(
     right_to_left = is_right_to_left(directionality)
     line_values = to_line_values(line_ys)
     core = partial(_split_core, line_values=line_values, right_to_left=right_to_left)
-    return map_per_trial(location, core, 'y_split')
+    return map_locations(location, core, 'y_split')
 
 
 def _split_core(

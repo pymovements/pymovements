@@ -30,7 +30,7 @@ from scipy.optimize import minimize
 from scipy.stats import norm
 
 from pymovements.events.correction._utils import locations_to_lists
-from pymovements.events.correction._utils import map_per_trial
+from pymovements.events.correction._utils import map_locations
 from pymovements.events.correction._utils import to_line_values
 
 
@@ -74,7 +74,7 @@ def regress(
         o_bounds=o_bounds,
         s_bounds=s_bounds,
     )
-    return map_per_trial(location, core, 'y_regress')
+    return map_locations(location, core, 'y_regress')
 
 
 def _regress_core(

@@ -27,7 +27,7 @@ import polars as pl
 from scipy.optimize import minimize
 
 from pymovements.events.correction._utils import locations_to_lists
-from pymovements.events.correction._utils import map_per_trial
+from pymovements.events.correction._utils import map_locations
 from pymovements.events.correction._utils import nearest_index
 from pymovements.events.correction._utils import to_line_values
 
@@ -68,7 +68,7 @@ def stretch(
         scale_bounds=scale_bounds,
         offset_bounds=offset_bounds,
     )
-    return map_per_trial(location, core, 'y_stretch')
+    return map_locations(location, core, 'y_stretch')
 
 
 def _stretch_core(

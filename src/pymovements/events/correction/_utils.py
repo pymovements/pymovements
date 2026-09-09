@@ -77,12 +77,16 @@ def locations_to_lists(locations: pl.Series) -> tuple[list[float], list[float]]:
     return x_values, y_values
 
 
-def map_per_trial(
+def map_locations(
     location: str | pl.Expr,
     core: Callable[[pl.Series], pl.Series],
     alias: str,
 ) -> pl.Expr:
-    """Return an expression mapping the [x, y] locations of a single trial through core."""
+    """Return an expression piping the [x, y] locations through core as one batch.
+
+    The core treats its input as a single reading sequence, so the caller must evaluate
+    the returned expression per trial.
+    """
     return (
         location_expr(location)
         .map_batches(core, return_dtype=pl.Float64)

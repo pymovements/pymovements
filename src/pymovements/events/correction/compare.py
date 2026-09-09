@@ -28,7 +28,7 @@ import polars as pl
 
 from pymovements.events.correction._dynamic_time_warping import dynamic_time_warping_points
 from pymovements.events.correction._utils import locations_to_lists
-from pymovements.events.correction._utils import map_per_trial
+from pymovements.events.correction._utils import map_locations
 
 
 def compare(
@@ -89,7 +89,7 @@ def compare(
         word_x_per_line=word_x_per_line,
         n_candidates=n_candidates,
     )
-    return map_per_trial(location, core, 'y_compare')
+    return map_locations(location, core, 'y_compare')
 
 
 def _compare_core(
