@@ -84,7 +84,7 @@ def _split_core(
     x_values, y_values = locations_to_lists(locations)
     x_diffs = [next_x - x for x, next_x in zip(x_values, x_values[1:])]
 
-    # Split the saccades into two clusters; the cluster of largest leftward (rightward
+    # Split the saccades into two clusters. The cluster of largest leftward (rightward
     # for RTL scripts) saccades marks the return sweeps.
     cluster_labels = KMeans(2, n_init=10, max_iter=300).fit_predict(
         [[x_diff] for x_diff in x_diffs],

@@ -444,7 +444,7 @@ def test_correct_fixations_all_trials_skipped_returns_unchanged(sample_events_an
         'location': [[100.0, 105.0], [200.0, 102.0]],
     })
 
-    # cluster needs one fixation per text line; two fixations on three lines are skipped.
+    # cluster needs one fixation per text line. Two fixations on three lines are skipped.
     with pytest.warns(UserWarning) as warning_records:
         res_df = correct_fixations(events_df, aois_df, algorithm='cluster')
 
@@ -531,7 +531,7 @@ def test_correct_fixations_rerun_raises(sample_events_and_aois):
 
 def test_correct_fixations_preserves_preexisting_correction_columns(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
-    # Fixations with null correction columns are correctable; a manually corrected
+    # Fixations with null correction columns are correctable. A manually corrected
     # non-fixation row keeps its existing values.
     events_precorrected = pl.concat([
         events_df.with_columns(
@@ -877,7 +877,7 @@ def test_correct_fixation_locations_attach_line_idx_grouping():
 
 
 def test_correct_fixation_locations_warp_character_level_aois():
-    # Two lines with two words of three characters each, 20 px per character; word
+    # Two lines with two words of three characters each, 20 px per character. Word
     # centers are at x=130 ('The') and x=230 ('cat') on each line.
     events_df = pl.DataFrame({
         'name': ['fixation'] * 4,

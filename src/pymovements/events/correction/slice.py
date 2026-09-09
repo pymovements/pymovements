@@ -76,7 +76,7 @@ def slice(
         )
     else:
         # The fallback only extends behavior to single-line texts, on which the reference
-        # implementation of Carr et al. degenerates (the mean spacing of one line is NaN);
+        # implementation of Carr et al. degenerates (the mean spacing of one line is NaN).
         # 32 pixels matches the default y_thresh, so phantom proto lines are placed one
         # plausible line height away.
         line_height = 32.0
@@ -163,7 +163,7 @@ def _slice_core(
         y_values=y_values,
     )
 
-    # 3. Grow proto lines above and below by merging runs within the thresholds; where
+    # 3. Grow proto lines above and below by merging runs within the thresholds. Where
     # nothing merges, a phantom proto line one line height away keeps the search going.
     while runs:
         merged_on_this_iteration = False

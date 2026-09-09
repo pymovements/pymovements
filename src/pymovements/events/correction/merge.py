@@ -94,7 +94,7 @@ def merge(
 def _fit_line_error(x_values: list[float], y_values: list[float]) -> tuple[float, float]:
     """Fit a line through the points and return its gradient and root mean square error."""
     # Fitting a line through two-fixation candidates is expected in the unconstrained
-    # merging phase and may be poorly conditioned; the resulting RankWarnings carry no
+    # merging phase and may be poorly conditioned. The resulting RankWarnings carry no
     # information for the user.
     rank_warning: type[Warning] = getattr(
         getattr(np, 'exceptions', np), 'RankWarning', RuntimeWarning,

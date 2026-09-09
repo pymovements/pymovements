@@ -34,7 +34,7 @@ All events have a starting time (onset) and an ending time (offset, inclusive).
     blink
     fill
 
-.. currentmodule:: pymovements.events.correction
+.. currentmodule:: pymovements
 
 .. rubric:: Fixation Correction Methods
     :name: fixation-correction-methods
@@ -45,8 +45,10 @@ error in the eye-tracking data. This is particularly useful for paragraph readin
 y-alignment issues can lead to a fixation being assigned to the wrong line of text. Available
 algorithms are listed under :ref:`Drift Correction Algorithms <drift-correction-algorithms>`.
 The most convenient way to correct fixations is via the
-:py:meth:`~pymovements.Events.correct_fixations` and
-:py:meth:`~pymovements.Dataset.correct_fixations` methods.
+:py:meth:`Events.correct_fixations` and
+:py:meth:`Dataset.correct_fixations` methods.
+
+.. currentmodule:: pymovements.events.correction
 
 .. autosummary::
     :toctree: api
@@ -55,6 +57,8 @@ The most convenient way to correct fixations is via the
 
     correct_fixations
     correct_fixation_locations
+
+.. currentmodule:: pymovements
 
 .. rubric:: Drift Correction Algorithms
     :name: drift-correction-algorithms
@@ -67,11 +71,10 @@ can be applied to the fixations using the
 :func:`~pymovements.events.correction.wisdom_of_the_crowd` algorithm which is an
 ensemble method that combines the results of the other algorithms to produce a more robust
 correction. Each algorithm operates on the fixation sequence of a single trial and must be
-applied per trial; the :func:`~pymovements.events.correction.correct_fixations` function and
-the :py:meth:`~pymovements.Events.correct_fixations` method take care of this per-trial
-application. Further drift correction approaches from the literature that are not yet available
-in pymovements include the Dual Input Stream Transformer :cite:p:`Mercier2024a` and adaptive
-algorithm selection based on eye movement patterns :cite:p:`AlMadi2025`.
+applied per trial. The :func:`~pymovements.events.correction.correct_fixations` function and
+the :py:meth:`Events.correct_fixations` method take care of this per-trial application.
+
+.. currentmodule:: pymovements.events.correction
 
 .. autosummary::
     :toctree: api

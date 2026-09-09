@@ -1036,7 +1036,7 @@ class Events:
         Fixations are corrected per trial according to
         :py:attr:`~pymovements.Events.trial_columns` using the specified drift correction
         algorithm. Fixation locations
-        are replaced with their corrected values; original locations are preserved in a
+        are replaced with their corrected values. Original locations are preserved in a
         ``location_original`` column and the applied algorithm is recorded in a
         ``correction_algorithm`` column. Trials with too few fixations for the requested
         algorithms are skipped with a UserWarning and stay uncorrected. See
@@ -1053,7 +1053,7 @@ class Events:
             (default: 'wisdom_of_the_crowd')
         directionality: str | None
             Reading direction of the text, either 'left-to-right' or 'right-to-left',
-            mirroring the directionality of a text stimulus writing system;
+            mirroring the directionality of a text stimulus writing system.
             'top-to-bottom' is not supported and raises a ValueError. If None, the
             reading direction is inferred from the writing system of the text stimulus.
             (default: None)

@@ -106,7 +106,7 @@ def _character_level_columns(aoi_column: str | None) -> tuple[str, ...]:
     """Resolve the columns whose presence marks a character-level AOI frame.
 
     With a known AOI content column, a frame is character-level exactly if its content
-    column is finer than words; without one, the conventional character column names
+    column is finer than words. Without one, the conventional character column names
     serve as heuristic markers.
     """
     if aoi_column is None:
@@ -472,9 +472,9 @@ def correct_fixation_locations(
         aois, 'compare' and 'warp' are automatically excluded from the ensemble with a UserWarning.
     directionality: str
         Reading direction of the text, either 'left-to-right' or 'right-to-left',
-        mirroring the directionality of a text stimulus writing system; 'top-to-bottom'
+        mirroring the directionality of a text stimulus writing system. 'top-to-bottom'
         is not supported and raises a ValueError. Passed to those algorithms with
-        direction-specific processing ('merge', 'segment', 'split'); direction-agnostic
+        direction-specific processing ('merge', 'segment', 'split'). Direction-agnostic
         algorithms ignore it. The 'compare' algorithm does not support right-to-left
         reading: it is excluded from ensembles with a UserWarning and raises a ValueError
         when selected as a single algorithm. (default: 'left-to-right')
@@ -485,7 +485,7 @@ def correct_fixation_locations(
     algorithm_kwargs: dict[str, Any] | None
         Additional tuning parameters passed to underlying drift correction algorithms, e.g.
         ``{'x_thresh': 250.0}``. In ensemble mode, each entry is only passed to those
-        candidate algorithms that accept it; a ValueError is raised if an entry is accepted
+        candidate algorithms that accept it. A ValueError is raised if an entry is accepted
         by none of the candidate algorithms. Warning: an entry fans out to every candidate
         algorithm whose signature accepts the key, even where defaults and semantics
         differ. For example, ``x_thresh`` is accepted by 'chain' (default 192, chain
@@ -494,7 +494,7 @@ def correct_fixation_locations(
         (default: None)
     fixation_name: str
         Name of the fixation events to correct. Only events matching this name exactly are
-        corrected; unlike :py:meth:`~pymovements.Events.map_to_aois`, no prefix matching
+        corrected. Unlike :py:meth:`~pymovements.Events.map_to_aois`, no prefix matching
         is applied. (default: 'fixation')
     location_column: str
         Name of the events column holding the [x, y] fixation locations. If missing, the
@@ -794,9 +794,9 @@ def correct_fixations(
         all events are treated as a single trial. (default: None)
     directionality: str
         Reading direction of the text, either 'left-to-right' or 'right-to-left',
-        mirroring the directionality of a text stimulus writing system; 'top-to-bottom'
+        mirroring the directionality of a text stimulus writing system. 'top-to-bottom'
         is not supported and raises a ValueError. Passed to those algorithms with
-        direction-specific processing ('merge', 'segment', 'split'); direction-agnostic
+        direction-specific processing ('merge', 'segment', 'split'). Direction-agnostic
         algorithms ignore it. The 'compare' algorithm does not support right-to-left
         reading and is excluded from ensembles with a UserWarning.
         (default: 'left-to-right')
@@ -817,7 +817,7 @@ def correct_fixations(
         (default: None)
     fixation_name: str
         Name of the fixation events to correct. Only events matching this name exactly are
-        corrected; unlike :py:meth:`~pymovements.Events.map_to_aois`, no prefix matching
+        corrected. Unlike :py:meth:`~pymovements.Events.map_to_aois`, no prefix matching
         is applied. If no events match, a UserWarning is emitted and the events dataframe
         is returned unchanged. (default: 'fixation')
     location_column: str

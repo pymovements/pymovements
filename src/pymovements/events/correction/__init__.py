@@ -28,18 +28,16 @@ increasing y-coordinate.
 The implementations follow the reference implementation of Carr et al. :cite:p:`Carr2022`.
 Algorithms that build on k-means clustering, numerical optimization or line fitting
 ('cluster', 'compare', 'merge', 'regress', 'slice', 'split', 'stretch', 'warp') materialize
-the fixation sequence inside the expression via ``map_batches``; their numeric cores use
+the fixation sequence inside the expression via ``map_batches``. Their numeric cores use
 scikit-learn, scipy and numpy's polyfit.
 
 References & Citations:
 - :cite:p:`Abdulin2015`
-- :cite:p:`AlMadi2025`
 - :cite:p:`Carr2022`
 - :cite:p:`Cohen2013`
 - :cite:p:`Glandorf2021`
 - :cite:p:`LimaSanches2015`
 - :cite:p:`Lohmeier2015`
-- :cite:p:`Mercier2024a`
 - :cite:p:`Mercier2024b`
 - :cite:p:`Spakov2019`
 """

@@ -79,7 +79,7 @@ def compare(
         for line_y in line_values
     }
     # Clamping only extends behavior to inputs on which the reference implementation of
-    # Carr et al. raises an IndexError; outputs are unchanged otherwise.
+    # Carr et al. raises an IndexError. Outputs are unchanged otherwise.
     n_candidates = min(n_nearest_lines, len(line_values))
 
     core = partial(

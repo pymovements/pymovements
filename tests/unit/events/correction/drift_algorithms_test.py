@@ -117,7 +117,7 @@ def test_compare_invalid_n_nearest_lines_raises():
             id='left-to-right',
         ),
         # For RTL every within-line step is a sequence boundary, so the twelve
-        # one-fixation sequences must be merged back; only same-line pairs pass the
+        # one-fixation sequences must be merged back. Only same-line pairs pass the
         # gradient constraint (any cross-line pair has |gradient| >= 90 / 400 >
         # g_thresh), recovering the lines.
         pytest.param(
@@ -150,7 +150,7 @@ def test_segment_ltr(sample_fixations_and_lines):
 def test_segment_rtl(sample_fixations_and_lines):
     # On this left-to-right fixture the RTL return sweep candidates are the within-line
     # x-steps, which differ from each other only at floating point rounding level (they
-    # come from np.linspace), so which two rank largest is not hand-derivable; the exact
+    # come from np.linspace), so which two rank largest is not hand-derivable. The exact
     # output is therefore not pinned here (see test_segment_single_line for a pinned
     # RTL case).
     fixations, line_ys = sample_fixations_and_lines
