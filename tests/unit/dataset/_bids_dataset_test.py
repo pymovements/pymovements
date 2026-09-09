@@ -223,6 +223,19 @@ class TestBidsFormatRoundTrip:
         bids_result = _polars_datatype_to_bids_format(polars_dtype)
         assert bids_result == bids_format
 
+    @pytest.mark.parametrize(
+        'polars_dtype',
+        [
+            pytest.param(pl.Categorical, id='categorical'),
+            pytest.param(pl.Enum(['a', 'b']), id='enum'),
+        ],
+    )
+    def test_categorical_and_enum_map_to_string(self, polars_dtype):
+        # Categorical and Enum hold string values, so they describe as 'string'.
+        # They are intentionally not part of the round-trip test above: a 'string'
+        # column casts back to String, as it does for data loaded from file.
+        assert _polars_datatype_to_bids_format(polars_dtype) == 'string'
+
     def test_unknown_polars_dtype_raises(self):
         with pytest.raises(
             TypeError,
