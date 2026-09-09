@@ -36,13 +36,16 @@ All events have a starting time (onset) and an ending time (offset, inclusive).
 
 .. currentmodule:: pymovements
 
-.. rubric:: Fixation Correction Methods
-    :name: fixation-correction-methods
+.. rubric:: Fixation Drift Correction
+    :name: fixation-drift-correction
 
 These functions can be used to apply a line-alignment correction algorithm to a set of fixations.
 The algorithms will adjust the y-coordinates of the fixations to correct for drift and systematic
 error in the eye-tracking data. This is particularly useful for paragraph reading data, where
-y-alignment issues can lead to a fixation being assigned to the wrong line of text. Available
+y-alignment issues can lead to a fixation being assigned to the wrong line of text. Fixation
+drift correction assumes reading data recorded on a
+:py:class:`~pymovements.stimulus.TextStimulus`, whose areas of interest provide the text line
+positions. Available
 algorithms are listed under :ref:`Drift Correction Algorithms <drift-correction-algorithms>`.
 The most convenient way to correct fixations is via the
 :py:meth:`Events.correct_fixations` and
