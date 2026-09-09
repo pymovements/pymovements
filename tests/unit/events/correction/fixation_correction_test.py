@@ -378,6 +378,39 @@ def test_correct_fixations_algorithm_list(sample_events_and_aois):
     assert res_single.filter(pl.col('correction_algorithm') == 'attach').height == 6
 
 
+@pytest.mark.parametrize(
+    'algorithm',
+    ['woc', 'wisdom_of_the_crowd', ['woc'], ['wisdom_of_the_crowd']],
+)
+def test_correct_fixations_woc_spellings_record_normalized_algorithm(
+        sample_events_and_aois, algorithm,
+):
+    events_df, aois_df = sample_events_and_aois
+    res_df = correct_fixations(events_df, aois_df, algorithm=algorithm)
+    assert res_df['correction_algorithm'].to_list() == ['wisdom_of_the_crowd'] * 6
+
+
+@pytest.mark.parametrize(
+    'algorithm',
+    ['woc', 'wisdom_of_the_crowd', ['woc'], ['wisdom_of_the_crowd']],
+)
+def test_correct_fixations_woc_spellings_skip_short_trial(sample_events_and_aois, algorithm):
+    _, aois_df = sample_events_and_aois
+    events_df = pl.DataFrame({
+        'name': ['fixation'] * 2,
+        'location': [[100.0, 105.0], [200.0, 102.0]],
+    })
+
+    # Every spelling requests the full ensemble including cluster, which needs one
+    # fixation per text line, so two fixations on three lines are skipped.
+    with pytest.warns(
+        UserWarning,
+        match='2 fixations are too few for the requested algorithms on 3 text lines',
+    ):
+        res_df = correct_fixations(events_df, aois_df, algorithm=algorithm)
+    assert res_df.equals(events_df)
+
+
 def test_correct_fixations_multiple_trials_corrected_independently(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     events_two_trials = pl.concat([
@@ -453,6 +486,27 @@ def test_correct_fixations_all_trials_skipped_returns_unchanged(sample_events_an
         warning_records[0].message,
     )
     assert res_df.equals(events_df)
+
+
+@pytest.mark.parametrize(
+    ('algorithm', 'expected_msg'),
+    [
+        ('atach', "Unknown drift algorithm 'atach'"),
+        (['cluster', 'atach'], r"Unknown drift algorithms \['atach'\]"),
+    ],
+)
+def test_correct_fixations_unknown_algorithm_raises_before_skipping_trials(
+        sample_events_and_aois, algorithm, expected_msg,
+):
+    _, aois_df = sample_events_and_aois
+    events_df = pl.DataFrame({
+        'name': ['fixation'] * 2,
+        'location': [[100.0, 105.0], [200.0, 102.0]],
+    })
+
+    # The unknown name raises even though the only trial would be skipped as too short.
+    with pytest.raises(ValueError, match=expected_msg):
+        correct_fixations(events_df, aois_df, algorithm=algorithm)
 
 
 def test_correct_fixations_skips_split_below_three_fixations():

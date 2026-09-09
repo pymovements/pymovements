@@ -598,14 +598,18 @@ def _check_not_already_corrected(events: pl.DataFrame, fixation_name: str) -> No
 
 
 def _algorithm_label(algorithm: str | list[str]) -> tuple[str, set[str]]:
-    """Resolve the bookkeeping algorithm name and the set of requested algorithms."""
-    if isinstance(algorithm, (list, tuple)):
-        if len(algorithm) > 1:
-            return 'wisdom_of_the_crowd', set(algorithm)
-        return algorithm[0], set(algorithm)
-    if isinstance(algorithm, str) and algorithm.lower() not in {'wisdom_of_the_crowd', 'woc'}:
-        return algorithm, {algorithm}
-    return 'wisdom_of_the_crowd', set(ALL_DRIFT_ALGORITHMS)
+    """Resolve and validate the bookkeeping algorithm name and the requested algorithms.
+
+    Resolving with word coordinates assumed present and left-to-right reading excludes
+    no algorithm, so unknown names raise here, before any trial is corrected or
+    skipped, while the per-trial exclusions stay with correct_fixation_locations.
+    """
+    candidate_algos, ensemble = _resolve_algorithms(
+        algorithm, has_word_coords=True, right_to_left=False,
+    )
+    if ensemble:
+        return 'wisdom_of_the_crowd', set(candidate_algos)
+    return candidate_algos[0], set(candidate_algos)
 
 
 def _trial_aois(
@@ -840,9 +844,12 @@ def correct_fixations(
     Raises
     ------
     ValueError
-        If the directionality is invalid, if trial_columns are missing from the events
-        dataframe, if no AOIs are found for a trial with fixations to correct, or if the
-        fixation events have already been corrected.
+        If an algorithm name is unknown, if the directionality is invalid, if
+        trial_columns are missing from the events dataframe, if no AOIs are found for a
+        trial with fixations to correct, or if the fixation events have already been
+        corrected.
+    TypeError
+        If algorithm is neither a string nor a list of strings.
 
     Examples
     --------
