@@ -43,11 +43,11 @@ References & Citations:
 - :cite:p:`Mercier2024b`
 - :cite:p:`Spakov2019`
 """
+from pymovements.events.correction._dynamic_time_warping import dynamic_time_warping
 from pymovements.events.correction.attach import attach
 from pymovements.events.correction.chain import chain
 from pymovements.events.correction.cluster import cluster
 from pymovements.events.correction.compare import compare
-from pymovements.events.correction.dynamic_time_warping import dynamic_time_warping
 from pymovements.events.correction.fixation_correction import correct_fixation_locations
 from pymovements.events.correction.fixation_correction import correct_fixations
 from pymovements.events.correction.merge import merge

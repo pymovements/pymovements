@@ -25,9 +25,9 @@ from typing import cast
 
 import polars as pl
 
+from pymovements.events.correction._dynamic_time_warping import dynamic_time_warping_points
 from pymovements.events.correction._utils import location_expr
 from pymovements.events.correction._utils import locations_to_lists
-from pymovements.events.correction.dynamic_time_warping import dynamic_time_warping_points
 
 
 def compare(

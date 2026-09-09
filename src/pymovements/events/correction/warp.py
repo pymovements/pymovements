@@ -24,8 +24,8 @@ from collections.abc import Sequence
 
 import polars as pl
 
+from pymovements.events.correction._dynamic_time_warping import dynamic_time_warping_points
 from pymovements.events.correction._utils import location_expr
-from pymovements.events.correction.dynamic_time_warping import dynamic_time_warping_points
 
 
 def warp(
