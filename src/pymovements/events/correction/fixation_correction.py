@@ -54,191 +54,49 @@ from __future__ import annotations
 
 import inspect
 import warnings
+from collections.abc import Callable
 from typing import Any
 
 import polars as pl
 
-import pymovements.events.correction.drift_algorithms as da
-from pymovements.events.correction.drift_algorithms import _is_right_to_left
-from pymovements.events.correction.drift_algorithms import _line_index_to_y
-from pymovements.events.correction.drift_algorithms import _location_x
-from pymovements.events.correction.drift_algorithms import _nearest_line_index
+from pymovements.events.correction._aoi import count_text_lines
+from pymovements.events.correction._aoi import get_lines_of_text_from_aois
+from pymovements.events.correction._aoi import get_word_locations_from_aois
+from pymovements.events.correction._aoi import has_word_x_coords
+from pymovements.events.correction._aoi import normalize_aois
+from pymovements.events.correction._utils import is_right_to_left
+from pymovements.events.correction._utils import line_index_to_y
+from pymovements.events.correction._utils import location_x
+from pymovements.events.correction._utils import nearest_line_index
+from pymovements.events.correction.attach import attach
+from pymovements.events.correction.chain import chain
+from pymovements.events.correction.cluster import cluster
+from pymovements.events.correction.compare import compare
+from pymovements.events.correction.merge import merge
+from pymovements.events.correction.regress import regress
+from pymovements.events.correction.segment import segment
+from pymovements.events.correction.slice import slice  # pylint: disable=redefined-builtin
+from pymovements.events.correction.split import split
+from pymovements.events.correction.stretch import stretch
+from pymovements.events.correction.warp import warp
+from pymovements.events.correction.wisdom_of_the_crowd import wisdom_of_the_crowd
 
+# The insertion order defines the default tie-breaking priority of the ensemble votes.
+_DRIFT_ALGORITHMS: dict[str, Callable[..., pl.Expr]] = {
+    'attach': attach,
+    'chain': chain,
+    'cluster': cluster,
+    'compare': compare,
+    'merge': merge,
+    'regress': regress,
+    'segment': segment,
+    'slice': slice,
+    'split': split,
+    'stretch': stretch,
+    'warp': warp,
+}
 
-def _with_line_centers(aois: pl.DataFrame) -> tuple[pl.DataFrame, str]:
-    """Annotate each AOI row with the y-center of the text line it belongs to.
-
-    Lines are identified by 'line_idx' if present, otherwise by the top y-coordinate.
-    Assumes that the line of text is vertically centered within each AOI bounding box.
-
-    Parameters
-    ----------
-    aois: pl.DataFrame
-        AOIs dataframe to annotate.
-
-    Returns
-    -------
-    tuple[pl.DataFrame, str]
-        AOIs dataframe with an added 'line_center' column in original row order, and the
-        name of the column identifying lines.
-
-    Raises
-    ------
-    ValueError
-        If the AOIs dataframe has neither a 'start_y' nor a 'top_left_y' column, or no
-        'height' column.
-    """
-    if 'start_y' in aois.columns:
-        y_col = 'start_y'
-    elif 'top_left_y' in aois.columns:
-        y_col = 'top_left_y'
-    else:
-        raise ValueError(
-            "AOIs dataframe requires a 'start_y' or 'top_left_y' column to derive text "
-            'line positions.',
-        )
-    if 'height' not in aois.columns:
-        raise ValueError(
-            "AOIs dataframe requires a 'height' column, or 'start_y' and 'end_y' columns "
-            'to derive it, to compute text line centers.',
-        )
-    line_key = 'line_idx' if 'line_idx' in aois.columns else y_col
-
-    aois_with_line_centers = (
-        aois.filter(pl.col(line_key).is_not_null())
-        .with_columns(
-            (pl.col(y_col) + pl.col('height') / 2.0)
-            .mean()
-            .over(line_key)
-            .alias('line_center'),
-        )
-    )
-    return aois_with_line_centers, line_key
-
-
-def _get_lines_of_text_from_aois(aois: pl.DataFrame) -> list[float]:
-    """Calculate line positions of text based on AOIs.
-
-    Assumes that the line of text is vertically centered within each AOI.
-
-    Parameters
-    ----------
-    aois: pl.DataFrame
-        AOIs dataframe to calculate line positions from.
-
-    Returns
-    -------
-    list[float]
-        Line center y-coordinates of the text.
-    """
-    aois_with_line_centers, line_key = _with_line_centers(aois)
-    return (
-        aois_with_line_centers
-        .unique(subset=line_key)
-        .sort(line_key)['line_center']
-        .to_list()
-    )
-
-
-_CHARACTER_LEVEL_COLUMNS = ('char', 'character', 'char_idx_in_line')
-
-
-def _get_word_locations_from_aois(aois: pl.DataFrame) -> pl.Series:
-    """Calculate word center locations from AOIs for DTW-based drift algorithms.
-
-    Following the word position convention of Carr et al. :cite:p:`Carr2022`, the
-    y-coordinate of each word is the center of the text line the word belongs to, not the
-    center of the word's own bounding box. This keeps the y-coordinates identical to the
-    line positions returned by _get_lines_of_text_from_aois.
-
-    Character-level AOI frames (recognized by a 'word' column next to a character column)
-    are aggregated to one location per word, spanning from the first to the last character
-    of the word. Directly adjacent repetitions of the same word within a line cannot be
-    distinguished and are aggregated into a single word location.
-
-    Parameters
-    ----------
-    aois: pl.DataFrame
-        AOIs dataframe to calculate word locations from.
-
-    Returns
-    -------
-    pl.Series
-        Series of [x, y] word center locations.
-    """
-    aois_with_line_centers, line_key = _with_line_centers(aois)
-
-    is_character_level = 'word' in aois.columns and any(
-        column in aois.columns for column in _CHARACTER_LEVEL_COLUMNS
-    )
-    if is_character_level:
-        word_run = pl.struct([pl.col(line_key), pl.col('word')]).rle_id()
-        return (
-            aois_with_line_centers
-            .group_by(word_run.alias('word_run'), maintain_order=True)
-            .agg(
-                ((pl.col('start_x').min() + pl.col('end_x').max()) / 2.0).alias('word_x'),
-                pl.col('line_center').first(),
-            )
-            .select(pl.concat_list(['word_x', 'line_center']).alias('word_location'))
-            .to_series()
-        )
-
-    return aois_with_line_centers.select(
-        pl.concat_list([
-            (pl.col('start_x') + pl.col('end_x')) / 2.0,
-            pl.col('line_center'),
-        ]).alias('word_location'),
-    ).to_series()
-
-
-ALL_DRIFT_ALGORITHMS: list[str] = [
-    'attach', 'chain', 'cluster', 'compare', 'merge', 'regress',
-    'segment', 'slice', 'split', 'stretch', 'warp',
-]
-
-
-def _has_word_x_coords(aois: pl.DataFrame) -> bool:
-    """Check if word X coordinates are available in the aois DataFrame."""
-    return 'start_x' in aois.columns and 'end_x' in aois.columns
-
-
-def _normalize_aois(aois: pl.DataFrame) -> pl.DataFrame:
-    """Derive missing AOI geometry columns from the available ones.
-
-    Derives 'height' from 'start_y' and 'end_y', and 'end_x' from 'start_x' and 'width',
-    whenever the derived column is missing but its sources are present.
-
-    Parameters
-    ----------
-    aois: pl.DataFrame
-        AOIs dataframe to normalize.
-
-    Returns
-    -------
-    pl.DataFrame
-        AOIs dataframe with derived geometry columns.
-    """
-    derived_columns = []
-    if 'height' not in aois.columns and {'start_y', 'end_y'} <= set(aois.columns):
-        derived_columns.append((pl.col('end_y') - pl.col('start_y')).alias('height'))
-    if 'end_x' not in aois.columns and {'start_x', 'width'} <= set(aois.columns):
-        derived_columns.append((pl.col('start_x') + pl.col('width')).alias('end_x'))
-    if derived_columns:
-        aois = aois.with_columns(derived_columns)
-    return aois
-
-
-def _count_text_lines(aois: pl.DataFrame, word_locations: pl.Series | None) -> int | None:
-    """Count the text lines of a trial, or None if no line information is available."""
-    if (
-        ('start_y' in aois.columns or 'top_left_y' in aois.columns)
-        and 'height' in aois.columns
-    ):
-        return len(_get_lines_of_text_from_aois(aois))
-    if word_locations is not None:
-        return word_locations.cast(pl.List(pl.Float64)).list.get(1).n_unique()
-    return None
+ALL_DRIFT_ALGORITHMS: list[str] = list(_DRIFT_ALGORITHMS)
 
 
 def _min_fixation_count(algorithms: set[str], n_lines: int) -> int:
@@ -434,7 +292,7 @@ def correct_fixation_locations(
     'location_original' and 'correction_algorithm' bookkeeping columns, see
     :py:func:`~pymovements.events.correction.correct_fixations`.
     """
-    right_to_left = _is_right_to_left(directionality)
+    right_to_left = is_right_to_left(directionality)
     if algorithm_kwargs is None:
         algorithm_kwargs = {}
     for reserved_key in ('directionality', 'word_locations', 'location'):
@@ -444,12 +302,12 @@ def correct_fixation_locations(
                 'not via algorithm_kwargs.',
             )
 
-    aois = _normalize_aois(aois)
+    aois = normalize_aois(aois)
 
     fixations = events.filter(pl.col('name') == fixation_name)
     location = _fixation_location(fixations)
 
-    has_word_coords = word_locations is not None or _has_word_x_coords(aois)
+    has_word_coords = word_locations is not None or has_word_x_coords(aois)
 
     if isinstance(algorithm, (list, tuple)):
         if len(algorithm) == 0:
@@ -481,30 +339,30 @@ def correct_fixation_locations(
                 )
             if algorithm in {'compare', 'warp'}:
                 if word_locations is None:
-                    if not _has_word_x_coords(aois):
+                    if not has_word_x_coords(aois):
                         raise ValueError(
                             f"Algorithm '{algorithm}' requires word X coordinates "
                             "('start_x', 'end_x') in aois DataFrame or the "
                             "'word_locations' parameter.",
                         )
-                    word_locations = _get_word_locations_from_aois(aois)
+                    word_locations = get_word_locations_from_aois(aois)
                 target: pl.Series | list[float] = word_locations
             else:
-                target = _get_lines_of_text_from_aois(aois)
+                target = get_lines_of_text_from_aois(aois)
 
-            func = getattr(da, algorithm)
+            func = _DRIFT_ALGORITHMS[algorithm]
             call_kwargs = dict(algorithm_kwargs)
             if 'directionality' in inspect.signature(func).parameters:
                 call_kwargs['directionality'] = directionality
             corrected_y = func(target, location=location, **call_kwargs)
             return fixations.select(
-                pl.concat_list([_location_x(location), corrected_y]).alias('location'),
+                pl.concat_list([location_x(location), corrected_y]).alias('location'),
             ).to_series()
     else:
         raise TypeError('algorithm must be a string or a list of strings.')
 
     if {'compare', 'warp'} & set(candidate_algos) and word_locations is None:
-        word_locations = _get_word_locations_from_aois(aois)
+        word_locations = get_word_locations_from_aois(aois)
 
     # Vote on line indices rather than raw y-coordinates so that candidate algorithms cannot
     # split votes through differing float representations of the same text line.
@@ -513,7 +371,7 @@ def correct_fixation_locations(
         and 'height' in aois.columns
     )
     if has_line_info:
-        line_values = _get_lines_of_text_from_aois(aois)
+        line_values = get_lines_of_text_from_aois(aois)
     elif word_locations is not None:
         line_values = (
             word_locations.cast(pl.List(pl.Float64))
@@ -522,12 +380,12 @@ def correct_fixation_locations(
     else:
         # Neither complete line information nor word locations are available: derive from
         # the AOIs anyway so the resulting ValueError names the missing columns.
-        line_values = _get_lines_of_text_from_aois(aois)
+        line_values = get_lines_of_text_from_aois(aois)
 
     # Route tuning parameters to those candidate algorithms that accept them, so that
     # algorithm-specific parameters do not break the other algorithms in the ensemble.
     candidate_params = {
-        candidate_algo: set(inspect.signature(getattr(da, candidate_algo)).parameters)
+        candidate_algo: set(inspect.signature(_DRIFT_ALGORITHMS[candidate_algo]).parameters)
         for candidate_algo in candidate_algos
     }
     unknown_kwargs = [
@@ -542,7 +400,7 @@ def correct_fixation_locations(
 
     vote_exprs = []
     for candidate_algo in candidate_algos:
-        func = getattr(da, candidate_algo)
+        func = _DRIFT_ALGORITHMS[candidate_algo]
         call_kwargs = {
             key: value for key, value in algorithm_kwargs.items()
             if key in candidate_params[candidate_algo]
@@ -554,16 +412,16 @@ def correct_fixation_locations(
         else:
             corrected_y = func(line_values, location=location, **call_kwargs)
         vote_exprs.append(
-            _nearest_line_index(corrected_y, line_values).alias(candidate_algo),
+            nearest_line_index(corrected_y, line_values).alias(candidate_algo),
         )
 
     votes = fixations.select(
-        [_location_x(location).alias('__location_x')] + vote_exprs,  # noqa: SLF001
+        [location_x(location).alias('__location_x')] + vote_exprs,  # noqa: SLF001
     )
     return votes.select(
         pl.concat_list([
             pl.col('__location_x'),
-            _line_index_to_y(da.wisdom_of_the_crowd(candidate_algos), line_values),
+            line_index_to_y(wisdom_of_the_crowd(candidate_algos), line_values),
         ]).alias('location'),
     ).to_series()
 
@@ -674,7 +532,7 @@ def correct_fixations(
     └──────────┴────────────────┴───────────────────┴──────────────────────┘
     """
     # Validate eagerly so an invalid directionality raises even without matching fixations.
-    _is_right_to_left(directionality)
+    is_right_to_left(directionality)
 
     if isinstance(trial_columns, str):
         trial_columns = [trial_columns]
@@ -712,7 +570,7 @@ def correct_fixations(
         algo_name = 'wisdom_of_the_crowd'
         requested_algorithms = set(ALL_DRIFT_ALGORITHMS)
 
-    aois = _normalize_aois(aois)
+    aois = normalize_aois(aois)
     indexed_events = events.with_row_index('__fixation_correction_index')
 
     if trial_columns is not None:
@@ -748,7 +606,7 @@ def correct_fixations(
             }
             raise ValueError(f'no AOIs found for trial {trial_values}.')
 
-        n_lines = _count_text_lines(trial_aois, word_locations)
+        n_lines = count_text_lines(trial_aois, word_locations)
         if n_lines is not None:
             min_fixations = _min_fixation_count(requested_algorithms, n_lines)
             if fixation_events.height < min_fixations:

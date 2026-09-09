@@ -62,8 +62,8 @@ import polars as pl
 import pytest
 
 import pymovements as pm
-import pymovements.events.correction.drift_algorithms as da
 from pymovements import WebSource
+from pymovements.events import correction
 
 pytestmark = pytest.mark.network
 
@@ -181,8 +181,8 @@ def word_locations_series(fixture_name):
 def build_algorithm_expression(algorithm, fixture_name):
     """Build the drift correction expression of an algorithm for a fixture."""
     if algorithm in {'compare', 'warp'}:
-        return getattr(da, algorithm)(word_locations_series(fixture_name))
-    return getattr(da, algorithm)(FIXTURE_LINE_YS[fixture_name].tolist())
+        return getattr(correction, algorithm)(word_locations_series(fixture_name))
+    return getattr(correction, algorithm)(FIXTURE_LINE_YS[fixture_name].tolist())
 
 
 @pytest.mark.parametrize('fixture_name', list(FIXTURE_LINE_YS))
@@ -226,7 +226,7 @@ def test_dynamic_time_warping_matches_reference_implementation(reference, testfi
         np.array(fixation_xy[:11], copy=True), np.array(word_xy[:10], copy=True),
     )
     fixations = load_fixture(testfiles_dirpath, 'baseline')
-    cost, path = da.dynamic_time_warping(
+    cost, path = correction.dynamic_time_warping(
         fixations.to_series().head(11), word_locations_series('baseline').head(10),
     )
 
@@ -253,7 +253,7 @@ def test_wisdom_of_the_crowd_matches_reference_implementation(
     expected = gazegenie_reference.wisdom_of_the_crowd(
         [votes[name].to_numpy() for name in line_based_algorithms],
     )
-    result = votes.select(da.wisdom_of_the_crowd(line_based_algorithms)).to_series()
+    result = votes.select(correction.wisdom_of_the_crowd(line_based_algorithms)).to_series()
 
     assert result.to_list() == list(expected)
 
@@ -278,7 +278,7 @@ def test_wisdom_of_the_crowd_tie_breaking_matches_reference_implementation(
         expected = gazegenie_reference.wisdom_of_the_crowd(
             [np.array(assignment) for assignment in scenario.values()],
         )
-        result = votes.select(da.wisdom_of_the_crowd(list(scenario))).to_series()
+        result = votes.select(correction.wisdom_of_the_crowd(list(scenario))).to_series()
         assert result.to_list() == list(expected)
 
 

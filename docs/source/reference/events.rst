@@ -56,8 +56,6 @@ The most convenient way to correct fixations is via the
     correct_fixations
     correct_fixation_locations
 
-.. currentmodule:: pymovements.events.correction.drift_algorithms
-
 .. rubric:: Drift Correction Algorithms
     :name: drift-correction-algorithms
 
@@ -66,7 +64,7 @@ fixations. These algorithms, which are described in detail by Carr et al. :cite:
 can be applied to the fixations using the
 :func:`~pymovements.events.correction.correct_fixations` function. By default, the
 :func:`~pymovements.events.correction.correct_fixations` function will use the
-:func:`~pymovements.events.correction.drift_algorithms.wisdom_of_the_crowd` algorithm which is an
+:func:`~pymovements.events.correction.wisdom_of_the_crowd` algorithm which is an
 ensemble method that combines the results of the other algorithms to produce a more robust
 correction. Each algorithm operates on the fixation sequence of a single trial and must be
 applied per trial; the :func:`~pymovements.events.correction.correct_fixations` function and
