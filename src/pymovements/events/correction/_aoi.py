@@ -20,6 +20,8 @@
 """Provides AOI geometry helpers for deriving text line and word positions."""
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import polars as pl
 
 
@@ -98,10 +100,10 @@ def get_lines_of_text_from_aois(aois: pl.DataFrame) -> list[float]:
     )
 
 
-_CHARACTER_LEVEL_COLUMNS = ('char', 'character', 'char_idx_in_line')
-
-
-def get_word_locations_from_aois(aois: pl.DataFrame) -> pl.Series:
+def get_word_locations_from_aois(
+    aois: pl.DataFrame,
+    character_level_columns: Sequence[str],
+) -> pl.Series:
     """Calculate word center locations from AOIs for DTW-based drift algorithms.
 
     Following the word position convention of Carr et al. :cite:p:`Carr2022`, the
@@ -118,6 +120,9 @@ def get_word_locations_from_aois(aois: pl.DataFrame) -> pl.Series:
     ----------
     aois: pl.DataFrame
         AOIs dataframe to calculate word locations from.
+    character_level_columns: Sequence[str]
+        Column names whose presence next to a 'word' column marks a character-level AOI
+        frame.
 
     Returns
     -------
@@ -127,7 +132,7 @@ def get_word_locations_from_aois(aois: pl.DataFrame) -> pl.Series:
     aois_with_line_centers, line_key = with_line_centers(aois)
 
     is_character_level = 'word' in aois.columns and any(
-        column in aois.columns for column in _CHARACTER_LEVEL_COLUMNS
+        column in aois.columns for column in character_level_columns
     )
     if is_character_level:
         word_run = pl.struct([pl.col(line_key), pl.col('word')]).rle_id()

@@ -98,6 +98,9 @@ _DRIFT_ALGORITHMS: dict[str, Callable[..., pl.Expr]] = {
 
 ALL_DRIFT_ALGORITHMS: list[str] = list(_DRIFT_ALGORITHMS)
 
+# Columns whose presence next to a 'word' column marks a character-level AOI frame.
+_CHARACTER_LEVEL_COLUMNS = ('char', 'character', 'char_idx_in_line')
+
 
 def _min_fixation_count(algorithms: set[str], n_lines: int) -> int:
     """Minimum number of fixations the given drift algorithms need to run."""
@@ -157,7 +160,7 @@ def _select_ensemble_algorithms(
             'As a consequence, algorithms requiring word X coordinates '
             f"({excluded_algos}) are excluded from Wisdom of the Crowd ensemble.",
             UserWarning,
-            stacklevel=3,
+            stacklevel=4,
         )
 
     if right_to_left and 'compare' in candidate_algos:
@@ -165,7 +168,7 @@ def _select_ensemble_algorithms(
             "Algorithm 'compare' does not support right-to-left reading and is excluded "
             'from Wisdom of the Crowd ensemble.',
             UserWarning,
-            stacklevel=3,
+            stacklevel=4,
         )
         candidate_algos = [algo for algo in candidate_algos if algo != 'compare']
 
@@ -173,6 +176,216 @@ def _select_ensemble_algorithms(
         raise ValueError('No candidate algorithms remain for the ensemble.')
 
     return candidate_algos
+
+
+def _resolve_algorithms(
+    algorithm: str | list[str],
+    has_word_coords: bool,
+    right_to_left: bool,
+) -> tuple[list[str], bool]:
+    """Resolve the algorithm argument to candidate names and an ensemble flag.
+
+    Parameters
+    ----------
+    algorithm: str | list[str]
+        Name of a single drift algorithm, 'wisdom_of_the_crowd' (or 'woc'), or a list of
+        algorithm names to combine via ensemble correction.
+    has_word_coords: bool
+        Whether word X coordinates are available for the DTW-based algorithms.
+    right_to_left: bool
+        Whether the text is read from right to left.
+
+    Returns
+    -------
+    tuple[list[str], bool]
+        Candidate algorithm names and whether they form a Wisdom of the Crowd ensemble.
+
+    Raises
+    ------
+    ValueError
+        If the algorithm list is empty, an algorithm name is unknown, or a single
+        'compare' algorithm is requested for right-to-left reading.
+    TypeError
+        If algorithm is neither a string nor a list of strings.
+    """
+    if isinstance(algorithm, (list, tuple)):
+        if len(algorithm) == 0:
+            raise ValueError('At least one algorithm must be provided in the algorithm list.')
+        if len(algorithm) == 1:
+            # A single-element list is treated exactly like a single algorithm name.
+            return _resolve_algorithms(algorithm[0], has_word_coords, right_to_left)
+        candidate_algos = _select_ensemble_algorithms(
+            list(algorithm), has_word_coords, right_to_left,
+        )
+        return candidate_algos, True
+
+    if isinstance(algorithm, str):
+        if algorithm.lower() in {'wisdom_of_the_crowd', 'woc'}:
+            candidate_algos = _select_ensemble_algorithms(
+                list(ALL_DRIFT_ALGORITHMS), has_word_coords, right_to_left,
+            )
+            return candidate_algos, True
+        if algorithm not in ALL_DRIFT_ALGORITHMS:
+            raise ValueError(
+                f"Unknown drift algorithm '{algorithm}'. "
+                f'Valid algorithms are: {ALL_DRIFT_ALGORITHMS}',
+            )
+        if algorithm == 'compare' and right_to_left:
+            raise ValueError(
+                "Algorithm 'compare' does not support right-to-left reading as its "
+                'line break detection assumes left-to-right reading.',
+            )
+        return [algorithm], False
+
+    raise TypeError('algorithm must be a string or a list of strings.')
+
+
+def _resolve_line_values(aois: pl.DataFrame, word_locations: pl.Series | None) -> list[float]:
+    """Resolve the text line y-coordinates from the AOIs or the word locations."""
+    has_line_info = (
+        ('start_y' in aois.columns or 'top_left_y' in aois.columns)
+        and 'height' in aois.columns
+    )
+    if has_line_info:
+        return get_lines_of_text_from_aois(aois)
+    if word_locations is not None:
+        return (
+            word_locations.cast(pl.List(pl.Float64))
+            .list.get(1).unique().sort().to_list()
+        )
+    # Neither complete line information nor word locations are available: derive from
+    # the AOIs anyway so the resulting ValueError names the missing columns.
+    return get_lines_of_text_from_aois(aois)
+
+
+def _route_algorithm_kwargs(
+    candidate_algos: list[str],
+    algorithm_kwargs: dict[str, Any],
+    directionality: str,
+) -> dict[str, dict[str, Any]]:
+    """Route tuning parameters to those candidate algorithms that accept them.
+
+    Routing algorithm-specific parameters only to the algorithms accepting them keeps
+    those parameters from breaking the other algorithms in the ensemble.
+
+    Parameters
+    ----------
+    candidate_algos: list[str]
+        Candidate algorithm names of the ensemble.
+    algorithm_kwargs: dict[str, Any]
+        Additional tuning parameters for the drift correction algorithms.
+    directionality: str
+        Reading direction of the text, added for those algorithms that accept it.
+
+    Returns
+    -------
+    dict[str, dict[str, Any]]
+        Call keyword arguments per candidate algorithm.
+
+    Raises
+    ------
+    ValueError
+        If an algorithm_kwargs entry is accepted by none of the candidate algorithms.
+    """
+    candidate_params = {
+        candidate_algo: set(inspect.signature(_DRIFT_ALGORITHMS[candidate_algo]).parameters)
+        for candidate_algo in candidate_algos
+    }
+    unknown_kwargs = [
+        key for key in algorithm_kwargs
+        if not any(key in params for params in candidate_params.values())
+    ]
+    if unknown_kwargs:
+        raise ValueError(
+            f'algorithm_kwargs entries {unknown_kwargs} are not accepted by any of the '
+            f'ensemble algorithms {candidate_algos}.',
+        )
+
+    routed_kwargs = {}
+    for candidate_algo, params in candidate_params.items():
+        call_kwargs = {
+            key: value for key, value in algorithm_kwargs.items() if key in params
+        }
+        if 'directionality' in params:
+            call_kwargs['directionality'] = directionality
+        routed_kwargs[candidate_algo] = call_kwargs
+    return routed_kwargs
+
+
+def _correct_single(
+    fixations: pl.DataFrame,
+    aois: pl.DataFrame,
+    algorithm: str,
+    *,
+    directionality: str,
+    word_locations: pl.Series | None,
+    algorithm_kwargs: dict[str, Any],
+    location: str | pl.Expr,
+) -> pl.Series:
+    """Correct fixation locations with a single drift algorithm."""
+    if algorithm in {'compare', 'warp'}:
+        if word_locations is None:
+            if not has_word_x_coords(aois):
+                raise ValueError(
+                    f"Algorithm '{algorithm}' requires word X coordinates "
+                    "('start_x', 'end_x') in aois DataFrame or the "
+                    "'word_locations' parameter.",
+                )
+            word_locations = get_word_locations_from_aois(aois, _CHARACTER_LEVEL_COLUMNS)
+        target: pl.Series | list[float] = word_locations
+    else:
+        target = get_lines_of_text_from_aois(aois)
+
+    func = _DRIFT_ALGORITHMS[algorithm]
+    call_kwargs = dict(algorithm_kwargs)
+    if 'directionality' in inspect.signature(func).parameters:
+        call_kwargs['directionality'] = directionality
+    corrected_y = func(target, location=location, **call_kwargs)
+    return fixations.select(
+        pl.concat_list([location_x(location), corrected_y]).alias('location'),
+    ).to_series()
+
+
+def _correct_ensemble(
+    fixations: pl.DataFrame,
+    aois: pl.DataFrame,
+    candidate_algos: list[str],
+    *,
+    directionality: str,
+    word_locations: pl.Series | None,
+    algorithm_kwargs: dict[str, Any],
+    location: str | pl.Expr,
+) -> pl.Series:
+    """Correct fixation locations by majority voting across the candidate algorithms."""
+    if {'compare', 'warp'} & set(candidate_algos) and word_locations is None:
+        word_locations = get_word_locations_from_aois(aois, _CHARACTER_LEVEL_COLUMNS)
+
+    # Vote on line indices rather than raw y-coordinates so that candidate algorithms cannot
+    # split votes through differing float representations of the same text line.
+    line_values = _resolve_line_values(aois, word_locations)
+
+    routed_kwargs = _route_algorithm_kwargs(candidate_algos, algorithm_kwargs, directionality)
+
+    vote_exprs = []
+    for candidate_algo in candidate_algos:
+        func = _DRIFT_ALGORITHMS[candidate_algo]
+        if candidate_algo in {'compare', 'warp'}:
+            corrected_y = func(word_locations, location=location, **routed_kwargs[candidate_algo])
+        else:
+            corrected_y = func(line_values, location=location, **routed_kwargs[candidate_algo])
+        vote_exprs.append(
+            nearest_line_index(corrected_y, line_values).alias(candidate_algo),
+        )
+
+    votes = fixations.select(
+        [location_x(location).alias('__location_x')] + vote_exprs,  # noqa: SLF001
+    )
+    return votes.select(
+        pl.concat_list([
+            pl.col('__location_x'),
+            line_index_to_y(wisdom_of_the_crowd(candidate_algos), line_values),
+        ]).alias('location'),
+    ).to_series()
 
 
 def _fixation_location(fixations: pl.DataFrame) -> str | pl.Expr:
@@ -309,121 +522,177 @@ def correct_fixation_locations(
 
     has_word_coords = word_locations is not None or has_word_x_coords(aois)
 
-    if isinstance(algorithm, (list, tuple)):
-        if len(algorithm) == 0:
-            raise ValueError('At least one algorithm must be provided in the algorithm list.')
-        if len(algorithm) == 1:
-            return correct_fixation_locations(
-                events, aois, algorithm=algorithm[0], directionality=directionality,
-                word_locations=word_locations, algorithm_kwargs=algorithm_kwargs,
-                fixation_name=fixation_name,
-            )
-        candidate_algos = _select_ensemble_algorithms(
-            list(algorithm), has_word_coords, right_to_left,
+    candidate_algos, ensemble = _resolve_algorithms(algorithm, has_word_coords, right_to_left)
+    if not ensemble:
+        return _correct_single(
+            fixations, aois, candidate_algos[0],
+            directionality=directionality, word_locations=word_locations,
+            algorithm_kwargs=algorithm_kwargs, location=location,
         )
-    elif isinstance(algorithm, str):
-        if algorithm.lower() in {'wisdom_of_the_crowd', 'woc'}:
-            candidate_algos = _select_ensemble_algorithms(
-                list(ALL_DRIFT_ALGORITHMS), has_word_coords, right_to_left,
-            )
-        else:
-            if algorithm not in ALL_DRIFT_ALGORITHMS:
-                raise ValueError(
-                    f"Unknown drift algorithm '{algorithm}'. "
-                    f'Valid algorithms are: {ALL_DRIFT_ALGORITHMS}',
-                )
-            if algorithm == 'compare' and right_to_left:
-                raise ValueError(
-                    "Algorithm 'compare' does not support right-to-left reading as its "
-                    'line break detection assumes left-to-right reading.',
-                )
-            if algorithm in {'compare', 'warp'}:
-                if word_locations is None:
-                    if not has_word_x_coords(aois):
-                        raise ValueError(
-                            f"Algorithm '{algorithm}' requires word X coordinates "
-                            "('start_x', 'end_x') in aois DataFrame or the "
-                            "'word_locations' parameter.",
-                        )
-                    word_locations = get_word_locations_from_aois(aois)
-                target: pl.Series | list[float] = word_locations
-            else:
-                target = get_lines_of_text_from_aois(aois)
-
-            func = _DRIFT_ALGORITHMS[algorithm]
-            call_kwargs = dict(algorithm_kwargs)
-            if 'directionality' in inspect.signature(func).parameters:
-                call_kwargs['directionality'] = directionality
-            corrected_y = func(target, location=location, **call_kwargs)
-            return fixations.select(
-                pl.concat_list([location_x(location), corrected_y]).alias('location'),
-            ).to_series()
-    else:
-        raise TypeError('algorithm must be a string or a list of strings.')
-
-    if {'compare', 'warp'} & set(candidate_algos) and word_locations is None:
-        word_locations = get_word_locations_from_aois(aois)
-
-    # Vote on line indices rather than raw y-coordinates so that candidate algorithms cannot
-    # split votes through differing float representations of the same text line.
-    has_line_info = (
-        ('start_y' in aois.columns or 'top_left_y' in aois.columns)
-        and 'height' in aois.columns
+    return _correct_ensemble(
+        fixations, aois, candidate_algos,
+        directionality=directionality, word_locations=word_locations,
+        algorithm_kwargs=algorithm_kwargs, location=location,
     )
-    if has_line_info:
-        line_values = get_lines_of_text_from_aois(aois)
-    elif word_locations is not None:
-        line_values = (
-            word_locations.cast(pl.List(pl.Float64))
-            .list.get(1).unique().sort().to_list()
-        )
-    else:
-        # Neither complete line information nor word locations are available: derive from
-        # the AOIs anyway so the resulting ValueError names the missing columns.
-        line_values = get_lines_of_text_from_aois(aois)
 
-    # Route tuning parameters to those candidate algorithms that accept them, so that
-    # algorithm-specific parameters do not break the other algorithms in the ensemble.
-    candidate_params = {
-        candidate_algo: set(inspect.signature(_DRIFT_ALGORITHMS[candidate_algo]).parameters)
-        for candidate_algo in candidate_algos
-    }
-    unknown_kwargs = [
-        key for key in algorithm_kwargs
-        if not any(key in params for params in candidate_params.values())
-    ]
-    if unknown_kwargs:
+
+def _check_not_already_corrected(events: pl.DataFrame, fixation_name: str) -> None:
+    """Raise if the fixation events already carry a correction algorithm."""
+    if 'correction_algorithm' not in events.columns:
+        return
+    already_corrected = events.filter(
+        (pl.col('name') == fixation_name)
+        & pl.col('correction_algorithm').is_not_null(),
+    )
+    if already_corrected.height > 0:
         raise ValueError(
-            f'algorithm_kwargs entries {unknown_kwargs} are not accepted by any of the '
-            f'ensemble algorithms {candidate_algos}.',
+            f"'{fixation_name}' events have already been corrected with "
+            f"'{already_corrected['correction_algorithm'][0]}'.",
         )
 
-    vote_exprs = []
-    for candidate_algo in candidate_algos:
-        func = _DRIFT_ALGORITHMS[candidate_algo]
-        call_kwargs = {
-            key: value for key, value in algorithm_kwargs.items()
-            if key in candidate_params[candidate_algo]
-        }
-        if 'directionality' in candidate_params[candidate_algo]:
-            call_kwargs['directionality'] = directionality
-        if candidate_algo in {'compare', 'warp'}:
-            corrected_y = func(word_locations, location=location, **call_kwargs)
-        else:
-            corrected_y = func(line_values, location=location, **call_kwargs)
-        vote_exprs.append(
-            nearest_line_index(corrected_y, line_values).alias(candidate_algo),
-        )
 
-    votes = fixations.select(
-        [location_x(location).alias('__location_x')] + vote_exprs,  # noqa: SLF001
+def _algorithm_label(algorithm: str | list[str]) -> tuple[str, set[str]]:
+    """Resolve the bookkeeping algorithm name and the set of requested algorithms."""
+    if isinstance(algorithm, (list, tuple)):
+        if len(algorithm) > 1:
+            return 'wisdom_of_the_crowd', set(algorithm)
+        return algorithm[0], set(algorithm)
+    if isinstance(algorithm, str) and algorithm.lower() not in {'wisdom_of_the_crowd', 'woc'}:
+        return algorithm, {algorithm}
+    return 'wisdom_of_the_crowd', set(ALL_DRIFT_ALGORITHMS)
+
+
+def _trial_aois(
+    aois: pl.DataFrame,
+    trial_events: pl.DataFrame,
+    aoi_trial_columns: list[str],
+) -> pl.DataFrame:
+    """Filter the AOIs matching a single trial partition."""
+    if not aoi_trial_columns:
+        return aois
+    # Each partition holds a single combination of trial column values.
+    return aois.filter(
+        pl.all_horizontal([
+            pl.col(column).eq_missing(pl.lit(trial_events[column][0]))
+            for column in aoi_trial_columns
+        ]),
     )
-    return votes.select(
-        pl.concat_list([
-            pl.col('__location_x'),
-            line_index_to_y(wisdom_of_the_crowd(candidate_algos), line_values),
-        ]).alias('location'),
-    ).to_series()
+
+
+def _correct_trial(
+    fixation_events: pl.DataFrame,
+    trial_aois: pl.DataFrame,
+    *,
+    algorithm: str | list[str],
+    requested_algorithms: set[str],
+    trial_columns: list[str] | None,
+    directionality: str,
+    word_locations: pl.Series | None,
+    algorithm_kwargs: dict[str, Any] | None,
+    fixation_name: str,
+) -> pl.Series | None:
+    """Correct the fixations of a single trial, or return None if the trial is skipped."""
+    n_lines = count_text_lines(trial_aois, word_locations)
+    if n_lines is not None:
+        min_fixations = _min_fixation_count(requested_algorithms, n_lines)
+        if fixation_events.height < min_fixations:
+            if trial_columns:
+                trial_values = {
+                    column: fixation_events[column][0] for column in trial_columns
+                }
+                trial_part = f' for trial {trial_values}'
+            else:
+                trial_part = ''
+            warnings.warn(
+                f'Skipping fixation correction{trial_part}: '
+                f'{fixation_events.height} fixations are too few for the requested '
+                f'algorithms on {n_lines} text lines. The affected fixation '
+                'locations stay uncorrected.',
+                UserWarning,
+                stacklevel=3,
+            )
+            return None
+
+    return correct_fixation_locations(
+        fixation_events, trial_aois, algorithm=algorithm,
+        directionality=directionality, word_locations=word_locations,
+        algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,
+    )
+
+
+def _preserved_column(
+    events: pl.DataFrame,
+    column: str,
+    corrected_value: pl.Expr,
+    dtype: pl.DataType | type[pl.DataType],
+) -> pl.Expr:
+    """Set corrected_value on corrected rows, preserving any existing column values."""
+    if column in events.columns:
+        fallback: pl.Expr = pl.col(column)
+    else:
+        fallback = pl.lit(None, dtype=dtype)
+    is_corrected = pl.col('__corrected_location').is_not_null()
+    return pl.when(is_corrected).then(corrected_value).otherwise(fallback).alias(column)
+
+
+def _apply_corrections(
+    events: pl.DataFrame,
+    indexed_events: pl.DataFrame,
+    corrected_indices: list[int],
+    corrected_locations: list[pl.Series],
+    algo_name: str,
+) -> pl.DataFrame:
+    """Join the corrected locations onto the events and update the location columns."""
+    updates = pl.DataFrame({
+        '__fixation_correction_index': pl.Series(corrected_indices, dtype=pl.UInt32),
+        '__corrected_location': pl.concat(corrected_locations),
+    })
+    frame = (
+        indexed_events
+        .join(updates, on='__fixation_correction_index', how='left')
+        .sort('__fixation_correction_index')
+    )
+
+    is_corrected = pl.col('__corrected_location').is_not_null()
+    update_columns = []
+    if 'location' in events.columns and events['location'].dtype != pl.Null:
+        update_columns.append(
+            _preserved_column(events, 'location_original', pl.col('location'), pl.List(pl.Float64)),
+        )
+        update_columns.append(
+            pl.when(is_corrected)
+            .then(pl.col('__corrected_location'))
+            .otherwise(pl.col('location'))
+            .alias('location'),
+        )
+    if 'location_x' in events.columns and 'location_y' in events.columns:
+        update_columns.append(
+            _preserved_column(events, 'location_x_original', pl.col('location_x'), pl.Float64),
+        )
+        update_columns.append(
+            _preserved_column(events, 'location_y_original', pl.col('location_y'), pl.Float64),
+        )
+        update_columns.append(
+            pl.when(is_corrected)
+            .then(pl.col('__corrected_location').list.get(0))
+            .otherwise(pl.col('location_x'))
+            .alias('location_x'),
+        )
+        update_columns.append(
+            pl.when(is_corrected)
+            .then(pl.col('__corrected_location').list.get(1))
+            .otherwise(pl.col('location_y'))
+            .alias('location_y'),
+        )
+    update_columns.append(
+        _preserved_column(events, 'correction_algorithm', pl.lit(algo_name), pl.Utf8),
+    )
+
+    return (
+        frame
+        .with_columns(update_columns)
+        .drop(['__fixation_correction_index', '__corrected_location'])
+    )
 
 
 def correct_fixations(
@@ -546,29 +815,8 @@ def correct_fixations(
                 f'trial columns {missing_columns} are missing from events dataframe.',
             )
 
-    if 'correction_algorithm' in events.columns:
-        already_corrected = events.filter(
-            (pl.col('name') == fixation_name)
-            & pl.col('correction_algorithm').is_not_null(),
-        )
-        if already_corrected.height > 0:
-            raise ValueError(
-                f"'{fixation_name}' events have already been corrected with "
-                f"'{already_corrected['correction_algorithm'][0]}'.",
-            )
-
-    if isinstance(algorithm, (list, tuple)):
-        if len(algorithm) > 1:
-            algo_name = 'wisdom_of_the_crowd'
-        else:
-            algo_name = algorithm[0]
-        requested_algorithms = set(algorithm)
-    elif isinstance(algorithm, str) and algorithm.lower() not in {'wisdom_of_the_crowd', 'woc'}:
-        algo_name = algorithm
-        requested_algorithms = {algorithm}
-    else:
-        algo_name = 'wisdom_of_the_crowd'
-        requested_algorithms = set(ALL_DRIFT_ALGORITHMS)
+    _check_not_already_corrected(events, fixation_name)
+    algo_name, requested_algorithms = _algorithm_label(algorithm)
 
     aois = normalize_aois(aois)
     indexed_events = events.with_row_index('__fixation_correction_index')
@@ -584,16 +832,7 @@ def correct_fixations(
     corrected_locations: list[pl.Series] = []
     matched_fixation_count = 0
     for trial_events in trial_event_frames:
-        if aoi_trial_columns:
-            # Each partition holds a single combination of trial column values.
-            trial_aois = aois.filter(
-                pl.all_horizontal([
-                    pl.col(column).eq_missing(pl.lit(trial_events[column][0]))
-                    for column in aoi_trial_columns
-                ]),
-            )
-        else:
-            trial_aois = aois
+        trial_aois = _trial_aois(aois, trial_events, aoi_trial_columns)
 
         fixation_events = trial_events.filter(pl.col('name') == fixation_name)
         if fixation_events.height == 0:
@@ -606,32 +845,14 @@ def correct_fixations(
             }
             raise ValueError(f'no AOIs found for trial {trial_values}.')
 
-        n_lines = count_text_lines(trial_aois, word_locations)
-        if n_lines is not None:
-            min_fixations = _min_fixation_count(requested_algorithms, n_lines)
-            if fixation_events.height < min_fixations:
-                if trial_columns:
-                    trial_values = {
-                        column: trial_events[column][0] for column in trial_columns
-                    }
-                    trial_part = f' for trial {trial_values}'
-                else:
-                    trial_part = ''
-                warnings.warn(
-                    f'Skipping fixation correction{trial_part}: '
-                    f'{fixation_events.height} fixations are too few for the requested '
-                    f'algorithms on {n_lines} text lines. The affected fixation '
-                    'locations stay uncorrected.',
-                    UserWarning,
-                    stacklevel=2,
-                )
-                continue
-
-        corrected_locs = correct_fixation_locations(
+        corrected_locs = _correct_trial(
             fixation_events, trial_aois, algorithm=algorithm,
+            requested_algorithms=requested_algorithms, trial_columns=trial_columns,
             directionality=directionality, word_locations=word_locations,
             algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,
         )
+        if corrected_locs is None:
+            continue
 
         corrected_indices.extend(fixation_events['__fixation_correction_index'].to_list())
         corrected_locations.append(corrected_locs)
@@ -647,64 +868,6 @@ def correct_fixations(
             )
         return events
 
-    updates = pl.DataFrame({
-        '__fixation_correction_index': pl.Series(corrected_indices, dtype=pl.UInt32),
-        '__corrected_location': pl.concat(corrected_locations),
-    })
-    frame = (
-        indexed_events
-        .join(updates, on='__fixation_correction_index', how='left')
-        .sort('__fixation_correction_index')
-    )
-
-    is_corrected = pl.col('__corrected_location').is_not_null()
-
-    def _preserving(
-        column: str, corrected_value: pl.Expr, dtype: pl.DataType | type[pl.DataType],
-    ) -> pl.Expr:
-        """Set corrected_value on corrected rows, preserving any existing column values."""
-        if column in events.columns:
-            fallback: pl.Expr = pl.col(column)
-        else:
-            fallback = pl.lit(None, dtype=dtype)
-        return pl.when(is_corrected).then(corrected_value).otherwise(fallback).alias(column)
-
-    update_columns = []
-    if 'location' in events.columns and events['location'].dtype != pl.Null:
-        update_columns.append(
-            _preserving('location_original', pl.col('location'), pl.List(pl.Float64)),
-        )
-        update_columns.append(
-            pl.when(is_corrected)
-            .then(pl.col('__corrected_location'))
-            .otherwise(pl.col('location'))
-            .alias('location'),
-        )
-    if 'location_x' in events.columns and 'location_y' in events.columns:
-        update_columns.append(
-            _preserving('location_x_original', pl.col('location_x'), pl.Float64),
-        )
-        update_columns.append(
-            _preserving('location_y_original', pl.col('location_y'), pl.Float64),
-        )
-        update_columns.append(
-            pl.when(is_corrected)
-            .then(pl.col('__corrected_location').list.get(0))
-            .otherwise(pl.col('location_x'))
-            .alias('location_x'),
-        )
-        update_columns.append(
-            pl.when(is_corrected)
-            .then(pl.col('__corrected_location').list.get(1))
-            .otherwise(pl.col('location_y'))
-            .alias('location_y'),
-        )
-    update_columns.append(
-        _preserving('correction_algorithm', pl.lit(algo_name), pl.Utf8),
-    )
-
-    return (
-        frame
-        .with_columns(update_columns)
-        .drop(['__fixation_correction_index', '__corrected_location'])
+    return _apply_corrections(
+        events, indexed_events, corrected_indices, corrected_locations, algo_name,
     )
