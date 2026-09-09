@@ -21,12 +21,13 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from functools import partial
 
 import polars as pl
 from sklearn.cluster import KMeans
 
-from pymovements.events.correction._utils import location_expr
 from pymovements.events.correction._utils import locations_to_lists
+from pymovements.events.correction._utils import map_per_trial
 from pymovements.events.correction._utils import to_line_values
 
 
@@ -54,27 +55,25 @@ def cluster(
         Expression computing the corrected y-coordinates.
     """
     line_values = to_line_values(line_ys)
+    core = partial(_cluster_core, line_values=line_values)
+    return map_per_trial(location, core, 'y_cluster')
 
-    def _cluster_core(locations: pl.Series) -> pl.Series:
-        _, y_values = locations_to_lists(locations)
-        cluster_labels = KMeans(len(line_values), n_init=100, max_iter=300).fit_predict(
-            [[y] for y in y_values],
-        )
-        # Clusters ordered by their mean y-coordinate map to the text lines top to bottom.
-        frame = pl.DataFrame({'y': y_values, 'cluster': cluster_labels}).with_row_index()
-        cluster_ranks = (
-            frame.group_by('cluster')
-            .agg(pl.col('y').mean().alias('center'))
-            .sort('center')
-            .with_columns(pl.Series('y_corrected', line_values))
-        )
-        return (
-            frame.join(cluster_ranks.select(['cluster', 'y_corrected']), on='cluster')
-            .sort('index')['y_corrected']
-        )
 
+def _cluster_core(locations: pl.Series, *, line_values: list[float]) -> pl.Series:
+    """Cluster the y-values of a single trial into one KMeans cluster per text line."""
+    _, y_values = locations_to_lists(locations)
+    cluster_labels = KMeans(len(line_values), n_init=100, max_iter=300).fit_predict(
+        [[y] for y in y_values],
+    )
+    # Clusters ordered by their mean y-coordinate map to the text lines top to bottom.
+    frame = pl.DataFrame({'y': y_values, 'cluster': cluster_labels}).with_row_index()
+    cluster_ranks = (
+        frame.group_by('cluster')
+        .agg(pl.col('y').mean().alias('center'))
+        .sort('center')
+        .with_columns(pl.Series('y_corrected', line_values))
+    )
     return (
-        location_expr(location)
-        .map_batches(_cluster_core, return_dtype=pl.Float64)
-        .alias('y_cluster')
+        frame.join(cluster_ranks.select(['cluster', 'y_corrected']), on='cluster')
+        .sort('index')['y_corrected']
     )

@@ -21,13 +21,14 @@
 from __future__ import annotations
 
 import math
+from functools import partial
 from typing import cast
 
 import polars as pl
 
 from pymovements.events.correction._dynamic_time_warping import dynamic_time_warping_points
-from pymovements.events.correction._utils import location_expr
 from pymovements.events.correction._utils import locations_to_lists
+from pymovements.events.correction._utils import map_per_trial
 
 
 def compare(
@@ -81,47 +82,59 @@ def compare(
     # Carr et al. raises an IndexError; outputs are unchanged otherwise.
     n_candidates = min(n_nearest_lines, len(line_values))
 
-    def _compare_core(locations: pl.Series) -> pl.Series:
-        x_values, y_values = locations_to_lists(locations)
-        frame = pl.DataFrame({'x': x_values, 'y': y_values}).with_row_index()
-        frame = frame.with_columns(
-            (pl.col('x').diff() < -x_thresh)
-            .fill_null(value=False)
-            .cum_sum()
-            .alias('gaze_line'),
+    core = partial(
+        _compare_core,
+        x_thresh=x_thresh,
+        line_values=line_values,
+        word_x_per_line=word_x_per_line,
+        n_candidates=n_candidates,
+    )
+    return map_per_trial(location, core, 'y_compare')
+
+
+def _compare_core(
+    locations: pl.Series,
+    *,
+    x_thresh: float,
+    line_values: list[float],
+    word_x_per_line: dict[float, list[float]],
+    n_candidates: int,
+) -> pl.Series:
+    """Assign the gaze lines of a single trial to text lines by lowest DTW cost."""
+    x_values, y_values = locations_to_lists(locations)
+    frame = pl.DataFrame({'x': x_values, 'y': y_values}).with_row_index()
+    frame = frame.with_columns(
+        (pl.col('x').diff() < -x_thresh)
+        .fill_null(value=False)
+        .cum_sum()
+        .alias('gaze_line'),
+    )
+
+    # Assign each gaze line to the candidate text line with the lowest DTW cost.
+    gaze_line_ys = {}
+    for (gaze_line_value,), gaze_line in frame.group_by('gaze_line'):
+        mean_y = cast(float, gaze_line['y'].mean())
+        distances = sorted(
+            (abs(line_y - mean_y), index) for index, line_y in enumerate(line_values)
         )
+        candidate_lines = [line_values[index] for _, index in distances[:n_candidates]]
 
-        # Assign each gaze line to the candidate text line with the lowest DTW cost.
-        gaze_line_ys = {}
-        for (gaze_line_value,), gaze_line in frame.group_by('gaze_line'):
-            mean_y = cast(float, gaze_line['y'].mean())
-            distances = sorted(
-                (abs(line_y - mean_y), index) for index, line_y in enumerate(line_values)
-            )
-            candidate_lines = [line_values[index] for _, index in distances[:n_candidates]]
-
-            gaze_x = [[x] for x in gaze_line['x'].to_list()]
-            best_line = candidate_lines[0]
-            best_cost = math.inf
-            for line_y in candidate_lines:
-                text_x = [[x] for x in word_x_per_line[line_y]]
-                cost, _ = dynamic_time_warping_points(gaze_x, text_x)
-                if cost < best_cost:
-                    best_cost = cost
-                    best_line = line_y
-            gaze_line_ys[gaze_line_value] = best_line
-
-        return (
-            frame.with_columns(
-                pl.col('gaze_line')
-                .replace_strict(gaze_line_ys, return_dtype=pl.Float64)
-                .alias('y_corrected'),
-            )
-            .sort('index')['y_corrected']
-        )
+        gaze_x = [[x] for x in gaze_line['x'].to_list()]
+        best_line = candidate_lines[0]
+        best_cost = math.inf
+        for line_y in candidate_lines:
+            text_x = [[x] for x in word_x_per_line[line_y]]
+            cost, _ = dynamic_time_warping_points(gaze_x, text_x)
+            if cost < best_cost:
+                best_cost = cost
+                best_line = line_y
+        gaze_line_ys[gaze_line_value] = best_line
 
     return (
-        location_expr(location)
-        .map_batches(_compare_core, return_dtype=pl.Float64)
-        .alias('y_compare')
+        frame.with_columns(
+            pl.col('gaze_line')
+            .replace_strict(gaze_line_ys, return_dtype=pl.Float64)
+            .alias('y_corrected'),
+        )
+        .sort('index')['y_corrected']
     )

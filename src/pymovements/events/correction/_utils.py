@@ -20,6 +20,7 @@
 """Provides shared helpers for the drift correction algorithms."""
 from __future__ import annotations
 
+from collections.abc import Callable
 from collections.abc import Sequence
 
 import polars as pl
@@ -74,6 +75,19 @@ def locations_to_lists(locations: pl.Series) -> tuple[list[float], list[float]]:
     x_values = [point[0] for point in points]
     y_values = [point[1] for point in points]
     return x_values, y_values
+
+
+def map_per_trial(
+    location: str | pl.Expr,
+    core: Callable[[pl.Series], pl.Series],
+    alias: str,
+) -> pl.Expr:
+    """Return an expression mapping the [x, y] locations of a single trial through core."""
+    return (
+        location_expr(location)
+        .map_batches(core, return_dtype=pl.Float64)
+        .alias(alias)
+    )
 
 
 def nearest_index(values: Sequence[float], target: float) -> int:

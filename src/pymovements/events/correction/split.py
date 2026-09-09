@@ -21,14 +21,15 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from functools import partial
 from statistics import fmean
 
 import polars as pl
 from sklearn.cluster import KMeans
 
 from pymovements.events.correction._utils import is_right_to_left
-from pymovements.events.correction._utils import location_expr
 from pymovements.events.correction._utils import locations_to_lists
+from pymovements.events.correction._utils import map_per_trial
 from pymovements.events.correction._utils import nearest_line_y
 from pymovements.events.correction._utils import to_line_values
 
@@ -69,33 +70,36 @@ def split(
     """
     right_to_left = is_right_to_left(directionality)
     line_values = to_line_values(line_ys)
+    core = partial(_split_core, line_values=line_values, right_to_left=right_to_left)
+    return map_per_trial(location, core, 'y_split')
 
-    def _split_core(locations: pl.Series) -> pl.Series:
-        x_values, y_values = locations_to_lists(locations)
-        x_diffs = [next_x - x for x, next_x in zip(x_values, x_values[1:])]
 
-        # Split the saccades into two clusters; the cluster of largest leftward (rightward
-        # for RTL scripts) saccades marks the return sweeps.
-        cluster_labels = KMeans(2, n_init=10, max_iter=300).fit_predict(
-            [[x_diff] for x_diff in x_diffs],
-        )
-        centers = [
-            fmean(x_diff for x_diff, label in zip(x_diffs, cluster_labels) if label == 0),
-            fmean(x_diff for x_diff, label in zip(x_diffs, cluster_labels) if label == 1),
-        ]
-        sweep_marker = centers.index(max(centers) if right_to_left else min(centers))
+def _split_core(
+    locations: pl.Series,
+    *,
+    line_values: list[float],
+    right_to_left: bool,
+) -> pl.Series:
+    """Split the fixation sequence of a single trial at KMeans-identified return sweeps."""
+    x_values, y_values = locations_to_lists(locations)
+    x_diffs = [next_x - x for x, next_x in zip(x_values, x_values[1:])]
 
-        is_sweep = [False] + [label == sweep_marker for label in cluster_labels]
-        frame = pl.DataFrame({'y': y_values, 'is_sweep': is_sweep}).with_row_index()
-        frame = frame.with_columns(pl.col('is_sweep').cum_sum().alias('segment'))
-        corrected = frame.with_columns(
-            nearest_line_y(pl.col('y').mean().over('segment'), line_values)
-            .alias('y_corrected'),
-        )
-        return corrected.sort('index')['y_corrected']
-
-    return (
-        location_expr(location)
-        .map_batches(_split_core, return_dtype=pl.Float64)
-        .alias('y_split')
+    # Split the saccades into two clusters; the cluster of largest leftward (rightward
+    # for RTL scripts) saccades marks the return sweeps.
+    cluster_labels = KMeans(2, n_init=10, max_iter=300).fit_predict(
+        [[x_diff] for x_diff in x_diffs],
     )
+    centers = [
+        fmean(x_diff for x_diff, label in zip(x_diffs, cluster_labels) if label == 0),
+        fmean(x_diff for x_diff, label in zip(x_diffs, cluster_labels) if label == 1),
+    ]
+    sweep_marker = centers.index(max(centers) if right_to_left else min(centers))
+
+    is_sweep = [False] + [label == sweep_marker for label in cluster_labels]
+    frame = pl.DataFrame({'y': y_values, 'is_sweep': is_sweep}).with_row_index()
+    frame = frame.with_columns(pl.col('is_sweep').cum_sum().alias('segment'))
+    corrected = frame.with_columns(
+        nearest_line_y(pl.col('y').mean().over('segment'), line_values)
+        .alias('y_corrected'),
+    )
+    return corrected.sort('index')['y_corrected']

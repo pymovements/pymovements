@@ -21,11 +21,12 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from functools import partial
 
 import polars as pl
 
 from pymovements.events.correction._dynamic_time_warping import dynamic_time_warping_points
-from pymovements.events.correction._utils import location_expr
+from pymovements.events.correction._utils import map_per_trial
 
 
 def warp(
@@ -53,22 +54,20 @@ def warp(
         Expression computing the corrected y-coordinates.
     """
     word_points = word_locations.cast(pl.List(pl.Float64)).to_list()
+    core = partial(_warp_core, word_points=word_points)
+    return map_per_trial(location, core, 'y_warp')
+
+
+def _warp_core(locations: pl.Series, *, word_points: list[list[float]]) -> pl.Series:
+    """Align the fixation sequence of a single trial to the word positions via DTW."""
     word_y_values = [point[1] for point in word_points]
-
-    def _warp_core(locations: pl.Series) -> pl.Series:
-        fixation_points = locations.cast(pl.List(pl.Float64)).to_list()
-        _, dtw_path = dynamic_time_warping_points(fixation_points, word_points)
-        corrected_y = [
-            _mode([word_y_values[word_index] for word_index in mapped_words])
-            for mapped_words in dtw_path
-        ]
-        return pl.Series(corrected_y, dtype=pl.Float64)
-
-    return (
-        location_expr(location)
-        .map_batches(_warp_core, return_dtype=pl.Float64)
-        .alias('y_warp')
-    )
+    fixation_points = locations.cast(pl.List(pl.Float64)).to_list()
+    _, dtw_path = dynamic_time_warping_points(fixation_points, word_points)
+    corrected_y = [
+        _mode([word_y_values[word_index] for word_index in mapped_words])
+        for mapped_words in dtw_path
+    ]
+    return pl.Series(corrected_y, dtype=pl.Float64)
 
 
 def _mode(values: Sequence[float]) -> float:

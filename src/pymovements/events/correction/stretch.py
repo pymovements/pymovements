@@ -21,12 +21,13 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from functools import partial
 
 import polars as pl
 from scipy.optimize import minimize
 
-from pymovements.events.correction._utils import location_expr
 from pymovements.events.correction._utils import locations_to_lists
+from pymovements.events.correction._utils import map_per_trial
 from pymovements.events.correction._utils import nearest_index
 from pymovements.events.correction._utils import to_line_values
 
@@ -61,29 +62,51 @@ def stretch(
         Expression computing the corrected y-coordinates.
     """
     line_values = to_line_values(line_ys)
+    core = partial(
+        _stretch_core,
+        line_values=line_values,
+        scale_bounds=scale_bounds,
+        offset_bounds=offset_bounds,
+    )
+    return map_per_trial(location, core, 'y_stretch')
 
-    def _stretch_core(locations: pl.Series) -> pl.Series:
-        _, y_values = locations_to_lists(locations)
 
-        def snap_to_lines(params: Sequence[float]) -> list[float]:
-            """Scale and offset the y-values, then snap them to the nearest lines."""
-            return [
-                line_values[nearest_index(line_values, y * params[0] + params[1])]
-                for y in y_values
-            ]
+def _stretch_core(
+    locations: pl.Series,
+    *,
+    line_values: list[float],
+    scale_bounds: tuple[float, float],
+    offset_bounds: tuple[float, float],
+) -> pl.Series:
+    """Fit scale and offset for the y-values of a single trial and snap them to lines."""
+    _, y_values = locations_to_lists(locations)
+    objective = partial(_snapping_error, y_values=y_values, line_values=line_values)
+    best_fit = minimize(objective, [1, 0], bounds=[scale_bounds, offset_bounds])
+    return pl.Series(_snap_to_lines(best_fit.x, y_values=y_values, line_values=line_values))
 
-        def snapping_error(params: Sequence[float]) -> float:
-            corrected = snap_to_lines(params)
-            return sum(
-                abs(y * params[0] + params[1] - line_y)
-                for y, line_y in zip(y_values, corrected)
-            )
 
-        best_fit = minimize(snapping_error, [1, 0], bounds=[scale_bounds, offset_bounds])
-        return pl.Series(snap_to_lines(best_fit.x))
+def _snap_to_lines(
+    params: Sequence[float],
+    *,
+    y_values: list[float],
+    line_values: list[float],
+) -> list[float]:
+    """Scale and offset the y-values, then snap them to the nearest lines."""
+    return [
+        line_values[nearest_index(line_values, y * params[0] + params[1])]
+        for y in y_values
+    ]
 
-    return (
-        location_expr(location)
-        .map_batches(_stretch_core, return_dtype=pl.Float64)
-        .alias('y_stretch')
+
+def _snapping_error(
+    params: Sequence[float],
+    *,
+    y_values: list[float],
+    line_values: list[float],
+) -> float:
+    """Total snapping distance of the scaled and offset y-values to their nearest lines."""
+    corrected = _snap_to_lines(params, y_values=y_values, line_values=line_values)
+    return sum(
+        abs(y * params[0] + params[1] - line_y)
+        for y, line_y in zip(y_values, corrected)
     )

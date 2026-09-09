@@ -20,15 +20,17 @@
 """Provides the regress drift correction algorithm."""
 from __future__ import annotations
 
+from collections.abc import Callable
 from collections.abc import Sequence
+from functools import partial
 
 import numpy as np
 import polars as pl
 from scipy.optimize import minimize
 from scipy.stats import norm
 
-from pymovements.events.correction._utils import location_expr
 from pymovements.events.correction._utils import locations_to_lists
+from pymovements.events.correction._utils import map_per_trial
 from pymovements.events.correction._utils import to_line_values
 
 
@@ -65,39 +67,74 @@ def regress(
         Expression computing the corrected y-coordinates.
     """
     line_values = to_line_values(line_ys)
-
-    def _regress_core(locations: pl.Series) -> pl.Series:
-        x_values, y_values = locations_to_lists(locations)
-
-        def line_log_densities(params: Sequence[float]) -> list[np.ndarray]:
-            """Per-line log-densities of observing the fixation y-values."""
-            slope = k_bounds[0] + (k_bounds[1] - k_bounds[0]) * norm.cdf(params[0])
-            offset = o_bounds[0] + (o_bounds[1] - o_bounds[0]) * norm.cdf(params[1])
-            deviation = s_bounds[0] + (s_bounds[1] - s_bounds[0]) * norm.cdf(params[2])
-            predicted_y = [x * slope for x in x_values]
-            return [
-                norm.logpdf(
-                    y_values,
-                    [predicted + line_y + offset for predicted in predicted_y],
-                    deviation,
-                )
-                for line_y in line_values
-            ]
-
-        def negative_log_likelihood(params: Sequence[float]) -> float:
-            densities = line_log_densities(params)
-            return -sum(max(fixation) for fixation in zip(*densities))
-
-        best_fit = minimize(negative_log_likelihood, [0, 0, 0])
-        densities = line_log_densities(best_fit.x)
-        corrected_y = [
-            line_values[max(range(len(line_values)), key=list(fixation).__getitem__)]
-            for fixation in zip(*densities)
-        ]
-        return pl.Series(corrected_y)
-
-    return (
-        location_expr(location)
-        .map_batches(_regress_core, return_dtype=pl.Float64)
-        .alias('y_regress')
+    core = partial(
+        _regress_core,
+        line_values=line_values,
+        k_bounds=k_bounds,
+        o_bounds=o_bounds,
+        s_bounds=s_bounds,
     )
+    return map_per_trial(location, core, 'y_regress')
+
+
+def _regress_core(
+    locations: pl.Series,
+    *,
+    line_values: list[float],
+    k_bounds: tuple[float, float],
+    o_bounds: tuple[float, float],
+    s_bounds: tuple[float, float],
+) -> pl.Series:
+    """Fit the regression parameters for a single trial and pick the likeliest lines."""
+    x_values, y_values = locations_to_lists(locations)
+    densities_of = partial(
+        _line_log_densities,
+        x_values=x_values,
+        y_values=y_values,
+        line_values=line_values,
+        k_bounds=k_bounds,
+        o_bounds=o_bounds,
+        s_bounds=s_bounds,
+    )
+    best_fit = minimize(partial(_negative_log_likelihood, densities_of=densities_of), [0, 0, 0])
+    densities = densities_of(best_fit.x)
+    corrected_y = [
+        line_values[max(range(len(line_values)), key=list(fixation).__getitem__)]
+        for fixation in zip(*densities)
+    ]
+    return pl.Series(corrected_y)
+
+
+def _line_log_densities(
+    params: Sequence[float],
+    *,
+    x_values: list[float],
+    y_values: list[float],
+    line_values: list[float],
+    k_bounds: tuple[float, float],
+    o_bounds: tuple[float, float],
+    s_bounds: tuple[float, float],
+) -> list[np.ndarray]:
+    """Per-line log-densities of observing the fixation y-values."""
+    slope = k_bounds[0] + (k_bounds[1] - k_bounds[0]) * norm.cdf(params[0])
+    offset = o_bounds[0] + (o_bounds[1] - o_bounds[0]) * norm.cdf(params[1])
+    deviation = s_bounds[0] + (s_bounds[1] - s_bounds[0]) * norm.cdf(params[2])
+    predicted_y = [x * slope for x in x_values]
+    return [
+        norm.logpdf(
+            y_values,
+            [predicted + line_y + offset for predicted in predicted_y],
+            deviation,
+        )
+        for line_y in line_values
+    ]
+
+
+def _negative_log_likelihood(
+    params: Sequence[float],
+    *,
+    densities_of: Callable[[Sequence[float]], list[np.ndarray]],
+) -> float:
+    """Negative log-likelihood of the fixation y-values under the fitted parameters."""
+    densities = densities_of(params)
+    return -sum(max(fixation) for fixation in zip(*densities))
