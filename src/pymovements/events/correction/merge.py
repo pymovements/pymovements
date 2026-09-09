@@ -129,7 +129,43 @@ def _sequence_boundaries(
     return boundaries
 
 
-# pylint: disable=too-many-nested-blocks
+def _best_merger(
+    sequences: list[list[int]],
+    x_values: list[float],
+    y_values: list[float],
+    *,
+    min_i: int,
+    min_j: int,
+    no_constraints: bool,
+    g_thresh: float,
+    e_thresh: float,
+) -> tuple[int, int] | None:
+    """Find the pair of mergeable sequences with the lowest line fit error.
+
+    Sequence pairs are scanned in order; ties keep the first-found pair. Pairs
+    below the minimum sequence lengths are skipped, and unless ``no_constraints``
+    is set, candidates must satisfy the gradient and error constraints.
+    """
+    best_merger = None
+    best_error = math.inf
+    for i in range(len(sequences) - 1):
+        if len(sequences[i]) < min_i:
+            continue
+        for j in range(i + 1, len(sequences)):
+            if len(sequences[j]) < min_j:
+                continue
+            candidate = sequences[i] + sequences[j]
+            gradient, error = _fit_line_error(
+                [x_values[index] for index in candidate],
+                [y_values[index] for index in candidate],
+            )
+            if no_constraints or (abs(gradient) < g_thresh and error < e_thresh):
+                if error < best_error:
+                    best_merger = (i, j)
+                    best_error = error
+    return best_merger
+
+
 def _merge_core(
     locations: pl.Series,
     *,
@@ -155,32 +191,22 @@ def _merge_core(
     # Iteratively merge the pair of sequences with the best line fit, relaxing the
     # sequence length and fit quality constraints phase by phase.
     merge_phases = [
-        {'min_i': 3, 'min_j': 3, 'no_constraints': False},  # Phase 1
-        {'min_i': 1, 'min_j': 3, 'no_constraints': False},  # Phase 2
-        {'min_i': 1, 'min_j': 1, 'no_constraints': False},  # Phase 3
-        {'min_i': 1, 'min_j': 1, 'no_constraints': True},   # Phase 4
+        # (min_i, min_j, no_constraints)
+        (3, 3, False),  # Phase 1
+        (1, 3, False),  # Phase 2
+        (1, 1, False),  # Phase 3
+        (1, 1, True),   # Phase 4
     ]
-    for phase in merge_phases:
+    for min_i, min_j, no_constraints in merge_phases:
         while len(sequences) > m:
-            best_merger = None
-            best_error = math.inf
-            for i in range(len(sequences) - 1):
-                if len(sequences[i]) < phase['min_i']:
-                    continue
-                for j in range(i + 1, len(sequences)):
-                    if len(sequences[j]) < phase['min_j']:
-                        continue
-                    candidate = sequences[i] + sequences[j]
-                    gradient, error = _fit_line_error(
-                        [x_values[index] for index in candidate],
-                        [y_values[index] for index in candidate],
-                    )
-                    if phase['no_constraints'] or (
-                        abs(gradient) < g_thresh and error < e_thresh
-                    ):
-                        if error < best_error:
-                            best_merger = (i, j)
-                            best_error = error
+            best_merger = _best_merger(
+                sequences, x_values, y_values,
+                min_i=min_i,
+                min_j=min_j,
+                no_constraints=no_constraints,
+                g_thresh=g_thresh,
+                e_thresh=e_thresh,
+            )
             if best_merger is None:
                 break
             merge_i, merge_j = best_merger
