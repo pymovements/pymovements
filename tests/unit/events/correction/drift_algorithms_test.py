@@ -300,23 +300,3 @@ def test_wisdom_of_the_crowd_tie():
         correction.wisdom_of_the_crowd(['a', 'b', 'c', 'd', 'e']),
     ).to_series().to_list()
     assert res == [200.0]
-
-
-def test_dynamic_time_warping():
-    seq1 = make_word_locations([0.0, 1.0, 2.0], [0.0, 1.0, 2.0])
-    seq2 = make_word_locations([0.0, 1.0, 2.0], [0.0, 1.0, 2.0])
-    cost, path = correction.dynamic_time_warping(seq1, seq2)
-    assert cost == 0.0
-    assert len(path) == len(seq1)
-
-    # Test unequal sequence length and non-diagonal backtrack paths
-    seq1 = make_word_locations([0.0, 0.0, 1.0, 2.0], [0.0, 1.0, 1.0, 2.0])
-    seq2 = make_word_locations([0.0, 2.0], [0.0, 2.0])
-    cost, path = correction.dynamic_time_warping(seq1, seq2)
-    assert len(path) == len(seq1)
-
-    # Numeric one-dimensional sequences are supported as well.
-    seq1 = pl.Series([0.0, 2.0])
-    seq2 = pl.Series([0.0, 1.0, 1.5, 2.0])
-    cost, path = correction.dynamic_time_warping(seq1, seq2)
-    assert len(path) == len(seq1)

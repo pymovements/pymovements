@@ -218,22 +218,6 @@ def test_algorithm_matches_reference_implementation(
     assert set(result.to_list()) <= set(line_ys)
 
 
-def test_dynamic_time_warping_matches_reference_implementation(reference, testfiles_dirpath):
-    fixation_xy = load_fixture_array(testfiles_dirpath, 'baseline')
-    word_xy = word_xy_grid('baseline')
-
-    expected_cost, expected_path = reference.dynamic_time_warping(
-        np.array(fixation_xy[:11], copy=True), np.array(word_xy[:10], copy=True),
-    )
-    fixations = load_fixture(testfiles_dirpath, 'baseline')
-    cost, path = correction.dynamic_time_warping(
-        fixations.to_series().head(11), word_locations_series('baseline').head(10),
-    )
-
-    assert cost == pytest.approx(expected_cost)
-    assert path == expected_path
-
-
 @pytest.mark.parametrize('fixture_name', list(FIXTURE_LINE_YS))
 def test_wisdom_of_the_crowd_matches_reference_implementation(
         fixture_name, gazegenie_reference, testfiles_dirpath,

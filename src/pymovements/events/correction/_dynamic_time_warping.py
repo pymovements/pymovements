@@ -22,8 +22,6 @@ from __future__ import annotations
 
 import math
 
-import polars as pl
-
 
 def dynamic_time_warping_points(
     sequence1: list[list[float]],
@@ -64,33 +62,3 @@ def dynamic_time_warping_points(
             j -= 1
     dtw_path[0].append(0)
     return cost[n1][n2], dtw_path
-
-
-def dynamic_time_warping(
-    sequence1: pl.Series,
-    sequence2: pl.Series,
-) -> tuple[float, list[list[int]]]:
-    """Calculate Dynamic Time Warping (DTW) cost and alignment path between two sequences.
-
-    Parameters
-    ----------
-    sequence1: pl.Series
-        First sequence, either numeric or a series of [x, y] locations.
-    sequence2: pl.Series
-        Second sequence, either numeric or a series of [x, y] locations.
-
-    Returns
-    -------
-    tuple[float, list[list[int]]]
-        DTW cost and alignment path list mapping sequence1 elements to sequence2 elements.
-    """
-    return dynamic_time_warping_points(
-        _sequence_to_points(sequence1), _sequence_to_points(sequence2),
-    )
-
-
-def _sequence_to_points(sequence: pl.Series) -> list[list[float]]:
-    """Convert a numeric or [x, y] location series to a list of points."""
-    if isinstance(sequence.dtype, (pl.List, pl.Array)):
-        return sequence.cast(pl.List(pl.Float64)).to_list()
-    return [[value] for value in sequence.to_list()]
