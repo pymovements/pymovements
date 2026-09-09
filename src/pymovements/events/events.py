@@ -1029,6 +1029,7 @@ class Events:
             word_locations: polars.Series | None = None,
             algorithm_kwargs: dict[str, Any] | None = None,
             fixation_name: str = 'fixation',
+            character_level: bool = False,
             inplace: bool = True,
     ) -> Events | None:
         """Correct vertical drift of fixation locations.
@@ -1071,6 +1072,10 @@ class Events:
             at once. (default: None)
         fixation_name: str
             Name of the fixation events to correct. (default: 'fixation')
+        character_level: bool
+            Set to True when the stimulus AOIs are finer than words, e.g. one row per
+            character. The AOIs are then aggregated to one location per word via the
+            'word' column, which must be present. (default: False)
         inplace: bool
             If ``True``, mutate this object and return None. If ``False``, return a new
             :py:class:`~pymovements.Events` object with corrected fixation locations,
@@ -1172,7 +1177,7 @@ class Events:
             word_locations=word_locations,
             algorithm_kwargs=algorithm_kwargs,
             fixation_name=fixation_name,
-            aoi_column=aois.aoi_column,
+            character_level=character_level,
         )
         if inplace:
             self.frame = corrected_frame

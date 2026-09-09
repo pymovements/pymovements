@@ -98,3 +98,50 @@ def test_dataset_correct_fixations_corrected_locations(dummy_dataset, text_stimu
     )
     corrected_y = [location[1] for location in corrected_rows['location'].to_list()]
     assert corrected_y == [100.0, 100.0, 200.0, 200.0, 300.0, 300.0]
+
+
+def test_dataset_correct_fixations_character_level(tmp_path):
+    definition = DatasetDefinition(name='dummy')
+    dataset = Dataset(definition, path=tmp_path)
+
+    # Two lines each hold a single three-character word, with all six fixations
+    # hovering near line 1.
+    events_df = pl.DataFrame({
+        'name': ['fixation'] * 6,
+        'onset': [0, 100, 200, 300, 400, 500],
+        'offset': [50, 150, 250, 350, 450, 550],
+        'location': [
+            [110.0, 105.0], [130.0, 104.0], [150.0, 106.0],
+            [110.0, 108.0], [130.0, 109.0], [150.0, 111.0],
+        ],
+    })
+    dataset.gaze = [Gaze(events=Events(events_df))]
+
+    start_x = [100.0, 120.0, 140.0] * 2
+    aois_df = pl.DataFrame({
+        'char': ['T', 'h', 'e', 'c', 'a', 't'],
+        'word': ['The'] * 3 + ['cat'] * 3,
+        'start_x': start_x,
+        'end_x': [x + 20.0 for x in start_x],
+        'start_y': [80.0] * 3 + [180.0] * 3,
+        'height': [40.0] * 6,
+    })
+    stimulus = TextStimulus(
+        aois=aois_df,
+        aoi_column='char',
+        start_x_column='start_x',
+        start_y_column='start_y',
+        end_x_column='end_x',
+        height_column='height',
+    )
+
+    dataset.correct_fixations(
+        stimulus, algorithm='warp', character_level=True, verbose=False,
+    )
+
+    corrected_y = [
+        location[1] for location in dataset.events[0].frame['location'].to_list()
+    ]
+    # Word aggregation keeps five fixations on line 1 and forces only the final
+    # fixation onto line 2.
+    assert corrected_y == [100.0, 100.0, 100.0, 100.0, 100.0, 200.0]

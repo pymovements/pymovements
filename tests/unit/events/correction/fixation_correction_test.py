@@ -948,7 +948,9 @@ def test_correct_fixation_locations_warp_character_level_aois():
         'start_y': [80.0] * 6 + [180.0] * 6,
         'height': [40.0] * 12,
     })
-    locs_char = correct_fixation_locations(events_df, aois_char_level, algorithm='warp')
+    locs_char = correct_fixation_locations(
+        events_df, aois_char_level, algorithm='warp', character_level=True,
+    )
     assert corrected_ys(locs_char) == [100.0, 100.0, 200.0, 200.0]
 
     # Character-level AOIs aggregated per word must behave like a word-level frame.
@@ -965,7 +967,7 @@ def test_correct_fixation_locations_warp_character_level_aois():
 
 @pytest.fixture
 def letter_level_events_and_aois():
-    """Return events and character-level AOIs with an unconventional content column.
+    """Return events and character-level AOIs with one row per character.
 
     Two lines each hold a single three-character word, with all six fixations hovering
     near line 1: treating each character as its own word drags half of the fixations
@@ -990,23 +992,43 @@ def letter_level_events_and_aois():
     return events_df, aois_df
 
 
-def test_correct_fixation_locations_warp_custom_aoi_column(letter_level_events_and_aois):
+@pytest.mark.parametrize(
+    ('character_level', 'expected_ys'),
+    [
+        # With the default, each AOI row counts as its own word.
+        pytest.param(
+            False, [100.0, 100.0, 100.0, 200.0, 200.0, 200.0], id='per_row',
+        ),
+        # The flag aggregates the character rows to one location per word.
+        pytest.param(
+            True, [100.0, 100.0, 100.0, 100.0, 100.0, 200.0], id='word_aggregation',
+        ),
+    ],
+)
+def test_correct_fixation_locations_warp_character_level_flag(
+    letter_level_events_and_aois, character_level, expected_ys,
+):
     events_df, aois_df = letter_level_events_and_aois
-
-    # The unconventional character column name eludes the marker heuristic, so each
-    # character counts as its own word.
-    locs_heuristic = correct_fixation_locations(events_df, aois_df, algorithm='warp')
-    assert corrected_ys(locs_heuristic) == [100.0, 100.0, 100.0, 200.0, 200.0, 200.0]
-
-    # Naming the content column recognizes the frame as character-level and aggregates
-    # the characters per word again.
     locs = correct_fixation_locations(
-        events_df, aois_df, algorithm='warp', aoi_column='letter',
+        events_df, aois_df, algorithm='warp', character_level=character_level,
     )
-    assert corrected_ys(locs) == [100.0, 100.0, 100.0, 100.0, 100.0, 200.0]
+    assert corrected_ys(locs) == expected_ys
 
 
-def test_events_correct_fixations_warp_custom_aoi_column(letter_level_events_and_aois):
+def test_correct_fixation_locations_character_level_without_word_column_raises(
+    letter_level_events_and_aois,
+):
+    events_df, aois_df = letter_level_events_and_aois
+    with pytest.raises(
+        ValueError,
+        match="character_level is True, but the AOIs dataframe has no 'word' column",
+    ):
+        correct_fixation_locations(
+            events_df, aois_df.drop('word'), algorithm='warp', character_level=True,
+        )
+
+
+def test_events_correct_fixations_warp_character_level(letter_level_events_and_aois):
     events_df, aois_df = letter_level_events_and_aois
     stimulus = pm.stimulus.TextStimulus(
         aois=aois_df,
@@ -1017,7 +1039,7 @@ def test_events_correct_fixations_warp_custom_aoi_column(letter_level_events_and
         height_column='height',
     )
     events = pm.Events(events_df)
-    events.correct_fixations(stimulus, algorithm='warp')
+    events.correct_fixations(stimulus, algorithm='warp', character_level=True)
     corrected = [location[1] for location in events.frame['location'].to_list()]
     assert corrected == [100.0, 100.0, 100.0, 100.0, 100.0, 200.0]
 

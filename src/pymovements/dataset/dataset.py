@@ -1221,6 +1221,7 @@ class Dataset:
             word_locations: pl.Series | None = None,
             algorithm_kwargs: dict[str, Any] | None = None,
             fixation_name: str = 'fixation',
+            character_level: bool = False,
             verbose: bool = True,
     ) -> Dataset:
         """Correct vertical drift of fixations for all events in the dataset.
@@ -1262,6 +1263,10 @@ class Dataset:
             at once. (default: None)
         fixation_name: str
             Name of the fixation events to correct. (default: 'fixation')
+        character_level: bool
+            Set to True when the stimulus AOIs are finer than words, e.g. one row per
+            character. The AOIs are then aggregated to one location per word via the
+            'word' column, which must be present. (default: False)
         verbose: bool
             If ``True``, show a progress bar. (default: True)
 
@@ -1281,6 +1286,7 @@ class Dataset:
                 word_locations=word_locations,
                 algorithm_kwargs=algorithm_kwargs,
                 fixation_name=fixation_name,
+                character_level=character_level,
             )
         return self
 
