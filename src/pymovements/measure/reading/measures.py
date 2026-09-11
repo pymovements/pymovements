@@ -559,7 +559,7 @@ def non_aoi_fixation_duration_ratio(
 # ---------------------------
 
 
-def skipped(total_fixation_count: str | pl.Expr = 'TFC') -> pl.Expr:
+def skipped(tfc: str | pl.Expr = 'TFC') -> pl.Expr:
     """Binary indicator for total word skipping (``skipped``).
 
     A word is skipped when it received no fixation at all. Must be evaluated
@@ -568,7 +568,7 @@ def skipped(total_fixation_count: str | pl.Expr = 'TFC') -> pl.Expr:
 
     Parameters
     ----------
-    total_fixation_count : str | pl.Expr
+    tfc : str | pl.Expr
         Column name or expression of the total fixation count.
         (default: ``'TFC'``)
 
@@ -594,5 +594,5 @@ def skipped(total_fixation_count: str | pl.Expr = 'TFC') -> pl.Expr:
     │ brown ┆ 1   ┆ 0       │
     └───────┴─────┴─────────┘
     """
-    total_fixation_count_expr = as_expr(total_fixation_count)
-    return (total_fixation_count_expr == 0).cast(pl.Int64).alias('skipped')
+    tfc_expr = as_expr(tfc)
+    return (tfc_expr == 0).cast(pl.Int64).alias('skipped')
