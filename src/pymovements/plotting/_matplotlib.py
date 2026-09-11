@@ -37,7 +37,7 @@ from matplotlib.collections import LineCollection
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import FancyArrowPatch
 
-from pymovements.gaze.experiment import Screen
+from pymovements.plotting.screen import screen as screen_axes
 
 LinearSegmentedColormapType: TypeAlias = dict[
     Literal['red', 'green', 'blue', 'alpha'],
@@ -305,18 +305,28 @@ def _draw_line_data(
 
 def _set_screen_axes(
     ax: plt.Axes,
-    screen: Screen,
+    width_px: int | None,
+    height_px: int | None,
+    origin: str | None,
     *,
     func_name: str,
 ) -> None:
-    """Set axes limits and aspect ratio from gaze.experiment.screen, if available.
+    """Set axes limits and aspect ratio from a screen's pixel extent, if available.
+
+    Thin wrapper around ``pymovements.plotting.screen()`` that keeps the gaze
+    plotters' behavior: skip silently when the resolution is unset, and accept
+    only the ``'upper left'`` origin the gaze data is expressed in.
 
     Parameters
     ----------
     ax : plt.Axes
         Matplotlib axes object to modify.
-    screen : Screen
-        Screen object from a Gaze's Experiment.
+    width_px : int | None
+        Screen width in pixels.
+    height_px : int | None
+        Screen height in pixels.
+    origin : str | None
+        Origin of the screen coordinate system.
     func_name : str
         Name of the plotting function, used in error messages.
 
@@ -324,18 +334,14 @@ def _set_screen_axes(
     ------
     ValueError
         If the screen origin is not 'upper left'.
-    ValueError
-        If the screen width or height is not positive.
     """
     # If screen has no pixel info, skip silently
-    if screen.width_px is None or screen.height_px is None:
+    if width_px is None or height_px is None:
         return
 
-    if screen.origin != 'upper left':
+    if origin != 'upper left':
         raise ValueError(
-            f'{func_name}: screen origin must be "upper left", got "{screen.origin}".',
+            f'{func_name}: screen origin must be "upper left", got "{origin}".',
         )
 
-    ax.set_xlim(0, screen.width_px)
-    ax.set_ylim(screen.height_px, 0)
-    ax.set_aspect('equal', adjustable='box')
+    screen_axes(width_px, height_px, origin=origin, ax=ax)

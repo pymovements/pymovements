@@ -162,7 +162,13 @@ def traceplot(
     )
 
     if gaze is not None and gaze.experiment is not None:
-        _set_screen_axes(ax, gaze.experiment.screen, func_name='traceplot')
+        _set_screen_axes(
+            ax,
+            gaze.experiment.screen.width_px,
+            gaze.experiment.screen.height_px,
+            gaze.experiment.screen.origin,
+            func_name='traceplot',
+        )
 
     if show_cbar:
         # sm = matplotlib.cm.ScalarMappable(cmap=cmap, norm=cmap_norm)
