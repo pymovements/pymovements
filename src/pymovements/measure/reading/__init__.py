@@ -46,6 +46,7 @@ from pymovements.measure.reading.measures import rereading_time
 from pymovements.measure.reading.measures import right_bounded_reading_time
 from pymovements.measure.reading.measures import saccade_length_in
 from pymovements.measure.reading.measures import saccade_length_out
+from pymovements.measure.reading.measures import skipped
 from pymovements.measure.reading.measures import total_fixation_count
 from pymovements.measure.reading.processing import compute_reading_measures
 
@@ -82,6 +83,7 @@ __all__ = [
     'right_bounded_reading_time',
     'saccade_length_in',
     'saccade_length_out',
+    'skipped',
     'total_fixation_count',
     'non_aoi_fixation_count_ratio',
     'non_aoi_fixation_duration_ratio',

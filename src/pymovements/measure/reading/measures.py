@@ -552,3 +552,47 @@ def non_aoi_fixation_duration_ratio(
         .otherwise(None)
         .alias('NAFDR')
     )
+
+
+# ---------------------------
+# Word-level derived measures
+# ---------------------------
+
+
+def skipped(tfc: str | pl.Expr = 'TFC') -> pl.Expr:
+    """Binary indicator for total word skipping (``skipped``).
+
+    A word is skipped when it received no fixation at all. Must be evaluated
+    after join misses are zero-filled; the ``LP`` post-processing depends on
+    this column.
+
+    Parameters
+    ----------
+    tfc : str | pl.Expr
+        Column name or expression of the total fixation count.
+        (default: ``'TFC'``)
+
+    Returns
+    -------
+    pl.Expr
+        Expression producing the ``skipped`` column (1 if skipped, 0 otherwise).
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import skipped
+    >>> words = pl.DataFrame({'word': ['The', 'quick', 'brown'], 'TFC': [2, 0, 1]})
+    >>> words.with_columns(skipped())
+    shape: (3, 3)
+    ┌───────┬─────┬─────────┐
+    │ word  ┆ TFC ┆ skipped │
+    │ ---   ┆ --- ┆ ---     │
+    │ str   ┆ i64 ┆ i64     │
+    ╞═══════╪═════╪═════════╡
+    │ The   ┆ 2   ┆ 0       │
+    │ quick ┆ 0   ┆ 1       │
+    │ brown ┆ 1   ┆ 0       │
+    └───────┴─────┴─────────┘
+    """
+    tfc_expr = as_expr(tfc)
+    return (tfc_expr == 0).cast(pl.Int64).alias('skipped')
