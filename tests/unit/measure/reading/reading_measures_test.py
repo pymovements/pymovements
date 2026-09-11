@@ -512,11 +512,13 @@ def test_skipped_default_column():
         'TFC': [2, 0, 1, 0],
     })
     result = df.with_columns(skipped())
-    expected = pl.DataFrame({
-        'word': ['The', 'quick', 'brown', 'fox'],
-        'TFC': [2, 0, 1, 0],
-        'skipped': [0, 1, 0, 1],
-    }, schema_overrides={'skipped': pl.Int64})
+    expected = pl.DataFrame(
+        {
+            'word': ['The', 'quick', 'brown', 'fox'],
+            'TFC': [2, 0, 1, 0],
+            'skipped': [0, 1, 0, 1],
+        }, schema_overrides={'skipped': pl.Int64},
+    )
     assert_frame_equal(result, expected)
 
 
@@ -527,11 +529,13 @@ def test_skipped_custom_column_string_and_expr():
     })
     res1 = df.with_columns(skipped('my_count'))
     res2 = df.with_columns(skipped(pl.col('my_count')))
-    expected = pl.DataFrame({
-        'word': ['a', 'b'],
-        'my_count': [0, 5],
-        'skipped': [1, 0],
-    }, schema_overrides={'skipped': pl.Int64})
+    expected = pl.DataFrame(
+        {
+            'word': ['a', 'b'],
+            'my_count': [0, 5],
+            'skipped': [1, 0],
+        }, schema_overrides={'skipped': pl.Int64},
+    )
     assert_frame_equal(res1, expected)
     assert_frame_equal(res2, expected)
 
