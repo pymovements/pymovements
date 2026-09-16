@@ -11,7 +11,8 @@
 
 Changes that many other things depend on (the data model, operation contracts, on-disk
 formats, this process) require a PMEP: a design document in `docs/source/pmep/`,
-proposed and decided in a pull request. Acceptance needs a window of 14 days, 2 approvals
+proposed and decided in a pull request, with at least one active core contributor among its
+authors. Acceptance needs a window of 14 days, 2 approvals
 from active core contributors other than the author, and no unresolved objection. The lead
 maintainer may override objections but not the approval floor. Core contributors are listed
 in `GOVERNANCE.md`. Everything else keeps the usual issue and PR workflow.
@@ -43,8 +44,11 @@ no PMEP is required for it retroactively.
 ## Where they live
 
 `docs/source/pmep/pmep-NNN-short-title.md`, opened as a pull request and rendered in the
-documentation. The number is assigned when the pull request opens, so the proposal can be
-cited by number during discussion. The pull request stays open until the decision falls and
+documentation. Every PMEP has at least one active core contributor among its authors. A pull
+request opened without one becomes a PMEP if an active core contributor joins as co-author
+within 14 days, and is otherwise closed, not merged. The number is assigned when the
+authorship requirement is met, so the proposal can be cited by number during discussion. The
+pull request stays open until the decision falls and
 merges carrying the final status. Rejected and withdrawn PMEPs are merged too and stay in the
 repository as records of what was considered and why not.
 
@@ -52,7 +56,8 @@ Status is one of: Draft · Accepted · Final (implemented) · Rejected · Withdr
 
 ## Who decides
 
-**Core contributors** are listed in `GOVERNANCE.md` and have the right to vote. Anyone may
+**Core contributors** are listed in `GOVERNANCE.md` and have the right to author PMEPs and
+to vote. Anyone may
 comment. The entry
 criterion, additions to the list and the emeritus rule are defined in `GOVERNANCE.md`.
 
