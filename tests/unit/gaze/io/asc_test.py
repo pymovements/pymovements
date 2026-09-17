@@ -691,11 +691,12 @@ def test_from_asc_example_file_has_expected_metadata(
 
 
 @pytest.mark.parametrize(
-    'filename', [
-        pytest.param('eyelink_monocular_example.asc', id='mono'),
+    ('filename', 'expected_quality'), [
+        pytest.param('eyelink_monocular_example.asc', ['GOOD'], id='mono'),
+        pytest.param('eyelink_binocular_example.asc', ['GOOD', 'GOOD'], id='bino'),
     ],
 )
-def test_from_asc_sets_public_cal_interfaces(filename, make_example_file):
+def test_from_asc_sets_public_cal_interfaces(filename, expected_quality, make_example_file):
     filepath = make_example_file(filename)
     gaze = from_asc(filepath)
 
@@ -706,10 +707,37 @@ def test_from_asc_sets_public_cal_interfaces(filename, make_example_file):
         'num_points': pl.Int64,
         'eye': pl.Utf8,
         'tracking_mode': pl.Utf8,
+        'quality': pl.Utf8,
     }
 
     # Example file should contain at least one calibration
     assert gaze.calibrations.height >= 1
+    assert gaze.calibrations['quality'].to_list() == expected_quality
+
+
+@pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No sampling rate found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No tracked eye information found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
+def test_from_asc_parses_calibration_quality_failed(make_text_file):
+    body = (
+        'MSG	524874 RECCFG CR 1000 2 1 L\n'
+        'MSG	524874 GAZE_COORDS 0 0 1919 1079\n'
+        'MSG	524874 !CAL\n'
+        '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+        'MSG	524879 !CAL CALIBRATION HV9 L LEFT    FAILED\n'
+    )
+    filepath = make_text_file(filename='failed_cal.asc', body=body)
+
+    gaze = from_asc(filepath)
+
+    assert gaze.calibrations['quality'].to_list() == ['FAILED']
 
 
 @pytest.mark.parametrize(
@@ -729,10 +757,12 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
         'eye': pl.Utf8,
         'accuracy_avg': pl.Float64,
         'accuracy_max': pl.Float64,
+        'quality': pl.Utf8,
     }
 
     # Example file should contain at least one validation
     assert gaze.validations.height >= 1
+    assert gaze.validations['quality'].to_list() == ['GOOD']
 
 
 @pytest.mark.parametrize(
