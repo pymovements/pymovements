@@ -22,12 +22,14 @@
 The generators here are not registered, so this module leaves the registry alone.
 Registration is covered in ``library_test.py``.
 """
+import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
 from pymovements import Gaze
 from pymovements.synthetic import GazeGenerator
+from pymovements.synthetic import GeneratorConfig
 
 
 class MinimalGenerator(GazeGenerator):
@@ -35,7 +37,7 @@ class MinimalGenerator(GazeGenerator):
 
     name = 'minimal'
 
-    def _generate(self, **kwargs):
+    def _generate(self, config, rng, **kwargs):
         return Gaze(
             samples=pl.DataFrame({'x': [0.0, 1.0], 'y': [0.0, 1.0]}),
             position_columns=['x', 'y'],
@@ -43,15 +45,19 @@ class MinimalGenerator(GazeGenerator):
 
 
 class EchoKwargsGenerator(GazeGenerator):
-    """A generator recording the keyword arguments it was called with."""
+    """A generator recording the arguments it was called with."""
 
     name = 'echo_kwargs'
 
     def __init__(self):
         self.received = None
+        self.received_config = None
+        self.received_rng = None
 
-    def _generate(self, **kwargs):
+    def _generate(self, config, rng, **kwargs):
         self.received = kwargs
+        self.received_config = config
+        self.received_rng = rng
         return Gaze(samples=pl.DataFrame({'x': [0.0], 'y': [0.0]}), position_columns=['x', 'y'])
 
 
@@ -89,9 +95,71 @@ def test_generate_returns_gaze():
 def test_generate_forwards_kwargs_to_private_generate():
     generator = EchoKwargsGenerator()
 
-    generator.generate(duration_s=2.0, foo='bar')
+    generator.generate(events='events', foo='bar')
 
-    assert generator.received == {'duration_s': 2.0, 'foo': 'bar'}
+    assert generator.received == {'events': 'events', 'foo': 'bar'}
+
+
+def test_generate_passes_random_generator_to_private_generate():
+    generator = EchoKwargsGenerator()
+
+    generator.generate()
+
+    assert isinstance(generator.received_rng, np.random.Generator)
+
+
+def test_generate_passes_config_to_private_generate():
+    generator = EchoKwargsGenerator()
+    config = GeneratorConfig(sampling_rate=1000.0, seed=42)
+
+    generator.generate(config=config)
+
+    assert generator.received_config == config
+
+
+def test_generate_passes_no_config_when_none_supplied():
+    generator = EchoKwargsGenerator()
+
+    generator.generate()
+
+    assert generator.received_config is None
+
+
+def test_generate_passes_drawn_seed_in_config_to_private_generate():
+    generator = EchoKwargsGenerator()
+
+    generator.generate(config=GeneratorConfig(sampling_rate=1000.0))
+
+    assert isinstance(generator.received_config.seed, int)
+
+
+def test_generate_does_not_mutate_the_supplied_config():
+    config = GeneratorConfig(sampling_rate=1000.0)
+
+    EchoKwargsGenerator().generate(config=config)
+
+    assert config.seed is None
+
+
+@pytest.mark.parametrize(
+    ('first_seed', 'second_seed', 'expected_equal'),
+    [
+        pytest.param(42, 42, True, id='same_seed_draws_identically'),
+        pytest.param(42, 7, False, id='different_seed_draws_differently'),
+    ],
+)
+def test_random_generator_is_seeded_from_config(first_seed, second_seed, expected_equal):
+    generator = EchoKwargsGenerator()
+
+    generator.generate(config=GeneratorConfig(sampling_rate=1000.0, seed=first_seed))
+    first = generator.received_rng.normal(size=4)
+
+    generator.generate(config=GeneratorConfig(sampling_rate=1000.0, seed=second_seed))
+    second = generator.received_rng.normal(size=4)
+
+    assert np.array_equal(first, second) == expected_equal, (
+        f'first = {first}, second = {second}'
+    )
 
 
 @pytest.mark.parametrize(

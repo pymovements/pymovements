@@ -30,6 +30,7 @@ from pymovements import synthetic
         pytest.param('ConditioningMode', id='ConditioningMode'),
         pytest.param('GazeGenerator', id='GazeGenerator'),
         pytest.param('GeneratorCapabilities', id='GeneratorCapabilities'),
+        pytest.param('GeneratorConfig', id='GeneratorConfig'),
         pytest.param('GeneratorLibrary', id='GeneratorLibrary'),
         pytest.param('SignalRepresentation', id='SignalRepresentation'),
         pytest.param('generators', id='generators'),

@@ -22,6 +22,7 @@ from pymovements.synthetic import generators
 from pymovements.synthetic.capabilities import ConditioningMode
 from pymovements.synthetic.capabilities import GeneratorCapabilities
 from pymovements.synthetic.capabilities import SignalRepresentation
+from pymovements.synthetic.config import GeneratorConfig
 from pymovements.synthetic.generator import GazeGenerator
 from pymovements.synthetic.library import GeneratorLibrary
 from pymovements.synthetic.library import register_generator
@@ -32,6 +33,7 @@ __all__ = [
     'ConditioningMode',
     'GazeGenerator',
     'GeneratorCapabilities',
+    'GeneratorConfig',
     'GeneratorLibrary',
     'SignalRepresentation',
     'register_generator',

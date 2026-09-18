@@ -13,6 +13,7 @@ Synthetic
     ConditioningMode
     GazeGenerator
     GeneratorCapabilities
+    GeneratorConfig
     GeneratorLibrary
     SignalRepresentation
 
