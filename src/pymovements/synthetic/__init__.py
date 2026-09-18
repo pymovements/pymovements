@@ -19,10 +19,17 @@
 # SOFTWARE.
 """Provides functionality for generating synthetic eye gaze data."""
 from pymovements.synthetic import generators
+from pymovements.synthetic.generator import GazeGenerator
+from pymovements.synthetic.library import GeneratorLibrary
+from pymovements.synthetic.library import register_generator
 from pymovements.synthetic.step_function import step_function
 
 
 __all__ = [
+    'GazeGenerator',
+    'GeneratorLibrary',
+    'register_generator',
+
     'generators',
     'step_function',
 ]
