@@ -95,9 +95,9 @@ def test_generate_returns_gaze():
 def test_generate_forwards_kwargs_to_private_generate():
     generator = EchoKwargsGenerator()
 
-    generator.generate(events='events', foo='bar')
+    generator.generate(centers=[(0.0, 0.0)], foo='bar')
 
-    assert generator.received == {'events': 'events', 'foo': 'bar'}
+    assert generator.received == {'centers': [(0.0, 0.0)], 'foo': 'bar'}
 
 
 def test_generate_passes_random_generator_to_private_generate():

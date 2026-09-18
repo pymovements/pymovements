@@ -28,10 +28,13 @@ from typing import ClassVar
 
 import numpy as np
 
+from pymovements.events.events import Events
 from pymovements.gaze.gaze import Gaze
 from pymovements.synthetic.capabilities import GeneratorCapabilities
 from pymovements.synthetic.config import GeneratorConfig
 from pymovements.synthetic.provenance import generation_provenance
+from pymovements.synthetic.validation import validate_input
+from pymovements.synthetic.validation import validate_output
 
 
 class GazeGenerator(abc.ABC):
@@ -54,45 +57,98 @@ class GazeGenerator(abc.ABC):
 
     capabilities: ClassVar[GeneratorCapabilities | None] = None
 
-    def generate(self, config: GeneratorConfig | None = None, **kwargs: Any) -> Gaze:
+    def generate(
+            self,
+            config: GeneratorConfig | None = None,
+            *,
+            events: Events | None = None,
+            gaze: Gaze | None = None,
+            artifacts: dict[str, Any] | None = None,
+            **kwargs: Any,
+    ) -> Gaze:
         """Generate synthetic gaze data.
 
-        The entry point for all generators. Resolves the seed, creates the run's random
-        generator and records provenance, and delegates the synthesis itself to ``_generate``.
-        A configuration without a seed gets one drawn for it, so a run is reproducible either
-        way.
+        The entry point for all generators. Validates the input against what the generator
+        declares, resolves the seed, creates the run's random generator, checks the output and
+        records provenance, and delegates the synthesis itself to ``_generate``. A configuration
+        without a seed gets one drawn for it, so a run is reproducible either way.
+
+        Which conditioning mode a call stands for follows from what is supplied: ``gaze`` means
+        gaze-conditioned, ``events`` means event-conditioned, neither means unconditional. Only
+        arguments that were supplied are forwarded.
 
         Parameters
         ----------
         config: GeneratorConfig | None
             The parameters of the run. (default: None)
+        events: Events | None
+            An event sequence to condition on. (default: None)
+        gaze: Gaze | None
+            A gaze sequence to condition on. (default: None)
+        artifacts: dict[str, Any] | None
+            External artifacts, such as trained weights. (default: None)
         **kwargs: Any
-            Conditioning inputs, forwarded to ``_generate``.
+            Further generator-specific arguments, forwarded to ``_generate``.
 
         Returns
         -------
         Gaze
             The generated synthetic gaze data, with the run recorded under the ``'synthetic'``
             key of its :py:attr:`~pymovements.Gaze.metadata`.
+
+        Raises
+        ------
+        InputContractError
+            If the supplied input does not match what the generator declares.
+        OutputContractError
+            If the generated output does not match what the generator declares.
         """
+        validate_input(
+            capabilities=self.capabilities,
+            config=config,
+            events=events,
+            gaze=gaze,
+            artifacts=artifacts,
+            generator=self.name,
+        )
+
         seed = _draw_seed() if config is None or config.seed is None else config.seed
 
         if config is not None:
             config = dataclasses.replace(config, seed=seed)
 
-        gaze = self._generate(config=config, rng=np.random.default_rng(seed), **kwargs)
+        supplied = {
+            name: value
+            for name, value in (('events', events), ('gaze', gaze), ('artifacts', artifacts))
+            if value is not None
+        }
 
-        gaze.metadata = {
-            **(gaze.metadata or {}),
+        generated = self._generate(
+            config=config,
+            rng=np.random.default_rng(seed),
+            **supplied,
+            **kwargs,
+        )
+
+        validate_output(
+            gaze=generated,
+            capabilities=self.capabilities,
+            config=config,
+            generator=self.name,
+        )
+
+        generated.metadata = {
+            **(generated.metadata or {}),
             **generation_provenance(
                 generator=self.name,
                 config=config,
                 seed=seed,
                 capabilities=self.capabilities,
+                artifacts=artifacts,
             ),
         }
 
-        return gaze
+        return generated
 
     @abc.abstractmethod
     def _generate(
@@ -104,7 +160,9 @@ class GazeGenerator(abc.ABC):
         """Synthesize gaze data. Implemented by each generator; callers use ``generate``.
 
         All randomness must be drawn from ``rng``, otherwise the run is not reproducible from
-        its recorded seed.
+        its recorded seed. Conditioning inputs arrive as keyword arguments, so a generator names
+        the ones it consumes with a default of ``None``: validation has already established that
+        the ones its capabilities require are present.
 
         Parameters
         ----------

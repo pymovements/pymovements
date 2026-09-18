@@ -47,8 +47,14 @@ class NoiseGenerator(GazeGenerator):
     )
 
     def _generate(self, config, rng, **kwargs):
+        n_samples = 8 if config.duration_s is None else round(
+            config.sampling_rate * config.duration_s,
+        )
         return Gaze(
-            samples=pl.DataFrame({'x': rng.normal(size=8), 'y': rng.normal(size=8)}),
+            samples=pl.DataFrame({
+                'x': rng.normal(size=n_samples),
+                'y': rng.normal(size=n_samples),
+            }),
             position_columns=['x', 'y'],
         )
 

@@ -29,9 +29,12 @@ from pymovements import synthetic
     [
         pytest.param('ConditioningMode', id='ConditioningMode'),
         pytest.param('GazeGenerator', id='GazeGenerator'),
+        pytest.param('GenerationContractError', id='GenerationContractError'),
         pytest.param('GeneratorCapabilities', id='GeneratorCapabilities'),
         pytest.param('GeneratorConfig', id='GeneratorConfig'),
         pytest.param('GeneratorLibrary', id='GeneratorLibrary'),
+        pytest.param('InputContractError', id='InputContractError'),
+        pytest.param('OutputContractError', id='OutputContractError'),
         pytest.param('SignalRepresentation', id='SignalRepresentation'),
         pytest.param('generators', id='generators'),
         pytest.param('register_generator', id='register_generator'),

@@ -39,7 +39,7 @@ def fixture_isolated_registry():
 def _make_generator_class(name):
     """Create a GazeGenerator subclass with the given registered name."""
     class _Generator(GazeGenerator):
-        def _generate(self, **kwargs):
+        def _generate(self, config, rng, **kwargs):
             return Gaze(
                 samples=pl.DataFrame({'x': [0.0, 1.0], 'y': [0.0, 1.0]}),
                 position_columns=['x', 'y'],
@@ -69,7 +69,7 @@ def test_generator_defined_outside_framework_package_registers():
     class ThirdPartyGenerator(GazeGenerator):
         name = 'third_party'
 
-        def _generate(self, **kwargs):
+        def _generate(self, config, rng, **kwargs):
             return Gaze(
                 samples=pl.DataFrame({'x': [0.0], 'y': [0.0]}),
                 position_columns=['x', 'y'],
@@ -111,7 +111,7 @@ def test_get_unknown_generator_raises_key_error():
 )
 def test_add_generator_without_valid_name_raises_value_error(name, msg_substrings):
     class NamelessGenerator(GazeGenerator):
-        def _generate(self, **kwargs):
+        def _generate(self, config, rng, **kwargs):
             return Gaze()
 
     if name is not None:

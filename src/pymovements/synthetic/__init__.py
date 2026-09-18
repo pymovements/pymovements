@@ -27,14 +27,20 @@ from pymovements.synthetic.generator import GazeGenerator
 from pymovements.synthetic.library import GeneratorLibrary
 from pymovements.synthetic.library import register_generator
 from pymovements.synthetic.step_function import step_function
+from pymovements.synthetic.validation import GenerationContractError
+from pymovements.synthetic.validation import InputContractError
+from pymovements.synthetic.validation import OutputContractError
 
 
 __all__ = [
     'ConditioningMode',
     'GazeGenerator',
+    'GenerationContractError',
     'GeneratorCapabilities',
     'GeneratorConfig',
     'GeneratorLibrary',
+    'InputContractError',
+    'OutputContractError',
     'SignalRepresentation',
     'register_generator',
 

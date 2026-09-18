@@ -12,9 +12,12 @@ Synthetic
 
     ConditioningMode
     GazeGenerator
+    GenerationContractError
     GeneratorCapabilities
     GeneratorConfig
     GeneratorLibrary
+    InputContractError
+    OutputContractError
     SignalRepresentation
 
 .. rubric:: Functions
