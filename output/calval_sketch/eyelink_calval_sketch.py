@@ -1,3 +1,23 @@
+# Copyright (c) 2026 The pymovements Project Authors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 """SKETCH: parse the full EyeLink calibration/validation content into flat frames.
 
 This is exploratory code for #1731 and the MultiplEYE downstream needs. It is
@@ -45,15 +65,21 @@ CAL_ARRAY_HEADER = (
     MSG_TIME + r'!CAL\s+(?P<name>eye check box|href cal range|Cal coeff|Corner correction)'
 )
 CAL_QUAD_CENTER = MSG_TIME + r'!CAL\s+Quadrant center:\s+centx,\s*centy\s*='
-CAL_PRENORM = MSG_TIME + r'!CAL\s+Prenormalize:\s+offx,\s*offy\s*=\s*(?P<x>' + NUM + r')\s+(?P<y>' + NUM + r')'
-CAL_RES_CENTER = MSG_TIME + r'!CAL\s+Resolution \(upd\) at screen center:\s+X=(?P<x>' + NUM + r'),\s*Y=(?P<y>' + NUM + r')'
-CAL_GAIN_CHANGE = MSG_TIME + r'!CAL\s+Gain Change Proportion:\s+X:\s*(?P<x>' + NUM + r')\s+Y:\s*(?P<y>' + NUM + r')'
+CAL_PRENORM = MSG_TIME + \
+    r'!CAL\s+Prenormalize:\s+offx,\s*offy\s*=\s*(?P<x>' + NUM + r')\s+(?P<y>' + NUM + r')'
+CAL_RES_CENTER = MSG_TIME + \
+    r'!CAL\s+Resolution \(upd\) at screen center:\s+X=(?P<x>' + NUM + r'),\s*Y=(?P<y>' + NUM + r')'
+CAL_GAIN_CHANGE = MSG_TIME + \
+    r'!CAL\s+Gain Change Proportion:\s+X:\s*(?P<x>' + NUM + r')\s+Y:\s*(?P<y>' + NUM + r')'
 CAL_GAIN_RATIO = MSG_TIME + r'!CAL\s+Gain Ratio \(Gy/Gx\)\s*=\s*(?P<v>' + NUM + r')'
 CAL_BAD_RATIO = MSG_TIME + r'!CAL\s+Bad Y/X gain ratio:\s*(?P<v>' + NUM + r')'
-CAL_CROSS_RATIO = MSG_TIME + r'!CAL\s+Cross-Gain Ratios:\s*X=(?P<x>' + NUM + r'),\s*Y=(?P<y>' + NUM + r')'
-CAL_PCR = MSG_TIME + r'!CAL\s+PCR gain ratio\(x,y\)\s*=\s*(?P<x>' + NUM + r'),\s*(?P<y>' + NUM + r')'
+CAL_CROSS_RATIO = MSG_TIME + \
+    r'!CAL\s+Cross-Gain Ratios:\s*X=(?P<x>' + NUM + r'),\s*Y=(?P<y>' + NUM + r')'
+CAL_PCR = MSG_TIME + \
+    r'!CAL\s+PCR gain ratio\(x,y\)\s*=\s*(?P<x>' + NUM + r'),\s*(?P<y>' + NUM + r')'
 CAL_CR = MSG_TIME + r'!CAL\s+CR gain match\(x,y\)\s*=\s*(?P<x>' + NUM + r'),\s*(?P<y>' + NUM + r')'
-CAL_QUAD_FIXUP = MSG_TIME + r'!CAL\s+Quadrant fixup\[(?P<i>\d+)\]\s*=\s*(?P<x>' + NUM + r'),(?P<y>' + NUM + r')'
+CAL_QUAD_FIXUP = MSG_TIME + \
+    r'!CAL\s+Quadrant fixup\[(?P<i>\d+)\]\s*=\s*(?P<x>' + NUM + r'),(?P<y>' + NUM + r')'
 CAL_SLIP = MSG_TIME + r'!CAL\s+Slip rotation correction\s+(?P<v>ON|OFF)'
 CAL_WARNING = MSG_TIME + r'!CAL\s+(?P<msg>[A-Z][^:]*?(?:out of range|too large|diagonals))'
 
