@@ -10,8 +10,11 @@ Synthetic
     :nosignatures:
     :template: class.rst
 
+    ConditioningMode
     GazeGenerator
+    GeneratorCapabilities
     GeneratorLibrary
+    SignalRepresentation
 
 .. rubric:: Functions
 

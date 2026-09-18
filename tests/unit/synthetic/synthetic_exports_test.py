@@ -27,8 +27,11 @@ from pymovements import synthetic
 @pytest.mark.parametrize(
     'name',
     [
+        pytest.param('ConditioningMode', id='ConditioningMode'),
         pytest.param('GazeGenerator', id='GazeGenerator'),
+        pytest.param('GeneratorCapabilities', id='GeneratorCapabilities'),
         pytest.param('GeneratorLibrary', id='GeneratorLibrary'),
+        pytest.param('SignalRepresentation', id='SignalRepresentation'),
         pytest.param('generators', id='generators'),
         pytest.param('register_generator', id='register_generator'),
         pytest.param('step_function', id='step_function'),
