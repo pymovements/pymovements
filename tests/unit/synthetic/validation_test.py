@@ -33,6 +33,10 @@ from pymovements.synthetic import SignalRepresentation
 from pymovements.synthetic.validation import validate_input
 from pymovements.synthetic.validation import validate_output
 
+pytestmark = pytest.mark.filterwarnings(
+    'ignore:Synthetic gaze generation is experimental:pymovements.ExperimentalWarning',
+)
+
 
 def make_events(names=('fixation',), onsets=(0,), offsets=(100,)):
     """Build a minimal event sequence."""

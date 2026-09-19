@@ -35,6 +35,10 @@ from pymovements.synthetic import SignalRepresentation
 from pymovements.synthetic.provenance import generation_provenance
 from pymovements.synthetic.provenance import PROVENANCE_KEY
 
+pytestmark = pytest.mark.filterwarnings(
+    'ignore:Synthetic gaze generation is experimental:pymovements.ExperimentalWarning',
+)
+
 
 class NoiseGenerator(GazeGenerator):
     """A stochastic generator drawing its samples from the seeded generator."""

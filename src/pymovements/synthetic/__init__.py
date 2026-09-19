@@ -23,6 +23,7 @@ from pymovements.synthetic.capabilities import ConditioningMode
 from pymovements.synthetic.capabilities import GeneratorCapabilities
 from pymovements.synthetic.capabilities import SignalRepresentation
 from pymovements.synthetic.config import GeneratorConfig
+from pymovements.synthetic.generate import generate
 from pymovements.synthetic.generator import GazeGenerator
 from pymovements.synthetic.library import GeneratorLibrary
 from pymovements.synthetic.library import register_generator
@@ -42,6 +43,7 @@ __all__ = [
     'InputContractError',
     'OutputContractError',
     'SignalRepresentation',
+    'generate',
     'register_generator',
 
     'generators',

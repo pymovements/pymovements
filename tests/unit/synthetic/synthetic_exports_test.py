@@ -36,6 +36,7 @@ from pymovements import synthetic
         pytest.param('InputContractError', id='InputContractError'),
         pytest.param('OutputContractError', id='OutputContractError'),
         pytest.param('SignalRepresentation', id='SignalRepresentation'),
+        pytest.param('generate', id='generate'),
         pytest.param('generators', id='generators'),
         pytest.param('register_generator', id='register_generator'),
         pytest.param('step_function', id='step_function'),

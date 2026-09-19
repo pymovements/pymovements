@@ -25,9 +25,11 @@ import dataclasses
 import secrets
 from typing import Any
 from typing import ClassVar
+from warnings import warn
 
 import numpy as np
 
+from pymovements._version import __version__
 from pymovements.events.events import Events
 from pymovements.gaze.gaze import Gaze
 from pymovements.synthetic.capabilities import GeneratorCapabilities
@@ -35,6 +37,7 @@ from pymovements.synthetic.config import GeneratorConfig
 from pymovements.synthetic.provenance import generation_provenance
 from pymovements.synthetic.validation import validate_input
 from pymovements.synthetic.validation import validate_output
+from pymovements.warnings import ExperimentalWarning
 
 
 class GazeGenerator(abc.ABC):
@@ -102,7 +105,20 @@ class GazeGenerator(abc.ABC):
             If the supplied input does not match what the generator declares.
         OutputContractError
             If the generated output does not match what the generator declares.
+
+        Warns
+        -----
+        ExperimentalWarning
+            Always. Synthetic gaze generation is experimental.
         """
+        warn(
+            'Synthetic gaze generation is experimental. '
+            'Names and behavior may change without being considered a breaking change. '
+            'Please set the used pymovements version explicitly to prevent unexpected changes. '
+            f'The used pymovements version is v{__version__}.',
+            ExperimentalWarning,
+        )
+
         validate_input(
             capabilities=self.capabilities,
             config=config,

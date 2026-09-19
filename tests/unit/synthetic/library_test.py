@@ -26,6 +26,10 @@ from pymovements.synthetic import GazeGenerator
 from pymovements.synthetic import GeneratorLibrary
 from pymovements.synthetic import register_generator
 
+pytestmark = pytest.mark.filterwarnings(
+    'ignore:Synthetic gaze generation is experimental:pymovements.ExperimentalWarning',
+)
+
 
 @pytest.fixture(name='isolated_registry', autouse=True)
 def fixture_isolated_registry():

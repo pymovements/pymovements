@@ -27,5 +27,6 @@ Synthetic
     :nosignatures:
     :template: function.rst
 
+    generate
     register_generator
     step_function

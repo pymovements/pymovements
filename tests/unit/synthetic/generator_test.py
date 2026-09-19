@@ -31,6 +31,10 @@ from pymovements import Gaze
 from pymovements.synthetic import GazeGenerator
 from pymovements.synthetic import GeneratorConfig
 
+pytestmark = pytest.mark.filterwarnings(
+    'ignore:Synthetic gaze generation is experimental:pymovements.ExperimentalWarning',
+)
+
 
 class MinimalGenerator(GazeGenerator):
     """A minimal generator returning a fixed two-sample gaze sequence."""
