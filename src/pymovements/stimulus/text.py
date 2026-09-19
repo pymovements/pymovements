@@ -34,6 +34,7 @@ import polars as pl
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
+from pymovements.stimulus import _lines
 
 
 @dataclass(frozen=True)
@@ -270,6 +271,161 @@ class TextStimulus:
             )
             for df in self.aois.partition_by(by, as_dict=False)
         ]
+
+    def with_line_idx(
+            self,
+            *,
+            line_column: str = 'line_idx',
+            tolerance: float = 0.5,
+            overwrite: bool = False,
+    ) -> TextStimulus:
+        """Return a copy of this stimulus whose AOIs carry a text line index.
+
+        Lines are numbered ``0..k-1`` from the top. AOIs are grouped by their vertical centre:
+        a new line starts where the gap to the previous centre exceeds ``tolerance`` line
+        heights, the line height being the median AOI height. Grouping on the centre rather
+        than on the top edge tolerates boxes of different height inside one line; whether a
+        corpus has such boxes is another matter, and the two we checked do not.
+
+        The practical reason for this method is a different one: nothing in pymovements writes
+        a ``line_idx`` column today, so
+        :py:func:`~pymovements.events.correction.correct_fixations` always falls back to
+        grouping AOIs by an exactly equal top edge.
+
+        If ``line_column`` already exists it is validated and kept, unless ``overwrite`` is
+        set. Datasets that publish a line number of their own usually count from one; convert
+        it to a zero-based index before passing it in.
+
+        Adding this column also affects
+        :py:func:`~pymovements.events.correction.correct_fixations`, which groups AOIs into
+        lines by ``line_idx`` when the column is present and falls back to exact top-edge
+        equality when it is not.
+
+        Parameters
+        ----------
+        line_column: str
+            Name of the line index column. (default: 'line_idx')
+        tolerance: float
+            Maximum gap within one line, in line heights. The upper bound that matters is the
+            distance between two lines divided by the line height; above it, neighbouring lines
+            merge. Measured over the 600 character-AOI layouts of PoTeC and EMTeC, every value
+            from 0.001 to 0.9 gives the same line count as the corpus itself, 0.95 merges lines
+            in 30 EMTeC layouts and 1.0 in all of them. (default: 0.5)
+        overwrite: bool
+            Recompute ``line_column`` even if it already exists. (default: False)
+
+        Returns
+        -------
+        TextStimulus
+            A new stimulus whose ``aois`` carry an integer ``line_column``.
+
+        Raises
+        ------
+        ValueError
+            If the stimulus holds AOIs of more than one page or trial, if ``tolerance`` is not
+            positive, if the AOIs are empty, or if an existing ``line_column`` is not numbered
+            ``0..k-1`` without gaps.
+
+        Examples
+        --------
+        >>> import polars as pl
+        >>> from pymovements.stimulus import TextStimulus
+        >>> aois = pl.DataFrame({
+        ...     'char': ['a', 'b', 'c', 'd'],
+        ...     'x0': [0, 10, 0, 10], 'y0': [0, 0, 20, 20],
+        ...     'x1': [10, 20, 10, 20], 'y1': [10, 10, 30, 30],
+        ... })
+        >>> stimulus = TextStimulus(
+        ...     aois, aoi_column='char',
+        ...     start_x_column='x0', start_y_column='y0',
+        ...     end_x_column='x1', end_y_column='y1',
+        ... )
+        >>> stimulus.with_line_idx().aois['line_idx'].to_list()
+        [0, 0, 1, 1]
+        """
+        self._check_single_page()
+
+        aois = self.aois
+        if line_column in aois.columns and not overwrite:
+            present = aois[line_column].drop_nulls().cast(pl.Int64).unique().sort().to_list()
+            if present != list(range(len(present))):
+                shown = present[:5]
+                raise ValueError(
+                    f"column '{line_column}' must be numbered 0..k-1 without gaps, got "
+                    f"{shown}{'...' if len(present) > 5 else ''}. Convert a dataset-specific "
+                    'line numbering before passing it in, or use overwrite=True to recompute.',
+                )
+            aois = aois.with_columns(pl.col(line_column).cast(pl.Int64))
+        else:
+            bounds = _lines.normalized_bounds(self)
+            dropped = aois.height - bounds.height
+            if dropped:
+                warnings.warn(
+                    f'{dropped} of {aois.height} areas of interest have a non-finite '
+                    'coordinate or a height of zero or less; they get no line index. Check '
+                    f'the {self.start_y_column}/{self.end_y_column} columns of the stimulus.',
+                    UserWarning,
+                    stacklevel=2,
+                )
+            # Written back by the row each rectangle came from, not by position: the dropped
+            # ones would otherwise shift every line index below them.
+            derived = bounds.select(
+                pl.col(_lines.AOI_ROW_COLUMN),
+                _lines.derive_line_idx(bounds, tolerance).alias(line_column),
+            )
+            aois = (
+                aois
+                .drop(line_column, strict=False)  # overwrite=True: the old column goes
+                .with_row_index(_lines.AOI_ROW_COLUMN)
+                .join(derived, on=_lines.AOI_ROW_COLUMN, how='left', maintain_order='left')
+                .drop(_lines.AOI_ROW_COLUMN)
+            )
+
+        return self._with_aois(aois)
+
+    def _check_single_page(self) -> None:
+        """Raise if this stimulus mixes AOIs of several pages or trials.
+
+        Raises
+        ------
+        ValueError
+            If ``page_column`` or ``trial_column`` holds more than one distinct value.
+        """
+        for column in (self.trial_column, self.page_column):
+            if column is not None and column in self.aois.columns:
+                if self.aois[column].n_unique() > 1:
+                    raise ValueError(
+                        f"stimulus holds AOIs of several values of '{column}'; "
+                        f"use split('{column}') and handle each page separately",
+                    )
+
+    def _with_aois(self, aois: pl.DataFrame) -> TextStimulus:
+        """Return a copy of this stimulus with a different AOI dataframe.
+
+        Parameters
+        ----------
+        aois: pl.DataFrame
+            The AOI dataframe of the copy.
+
+        Returns
+        -------
+        TextStimulus
+            A copy carrying ``aois`` and this stimulus' column configuration.
+        """
+        return TextStimulus(
+            aois=aois,
+            aoi_column=self.aoi_column,
+            width_column=self.width_column,
+            height_column=self.height_column,
+            start_x_column=self.start_x_column,
+            start_y_column=self.start_y_column,
+            end_x_column=self.end_x_column,
+            end_y_column=self.end_y_column,
+            page_column=self.page_column,
+            trial_column=self.trial_column,
+            writing_system=self.writing_system,
+            metadata=dict(self.metadata) if self.metadata else None,
+        )
 
     def get_aoi(
             self,

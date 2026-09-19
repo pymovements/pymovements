@@ -37,6 +37,7 @@ from pymovements._utils._time import normalize_duration_to_us
 from pymovements._utils._time import numeric_to_duration_us
 from pymovements.events.correction import fixation_correction
 from pymovements.measure.events.measures import duration
+from pymovements.stimulus import _lines
 from pymovements.stimulus.text import TextStimulus
 
 
@@ -1019,6 +1020,129 @@ class Events:
             'location_x' in self.frame.columns or 'location_y' in self.frame.columns
         ):
             self.frame = self.frame.drop('location')
+
+    def map_to_lines(
+            self,
+            stimulus: TextStimulus,
+            *,
+            line_column: str = 'line_idx',
+            tolerance: float = 0.5,
+    ) -> None:
+        """Assign a text line to every fixation, in place.
+
+        Adds ``line_column`` to the events frame: a zero-based line index counted from the top
+        of the stimulus, or null where no line could be assigned. Rows whose ``name`` does not
+        start with ``'fixation'`` always get null, as in
+        :py:meth:`~pymovements.Events.map_to_aois`.
+
+        A fixation is assigned the line of the AOI containing it, using the same half-open
+        bounds ``start <= coord < end`` as :py:meth:`~pymovements.Events.map_to_aois`. One that
+        lands between two lines or outside the text gets null: moving it onto a line is drift
+        correction, and that is what
+        :py:func:`~pymovements.events.correction.correct_fixations` is for.
+
+        Parameters
+        ----------
+        stimulus: TextStimulus
+            Text stimulus defining AOI rectangles, holding the AOIs of a single page. If it
+            has no ``line_column``, one is derived with
+            :py:meth:`~pymovements.stimulus.TextStimulus.with_line_idx`.
+        line_column: str
+            Name of the line index column, in the stimulus and in the events frame.
+            (default: 'line_idx')
+        tolerance: float
+            Passed to :py:meth:`~pymovements.stimulus.TextStimulus.with_line_idx` when the
+            line index has to be derived. (default: 0.5)
+
+        Raises
+        ------
+        ValueError
+            If the stimulus mixes several pages or trials, or if the events frame has neither
+            ``location_x`` and ``location_y`` nor a ``location`` column.
+
+        Examples
+        --------
+        >>> import polars as pl
+        >>> import pymovements as pm
+        >>> aois = pl.DataFrame({
+        ...     'char': ['a', 'b', 'c', 'd'],
+        ...     'x0': [0, 10, 0, 10], 'y0': [0, 0, 20, 20],
+        ...     'x1': [10, 20, 10, 20], 'y1': [10, 10, 30, 30],
+        ... })
+        >>> stimulus = pm.stimulus.TextStimulus(
+        ...     aois, aoi_column='char',
+        ...     start_x_column='x0', start_y_column='y0',
+        ...     end_x_column='x1', end_y_column='y1',
+        ... )
+        >>> events = pm.Events(pl.DataFrame({
+        ...     'name': ['fixation', 'fixation', 'saccade'],
+        ...     'onset': [0, 1, 2], 'offset': [1, 2, 3],
+        ...     'location_x': [5.0, 15.0, 5.0], 'location_y': [5.0, 25.0, 5.0],
+        ... }))
+        >>> events.map_to_lines(stimulus)
+        >>> events.frame['line_idx'].to_list()
+        [0, 1, None]
+        """
+        # with_line_idx() derives the column when it is missing, and validates it plus the
+        # single-page invariant when it is already there, so it is safe to call either way.
+        stimulus = stimulus.with_line_idx(line_column=line_column, tolerance=tolerance)
+
+        is_fixation = (
+            polars.col('name').cast(polars.String).str.starts_with('fixation').fill_null(False)
+            if 'name' in self.frame.columns
+            else polars.lit(True)  # noqa: FBT003
+        )
+
+        line_idx = self._lines_from_coordinates(stimulus, line_column)
+
+        self.frame = self.frame.with_columns(
+            polars.when(is_fixation)
+            .then(polars.Series(line_column, line_idx, dtype=polars.Int64))
+            .otherwise(None)
+            .alias(line_column),
+        )
+
+    def _lines_from_coordinates(
+            self,
+            stimulus: TextStimulus,
+            line_column: str,
+    ) -> polars.Series:
+        """Return the line index per event row from its fixation coordinates.
+
+        Parameters
+        ----------
+        stimulus: TextStimulus
+            Text stimulus whose AOIs carry ``line_column``.
+        line_column: str
+            Name of the line index column in ``stimulus.aois``.
+
+        Returns
+        -------
+        polars.Series
+            Integer line index per row, null where unassigned.
+
+        Raises
+        ------
+        ValueError
+            If the frame has neither component coordinate columns nor a ``location`` column.
+        """
+        if 'location_x' in self.frame.columns and 'location_y' in self.frame.columns:
+            x = self.frame['location_x']
+            y = self.frame['location_y']
+        elif 'location' in self.frame.columns:
+            x = self.frame['location'].list.get(0)
+            y = self.frame['location'].list.get(1)
+        else:
+            raise ValueError(
+                "events need 'location_x' and 'location_y' or a 'location' column "
+                'to be mapped to text lines',
+            )
+
+        bounds = _lines.normalized_bounds(stimulus)
+        # normalized_bounds leaves unusable rectangles out, so the line column is taken by the
+        # rows that remain rather than by position.
+        line_idx = stimulus.aois[line_column].gather(bounds[_lines.AOI_ROW_COLUMN])
+        return _lines.lines_containing(x, y, bounds, line_idx)
 
     def correct_fixations(
             self,
