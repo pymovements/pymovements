@@ -22,12 +22,12 @@ from __future__ import annotations
 
 import warnings
 from typing import Any
-from typing import overload
 
 import numpy
 import polars
 
 from pymovements._utils import _checks
+from pymovements._utils._time import timesteps_to_numpy
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.transforms.numpy import norm
@@ -129,107 +129,29 @@ def _emit_log_prob(
     if mu is None or sigma is None:
         raise ValueError('mu and sigma must not be None to compute an emission log-probability')
 
-    return float(_gaussian_log_pdf(v, mu[s], sigma[s]))
+    mu_s = mu[s]
+    sigma_s = max(sigma[s], 1e-6)
 
-
-def _gaussian_log_pdf(
-    v: float | numpy.ndarray,
-    mu: float | numpy.ndarray,
-    sigma: float | numpy.ndarray,
-) -> numpy.ndarray:
-    """Compute the univariate Gaussian log-density, vectorized over its arguments.
-
-    Shared by :func:`_emit_log_prob` and :func:`_emit_log_prob_vec` so both the
-    scalar and vectorized emission paths use the same numerically stable formula.
-    A small numerical floor is applied to `sigma` to ensure stability.
-
-    Parameters
-    ----------
-    v : float | numpy.ndarray
-        Observed value(s).
-    mu : float | numpy.ndarray
-        Mean(s) of the Gaussian.
-    sigma : float | numpy.ndarray
-        Standard deviation(s) of the Gaussian.
-
-    Returns
-    -------
-    numpy.ndarray
-        Log-density of `v` under a Gaussian with parameters `mu` and `sigma`,
-        broadcast over the shapes of `v`, `mu` and `sigma`.
-    """
-    sigma_safe = numpy.maximum(sigma, 1e-6)
-    return -0.5 * numpy.log(2 * numpy.pi * sigma_safe**2) - (v - mu)**2 / (2 * sigma_safe**2)
-
-
-def _emit_log_prob_vec(
-    mu: numpy.ndarray | None,
-    sigma: numpy.ndarray | None,
-    v: float | numpy.ndarray,
-) -> numpy.ndarray:
-    """Compute emission log-probabilities for all states at once (vectorized `_emit_log_prob`).
-
-    Parameters
-    ----------
-    mu : numpy.ndarray | None
-        Means of the emission distributions (Gaussian) for each state. Shape: (M,).
-        Must not be None.
-    sigma : numpy.ndarray | None
-        Standard deviations of the emission distributions for each state. Shape: (M,).
-        Must not be None.
-    v : float | numpy.ndarray
-        Observed value(s). A scalar yields shape (M,); a 1D array of shape (T,)
-        yields shape (T, M).
-
-    Returns
-    -------
-    numpy.ndarray
-        Log-probabilities of `v` under each state's Gaussian emission model.
-
-    Raises
-    ------
-    ValueError
-        If `mu` or `sigma` is None.
-    """
-    if mu is None or sigma is None:
-        raise ValueError('mu and sigma must not be None to compute an emission log-probability')
-
-    v_arr = numpy.asarray(v, dtype=float)[..., None]
-    return _gaussian_log_pdf(v_arr, mu, sigma)
-
-
-@overload
-def _log_sum_exp(arr: numpy.ndarray, axis: None = None) -> float: ...
-
-
-@overload
-def _log_sum_exp(arr: numpy.ndarray, axis: int | tuple[int, ...]) -> numpy.ndarray: ...
+    return -0.5 * numpy.log(2 * numpy.pi * sigma_s**2) - ((v - mu_s)**2) / (2 * sigma_s**2)
 
 
 def _log_sum_exp(
     arr: numpy.ndarray,
-    axis: int | tuple[int, ...] | None = None,
-) -> float | numpy.ndarray:
+) -> float:
     """Compute log-sum-exp.
 
     Parameters
     ----------
     arr : numpy.ndarray
         Input array of log-values.
-    axis : int | tuple[int, ...] | None
-        Axis or axes to reduce over. If None, reduces over the full array
-        and returns a scalar float, matching the original behavior. (default: None)
 
     Returns
     -------
-    float | numpy.ndarray
-        Logarithm of the summed exponentials, reduced over `axis`.
+    float
+        Logarithm of the summed exponentials.
     """
-    m = numpy.max(arr, axis=axis, keepdims=True)
-    result = m + numpy.log(numpy.sum(numpy.exp(arr - m), axis=axis, keepdims=True))
-    if axis is None:
-        return float(numpy.squeeze(result))
-    return numpy.squeeze(result, axis=axis)
+    m = numpy.max(arr)
+    return m + numpy.log(numpy.sum(numpy.exp(arr - m)))
 
 
 def _baum_welch(
@@ -351,18 +273,48 @@ def _baum_welch(
 
         # e-step
 
-        emit_all = _emit_log_prob_vec(mu=mu, sigma=sigma, v=numpy.asarray(velocities))
-        emit_all[~numpy.asarray(velocities_mask)] = 0.0
+        xi = numpy.zeros((M, M, T - 1))
 
-        # num[i, j, t] = alpha[t, i] + trans[i, j] + emit_all[t + 1, j] + beta[t + 1, j]
-        num = (
-            alpha[:-1].T[:, None, :] +
-            trans[:, :, None] +
-            (emit_all[1:] + beta[1:]).T[None, :, :]
-        )
+        for t in range(T - 1):
+            denom_terms = []
 
-        denom = _log_sum_exp(num, axis=(0, 1))
-        xi = numpy.exp(num - denom[None, None, :])
+            for i in range(M):
+                for j in range(M):
+                    if velocities_mask[t + 1]:
+                        denom_terms.append(
+                            alpha[t, i] +
+                            trans[i, j] +
+                            _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
+                            beta[t + 1, j],
+                        )
+                    else:
+                        denom_terms.append(
+                            alpha[t, i] +
+                            trans[i, j] +
+                            0.0 +
+                            beta[t + 1, j],
+                        )
+
+            denom = _log_sum_exp(numpy.array(denom_terms))
+
+            for i in range(M):
+                for j in range(M):
+                    if velocities_mask[t + 1]:
+                        num = (
+                            alpha[t, i] +
+                            trans[i, j] +
+                            _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
+                            beta[t + 1, j]
+                        )
+                    else:
+                        num = (
+                            alpha[t, i] +
+                            trans[i, j] +
+                            0.0 +
+                            beta[t + 1, j]
+                        )
+
+                    xi[i, j, t] = numpy.exp(num - denom)
 
         gamma = numpy.sum(xi, axis=1)
 
@@ -379,9 +331,11 @@ def _baum_welch(
 
         # laplace smoothing for division by 0 errors
         eps = 1e-12
-        trans_denom = numpy.sum(gamma_full[:, :-1], axis=1)
-        trans_numerator = numpy.sum(xi, axis=2)
-        trans[:, :] = numpy.log((trans_numerator + eps) / (trans_denom[:, None] + eps * M))
+        for i in range(M):
+            denom = numpy.sum(gamma_full[i, :-1])
+            for j in range(M):
+                numerator = numpy.sum(xi[i, j, :])
+                trans[i, j] = numpy.log((numerator + eps) / (denom + eps * M))
 
         for j in range(M):
 
@@ -491,21 +445,27 @@ def _baum_forward(
 
     alpha = numpy.full((T, M), -numpy.inf)
 
-    # precompute emission log-probabilities for the whole sequence at once, zeroing
-    # out masked (missing) observations so the per-timestep loop needs no branching.
-    emit_all = _emit_log_prob_vec(mu=mu, sigma=sigma, v=numpy.asarray(velocities, dtype=float))
-    emit_all[~numpy.asarray(velocities_mask)] = 0.0
-
     # init step
 
-    alpha[0] = init + emit_all[0]
+    for s in range(M):
+        if velocities_mask[0]:
+            alpha[0, s] = init[s] + _emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
+        else:
+            alpha[0, s] = init[s] + 0
 
     # induction step
 
     for t in range(1, T):
-        # terms[i, j] = alpha[t - 1, i] + trans[i, j]
-        terms = alpha[t - 1][:, None] + trans
-        alpha[t] = _log_sum_exp(terms, axis=0) + emit_all[t]
+        for j in range(M):
+            terms = []
+            for i in range(M):
+                terms.append(alpha[t - 1, i] + trans[i, j])
+            if velocities_mask[t]:
+                alpha[t, j] = _log_sum_exp(numpy.array(terms)) + \
+                    _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=j)
+            else:
+                alpha[t, j] = _log_sum_exp(numpy.array(terms)) + \
+                    0.0
 
     return alpha
 
@@ -571,11 +531,6 @@ def _baum_backward(
 
     beta = numpy.full((T, M), -numpy.inf)
 
-    # precompute emission log-probabilities for the whole sequence at once, zeroing
-    # out masked (missing) observations so the per-timestep loop needs no branching.
-    emit_all = _emit_log_prob_vec(mu=mu, sigma=sigma, v=numpy.asarray(velocities, dtype=float))
-    emit_all[~numpy.asarray(velocities_mask)] = 0.0
-
     # init step
 
     beta[T - 1, :] = 0
@@ -583,10 +538,23 @@ def _baum_backward(
     # induction step
 
     for t in range(T - 2, -1, -1):
-        next_term = emit_all[t + 1] + beta[t + 1]
-        # terms[i, j] = trans[i, j] + next_term[j]
-        terms = trans + next_term[None, :]
-        beta[t] = _log_sum_exp(terms, axis=1)
+        for i in range(M):
+            terms = []
+            for j in range(M):
+                if velocities_mask[t + 1]:
+                    terms.append(
+                        trans[i, j] +
+                        _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
+                        beta[t + 1, j],
+                    )
+                else:
+                    terms.append(
+                        trans[i, j] +
+                        0.0 +
+                        beta[t + 1, j],
+                    )
+
+            beta[t, i] = _log_sum_exp(numpy.array(terms))
 
     return beta
 
@@ -658,22 +626,30 @@ def _viterbi(
     prob = numpy.full((T, states), -numpy.inf)
     prev = numpy.zeros((T, states), dtype=int)
 
-    # precompute emission log-probabilities for the whole sequence at once, zeroing
-    # out masked (missing) observations so the main loop needs no branching.
-    emit_all = _emit_log_prob_vec(mu=mu, sigma=sigma, v=numpy.asarray(velocities, dtype=float))
-    emit_all[~numpy.asarray(velocities_mask)] = 0.0
-
-    prob[0] = init + emit_all[0]
+    for s in range(states):
+        if velocities_mask[0]:
+            prob[0, s] = init[s] + _emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
+        else:
+            prob[0, s] = init[s]
 
     # main loop
 
     for t in range(1, T):
-        # candidate[state2, state1] = prob[t - 1, state2] + trans[state2, state1]
-        candidate = prob[t - 1][:, None] + trans
-        best_state = numpy.argmax(candidate, axis=0)
-        best_prob = candidate[best_state, numpy.arange(states)] + emit_all[t]
-        prob[t] = best_prob
-        prev[t] = best_state
+        for state1 in range(states):
+            best_prob = -numpy.inf
+            best_state = 0
+            for state2 in range(states):
+                if velocities_mask[t]:
+                    new_prob = prob[t - 1, state2] + trans[state2, state1] + \
+                        _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=state1)
+                else:
+
+                    new_prob = prob[t - 1, state2] + trans[state2, state1] + 0
+                if new_prob > best_prob:
+                    best_prob = new_prob
+                    best_state = state2
+            prob[t, state1] = best_prob
+            prev[t, state1] = best_state
 
     # backtrack
 
@@ -1087,13 +1063,16 @@ def ihmm(
         Must have shape (T, 2). Will be converted to velocity magnitudes via Euclidean norm.
 
     timesteps : list[int] | numpy.ndarray | polars.Series | None
-        Timestamp for each velocity sample. May be integer or float valued.
-        If None, uses sequential indices (0, 1, 2, ..., T-1). (default: None)
+        Timestamp for each velocity sample. May be integer or float valued, or a
+        ``polars.Duration`` series, which is converted to milliseconds. If None, uses
+        sequential indices (0, 1, 2, ..., T-1). (default: None)
 
     minimum_duration: int
-        Minimum fixation duration. The duration should be the same unit as the timesteps array.
-        Must be an integer, so with float-valued ``timesteps`` (e.g. seconds) only
-        whole-unit thresholds can be expressed. (default: 100)
+        Minimum fixation duration. The duration is specified in the units used in ``timesteps``;
+        for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
+        None, then ``minimum_duration`` is specified in numbers of samples. Must be an integer,
+        so with float-valued ``timesteps`` only whole-unit thresholds can be expressed.
+        (default: 100)
 
     mu : list[float] | numpy.ndarray | None
         Mean velocity for each state (Gaussian emissions).
@@ -1192,7 +1171,7 @@ def ihmm(
     ------
     TypeError
         If velocities is a polars Series whose dtype is not List.
-        If timesteps is a polars Series with a non-numeric dtype.
+        If timesteps is a polars Series whose dtype is neither numeric nor Duration.
         If minimum_duration is not an integer.
     ValueError
         If velocities does not have shape (T, 2).
@@ -1231,14 +1210,14 @@ def ihmm(
 
     >>> ihmm(velocities)
     shape: (2, 4)
-    ┌──────────┬───────┬────────┬──────────┐
-    │ name     ┆ onset ┆ offset ┆ duration │
-    │ ---      ┆ ---   ┆ ---    ┆ ---      │
-    │ str      ┆ i64   ┆ i64    ┆ i64      │
-    ╞══════════╪═══════╪════════╪══════════╡
-    │ fixation ┆ 52    ┆ 247    ┆ 195      │
-    │ fixation ┆ 252   ┆ 447    ┆ 195      │
-    └──────────┴───────┴────────┴──────────┘
+    ┌──────────┬──────────────┬──────────────┬──────────────┐
+    │ name     ┆ onset        ┆ offset       ┆ duration     │
+    │ ---      ┆ ---          ┆ ---          ┆ ---          │
+    │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+    ╞══════════╪══════════════╪══════════════╪══════════════╡
+    │ fixation ┆ 52ms         ┆ 247ms        ┆ 195ms        │
+    │ fixation ┆ 252ms        ┆ 447ms        ┆ 195ms        │
+    └──────────┴──────────────┴──────────────┴──────────────┘
 
     Run fixation detection with custom HMM parameters:
 
@@ -1248,14 +1227,14 @@ def ihmm(
     ...         'trans': [[0.97360507, 0.02639493],[0.07593547, 0.92406453]]}
     >>> ihmm(velocities, hmm_parameters_dict = hmm_parameters)
     shape: (2, 4)
-    ┌──────────┬───────┬────────┬──────────┐
-    │ name     ┆ onset ┆ offset ┆ duration │
-    │ ---      ┆ ---   ┆ ---    ┆ ---      │
-    │ str      ┆ i64   ┆ i64    ┆ i64      │
-    ╞══════════╪═══════╪════════╪══════════╡
-    │ fixation ┆ 52    ┆ 247    ┆ 195      │
-    │ fixation ┆ 252   ┆ 447    ┆ 195      │
-    └──────────┴───────┴────────┴──────────┘
+    ┌──────────┬──────────────┬──────────────┬──────────────┐
+    │ name     ┆ onset        ┆ offset       ┆ duration     │
+    │ ---      ┆ ---          ┆ ---          ┆ ---          │
+    │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+    ╞══════════╪══════════════╪══════════════╪══════════════╡
+    │ fixation ┆ 52ms         ┆ 247ms        ┆ 195ms        │
+    │ fixation ┆ 252ms        ┆ 447ms        ┆ 195ms        │
+    └──────────┴──────────────┴──────────────┴──────────────┘
 
     We can also apply the detection on a :py:class:`~pymovements.Gaze` object.
 
@@ -1265,51 +1244,51 @@ def ihmm(
     ...         time=np.arange(len(velocities)),)
     >>> gaze
     shape: (500, 2)
-    ┌──────┬────────────┐
-    │ time ┆ velocity   │
-    │ ---  ┆ ---        │
-    │ i64  ┆ list[f64]  │
-    ╞══════╪════════════╡
-    │ 0    ┆ [0.0, 0.0] │
-    │ 1    ┆ [0.0, 0.0] │
-    │ 2    ┆ [0.0, 0.0] │
-    │ 3    ┆ [0.0, 0.0] │
-    │ 4    ┆ [0.0, 0.0] │
-    │ …    ┆ …          │
-    │ 495  ┆ [0.0, 0.0] │
-    │ 496  ┆ [0.0, 0.0] │
-    │ 497  ┆ [0.0, 0.0] │
-    │ 498  ┆ [0.0, 0.0] │
-    │ 499  ┆ [0.0, 0.0] │
-    └──────┴────────────┘
+    ┌──────────────┬────────────┐
+    │ time         ┆ velocity   │
+    │ ---          ┆ ---        │
+    │ duration[μs] ┆ list[f64]  │
+    ╞══════════════╪════════════╡
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 1ms          ┆ [0.0, 0.0] │
+    │ 2ms          ┆ [0.0, 0.0] │
+    │ 3ms          ┆ [0.0, 0.0] │
+    │ 4ms          ┆ [0.0, 0.0] │
+    │ …            ┆ …          │
+    │ 495ms        ┆ [0.0, 0.0] │
+    │ 496ms        ┆ [0.0, 0.0] │
+    │ 497ms        ┆ [0.0, 0.0] │
+    │ 498ms        ┆ [0.0, 0.0] │
+    │ 499ms        ┆ [0.0, 0.0] │
+    └──────────────┴────────────┘
 
     Run fixation detection by using the :py:meth:`~pymovements.Gaze.detect` method.
 
     >>> gaze.detect('ihmm')
     >>> gaze.events
     shape: (2, 4)
-    ┌──────────┬───────┬────────┬──────────┐
-    │ name     ┆ onset ┆ offset ┆ duration │
-    │ ---      ┆ ---   ┆ ---    ┆ ---      │
-    │ str      ┆ i64   ┆ i64    ┆ i64      │
-    ╞══════════╪═══════╪════════╪══════════╡
-    │ fixation ┆ 52    ┆ 247    ┆ 195      │
-    │ fixation ┆ 252   ┆ 447    ┆ 195      │
-    └──────────┴───────┴────────┴──────────┘
+    ┌──────────┬──────────────┬──────────────┬──────────────┐
+    │ name     ┆ onset        ┆ offset       ┆ duration     │
+    │ ---      ┆ ---          ┆ ---          ┆ ---          │
+    │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+    ╞══════════╪══════════════╪══════════════╪══════════════╡
+    │ fixation ┆ 52ms         ┆ 247ms        ┆ 195ms        │
+    │ fixation ┆ 252ms        ┆ 447ms        ┆ 195ms        │
+    └──────────┴──────────────┴──────────────┴──────────────┘
 
     Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
 
     >>> gaze.detect('ihmm', reestimation=True, name='fixation_ihmm')
     >>> gaze.events.filter_by_name('fixation_ihmm')
     shape: (2, 4)
-    ┌───────────────┬───────┬────────┬──────────┐
-    │ name          ┆ onset ┆ offset ┆ duration │
-    │ ---           ┆ ---   ┆ ---    ┆ ---      │
-    │ str           ┆ i64   ┆ i64    ┆ i64      │
-    ╞═══════════════╪═══════╪════════╪══════════╡
-    │ fixation_ihmm ┆ 52    ┆ 247    ┆ 195      │
-    │ fixation_ihmm ┆ 252   ┆ 447    ┆ 195      │
-    └───────────────┴───────┴────────┴──────────┘
+    ┌───────────────┬──────────────┬──────────────┬──────────────┐
+    │ name          ┆ onset        ┆ offset       ┆ duration     │
+    │ ---           ┆ ---          ┆ ---          ┆ ---          │
+    │ str           ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+    ╞═══════════════╪══════════════╪══════════════╪══════════════╡
+    │ fixation_ihmm ┆ 52ms         ┆ 247ms        ┆ 195ms        │
+    │ fixation_ihmm ┆ 252ms        ┆ 447ms        ┆ 195ms        │
+    └───────────────┴──────────────┴──────────────┴──────────────┘
     """
     if isinstance(velocities, polars.Series):
         if not isinstance(velocities.dtype, polars.List):
@@ -1330,11 +1309,8 @@ def ihmm(
     if transition_probabilities is not None:
         transition_probabilities = numpy.array(transition_probabilities)
 
-    numeric_dtypes = polars.datatypes.FloatType, polars.datatypes.IntegerType
     if isinstance(timesteps, polars.Series):
-        if not isinstance(timesteps.dtype, numeric_dtypes):
-            raise TypeError(f'timesteps dtype must be float or int but is {timesteps.dtype}')
-        timesteps = timesteps.to_numpy()
+        timesteps = timesteps_to_numpy(timesteps)
     elif timesteps is not None:
         timesteps = numpy.array(timesteps)
     else:

@@ -24,6 +24,7 @@ import numpy
 import polars
 
 from pymovements._utils import _checks
+from pymovements._utils._time import timesteps_to_numpy
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.transforms.numpy import consecutive
@@ -101,10 +102,7 @@ def out_of_screen(
         )
 
     if isinstance(timesteps, polars.Series):
-        numeric_dtypes = polars.datatypes.FloatType, polars.datatypes.IntegerType
-        if not isinstance(timesteps.dtype, numeric_dtypes):
-            raise TypeError(f'timesteps dtype must be float or int but is {timesteps.dtype}')
-        timesteps = timesteps.to_numpy()
+        timesteps = timesteps_to_numpy(timesteps)
     elif timesteps is not None:
         timesteps = numpy.array(timesteps)
     else:

@@ -29,12 +29,11 @@ from matplotlib.collections import Collection
 from sklearn.metrics import r2_score
 
 from pymovements.events.events import Events
-from pymovements.events.frame import EventDataFrame
 from pymovements.plotting._matplotlib import prepare_figure
 
 
 def main_sequence_plot(
-        events: Events | EventDataFrame | None = None,
+        events: Events | None = None,
         *,
         marker: str = 'o',
         marker_size: float = 25,
@@ -54,7 +53,7 @@ def main_sequence_plot(
 
     Parameters
     ----------
-    events: Events | EventDataFrame | None
+    events: Events | None
         It must contain columns "peak_velocity" and "amplitude".
     marker: str
         Marker symbol. Possible values defined by matplotlib.markers. (default: 'o')

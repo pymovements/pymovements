@@ -84,6 +84,17 @@ If you have any questions, please [open an issue](
 https://github.com/pymovements/pymovements/issues/new/choose) or write to us at
 [pymovements@python.org](mailto:pymovements@python.org)
 
+## Use of Generative AI
+
+Generative AI tools are used, under human direction, in the development and maintenance of
+pymovements. Anthropic's Claude, JetBrains' Junie, and GitHub Copilot assist some contributors
+and maintainers with tasks such as code generation, drafting tests and documentation, and code
+review.
+
+Every change to the codebase requires an approving review from at least one maintainer before
+merging, and the maintainer team takes responsibility for the correctness and quality of all code
+and documentation in this package.
+
 ## Citing
 
 If you use pymovements for a scientific publication, we would appreciate citations to the published
@@ -105,7 +116,7 @@ software and the following paper:
       url       = {https://doi.org/10.5281/zenodo.19486286},
     }
   ```
-- [pymovements: A Python Package for Processing Eye Movement Data <pymovementsPaper](https://doi.org/10.1145/3588015.3590134)
+- [pymovements: A Python Package for Processing Eye Movement Data](https://doi.org/10.1145/3588015.3590134)
 
   ```bibtex
     @inproceedings{pymovementsPaper,

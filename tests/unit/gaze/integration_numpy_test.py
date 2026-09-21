@@ -105,7 +105,7 @@ def test_from_numpy_with_schema():
 
     expected = pl.DataFrame(
         {
-            'time': [101, 102, 103, 104],
+            'time': [101000, 102000, 103000, 104000],
             'distance': [100, 100, 100, 100],
             'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
             'position': [[9, 5], [8, 4], [7, 3], [6, 2]],
@@ -113,7 +113,7 @@ def test_from_numpy_with_schema():
             'acceleration': [[2, 6], [3, 7], [4, 8], [5, 9]],
         },
         schema={
-            'time': pl.Int64,
+            'time': pl.Duration('us'),
             'distance': pl.Float64,
             'pixel': pl.List(pl.Float64),
             'position': pl.List(pl.Float64),
@@ -161,12 +161,12 @@ def test_from_numpy_with_trial_id():
     expected = pl.DataFrame(
         {
             'trial_id': [1, 1, 2, 2],
-            'time': [101, 102, 103, 104],
+            'time': [101000, 102000, 103000, 104000],
             'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
         },
         schema={
             'trial_id': pl.Float64,
-            'time': pl.Int64,
+            'time': pl.Duration('us'),
             'pixel': pl.List(pl.Float64),
         },
     )
@@ -207,7 +207,7 @@ def test_from_numpy_explicit_columns():
 
     expected = pl.DataFrame(
         {
-            'time': [101, 102, 103, 104],
+            'time': [101000, 102000, 103000, 104000],
             'distance': [100, 100, 100, 100],
             'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
             'position': [[9, 5], [8, 4], [7, 3], [6, 2]],
@@ -215,7 +215,7 @@ def test_from_numpy_explicit_columns():
             'acceleration': [[2, 6], [3, 7], [4, 8], [5, 9]],
         },
         schema={
-            'time': pl.Int64,
+            'time': pl.Duration('us'),
             'distance': pl.Float64,
             'pixel': pl.List(pl.Int64),
             'position': pl.List(pl.Float64),
@@ -226,6 +226,51 @@ def test_from_numpy_explicit_columns():
 
     assert_frame_equal(gaze.samples, expected)
     assert gaze.n_components == 2
+
+
+@pytest.mark.parametrize('argument', ['time', 'trial', 'distance'])
+@pytest.mark.parametrize(
+    'shape',
+    [
+        pytest.param((4,), id='one_dimension'),
+        pytest.param((1, 4), id='leading_singleton'),
+        pytest.param((4, 1), id='trailing_singleton'),
+        pytest.param((1, 4, 1), id='surrounding_singletons'),
+        pytest.param((4, 1, 1), id='multiple_trailing_singletons'),
+    ],
+)
+def test_from_numpy_flattens_single_column_array_singleton_dimensions(argument, shape):
+    array = np.array([101, 102, 103, 104], dtype=np.int64).reshape(shape)
+    pixel = np.array([[0, 1, 2, 3], [4, 5, 6, 7]], dtype=np.int64)
+
+    gaze = from_numpy(pixel=pixel, **{argument: array})
+
+    result = gaze.samples[argument]
+    if argument == 'time':
+        result = result.dt.total_milliseconds()
+    assert result.to_list() == [101, 102, 103, 104]
+    assert gaze.samples.height == 4
+
+
+@pytest.mark.parametrize('argument', ['time', 'trial', 'distance'])
+@pytest.mark.parametrize(
+    'shape',
+    [
+        pytest.param((), id='zero_dimensions'),
+        pytest.param((2, 4), id='two_dimensions'),
+        pytest.param((2, 1, 4), id='two_dimensions_with_singleton'),
+    ],
+)
+def test_from_numpy_single_column_array_unsupported_shape_raises(argument, shape):
+    array = np.zeros(shape)
+
+    with pytest.raises(ValueError) as error:
+        from_numpy(**{argument: array})
+
+    assert str(error.value) == (
+        f'{argument} array must be at least one-dimensional and have at most one non-singleton '
+        f'dimension, but got shape {shape}'
+    )
 
 
 def test_from_numpy_explicit_columns_with_trial():
@@ -242,12 +287,12 @@ def test_from_numpy_explicit_columns_with_trial():
     expected = pl.DataFrame(
         {
             'trial': [1, 1, 2, 2],
-            'time': [101, 102, 103, 104],
+            'time': [101000, 102000, 103000, 104000],
             'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
         },
         schema={
             'trial': pl.Int64,
-            'time': pl.Int64,
+            'time': pl.Duration('us'),
             'pixel': pl.List(pl.Int64),
         },
     )
@@ -278,12 +323,12 @@ def test_from_numpy_explicit_columns_with_trial():
             },
             pl.DataFrame(
                 {
-                    'column_0': [1, 2], 'time': [101, 102], 'distance': [100, 100],
+                    'column_0': [1, 2], 'time': [101000, 102000], 'distance': [100, 100],
                     'pixel': [[0, 4], [1, 5]], 'position': [[9, 5], [8, 4]],
                     'velocity': [[1, 5], [2, 6]], 'acceleration': [[2, 6], [3, 7]],
                 },
                 schema={
-                    'column_0': pl.Float64, 'time': pl.Int64, 'distance': pl.Float64,
+                    'column_0': pl.Float64, 'time': pl.Duration('us'), 'distance': pl.Float64,
                     'pixel': pl.List(pl.Float64), 'position': pl.List(pl.Float64),
                     'velocity': pl.List(pl.Float64), 'acceleration': pl.List(pl.Float64),
                 },
@@ -310,12 +355,12 @@ def test_from_numpy_explicit_columns_with_trial():
             },
             pl.DataFrame(
                 {
-                    'trial_id': [1, 2], 'time': [101, 102], 'distance': [100, 100],
+                    'trial_id': [1, 2], 'time': [101000, 102000], 'distance': [100, 100],
                     'pixel': [[0, 4], [1, 5]], 'position': [[9, 5], [8, 4]],
                     'velocity': [[1, 5], [2, 6]], 'acceleration': [[2, 6], [3, 7]],
                 },
                 schema={
-                    'trial_id': pl.Float64, 'time': pl.Int64, 'distance': pl.Float64,
+                    'trial_id': pl.Float64, 'time': pl.Duration('us'), 'distance': pl.Float64,
                     'pixel': pl.List(pl.Float64), 'position': pl.List(pl.Float64),
                     'velocity': pl.List(pl.Float64), 'acceleration': pl.List(pl.Float64),
                 },
@@ -342,12 +387,12 @@ def test_from_numpy_explicit_columns_with_trial():
             },
             pl.DataFrame(
                 {
-                    'trial_id': [1, 2], 'time': [101, 102], 'distance': [100, 100],
+                    'trial_id': [1, 2], 'time': [101000, 102000], 'distance': [100, 100],
                     'pixel': [[0, 4], [1, 5]], 'position': [[9, 5], [8, 4]],
                     'velocity': [[1, 5], [2, 6]], 'acceleration': [[2, 6], [3, 7]],
                 },
                 schema={
-                    'trial_id': pl.Float64, 'time': pl.Int64, 'distance': pl.Float64,
+                    'trial_id': pl.Float64, 'time': pl.Duration('us'), 'distance': pl.Float64,
                     'pixel': pl.List(pl.Float64), 'position': pl.List(pl.Float64),
                     'velocity': pl.List(pl.Float64), 'acceleration': pl.List(pl.Float64),
                 },
@@ -374,13 +419,13 @@ def test_from_numpy_explicit_columns_with_trial():
             },
             pl.DataFrame(
                 {
-                    'trial_id_1': [0, 1], 'trial_id_2': [1, 2], 'time': [101, 102],
+                    'trial_id_1': [0, 1], 'trial_id_2': [1, 2], 'time': [101000, 102000],
                     'distance': [100, 100], 'pixel': [[0, 4], [1, 5]],
                     'position': [[9, 5], [8, 4]], 'velocity': [[1, 5], [2, 6]],
                     'acceleration': [[2, 6], [3, 7]],
                 },
                 schema={
-                    'trial_id_1': pl.Float64, 'trial_id_2': pl.Float64, 'time': pl.Int64,
+                    'trial_id_1': pl.Float64, 'trial_id_2': pl.Float64, 'time': pl.Duration('us'),
                     'distance': pl.Float64, 'pixel': pl.List(pl.Float64),
                     'position': pl.List(pl.Float64), 'velocity': pl.List(pl.Float64),
                     'acceleration': pl.List(pl.Float64),
@@ -408,12 +453,12 @@ def test_from_numpy_explicit_columns_with_trial():
             },
             pl.DataFrame(
                 {
-                    'trial_id': [1, 2], 'time': [101, 102], 'distance': [100, 100],
+                    'trial_id': [1, 2], 'time': [101000, 102000], 'distance': [100, 100],
                     'pixel': [[0, 4], [1, 5]], 'position': [[9, 5], [8, 4]],
                     'velocity': [[1, 5], [2, 6]], 'acceleration': [[2, 6], [3, 7]],
                 },
                 schema={
-                    'trial_id': pl.Float64, 'time': pl.Int64, 'distance': pl.Float64,
+                    'trial_id': pl.Float64, 'time': pl.Duration('us'), 'distance': pl.Float64,
                     'pixel': pl.List(pl.Float64), 'position': pl.List(pl.Float64),
                     'velocity': pl.List(pl.Float64), 'acceleration': pl.List(pl.Float64),
                 },
@@ -493,7 +538,7 @@ def test_from_numpy_negative_index():
     # -1 should be col2
     gaze = from_numpy(samples=array, schema=schema, time_column=-1, orient='col')
     assert 'time' in gaze.samples.columns
-    assert gaze.samples['time'][0] == 30
+    assert gaze.samples['time'].dt.total_milliseconds()[0] == 30
 
 
 @pytest.mark.parametrize(
@@ -601,43 +646,3 @@ def test_from_numpy_events(events):
     assert_frame_equal(gaze.events.frame, expected_events)
     # We don't want the events point to the same reference.
     assert gaze.events.frame is not expected_events
-
-
-@pytest.mark.filterwarnings('ignore:Gaze contains samples but no.*:UserWarning')
-def test_from_numpy_data_argument_is_deprecated():
-    array = np.array(
-        [
-            [0, 1, 2, 3],
-            [0, 1, 2, 3],
-            [0, 1, 2, 3],
-            [0, 1, 2, 3],
-        ],
-    )
-    schema = ['x_pix', 'y_pix', 'x_pos', 'y_pos']
-
-    with pytest.warns(DeprecationWarning):
-        gaze = from_numpy(data=array, schema=schema)
-
-    assert gaze.samples.shape == (4, 4)
-
-
-def test_from_numpy_data_argument_is_removed(assert_deprecation_is_removed):
-    array = np.array(
-        [
-            [0, 1, 2, 3],
-            [0, 1, 2, 3],
-            [0, 1, 2, 3],
-            [0, 1, 2, 3],
-        ],
-    )
-    schema = ['x_pix', 'y_pix', 'x_pos', 'y_pos']
-
-    with pytest.raises(DeprecationWarning) as info:
-        from_numpy(data=array, schema=schema)
-
-    assert_deprecation_is_removed(
-        function_name='from_numpy() keyword argument "data"',
-        warning_message=info.value.args[0],
-        scheduled_version='0.28.0',
-
-    )

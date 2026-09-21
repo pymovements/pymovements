@@ -108,32 +108,3 @@ def get_pattern_keys(compiled_patterns: list[dict[str, Any]], pattern_key: str) 
             keys.add(key)
 
     return keys
-
-
-def _calculate_data_loss_ratio(
-        num_expected_samples: int,
-        num_valid_samples: int,
-        num_blink_samples: int,
-) -> tuple[float, float]:
-    """Calculate the total data loss and data loss due to blinks.
-
-    Parameters
-    ----------
-    num_expected_samples: int
-        Number of total expected samples.
-    num_valid_samples: int
-        Number of valid samples (excluding blink samples).
-    num_blink_samples: int
-        Number of blink samples.
-
-    Returns
-    -------
-    tuple[float, float]
-        Data loss ratio and blink loss ratio.
-    """
-    if num_expected_samples == 0:
-        return 0.0, 0.0
-
-    total_data_loss = (num_expected_samples - num_valid_samples) / num_expected_samples
-    blink_data_loss = num_blink_samples / num_expected_samples
-    return total_data_loss, blink_data_loss

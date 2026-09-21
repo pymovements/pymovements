@@ -19,9 +19,10 @@
 # SOFTWARE.
 """Benchmark the I-HMM event detection algorithm.
 
-Baum-Welch reestimation (the default reestimation_max_iters=1000) is the
-costliest path, since it repeats the forward/backward passes every iteration.
-These benchmarks track that cost to guard against future regressions.
+The forward/backward/Viterbi/Baum-Welch passes use per-state and per-timestep
+Python loops, which makes Baum-Welch reestimation (the default
+reestimation_max_iters=1000) slow on realistic sample counts. These benchmarks
+track that cost so a future vectorization can be measured against it.
 """
 import numpy as np
 
