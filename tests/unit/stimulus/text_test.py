@@ -22,6 +22,7 @@ from copy import deepcopy
 from dataclasses import replace
 
 import polars as pl
+import matplotlib.pyplot as plt
 import pytest
 from polars.testing import assert_frame_equal
 
@@ -833,3 +834,411 @@ def test_text_stimulus_vertical_lr_writing_mode_and_line_order(make_example_file
     ]
     assert line_indices == [0, 1, 2]
     assert line_positions['x'].to_list() == [400.0, 460.0, 520.0]
+
+
+WIDTH_HEIGHT_COLUMNS = {'width_column': 'width', 'height_column': 'height'}
+END_XY_COLUMNS = {'end_x_column': 'x_max', 'end_y_column': 'y_max'}
+
+
+@pytest.fixture(name='sample_page_trial_aoi_dataframe')
+def fixture_sample_page_trial_aoi_dataframe():
+    """Create a sample AOI dataframe with page and trial columns for testing."""
+    return pl.DataFrame({
+        'aoi': ['a', 'b', 'c', 'd'],
+        'x_min': [0, 100, 0, 100],
+        'y_min': [0, 0, 50, 50],
+        'width': [100, 100, 100, 100],
+        'height': [50, 50, 50, 50],
+        'x_max': [100, 200, 100, 200],
+        'y_max': [50, 50, 100, 100],
+        'page': [1, 1, 2, 2],
+        'trial': [1, 2, 1, 2],
+    })
+
+
+@pytest.fixture(name='close_figures', autouse=True)
+def fixture_close_figures():
+    """Close all matplotlib figures after each test."""
+    yield
+    plt.close('all')
+
+
+EXPECTED_BOXES_DF = pl.DataFrame(
+    {
+        'text': ['word1', 'word2', 'word3'],
+        'start_x': [0.0, 100.0, 200.0],
+        'start_y': [0.0, 0.0, 0.0],
+        'width': [100.0, 100.0, 100.0],
+        'height': [50.0, 50.0, 50.0],
+    },
+)
+
+
+@pytest.mark.parametrize(
+    'geometry_columns',
+    [
+        pytest.param(WIDTH_HEIGHT_COLUMNS, id='width_height'),
+        pytest.param(END_XY_COLUMNS, id='end_xy'),
+    ],
+)
+def test_text_stimulus_resolve_boxes_input_forms(sample_aoi_dataframe, geometry_columns):
+    aois = sample_aoi_dataframe.with_columns(
+        x_max=pl.col('x_min') + pl.col('width'),
+        y_max=pl.col('y_min') + pl.col('height'),
+    )
+    stimulus = TextStimulus(
+        aois=aois,
+        aoi_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        **geometry_columns,
+    )
+
+    boxes = stimulus.resolve_boxes()
+
+    assert_frame_equal(boxes, EXPECTED_BOXES_DF)
+
+
+@pytest.mark.parametrize(
+    ('page_column', 'trial_column', 'page', 'trial', 'expected_text'),
+    [
+        pytest.param('page', None, 1, None, ['a', 'b'], id='page_only'),
+        pytest.param(None, 'trial', None, 1, ['a', 'c'], id='trial_only'),
+        pytest.param('page', 'trial', 1, 1, ['a'], id='page_and_trial_first'),
+        pytest.param('page', 'trial', 2, 2, ['d'], id='page_and_trial_last'),
+    ],
+)
+def test_text_stimulus_resolve_boxes_selection(
+    sample_page_trial_aoi_dataframe,
+    page_column,
+    trial_column,
+    page,
+    trial,
+    expected_text,
+):
+    stimulus = TextStimulus(
+        aois=sample_page_trial_aoi_dataframe,
+        aoi_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        **WIDTH_HEIGHT_COLUMNS,
+        page_column=page_column,
+        trial_column=trial_column,
+    )
+
+    boxes = stimulus.resolve_boxes(page=page, trial=trial)
+
+    assert boxes['text'].to_list() == expected_text
+
+
+@pytest.mark.parametrize(
+    ('stimulus_kwargs', 'resolve_kwargs', 'message'),
+    [
+        pytest.param(
+            WIDTH_HEIGHT_COLUMNS,
+            {'page': 1},
+            'page=1 was provided, but no page_column is configured',
+            id='page_without_page_column',
+        ),
+        pytest.param(
+            WIDTH_HEIGHT_COLUMNS,
+            {'trial': 1},
+            'trial=1 was provided, but no trial_column is configured',
+            id='trial_without_trial_column',
+        ),
+        pytest.param(
+            {**WIDTH_HEIGHT_COLUMNS, 'page_column': 'page'},
+            {},
+            "page must be provided because page_column 'page' is configured",
+            id='page_column_without_page',
+        ),
+        pytest.param(
+            {**WIDTH_HEIGHT_COLUMNS, 'trial_column': 'trial'},
+            {},
+            "trial must be provided because trial_column 'trial' is configured",
+            id='trial_column_without_trial',
+        ),
+        pytest.param(
+            {**WIDTH_HEIGHT_COLUMNS, 'page_column': 'page'},
+            {'page': 99},
+            'No AOIs found for page=99',
+            id='page_not_found',
+        ),
+        pytest.param(
+            {**WIDTH_HEIGHT_COLUMNS, 'trial_column': 'trial'},
+            {'trial': 99},
+            'No AOIs found for trial=99',
+            id='trial_not_found',
+        ),
+        pytest.param(
+            {'width_column': 'width'},
+            {},
+            'Both width_column and height_column must be configured together',
+            id='width_without_height',
+        ),
+        pytest.param(
+            {'height_column': 'height'},
+            {},
+            'Both width_column and height_column must be configured together',
+            id='height_without_width',
+        ),
+        pytest.param(
+            {'end_x_column': 'x_max'},
+            {},
+            'Both end_x_column and end_y_column must be configured together',
+            id='end_x_without_end_y',
+        ),
+        pytest.param(
+            {'end_y_column': 'y_max'},
+            {},
+            'Both end_x_column and end_y_column must be configured together',
+            id='end_y_without_end_x',
+        ),
+        pytest.param(
+            {},
+            {},
+            'AOI geometry cannot be resolved',
+            id='no_geometry_columns',
+        ),
+    ],
+)
+def test_text_stimulus_resolve_boxes_raises(
+    sample_page_trial_aoi_dataframe,
+    stimulus_kwargs,
+    resolve_kwargs,
+    message,
+):
+    stimulus = TextStimulus(
+        aois=sample_page_trial_aoi_dataframe,
+        aoi_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        **stimulus_kwargs,
+    )
+
+    with pytest.raises(ValueError, match=message):
+        stimulus.resolve_boxes(**resolve_kwargs)
+
+
+@pytest.mark.parametrize(
+    ('stimulus_kwargs', 'columns', 'message'),
+    [
+        pytest.param(
+            WIDTH_HEIGHT_COLUMNS,
+            {
+                'x_min': [0.0, 100.0], 'y_min': [0.0, 0.0],
+                'width': [100.0, None], 'height': [50.0, 50.0],
+            },
+            'Skipping defective AOI row',
+            id='width_height_none',
+        ),
+        pytest.param(
+            WIDTH_HEIGHT_COLUMNS,
+            {
+                'x_min': [0.0, 100.0], 'y_min': [0.0, 0.0],
+                'width': [100.0, 100.0], 'height': [50.0, float('nan')],
+            },
+            'Skipping defective AOI row',
+            id='width_height_nan',
+        ),
+        pytest.param(
+            END_XY_COLUMNS,
+            {
+                'x_min': [0.0, 100.0], 'y_min': [0.0, 0.0],
+                'x_max': [100.0, None], 'y_max': [50.0, 50.0],
+            },
+            'Skipping defective AOI row',
+            id='end_xy_none',
+        ),
+        pytest.param(
+            END_XY_COLUMNS,
+            {
+                'x_min': [0.0, 100.0], 'y_min': [0.0, 0.0],
+                'x_max': [100.0, 200.0], 'y_max': [50.0, float('nan')],
+            },
+            'Skipping defective AOI row',
+            id='end_xy_nan',
+        ),
+        pytest.param(
+            WIDTH_HEIGHT_COLUMNS,
+            {
+                'x_min': [0.0, 100.0], 'y_min': [0.0, 0.0],
+                'width': [100.0, 0.0], 'height': [50.0, 50.0],
+            },
+            'Skipping AOI with non-positive extent',
+            id='width_height_zero_width',
+        ),
+        pytest.param(
+            WIDTH_HEIGHT_COLUMNS,
+            {
+                'x_min': [0.0, 100.0], 'y_min': [0.0, 0.0],
+                'width': [100.0, 100.0], 'height': [50.0, -50.0],
+            },
+            'Skipping AOI with non-positive extent',
+            id='width_height_negative_height',
+        ),
+        pytest.param(
+            END_XY_COLUMNS,
+            {
+                'x_min': [0.0, 100.0], 'y_min': [0.0, 0.0],
+                'x_max': [100.0, 100.0], 'y_max': [50.0, 50.0],
+            },
+            'Skipping AOI with non-positive extent',
+            id='end_xy_zero_width',
+        ),
+        pytest.param(
+            END_XY_COLUMNS,
+            {
+                'x_min': [0.0, 100.0], 'y_min': [0.0, 0.0],
+                'x_max': [100.0, 200.0], 'y_max': [50.0, -10.0],
+            },
+            'Skipping AOI with non-positive extent',
+            id='end_xy_negative_height',
+        ),
+    ],
+)
+def test_text_stimulus_resolve_boxes_warns_and_skips(stimulus_kwargs, columns, message):
+    stimulus = TextStimulus(
+        aois=pl.DataFrame({'aoi': ['good', 'bad'], **columns}),
+        aoi_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        **stimulus_kwargs,
+    )
+
+    with pytest.warns(UserWarning, match=message):
+        boxes = stimulus.resolve_boxes()
+
+    assert boxes['text'].to_list() == ['good']
+
+
+@pytest.mark.parametrize(
+    ('page_column', 'page', 'expected_boxes'),
+    [
+        pytest.param(
+            None,
+            None,
+            [
+                (0.0, 0.0, 100.0, 50.0),
+                (100.0, 0.0, 100.0, 50.0),
+                (200.0, 0.0, 100.0, 50.0),
+            ],
+            id='all_boxes',
+        ),
+        pytest.param(
+            'page',
+            2,
+            [(200.0, 0.0, 100.0, 50.0)],
+            id='selected_page',
+        ),
+    ],
+)
+def test_text_stimulus_plot_box_placement(sample_aoi_dataframe, page_column, page, expected_boxes):
+    stimulus = TextStimulus(
+        aois=sample_aoi_dataframe,
+        aoi_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        **WIDTH_HEIGHT_COLUMNS,
+        page_column=page_column,
+    )
+
+    _, ax = stimulus.plot(page=page)
+
+    boxes = [(*patch.get_xy(), patch.get_width(), patch.get_height()) for patch in ax.patches]
+    assert boxes == expected_boxes
+
+
+def test_text_stimulus_plot_labels_centered_by_default(sample_aoi_dataframe):
+    stimulus = TextStimulus(
+        aois=sample_aoi_dataframe,
+        aoi_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        **WIDTH_HEIGHT_COLUMNS,
+    )
+
+    _, ax = stimulus.plot()
+
+    assert [text.get_text() for text in ax.texts] == ['word1', 'word2', 'word3']
+    assert [text.get_position() for text in ax.texts] == [
+        (50.0, 25.0), (150.0, 25.0), (250.0, 25.0),
+    ]
+    assert all(text.get_ha() == 'center' for text in ax.texts)
+    assert all(text.get_va() == 'center' for text in ax.texts)
+
+
+def test_text_stimulus_plot_text_kwargs_override_defaults(sample_aoi_dataframe):
+    stimulus = TextStimulus(
+        aois=sample_aoi_dataframe,
+        aoi_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        **WIDTH_HEIGHT_COLUMNS,
+    )
+
+    _, ax = stimulus.plot(text_kwargs={'ha': 'left', 'va': 'bottom', 'fontsize': 20})
+
+    assert len(ax.texts) == 3
+    assert all(text.get_ha() == 'left' for text in ax.texts)
+    assert all(text.get_va() == 'bottom' for text in ax.texts)
+    assert all(text.get_fontsize() == 20 for text in ax.texts)
+
+
+def test_text_stimulus_plot_show_boxes_false_draws_labels_only(sample_aoi_dataframe):
+    stimulus = TextStimulus(
+        aois=sample_aoi_dataframe,
+        aoi_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        **WIDTH_HEIGHT_COLUMNS,
+    )
+
+    _, ax = stimulus.plot(show_boxes=False)
+
+    assert len(ax.patches) == 0
+    assert [text.get_text() for text in ax.texts] == ['word1', 'word2', 'word3']
+
+
+def test_text_stimulus_plot_empty_selection_raises(sample_aoi_dataframe):
+    stimulus = TextStimulus(
+        aois=sample_aoi_dataframe,
+        aoi_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        **WIDTH_HEIGHT_COLUMNS,
+        page_column='page',
+    )
+
+    with pytest.raises(ValueError, match='No AOIs found for page=99'):
+        stimulus.plot(page=99)
+
+
+@pytest.mark.parametrize(
+    'writing_system',
+    [
+        pytest.param(HORIZONTAL_RL, id='horizontal_rtl'),
+        pytest.param(VERTICAL_RL, id='vertical_rl'),
+        pytest.param(VERTICAL_LR, id='vertical_lr'),
+        pytest.param(
+            WritingSystem('left-to-right', axis='vertical', lining='right-to-left'),
+            id='vertical_axis_ltr_directionality',
+        ),
+    ],
+)
+def test_text_stimulus_plot_unsupported_writing_system_raises(
+    sample_aoi_dataframe,
+    writing_system,
+):
+    stimulus = TextStimulus(
+        aois=sample_aoi_dataframe,
+        aoi_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        **WIDTH_HEIGHT_COLUMNS,
+        writing_system=writing_system,
+    )
+
+    message = 'currently supports only horizontal left-to-right writing systems'
+    with pytest.raises(NotImplementedError, match=message):
+        stimulus.plot()
