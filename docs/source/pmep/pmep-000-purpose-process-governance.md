@@ -38,9 +38,6 @@ Everything else, including breaking changes to individual functions or classes, 
 a pull request, a changelog entry, and the usual five-minor-release deprecation window.
 When in doubt, open an issue. It graduates to a PMEP if the discussion shows it needs one.
 
-Work already in review or on an agreed issue when this process is adopted is grandfathered:
-no PMEP is required for it retroactively.
-
 ## Where they live
 
 `docs/source/pmep/pmep-NNN-short-title.md`, opened as a pull request and rendered in the
