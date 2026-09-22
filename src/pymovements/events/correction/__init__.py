@@ -47,8 +47,8 @@ from pymovements.events.correction.cluster import cluster
 from pymovements.events.correction.compare import compare
 from pymovements.events.correction.fixation_correction import correct_fixation_locations
 from pymovements.events.correction.fixation_correction import correct_fixations
-from pymovements.events.correction.fixation_correction import run_fixation_correction
 from pymovements.events.correction.fixation_correction import FixationCorrection
+from pymovements.events.correction.fixation_correction import run_fixation_correction
 from pymovements.events.correction.merge import merge
 from pymovements.events.correction.regress import regress
 from pymovements.events.correction.segment import segment
