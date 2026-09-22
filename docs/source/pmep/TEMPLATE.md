@@ -1,7 +1,8 @@
 # PMEP NNN: Short title
 
-<!-- Copy to docs/source/pmep/pmep-NNN-short-title.md. The number is assigned
-     when the pull request opens (next free number). -->
+<!-- Copy to docs/source/pmep/pmep-NNN-short-title.md. The number (next free) is
+     assigned once the authorship requirement is met: at least one active core
+     contributor among the authors. Until then, keep the NNN placeholder. -->
 
 | | |
 |---|---|
@@ -13,7 +14,7 @@
 
 ## TL;DR
 
-<!-- Mandatory before voting opens. At most 150 words or 5 bullets. What changes,
+<!-- Mandatory before voting opens. At most 150 words. What changes,
      in a form someone can read in under a minute and vote on. A summary of the
      decision, not of the document. -->
 
@@ -53,7 +54,7 @@
 ## Backwards compatibility
 
 <!-- What breaks, the deprecation path, the version the deprecation lands in, and
-     the computed removal version under the project's deprecation window
+     the expected removal version under the project's deprecation window
      (currently five minor releases, and any window still open at 1.0 closes
      there). -->
 

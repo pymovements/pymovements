@@ -4,8 +4,9 @@
 |---|---|
 | **Status** | Accepted |
 | **Type** | Process |
-| **Author** | Daniel Krakowczyk |
+| **Author** | Daniel G. Krakowczyk |
 | **Created** | 2026-09-08 |
+| **Supersedes** | none |
 
 ## TL;DR
 
@@ -13,7 +14,7 @@ Changes that many other things depend on (the data model, operation contracts, o
 formats, this process) require a PMEP: a design document in `docs/source/pmep/`,
 proposed and decided in a pull request, with at least one active core contributor among its
 authors. Acceptance needs a window of 14 days, 2 approvals
-from active core contributors other than the author, and no unresolved objection. The lead
+from active core contributors other than the author(s), and no unresolved objection. The lead
 maintainer may override objections but not the approval floor. Core contributors are listed
 in `GOVERNANCE.md`. Everything else keeps the usual issue and PR workflow.
 
@@ -52,10 +53,10 @@ Status is one of: Draft · Accepted · Final (implemented) · Rejected · Withdr
 
 ## Who decides
 
-**Core contributors** are listed in `GOVERNANCE.md` and have the right to author PMEPs and
-to vote. Anyone may
-comment. The entry
-criterion, additions to the list and the emeritus rule are defined in `GOVERNANCE.md`.
+**Core contributors** are listed in `GOVERNANCE.md`. Active core contributors have the right
+to author PMEPs and to vote. Anyone else can author a PMEP by gaining an active core
+contributor as co-author. Anyone may comment. The entry criterion, additions to the list and the emeritus
+rule are defined in `GOVERNANCE.md`.
 
 **The lead maintainer decides objections.** An unresolved objection may be overridden. The
 override is written into the PMEP with reasoning and answers the objection on its merits.
@@ -95,8 +96,8 @@ In this order:
 - Motivation
 - Specification
 - Rationale, including rejected alternatives
-- Backwards compatibility (deprecation version, computed removal version)
-- Implementing issues
+- Backwards compatibility (deprecation version, expected removal version)
+- Implementation
 
 This structure is for Standards PMEPs. Process PMEPs adapt it and keep what applies.
 
@@ -112,5 +113,5 @@ the spec is wrong, the PMEP is revised.
 ## Adoption
 
 This PMEP is adopted under its own rule: 14 days, 2 approvals from active core contributors
-other than the author, no unresolved objection. The initial core contributor list in
+other than the author(s), no unresolved objection. The initial core contributor list in
 `GOVERNANCE.md` is accepted with it.
