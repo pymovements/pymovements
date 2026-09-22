@@ -17,9 +17,8 @@ from active core contributors other than the author, and no unresolved objection
 maintainer may override objections but not the approval floor. Core contributors are listed
 in `GOVERNANCE.md`. Everything else keeps the usual issue and PR workflow.
 
-Several changes to the data model and the operation layer are upcoming. This page states how
-they get decided, so that the reasoning is written down once and can be cited later instead of
-reconstructed from issue threads.
+This process exists so that the reasoning behind such decisions is written down once and can
+be cited later instead of reconstructed from issue threads.
 
 ## What needs a proposal
 
