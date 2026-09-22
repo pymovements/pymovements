@@ -4,7 +4,7 @@
 Welcome to the pymovements documentation!
 =========================================
 
-.. mdinclude:: ../../README.md
+.. mdinclude:: _generated/README.md
 
 .. toctree::
    :hidden:
