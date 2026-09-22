@@ -11,12 +11,12 @@
 ## TL;DR
 
 Changes that many other things depend on (the data model, operation contracts, on-disk
-formats, this process) require a PMEP: a design document in `docs/source/pmep/`,
-proposed and decided in a pull request, with at least one active core contributor among its
-authors. Acceptance needs a window of 14 days, 2 approvals
-from active core contributors other than the author(s), and no unresolved objection. The lead
-maintainer may override objections but not the approval floor. Core contributors are listed
-in `GOVERNANCE.md`. Everything else keeps the usual issue and PR workflow.
+formats, this process) require a PMEP: a design document in `docs/source/pmep/`, proposed
+and decided in a pull request, with at least one active core contributor among its authors.
+Acceptance needs a window of 14 days, 2 approvals from active core contributors other than
+the author(s), and no unresolved objection. The lead maintainer may override objections but
+not the approval floor. Core contributors are listed in `GOVERNANCE.md`. Everything else
+keeps the usual issue and PR workflow.
 
 This process exists so that the reasoning behind such decisions is written down once and can
 be cited later instead of reconstructed from issue threads.
@@ -27,7 +27,8 @@ A **PMEP** (pymovements Enhancement Proposal) is required only for changes that 
 things depend on:
 
 - the data model: containers, slots, how recordings, events, stimuli and measures are represented
-- contracts every operation or pipeline follows: operation contract, registry, column declarations, log format
+- contracts every operation or pipeline follows: operation contract, registry, column
+  declarations, log format
 - on-disk formats and layouts that published datasets depend on
 - this process
 
@@ -44,10 +45,10 @@ When in doubt, open an issue. It graduates to a PMEP if the discussion shows it 
 documentation. Every PMEP has at least one active core contributor among its authors. A pull
 request opened without one becomes a PMEP if an active core contributor joins as co-author
 within 14 days, and is otherwise closed, not merged. The number is assigned when the
-authorship requirement is met, so the proposal can be cited by number during discussion. The
-pull request stays open until the decision falls and
-merges carrying the final status. Rejected and withdrawn PMEPs are merged too and stay in the
-repository as records of what was considered and why not.
+authorship requirement is met, so the proposal can be cited by number during discussion.
+The pull request stays open until the decision falls and merges carrying the final status.
+Rejected and withdrawn PMEPs are merged too and stay in the repository as records of what
+was considered and why not.
 
 Status is one of: Draft · Accepted · Final (implemented) · Rejected · Withdrawn · Superseded.
 
@@ -55,8 +56,8 @@ Status is one of: Draft · Accepted · Final (implemented) · Rejected · Withdr
 
 **Core contributors** are listed in `GOVERNANCE.md`. Active core contributors have the right
 to author PMEPs and to vote. Anyone else can author a PMEP by gaining an active core
-contributor as co-author. Anyone may comment. The entry criterion, additions to the list and the emeritus
-rule are defined in `GOVERNANCE.md`.
+contributor as co-author. Anyone may comment. The entry criterion, additions to the list
+and the emeritus rule are defined in `GOVERNANCE.md`.
 
 **The lead maintainer decides objections.** An unresolved objection may be overridden. The
 override is written into the PMEP with reasoning and answers the objection on its merits.

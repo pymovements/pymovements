@@ -14,9 +14,9 @@
 
 ## TL;DR
 
-<!-- Mandatory before voting opens. At most 150 words. What changes,
-     in a form someone can read in under a minute and vote on. A summary of the
-     decision, not of the document. -->
+<!-- Mandatory before voting opens. At most 150 words. What changes, in a form
+     someone can read in under a minute and vote on. A summary of the decision,
+     not of the document. -->
 
 ## What it looks like
 
