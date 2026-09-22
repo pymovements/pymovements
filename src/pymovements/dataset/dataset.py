@@ -1212,6 +1212,84 @@ class Dataset:
 
         return ReadingMeasures(combined_df)
 
+    def correct_fixations(
+            self,
+            aois: TextStimulus,
+            algorithm: str | list[str] = 'wisdom_of_the_crowd',
+            *,
+            directionality: str | None = None,
+            word_locations: pl.Series | None = None,
+            algorithm_kwargs: dict[str, Any] | None = None,
+            fixation_name: str = 'fixation',
+            character_level: bool = False,
+            verbose: bool = True,
+    ) -> Dataset:
+        """Correct vertical drift of fixations for all events in the dataset.
+
+        Fixations of each :py:class:`~pymovements.Events` object are corrected per trial
+        using the specified drift correction algorithm. Fixation locations are replaced
+        with their corrected values. Original locations are preserved in a
+        ``location_original`` column and the applied algorithm is recorded in a
+        ``correction_algorithm`` column. Trials with too few fixations for the requested
+        algorithms are skipped with a UserWarning and stay uncorrected. See
+        :py:meth:`~pymovements.Events.correct_fixations` for details.
+
+        Parameters
+        ----------
+        aois: TextStimulus
+            Text stimulus used for line position extraction. Its configured column names
+            are mapped to the column names expected by the drift correction algorithms and
+            its writing system provides the default reading direction.
+        algorithm: str | list[str]
+            Name of drift algorithm or list of algorithm names.
+            (default: 'wisdom_of_the_crowd')
+        directionality: str | None
+            Reading direction of the text, either 'left-to-right' or 'right-to-left',
+            mirroring the directionality of a text stimulus writing system.
+            'top-to-bottom' is not supported and raises a ValueError. If None, the
+            reading direction is inferred from the writing system of the text stimulus.
+            (default: None)
+        word_locations: pl.Series | None
+            Series of [x, y] word center coordinates for the DTW-based algorithms
+            'compare' and 'warp'. If None, word locations are derived from the aois
+            dataframe. A user-supplied series is reused unchanged for every trial, so
+            with per-trial AOIs leave it None to derive the word locations of each trial
+            separately. (default: None)
+        algorithm_kwargs: dict[str, Any] | None
+            Additional tuning parameters passed to underlying drift correction algorithms.
+            Warning: in ensemble mode an entry fans out to every candidate algorithm whose
+            signature accepts the key, even where defaults and semantics differ. For
+            example, ``{'x_thresh': 250.0}`` reconfigures 'chain', 'compare' and 'slice'
+            at once. (default: None)
+        fixation_name: str
+            Name of the fixation events to correct. (default: 'fixation')
+        character_level: bool
+            Set to True when the stimulus AOIs are finer than words, e.g. one row per
+            character. The AOIs are then aggregated to one location per word via the
+            'word' column, which must be present. (default: False)
+        verbose: bool
+            If ``True``, show a progress bar. (default: True)
+
+        Returns
+        -------
+        Dataset
+            Returns self, useful for method cascading.
+        """
+        disable_progressbar = not verbose
+        for events in tqdm(self.events, disable=disable_progressbar):
+            if events.frame.is_empty():
+                continue
+            events.correct_fixations(
+                aois,
+                algorithm=algorithm,
+                directionality=directionality,
+                word_locations=word_locations,
+                algorithm_kwargs=algorithm_kwargs,
+                fixation_name=fixation_name,
+                character_level=character_level,
+            )
+        return self
+
     def clear_events(self) -> Dataset:
         """Clear event DataFrame.
 
