@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Accepted |
+| **Status** | Final |
 | **Type** | Process |
 | **Author** | Daniel G. Krakowczyk |
 | **Created** | 2026-09-08 |
