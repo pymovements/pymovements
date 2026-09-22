@@ -47,6 +47,8 @@ from pymovements.events.correction.cluster import cluster
 from pymovements.events.correction.compare import compare
 from pymovements.events.correction.fixation_correction import correct_fixation_locations
 from pymovements.events.correction.fixation_correction import correct_fixations
+from pymovements.events.correction.fixation_correction import run_fixation_correction
+from pymovements.events.correction.fixation_correction import FixationCorrection
 from pymovements.events.correction.merge import merge
 from pymovements.events.correction.regress import regress
 from pymovements.events.correction.segment import segment
@@ -56,9 +58,12 @@ from pymovements.events.correction.stretch import stretch
 from pymovements.events.correction.warp import warp
 from pymovements.events.correction.wisdom_of_the_crowd import wisdom_of_the_crowd
 
+
 __all__ = [
     'correct_fixations',
     'correct_fixation_locations',
+    'run_fixation_correction',
+    'FixationCorrection',
 
     'attach',
     'chain',
