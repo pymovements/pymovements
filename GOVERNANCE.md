@@ -16,15 +16,15 @@ request comment, vote, design-review attendance) for 12 months becomes emeritus:
 no vote, active status restored on request. The lead maintainer flags the transition as an
 editorial change, with prior private notice.
 
-**Lead maintainer:** Daniel Krakowczyk ([@dkrako](https://github.com/dkrako))
+**Lead maintainer:** Daniel G. Krakowczyk ([@dkrako](https://github.com/dkrako))
 
 | Name | GitHub | Status |
 |---|---|---|
-| Daniel Krakowczyk | [@dkrako](https://github.com/dkrako) | active |
+| Daniel G. Krakowczyk | [@dkrako](https://github.com/dkrako) | active |
 | David R. Reich | [@SiQube](https://github.com/SiQube) | active |
-| Carlson Büth | [@cbueth](https://github.com/cbueth) | active |
+| Carlson M. Büth | [@cbueth](https://github.com/cbueth) | active |
 | Andreas Säuberli | [@saeub](https://github.com/saeub) | active |
 | Paul Prasse | [@prassepaul](https://github.com/prassepaul) | active |
 | Deborah N. Jakobi | [@theDebbister](https://github.com/theDebbister) | active |
 | Paweł Kasprowski | [@kasprowski](https://github.com/kasprowski) | active |
-| Lena Jäger | [@LenaJaeger](https://github.com/LenaJaeger) | emeritus |
+| Lena A. Jäger | [@LenaJaeger](https://github.com/LenaJaeger) | emeritus |
