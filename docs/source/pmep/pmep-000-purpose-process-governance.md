@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | Accepted |
 | **Type** | Process |
 | **Author** | Daniel Krakowczyk |
 | **Created** | 2026-09-08 |
