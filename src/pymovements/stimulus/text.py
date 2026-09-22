@@ -417,7 +417,7 @@ class TextStimulus:
             writing_system=writing_system,
             metadata=metadata
         )
-    
+
 
     def resolve_boxes(
         self,
@@ -524,21 +524,9 @@ class TextStimulus:
             if width_height_complete:
                 width = row.get(self.width_column)
                 height = row.get(self.height_column)
-                geometry_columns = (
-                    self.start_x_column,
-                    self.start_y_column,
-                    self.width_column,
-                    self.height_column,
-                )
             else:
                 end_x = row.get(self.end_x_column)
                 end_y = row.get(self.end_y_column)
-                geometry_columns = (
-                    self.start_x_column,
-                    self.start_y_column,
-                    self.end_x_column,
-                    self.end_y_column,
-                )
 
                 values = (start_x, start_y, end_x, end_y)
 
@@ -690,7 +678,16 @@ class TextStimulus:
 
         if own_axes:
             ax.invert_yaxis()
-            ax.autoscale_view()
+
+            ax.set_xlim(
+                boxes["start_x"].min(),
+                (boxes["start_x"] + boxes["width"]).max(),
+            )
+
+            ax.set_ylim(
+                (boxes["start_y"] + boxes["height"]).max(),
+                boxes["start_y"].min(),
+            )
 
         return fig, ax
 
