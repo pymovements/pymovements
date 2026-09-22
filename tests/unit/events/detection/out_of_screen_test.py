@@ -380,6 +380,22 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
         ),
         pytest.param(
             {
+                'pixels': pl.Series([
+                    [-1, 540], [960, 540], [960, 1081],
+                ]),
+                'timesteps': pl.Series(np.arange(1000, 1003)).cast(pl.Duration('ms')),
+                'x_min': 0, 'x_max': 1920,
+                'y_min': 0, 'y_max': 1080,
+            },
+            Events(
+                name='out_of_screen',
+                onsets=[1000, 1002],
+                offsets=[1000, 1002],
+            ),
+            id='with_duration_timesteps',
+        ),
+        pytest.param(
+            {
                 'pixels': np.array([
                     [-1, 540], [960, 540], [960, 1081],
                 ]),

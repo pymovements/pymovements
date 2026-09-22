@@ -293,6 +293,17 @@ def test_tsplot_without_time_column_uses_sample_index(show_events, expected_n_pa
     assert len(ax.patches) == expected_n_patches
 
 
+def test_tsplot_numeric_time_column_plotted_as_is(gaze):
+    # A numeric time column (possible via direct samples mutation) must be used
+    # as the x-axis as is, without any Duration conversion.
+    gaze.unnest('pixel', output_columns=['x_pix', 'y_pix'])
+    gaze.samples = gaze.samples.with_columns(pl.col('time').dt.total_milliseconds())
+
+    _, ax = tsplot(gaze=gaze, channels=['x_pix'])
+
+    assert list(ax.get_lines()[0].get_xdata()) == gaze.samples['time'].to_list()
+
+
 def test_tsplot_events_cycles_colors_beyond_ten_event_names():
     event_names = [f'event_{i:02d}' for i in range(11)]
     events = Events(

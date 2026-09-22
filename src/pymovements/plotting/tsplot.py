@@ -29,6 +29,7 @@ import polars as pl
 
 from pymovements._utils._column_nesting import get_nested_columns
 from pymovements._utils._column_nesting import unnest_list_columns
+from pymovements._utils._time import duration_to_ms
 from pymovements.gaze import Gaze
 from pymovements.plotting._matplotlib import prepare_figure
 
@@ -115,12 +116,21 @@ def tsplot(
         channels = [
             c
             for c in gaze.samples.columns
-            if gaze.samples[c].dtype.is_numeric() or (
+            if gaze.samples[c].dtype.is_numeric()
+            or isinstance(gaze.samples[c].dtype, pl.Duration) or (
                 gaze.samples[c].dtype == pl.List and gaze.samples[c].dtype.inner.is_numeric()
             )
         ]
 
-    df = gaze.samples.select(channels)
+    samples = gaze.samples
+    channel_list = channels if isinstance(channels, list) else [channels]
+    for col in channel_list:
+        if col in samples.columns and isinstance(samples.schema[col], pl.Duration):
+            samples = samples.with_columns(
+                duration_to_ms(pl.col(col)).alias(col),
+            )
+
+    df = samples.select(channels)
     nested_columns = get_nested_columns(df)
     if nested_columns:
         df = unnest_list_columns(df, nested_columns)
@@ -170,7 +180,10 @@ def tsplot(
         axs = axs_grid.flatten()
 
     if 'time' in gaze.samples.columns:
-        t = gaze.samples['time'].to_numpy()
+        time_series = gaze.samples['time']
+        if isinstance(time_series.dtype, pl.Duration):
+            time_series = duration_to_ms(time_series)
+        t = time_series.to_numpy()
     else:
         t = np.arange(arr.shape[1])
     xlims = t.min(), t.max()
@@ -180,7 +193,11 @@ def tsplot(
     ylims = _compute_ylims(arr, zero_centered_yaxis=zero_centered_yaxis)
 
     if show_events:
-        events = gaze.events.frame
+        # onset and offset are Duration columns; express them in milliseconds
+        # so the shaded spans line up with the millisecond time axis
+        events = gaze.events.frame.with_columns(
+            duration_to_ms(pl.col('onset', 'offset')),
+        )
         palette = plt.colormaps['tab10'].colors
         event_colors = {
             name: palette[i % len(palette)]
