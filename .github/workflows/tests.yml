@@ -204,7 +204,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           key:
-            docs-${{ matrix.os }}-py310-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/tests') }}
+            docs-${{ matrix.os }}-py313-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/tests.yml') }}
           path: |
             ~/.cache
             ~/.tox
