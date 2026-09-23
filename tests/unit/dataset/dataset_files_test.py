@@ -1618,6 +1618,29 @@ def test_load_event_files_keeps_user_sources_list_unmutated(tmp_path):
     assert metadata == {'sources': [absolute_source]}
 
 
+def test_load_event_files_respects_empty_user_sources(tmp_path):
+    events_dirpath = tmp_path / 'events'
+    events_dirpath.mkdir()
+    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [1]})
+    events_df.write_ipc(events_dirpath / 'sub_1.feather')
+
+    resource_definition = ResourceDefinition(content='gaze')
+    files = [
+        DatasetFile(
+            path=tmp_path / 'raw' / 'sub_1.csv',
+            definition=resource_definition,
+            metadata={'sources': []},
+        ),
+    ]
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+
+    events_list = load_event_files(files, paths, verbose=False)
+
+    # An explicitly empty user-provided sources entry expresses that no source shall be
+    # recorded. Neither source recording nor relativization touches it.
+    assert events_list[0].metadata == {'sources': []}
+
+
 @pytest.mark.parametrize(
     'extension',
     [
