@@ -21,6 +21,7 @@
 from copy import deepcopy
 from dataclasses import replace
 
+import math
 import matplotlib.pyplot as plt
 import polars as pl
 import pytest
@@ -1036,7 +1037,7 @@ def test_text_stimulus_resolve_boxes_raises(
             WIDTH_HEIGHT_COLUMNS,
             {
                 'x_min': [0.0, 100.0], 'y_min': [0.0, 0.0],
-                'width': [100.0, 100.0], 'height': [50.0, float('nan')],
+                'width': [100.0, 100.0], 'height': [50.0, math.nan],
             },
             'Skipping defective AOI row',
             id='width_height_nan',
@@ -1054,7 +1055,7 @@ def test_text_stimulus_resolve_boxes_raises(
             END_XY_COLUMNS,
             {
                 'x_min': [0.0, 100.0], 'y_min': [0.0, 0.0],
-                'x_max': [100.0, 200.0], 'y_max': [50.0, float('nan')],
+                'x_max': [100.0, 200.0], 'y_max': [50.0, math.nan],
             },
             'Skipping defective AOI row',
             id='end_xy_nan',
