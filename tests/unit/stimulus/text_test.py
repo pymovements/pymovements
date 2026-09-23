@@ -1218,7 +1218,6 @@ def test_text_stimulus_plot_creates_own_figure_when_ax_not_provided(sample_aoi_d
     assert ax.get_aspect() == 1.0
 
 
-
 def test_text_stimulus_plot_show_boxes_false_draws_labels_only(sample_aoi_dataframe):
     stimulus = TextStimulus(
         aois=sample_aoi_dataframe,
