@@ -1274,6 +1274,56 @@ class Dataset:
         -------
         Dataset
             Returns self, useful for method cascading.
+
+        Examples
+        --------
+        Let's create a dataset holding fixations that drift away from three lines of
+        text with their centers at y = 100, 200 and 300:
+
+        >>> import polars as pl
+        >>> import pymovements as pm
+        >>> events = pm.Events(
+        ...     pl.DataFrame({
+        ...         'name': ['fixation', 'fixation', 'fixation'],
+        ...         'onset': [0, 200, 400],
+        ...         'offset': [100, 300, 500],
+        ...         'location': [[100.0, 105.0], [110.0, 195.0], [120.0, 302.0]],
+        ...     }),
+        ... )
+        >>> dataset = pm.Dataset(pm.DatasetDefinition(), path='data')
+        >>> dataset.gaze.append(pm.Gaze(events=events))
+        >>> stimulus = pm.stimulus.TextStimulus(
+        ...     aois=pl.DataFrame({
+        ...         'word': ['first', 'second', 'third'],
+        ...         'start_x': [90.0, 90.0, 90.0],
+        ...         'start_y': [80.0, 180.0, 280.0],
+        ...         'end_x': [200.0, 200.0, 200.0],
+        ...         'end_y': [120.0, 220.0, 320.0],
+        ...     }),
+        ...     aoi_column='word',
+        ...     start_x_column='start_x',
+        ...     start_y_column='start_y',
+        ...     end_x_column='end_x',
+        ...     end_y_column='end_y',
+        ... )
+
+        Correcting the fixations snaps each y-coordinate onto its line center and
+        preserves the original locations:
+
+        >>> dataset.correct_fixations(stimulus, algorithm='attach', verbose=False)
+        ... # doctest:+ELLIPSIS
+        <pymovements.dataset.dataset.Dataset object at ...>
+        >>> dataset.events[0].frame.select(['name', 'location', 'location_original'])
+        shape: (3, 3)
+        ┌──────────┬────────────────┬───────────────────┐
+        │ name     ┆ location       ┆ location_original │
+        │ ---      ┆ ---            ┆ ---               │
+        │ str      ┆ list[f64]      ┆ list[f64]         │
+        ╞══════════╪════════════════╪═══════════════════╡
+        │ fixation ┆ [100.0, 100.0] ┆ [100.0, 105.0]    │
+        │ fixation ┆ [110.0, 200.0] ┆ [110.0, 195.0]    │
+        │ fixation ┆ [120.0, 300.0] ┆ [120.0, 302.0]    │
+        └──────────┴────────────────┴───────────────────┘
         """
         disable_progressbar = not verbose
         for events in tqdm(self.events, disable=disable_progressbar):

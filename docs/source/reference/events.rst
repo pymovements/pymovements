@@ -67,15 +67,17 @@ The most convenient way to correct fixations is via the
     :name: drift-correction-algorithms
 
 The following algorithms can be used to apply a line-alignment correction algorithm to a set of
-fixations. These algorithms, which are described in detail by Carr et al. :cite:p:`Carr2022`,
-can be applied to the fixations using the
+fixations. Most of these algorithms are described in detail by Carr et al. :cite:p:`Carr2022`.
+The docstring of each algorithm references its original publication. The algorithms can be
+applied to the fixations using the
 :func:`~pymovements.events.correction.correct_fixations` function. By default, the
 :func:`~pymovements.events.correction.correct_fixations` function will use the
-:func:`~pymovements.events.correction.wisdom_of_the_crowd` algorithm which is an
-ensemble method that combines the results of the other algorithms to produce a more robust
-correction. Each algorithm operates on the fixation sequence of a single trial and must be
-applied per trial. The :func:`~pymovements.events.correction.correct_fixations` function and
-the :py:meth:`Events.correct_fixations` method take care of this per-trial application.
+:func:`~pymovements.events.correction.wisdom_of_the_crowd` ensemble method proposed by
+Mercier et al. :cite:p:`Mercier2024b`, which combines the results of the other algorithms to
+produce a more robust correction. Each algorithm operates on the fixation sequence of a
+single trial and must be applied per trial. The
+:func:`~pymovements.events.correction.correct_fixations` function and the
+:py:meth:`Events.correct_fixations` method take care of this per-trial application.
 
 .. currentmodule:: pymovements.events.correction
 
