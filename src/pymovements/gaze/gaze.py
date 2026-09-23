@@ -1331,7 +1331,13 @@ class Gaze:
         Parameters
         ----------
         event_properties: str | tuple[str, dict[str, Any]] | list[str | tuple[str, dict[str, Any]]]
-            The event properties to compute.
+            The event properties to compute. May be one of the following:
+                - a single measure name: `"location"`
+                - a tuple of measure name and arguments: `("location", {"method": "median"})`
+                - a list of measure names and/or tuples
+            An additional measure argument `output_name` can be specified to set the name of the
+            resulting column in the event dataframe:
+            `("location", {"method": "median", "output_name": "median_location"})`
         name: str | None
             Process only events that match the name. (default: None)
 
@@ -1342,6 +1348,8 @@ class Gaze:
             :ref:`event-measures` for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
+        ValueError
+            If there are duplicates among the `output_name` arguments of the specified measures.
         """
         if len(self.events) == 0:
             warn(
