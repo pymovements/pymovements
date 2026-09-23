@@ -73,6 +73,39 @@ def test_events_split_dict_propagates_metadata():
         assert events_split.metadata == {'sources': ['raw/sub_1.csv']}
 
 
+def test_events_correct_fixations_not_inplace_propagates_metadata():
+    events = Events(
+        pl.DataFrame({
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [100],
+            'location': [[100.0, 105.0]],
+        }),
+        metadata={'sources': ['raw/sub_1.csv']},
+    )
+    stimulus = TextStimulus(
+        aois=pl.DataFrame({
+            'word': ['first'],
+            'start_x': [90.0],
+            'start_y': [80.0],
+            'end_x': [200.0],
+            'end_y': [120.0],
+        }),
+        aoi_column='word',
+        start_x_column='start_x',
+        start_y_column='start_y',
+        end_x_column='end_x',
+        end_y_column='end_y',
+    )
+
+    corrected = events.correct_fixations(stimulus, algorithm='attach', inplace=False)
+
+    assert corrected.metadata == {'sources': ['raw/sub_1.csv']}
+    # The metadata is deepcopied, not shared.
+    corrected.metadata['sources'].append('other.csv')
+    assert events.metadata['sources'] == ['raw/sub_1.csv']
+
+
 def test_events_map_to_aois_merges_stimulus_sources(simple_stimulus: TextStimulus) -> None:
     simple_stimulus.metadata['sources'] = ['stimuli/text_1_aoi.csv']
 
