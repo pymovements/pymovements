@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test basic preprocessing on various gaze files."""
+import polars as pl
 import pytest
 
 from pymovements import DatasetLibrary
@@ -222,3 +223,34 @@ def test_gaze_file_processing(init_kwargs):
     assert 'position' in gaze.columns
     assert 'velocity' in gaze.columns
     assert 'acceleration' in gaze.columns
+
+
+def test_gaze_file_processing_2khz_preserves_half_millisecond_timing_through_detection(
+        make_example_file,
+):
+    gaze = gaze_module.from_asc(
+        file=make_example_file('eyelink_monocular_2khz_example.asc'),
+        experiment=Experiment(
+            1280, 1024, 38, 30.2, 68, 'upper left',
+            eyetracker=EyeTracker(
+                sampling_rate=2000.0, left=True, right=False,
+                model='EyeLink Portable Duo', vendor='EyeLink',
+            ),
+        ),
+    )
+
+    assert gaze.samples['time'].dtype == pl.Duration('us')
+    time_us = gaze.samples['time'].dt.total_microseconds()
+    assert time_us[0] == 2_154_556_500
+    assert time_us[1] == 2_154_557_000
+
+    gaze.pix2deg()
+    gaze.pos2vel()
+    gaze.detect('ivt', velocity_threshold=1e9, minimum_duration=1)
+
+    assert gaze.events.frame['onset'].dtype == pl.Duration('us')
+    assert gaze.events.frame['offset'].dtype == pl.Duration('us')
+    # The first sample with a valid velocity sits on a half-millisecond timestamp,
+    # which must survive detection to the microsecond.
+    assert gaze.events.frame['onset'].dt.total_microseconds().to_list() == [2_154_560_500]
+    assert gaze.events.frame['offset'].dt.total_microseconds().to_list() == [2_339_272_000]

@@ -72,6 +72,22 @@ from pymovements.synthetic import step_function
                 'minimum_duration': 2,
             },
             pm.gaze.from_numpy(
+                time=np.arange(0, 50, 0.5),
+                position=step_function(length=100, steps=[0], values=[(0, 0)]),
+                orient='row',
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 2000),
+            ),
+            pm.Events(name='fixation', onsets=[0], offsets=[49.5]),
+            id='idt_2khz_half_millisecond_timesteps_single_fixation',
+        ),
+
+        pytest.param(
+            'idt',
+            {
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            pm.gaze.from_numpy(
                 position=step_function(
                     length=100, steps=[49, 50], values=[(9, 9), (1, 1)], start_value=(0, 0),
                 ),
@@ -282,6 +298,24 @@ from pymovements.synthetic import step_function
             ),
             pm.events.Events(name='fixation', onsets=[0, 51], offsets=[48, 99]),
             id='ivt_three_steps_two_fixations',
+        ),
+
+        pytest.param(
+            'ivt',
+            {
+                'velocity_threshold': 1,
+                'minimum_duration': 1,
+            },
+            pm.gaze.from_numpy(
+                time=np.arange(0, 50, 0.5),
+                velocity=step_function(
+                    length=100, steps=[50], values=[(90, 90)], start_value=(0, 0),
+                ),
+                orient='row',
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 2000),
+            ),
+            pm.events.Events(name='fixation', onsets=[0], offsets=[24.5]),
+            id='ivt_2khz_half_millisecond_timesteps_fixation_ends_between_milliseconds',
         ),
 
         pytest.param(
