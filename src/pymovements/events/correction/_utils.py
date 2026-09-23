@@ -159,13 +159,13 @@ def find_closest_top_box(
 ) -> tuple[int, int]:
     """Return the closest word to the top."""
     closest_top_box = (px, py)
-    closest_distance = float('inf')
+    closest_distance = math.inf
     for center in list_of_centers:
         cx, cy = center
         if cy < py and np.hypot(px-cx, py-cy) < closest_distance:
             closest_distance = np.hypot(px-cx, py-cy)
             closest_top_box = center
-    if closest_distance == float('inf'):
+    if closest_distance == math.inf:
         closest_top_box = (px, py)
     return closest_top_box
 
@@ -176,13 +176,13 @@ def find_closest_left_box(
 ) -> tuple[int, int]:
     """Return the closest word to the left."""
     closest_left_box = (px, py)
-    closest_distance = float('inf')
+    closest_distance = math.inf
     for center in list_of_centers:
         cx, cy = center
         if cx < px and np.hypot(px-cx, py-cy) < closest_distance:
             closest_distance = np.hypot(px-cx, py-cy)
             closest_left_box = center
-    if closest_distance == float('inf'):
+    if closest_distance == math.inf:
         closest_left_box = (px, py)
     return closest_left_box
 
@@ -193,13 +193,13 @@ def find_closest_bottom_box(
 ) -> tuple[int, int]:
     """Return the closest word to the bottom."""
     closest_bottom_box = (px, py)
-    closest_distance = float('inf')
+    closest_distance = math.inf
     for center in list_of_centers:
         cx, cy = center
         if cy > py and np.hypot(px-cx, py-cy) < closest_distance:
             closest_distance = np.hypot(px-cx, py-cy)
             closest_bottom_box = center
-    if closest_distance == float('inf'):
+    if closest_distance == math.inf:
         closest_bottom_box = (px, py)
     return closest_bottom_box
 
@@ -210,13 +210,13 @@ def find_closest_right_box(
 ) -> tuple[int, int]:
     """Return the closest word to the right."""
     closest_right_box = (px, py)
-    closest_distance = float('inf')
+    closest_distance = math.inf
     for center in list_of_centers:
         cx, cy = center
         if cx > px and np.hypot(px-cx, py-cy) < closest_distance:
             closest_distance = np.hypot(px-cx, py-cy)
             closest_right_box = center
-    if closest_distance == float('inf'):
+    if closest_distance == math.inf:
         closest_right_box = (px, py)
     return closest_right_box
 
