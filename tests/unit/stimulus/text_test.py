@@ -21,8 +21,8 @@
 from copy import deepcopy
 from dataclasses import replace
 
-import polars as pl
 import matplotlib.pyplot as plt
+import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 

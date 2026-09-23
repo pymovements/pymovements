@@ -32,10 +32,27 @@ and render plots to visually analyze your results.
 - **Mailing list:** pymovements@python.org ([subscribe](https://mail.python.org/mailman3/lists/pymovements.python.org/))
 - **Discord:** https://discord.gg/K2uS2R6PNj
 
+## Installation
+
+pymovements can be installed from [PyPI](https://pypi.org/project/pymovements) via pip:
+
+```bash
+pip install pymovements
+```
+
+or from [conda-forge](https://anaconda.org/conda-forge/pymovements):
+
+```bash
+conda install -c conda-forge pymovements
+```
+
+For other options, including uv and installing from source for development, see the
+[installation guide](https://pymovements.readthedocs.io/en/stable/user-guide/getting-started/installation.html).
+
 ## Getting Started
 
 If you are new to pymovements or to eye-tracking data analysis, we recommend starting with the **User Guide**, which introduces the concepts, data
-structures, and workflows used throughout the library: 👉 :doc:`user-guide/index`
+structures, and workflows used throughout the library: 👉 [User Guide](https://pymovements.readthedocs.io/en/stable/user-guide/index.html)
 
 
 ### Quick example
@@ -70,7 +87,7 @@ dataset.detect('microsaccades')  # detect saccades using the microsaccades algor
 <!-- With pymovements loading your eye movement [datasets](https://pymovements.readthedocs.io/en/stable/datasets/index.html) is just a few lines of code away -->
 
 ### Quick Links
-- :doc:`Installation Options <user-guide/getting-started/installation>`
+- [Installation Options](https://pymovements.readthedocs.io/en/stable/user-guide/getting-started/installation.html)
 - [Tutorials](https://pymovements.readthedocs.io/en/stable/tutorials/index.html)
 - [API Reference](https://pymovements.readthedocs.io/en/stable/reference/index.html)
 
