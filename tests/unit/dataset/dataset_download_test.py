@@ -392,7 +392,7 @@ def test_dataset_download_no_sources_raises(tmp_path):
     dataset = Dataset(dataset_definition, path=paths)
 
     message = (
-        'No downloadable resources found in DatasetDefinition. '
+        'No downloadable sources found in DatasetDefinition. '
         'ResourceDefinition.source must be specified to download a dataset.'
     )
     with pytest.raises(AttributeError, match=message):
@@ -751,7 +751,7 @@ def test_dataset_extract_remove_finished_false_stimuli(
         pytest.param(
             DatasetDefinition(name='CustomPublicDataset'),
             AttributeError,
-            'No downloadable resources found in DatasetDefinition. '
+            'No downloadable sources found in DatasetDefinition. '
             'ResourceDefinition.source must be specified to download a dataset.',
             id='no_resources',
         ),
@@ -1029,6 +1029,26 @@ def test_dataset_extract_source_without_filename_raises(tmp_path):
 
     message = "WebSource.filename must not be None for source of resource with content 'gaze'"
     with pytest.raises(AttributeError, match=message):
+        Dataset(definition, path=tmp_path).extract()
+
+
+def test_dataset_extract_conflicting_sources_after_mutation_raises(tmp_path):
+    """Test that a source conflict introduced after init raises on extract."""
+    resource1 = ResourceDefinition(
+        content='gaze',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip', md5='abc'),
+    )
+    resource2 = ResourceDefinition(
+        content='precomputed_events',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip', md5='abc'),
+    )
+    definition = DatasetDefinition(name='test', resources=[resource1, resource2])
+
+    definition.resources[1].source = WebSource(
+        url='http://example.com/file.zip', filename='file.zip', md5='def',
+    )
+
+    with pytest.raises(ValueError, match=r"md5 differs between resources \('abc' != 'def'\)"):
         Dataset(definition, path=tmp_path).extract()
 
 

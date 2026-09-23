@@ -81,7 +81,7 @@ def download_dataset(
 
     if not sources:
         raise AttributeError(
-            'No downloadable resources found in DatasetDefinition. '
+            'No downloadable sources found in DatasetDefinition. '
             'ResourceDefinition.source must be specified to download a dataset.',
         )
 
@@ -136,7 +136,14 @@ def extract_dataset(
     AttributeError
         If a resource resolves to a source without a filename, since such a file can never have
         been downloaded.
+    ValueError
+        If the resolved sources of the resources conflict (see
+        :py:meth:`~pymovements.DatasetDefinition.resolved_sources`).
     """
+    # Re-validate resolved sources like the download path does, to catch conflicts
+    # introduced by mutation after initialization.
+    definition.resolved_sources()
+
     content_dirnames = {
         'gaze': 'raw',
         'precomputed_events': 'precomputed_events',

@@ -1663,6 +1663,9 @@ class Dataset:
         AttributeError
             If a resource resolves to a source without a filename, since such a file can never
             have been downloaded.
+        ValueError
+            If the resolved sources of the resources conflict (see
+            :py:meth:`~pymovements.DatasetDefinition.resolved_sources`).
         """
         dataset_download.extract_dataset(
             definition=self.definition,
