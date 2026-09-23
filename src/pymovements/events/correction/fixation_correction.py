@@ -1018,7 +1018,7 @@ class FixationCorrection:
                     self.image, (next_x, next_y),
                     (x, y), color=color, thickness=1,
                 )
-        return self.image 
+        return self.image
 
     def move_point(self, direction: str) -> None:
         """Move the current fixation point.
