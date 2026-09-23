@@ -234,9 +234,10 @@ class DatasetDefinition:
     Raises
     ------
     ValueError
-        If two named sources share the same target ``filename`` but have different ``url``
-        values, if a resource references a source name that is missing from ``sources``
-        (dangling source reference), or if the resolved sources of the resources conflict (see
+        If a named source has no ``url``, if two named sources share the same target
+        ``filename`` but have different ``url`` values, if a resource references a source name
+        that is missing from ``sources`` (dangling source reference), or if the resolved
+        sources of the resources conflict (see
         :py:meth:`~pymovements.DatasetDefinition.resolved_sources`).
     TypeError
         If ``sources`` contains a value that is neither a :py:class:`~pymovements.WebSource`
@@ -451,11 +452,15 @@ class DatasetDefinition:
         Raises
         ------
         ValueError
-            If two named sources share the same ``filename`` but have different ``url``
-            values.
+            If a named source has no ``url``, or if two named sources share the same
+            ``filename`` but have different ``url`` values.
         """
         filename_urls: dict[str, str] = {}
-        for source in sources.values():
+        for name, source in sources.items():
+            if source.url is None:
+                raise ValueError(
+                    f"Source '{name}' has no url. A named source must define a url.",
+                )
             if source.filename is None:
                 continue
             existing_url = filename_urls.get(source.filename)
@@ -574,7 +579,7 @@ class DatasetDefinition:
             :py:attr:`~pymovements.DatasetDefinition.sources`.
         """
         seen: dict[tuple[str | None, str | None], WebSource] = {}
-        filename_urls: dict[str, str] = {}
+        filename_urls: dict[str, str | None] = {}
         for resource in self.resources:
             source = self.resolve_source(resource)
             if source is None:

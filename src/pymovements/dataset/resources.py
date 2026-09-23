@@ -182,14 +182,6 @@ class ResourceDefinition:
         source = self._inline_websource(attr)
         return getattr(source, attr) if source else None
 
-    def _set_websource_attribute(self, attr: str, value: Any) -> None:
-        """Set an attribute of the inline ``WebSource``, creating one without a source."""
-        source = self._inline_websource(attr)
-        if source is None:
-            self.source = WebSource(**{'url': None, attr: value})
-        else:
-            self.source = replace(source, **{attr: value})
-
     @property
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
@@ -217,7 +209,11 @@ class ResourceDefinition:
         version='v0.26.2',
     )
     def url(self, data: str) -> None:
-        self._set_websource_attribute('url', data)
+        source = self._inline_websource('url')
+        if source is None:
+            self.source = WebSource(url=data)
+        else:
+            self.source = replace(source, url=data)
 
     @property
     @deprecated(
@@ -246,7 +242,11 @@ class ResourceDefinition:
         version='v0.26.2',
     )
     def filename(self, data: str) -> None:
-        self._set_websource_attribute('filename', data)
+        source = self._inline_websource('filename')
+        if source is None:
+            self.source = WebSource(url=None, filename=data)
+        else:
+            self.source = replace(source, filename=data)
 
     @property
     @deprecated(
@@ -275,7 +275,11 @@ class ResourceDefinition:
         version='v0.26.2',
     )
     def md5(self, data: str) -> None:
-        self._set_websource_attribute('md5', data)
+        source = self._inline_websource('md5')
+        if source is None:
+            self.source = WebSource(url=None, md5=data)
+        else:
+            self.source = replace(source, md5=data)
 
     @property
     @deprecated(
@@ -304,7 +308,11 @@ class ResourceDefinition:
         version='v0.26.2',
     )
     def mirrors(self, data: list[str]) -> None:
-        self._set_websource_attribute('mirrors', data)
+        source = self._inline_websource('mirrors')
+        if source is None:
+            self.source = WebSource(url=None, mirrors=data)
+        else:
+            self.source = replace(source, mirrors=data)
 
     @staticmethod
     def from_dict(dictionary: dict[str, Any]) -> ResourceDefinition:

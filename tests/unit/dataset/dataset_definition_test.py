@@ -919,6 +919,16 @@ def test_dataset_definition_unreferenced_named_source_is_legal():
     assert not definition.resolved_sources()
 
 
+def test_dataset_definition_named_source_without_url_raises():
+    """Test that a named source without a url raises ValueError at construction."""
+    source = WebSource(url=None, filename='file.zip')
+
+    with pytest.raises(
+        ValueError, match="Source 'main' has no url. A named source must define a url.",
+    ):
+        DatasetDefinition(name='test', sources={'main': source})
+
+
 def test_dataset_definition_filename_none_excluded_from_uniqueness():
     """Test that sources with filename=None are excluded from uniqueness check."""
     source1 = WebSource(url='http://example.com/1.zip', filename=None)
