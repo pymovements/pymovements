@@ -84,7 +84,9 @@ class Gaze:
         Dictionary containing additional metadata. (default: None)
     messages: polars.DataFrame | None
         DataFrame containing messages from the experiment.
-        The required columns are 'time' and 'content'. (default: None)
+        The required columns are 'time' and 'content'. The ``time`` column is converted to a
+        ``polars.Duration`` column with microsecond precision; numeric input is interpreted
+        as milliseconds. (default: None)
     trial_columns: str | list[str] | None
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
@@ -92,10 +94,14 @@ class Gaze:
         methods will be applied to each trial separately. (default: None)
     calibrations: polars.DataFrame | None
         The calibrations from the data: timestamp, num_points, tracked eye, tracking_mode.
+        A ``time`` column, if present, is converted to a ``polars.Duration`` column with
+        microsecond precision; numeric input is interpreted as milliseconds.
         None by default, to be populated by I/O helpers (e.g. from_asc). (default: None)
     validations: polars.DataFrame | None
         The validations from the data: timestamp, num_points, tracked eye, accuracy_avg,
-        accuracy_max. None by default, to be populated by I/O helpers (e.g. from_asc).
+        accuracy_max. A ``time`` column, if present, is converted to a ``polars.Duration``
+        column with microsecond precision; numeric input is interpreted as milliseconds.
+        None by default, to be populated by I/O helpers (e.g. from_asc).
         (default: None)
     time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
@@ -142,7 +148,8 @@ class Gaze:
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata.
     messages: polars.DataFrame | None
-        DataFrame containing messages from the experiment session.
+        DataFrame containing messages from the experiment session. The ``time`` column is
+        stored as a ``polars.Duration`` column with microsecond precision.
     trial_columns: list[str] | None
         The name of the trial columns in the samples data frame. If not None, the transformation
         methods will be applied to each trial separately.
@@ -150,10 +157,13 @@ class Gaze:
         The number of components in the pixel, position, velocity and acceleration columns.
     calibrations: polars.DataFrame | None
         The calibrations from the data: timestamp, num_points, tracked eye, tracking_mode.
+        A ``time`` column, if present, is stored as a ``polars.Duration`` column with
+        microsecond precision.
         None by default, to be populated by I/O helpers (e.g. from_asc).
     validations: polars.DataFrame | None
         The validations from the data: timestamp, num_points, tracked eye, accuracy_avg,
-        accuracy_max.
+        accuracy_max. A ``time`` column, if present, is stored as a ``polars.Duration``
+        column with microsecond precision.
         None by default, to be populated by I/O helpers (e.g. from_asc).
     schema: polars.type_aliases.SchemaDict
         Schema of the samples dataframe.
@@ -2798,10 +2808,10 @@ class Gaze:
 
     def _convert_time_units(self, time_unit: str | None) -> None:
         """Convert the time column to ``polars.Duration('us')``."""
-        # Reject an invalid unit up front: the branches below dispatch on the exact unit and the
-        # final `else` assumes 'step', so without this a typo like 'sec' would be silently handled
-        # as a step conversion. For a Duration time column the unit is ignored, but an invalid
-        # string still raises here so the same bad call fails regardless of the time column dtype.
+        # Reject an invalid unit up front: without this a typo like 'sec' would surface as an
+        # opaque KeyError from the unit lookup deep in the numeric conversion instead of a clear
+        # error. For a Duration time column the unit is ignored, but an invalid string still
+        # raises here so the same bad call fails regardless of the time column dtype.
         if time_unit not in {'s', 'ms', 'us', 'step'}:
             raise ValueError(
                 f"unsupported time unit '{time_unit}'. "

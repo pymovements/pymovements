@@ -242,7 +242,7 @@ def test_gaze_save_metadata(tmp_path, gaze, expected_file):
             Gaze(
                 pl.DataFrame({'x': [1, 2], 'y': [3, 4]}),
                 pixel_columns=['x', 'y'],
-                calibrations=pl.DataFrame({'timestamp': [0], 'num_points': [9]}),
+                calibrations=pl.DataFrame({'time': [0], 'num_points': [9]}),
             ),
             lambda g, p: g.save_calibrations(p / 'calibrations.feather', verbose=2),
             'calibrations.feather',
@@ -252,7 +252,7 @@ def test_gaze_save_metadata(tmp_path, gaze, expected_file):
             Gaze(
                 pl.DataFrame({'x': [1, 2], 'y': [3, 4]}),
                 pixel_columns=['x', 'y'],
-                calibrations=pl.DataFrame({'timestamp': [0], 'num_points': [9]}),
+                calibrations=pl.DataFrame({'time': [0], 'num_points': [9]}),
             ),
             lambda g, p: g.save_calibrations(p / 'calibrations.csv', verbose=2),
             'calibrations.csv',
@@ -262,7 +262,7 @@ def test_gaze_save_metadata(tmp_path, gaze, expected_file):
             Gaze(
                 pl.DataFrame({'x': [1, 2], 'y': [3, 4]}),
                 pixel_columns=['x', 'y'],
-                validations=pl.DataFrame({'timestamp': [0], 'accuracy_avg': [0.5]}),
+                validations=pl.DataFrame({'time': [0], 'accuracy_avg': [0.5]}),
             ),
             lambda g, p: g.save_validations(p / 'validations.feather', verbose=2),
             'validations.feather',
@@ -272,7 +272,7 @@ def test_gaze_save_metadata(tmp_path, gaze, expected_file):
             Gaze(
                 pl.DataFrame({'x': [1, 2], 'y': [3, 4]}),
                 pixel_columns=['x', 'y'],
-                validations=pl.DataFrame({'timestamp': [0], 'accuracy_avg': [0.5]}),
+                validations=pl.DataFrame({'time': [0], 'accuracy_avg': [0.5]}),
             ),
             lambda g, p: g.save_validations(p / 'validations.csv', verbose=2),
             'validations.csv',
@@ -283,6 +283,38 @@ def test_gaze_save_metadata(tmp_path, gaze, expected_file):
 def test_gaze_save_dataframes(tmp_path, gaze, save_func, expected_file):
     save_func(gaze, tmp_path)
     assert os.path.exists(tmp_path / expected_file)
+
+
+@pytest.mark.parametrize(
+    'save_method,data',
+    [
+        pytest.param(
+            'save_calibrations',
+            pl.DataFrame({'time': [1.5], 'num_points': [9]}),
+            id='calibrations',
+        ),
+        pytest.param(
+            'save_validations',
+            pl.DataFrame({'time': [1.5], 'accuracy_avg': [0.5]}),
+            id='validations',
+        ),
+    ],
+)
+def test_gaze_save_dataframes_csv_writes_time_as_milliseconds(tmp_path, save_method, data):
+    # Numeric time input is interpreted as milliseconds and stored as Duration('us');
+    # saving to csv must write 1.5 ms back as 1.5, not the raw microsecond int 1500.
+    attribute = save_method.replace('save_', '')
+    gaze = Gaze(
+        pl.DataFrame({'x': [1, 2], 'y': [3, 4]}),
+        pixel_columns=['x', 'y'],
+        **{attribute: data},
+    )
+    path = tmp_path / f'{attribute}.csv'
+
+    getattr(gaze, save_method)(path)
+
+    written = pl.read_csv(path)
+    assert written['time'].to_list() == [1.5]
 
 
 @pytest.mark.parametrize(
