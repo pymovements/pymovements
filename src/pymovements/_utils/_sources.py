@@ -56,7 +56,14 @@ def add_source(metadata: dict[str, Any] | None, file: Any) -> dict[str, Any]:
     -------
     dict[str, Any]
         Copy of the metadata dictionary with a ``sources`` entry.
+
+    Raises
+    ------
+    TypeError
+        If a ``sources`` entry already present is not a list of path strings.
     """
+    _check_sources(metadata)
+
     metadata = dict(metadata) if metadata else {}
     if 'sources' not in metadata and isinstance(file, (str, Path)):
         metadata['sources'] = [Path(file).resolve().as_posix()]
@@ -95,11 +102,11 @@ def _relativize_source(source: str | Path, resolved_root: Path) -> str:
         return _as_posix_string(source)
 
 
-def relativize_sources(metadata: dict[str, Any] | None, root: Path) -> None:
-    """Rewrite absolute ``sources`` entries below ``root`` as root-relative paths.
+def relativize_sources(metadata: dict[str, Any] | None, root: Path) -> dict[str, Any]:
+    """Return a metadata dictionary with ``sources`` entries below ``root`` made root-relative.
 
-    The metadata dictionary is modified in place. Entries outside of ``root``
-    are kept as they are.
+    The passed metadata dictionary is copied, not mutated. Entries outside of
+    ``root`` are kept as they are.
 
     Parameters
     ----------
@@ -108,6 +115,11 @@ def relativize_sources(metadata: dict[str, Any] | None, root: Path) -> None:
     root: Path
         Directory to relativize the ``sources`` entries against.
 
+    Returns
+    -------
+    dict[str, Any]
+        Copy of the metadata dictionary with relativized ``sources`` entries.
+
     Raises
     ------
     TypeError
@@ -115,26 +127,38 @@ def relativize_sources(metadata: dict[str, Any] | None, root: Path) -> None:
     """
     _check_sources(metadata)
 
-    resolved_root = root.resolve()
-    sources = (metadata or {}).get('sources') or []
-    sources[:] = [_relativize_source(source, resolved_root) for source in sources]
+    metadata = dict(metadata) if metadata else {}
+    if metadata.get('sources'):
+        resolved_root = root.resolve()
+        metadata['sources'] = [
+            _relativize_source(source, resolved_root) for source in metadata['sources']
+        ]
+    return metadata
 
 
-def merge_sources(metadata: dict[str, Any], other: dict[str, Any] | None) -> None:
-    """Append the ``sources`` entries of another metadata dictionary.
+def merge_sources(
+        metadata: dict[str, Any] | None,
+        other: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Return a metadata dictionary with the ``sources`` entries of another appended.
 
     Duplicate entries are dropped while the original order is preserved.
     Entries are compared as POSIX-style path strings, so equal :py:class:`str`
-    and :py:class:`~pathlib.Path` entries deduplicate; appended entries are
-    recorded as POSIX-style path strings. The metadata dictionary is modified
-    in place.
+    and :py:class:`~pathlib.Path` entries deduplicate. Appended entries are
+    recorded as POSIX-style path strings. The passed metadata dictionaries are
+    copied, not mutated.
 
     Parameters
     ----------
-    metadata: dict[str, Any]
-        Metadata dictionary to extend.
+    metadata: dict[str, Any] | None
+        Metadata dictionary to extend. May be ``None``.
     other: dict[str, Any] | None
         Metadata dictionary to merge the ``sources`` entries from. May be ``None``.
+
+    Returns
+    -------
+    dict[str, Any]
+        Copy of the metadata dictionary with the ``sources`` entries of both.
 
     Raises
     ------
@@ -144,9 +168,10 @@ def merge_sources(metadata: dict[str, Any], other: dict[str, Any] | None) -> Non
     _check_sources(metadata)
     _check_sources(other)
 
+    metadata = dict(metadata) if metadata else {}
     other_sources = (other or {}).get('sources') or []
     if not other_sources:
-        return
+        return metadata
 
     sources = list(metadata.get('sources') or [])
     seen = {_as_posix_string(source) for source in sources}
@@ -156,3 +181,4 @@ def merge_sources(metadata: dict[str, Any], other: dict[str, Any] | None) -> Non
             sources.append(key)
             seen.add(key)
     metadata['sources'] = sources
+    return metadata

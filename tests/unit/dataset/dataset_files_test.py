@@ -1592,6 +1592,32 @@ def test_load_event_files_adds_relative_sources(tmp_path):
     assert files[0].metadata == {'subject_id': 1}
 
 
+def test_load_event_files_keeps_user_sources_list_unmutated(tmp_path):
+    events_dirpath = tmp_path / 'events'
+    events_dirpath.mkdir()
+    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [1]})
+    events_df.write_ipc(events_dirpath / 'sub_1.feather')
+
+    absolute_source = (events_dirpath / 'sub_1.feather').resolve().as_posix()
+    metadata = {'sources': [absolute_source]}
+    resource_definition = ResourceDefinition(content='gaze')
+    files = [
+        DatasetFile(
+            path=tmp_path / 'raw' / 'sub_1.csv',
+            definition=resource_definition,
+            metadata=metadata,
+        ),
+    ]
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+
+    events_list = load_event_files(files, paths, verbose=False)
+
+    # The user-supplied entry is respected and recorded relative to the dataset root.
+    assert events_list[0].metadata == {'sources': ['events/sub_1.feather']}
+    # The user's own sources list is not rewritten during relativization.
+    assert metadata == {'sources': [absolute_source]}
+
+
 @pytest.mark.parametrize(
     'extension',
     [

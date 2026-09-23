@@ -1188,9 +1188,9 @@ class Dataset:
 
             # The reading measures are derived from the events and their AOI stimulus files.
             # AOI files below the dataset root are recorded relative to it, like all other
-            # dataset sources.
-            relativize_sources(events.metadata, self.paths.dataset)
-            merge_sources(reading_measures_metadata, events.metadata)
+            # dataset sources. The dataset's events stay untouched.
+            events_metadata = relativize_sources(events.metadata, self.paths.dataset)
+            reading_measures_metadata = merge_sources(reading_measures_metadata, events_metadata)
 
             fixations = events.filter_by_name('fixation')
 

@@ -247,7 +247,7 @@ def load_event_files(
             )
 
         metadata = add_source(file.metadata, filepath)
-        relativize_sources(metadata, paths.dataset)
+        metadata = relativize_sources(metadata, paths.dataset)
         list_of_events.append(Events(events, metadata=metadata))
 
     return list_of_events
@@ -312,8 +312,8 @@ def load_gaze_files(
             dataset_definition=deepcopy(definition),
             preprocessed=preprocessed,
         )
-        relativize_sources(gaze.metadata, paths.dataset)
-        relativize_sources(gaze.events.metadata, paths.dataset)
+        gaze.metadata = relativize_sources(gaze.metadata, paths.dataset)
+        gaze.events.metadata = relativize_sources(gaze.events.metadata, paths.dataset)
         gazes.append(gaze)
 
     return gazes
@@ -483,7 +483,7 @@ def load_precomputed_reading_measures(
         reading_measures = load_precomputed_reading_measure_file(
             file=file, dataset_definition=definition,
         )
-        relativize_sources(reading_measures.metadata, paths.dataset)
+        reading_measures.metadata = relativize_sources(reading_measures.metadata, paths.dataset)
         precomputed_reading_measures.append(reading_measures)
     return precomputed_reading_measures
 
@@ -585,7 +585,9 @@ def load_precomputed_event_files(
         precomputed_event_frame = load_precomputed_event_file(
             file=file, dataset_definition=definition,
         )
-        relativize_sources(precomputed_event_frame.metadata, paths.dataset)
+        precomputed_event_frame.metadata = relativize_sources(
+            precomputed_event_frame.metadata, paths.dataset,
+        )
         precomputed_events.append(precomputed_event_frame)
     return precomputed_events
 
@@ -679,7 +681,7 @@ def load_stimuli_files(
     stimuli: list[ImageStimulus | TextStimulus] = []
     for file in files:
         stimulus = load_stimulus_file(file=file)
-        relativize_sources(stimulus.metadata, paths.dataset)
+        stimulus.metadata = relativize_sources(stimulus.metadata, paths.dataset)
         stimuli.append(stimulus)
     return stimuli
 

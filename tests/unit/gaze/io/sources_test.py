@@ -60,3 +60,25 @@ class TestLoadFunctionSources:
         gaze = load_function(str(filepath), **load_kwargs)
 
         assert gaze.metadata['sources'] == [filepath.resolve().as_posix()]
+
+    @pytest.mark.parametrize(
+        ('malformed_sources', 'message'),
+        [
+            pytest.param(
+                'raw/sub_1.csv', 'must be a list of path strings',
+                id='not_a_list',
+            ),
+            pytest.param(
+                [1], 'entries must be path strings',
+                id='non_path_entry',
+            ),
+        ],
+    )
+    def test_raises_type_error_on_malformed_sources(
+            self, load_function, example_filename, load_kwargs, make_example_file,
+            malformed_sources, message,
+    ):
+        filepath = make_example_file(example_filename)
+
+        with pytest.raises(TypeError, match=message):
+            load_function(filepath, metadata={'sources': malformed_sources}, **load_kwargs)

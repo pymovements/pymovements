@@ -329,7 +329,7 @@ class Gaze:
             self.metadata = metadata
 
         # Events derived from this gaze object share its source files.
-        merge_sources(self.events.metadata, self.metadata)
+        self.events.metadata = merge_sources(self.events.metadata, self.metadata)
 
         # The auxiliary frames' time column is migrated to Duration('us') before being stored,
         # consistent with the samples time column. Numeric values are interpreted as
@@ -1220,7 +1220,7 @@ class Gaze:
         # events containers replaced after construction, e.g. by Dataset.clear_events().
         # Merging after method resolution keeps detect free of side effects when the
         # method name is invalid.
-        merge_sources(self.events.metadata, self.metadata)
+        self.events.metadata = merge_sources(self.events.metadata, self.metadata)
 
         if self.n_components is not None:
             eye_components = self._infer_eye_components(eye)
@@ -1999,9 +1999,7 @@ class Gaze:
         self.samples = polars.concat([self.samples, aoi_df], how='horizontal_extend')
 
         # The AOI-mapped samples are derived from the stimulus file as well.
-        if self.metadata is None:
-            self.metadata = {}
-        merge_sources(self.metadata, aoi_dataframe.metadata)
+        self.metadata = merge_sources(self.metadata, aoi_dataframe.metadata)
 
     def nest(
             self,

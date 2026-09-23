@@ -1005,7 +1005,7 @@ class Events:
             self.frame = self.frame.drop('location')
 
         # The AOI-mapped events are derived from the stimulus file as well.
-        merge_sources(self.metadata, aoi_dataframe.metadata)
+        self.metadata = merge_sources(self.metadata, aoi_dataframe.metadata)
 
     def __eq__(self, other: Events) -> bool:
         """Check equality between this and another :py:class:`~pymovements.Events` object."""
