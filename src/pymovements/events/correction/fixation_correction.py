@@ -53,26 +53,32 @@ Supported Drift Correction Algorithms
 from __future__ import annotations
 
 import inspect
+import os
 import warnings
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
+
 import cv2
 import pandas as pd
-from pynput import keyboard
-from pathlib import Path
-import os
-
 import polars as pl
+from pynput import keyboard
 
 from pymovements.events.correction._aoi import count_text_lines
 from pymovements.events.correction._aoi import get_lines_of_text_from_aois
 from pymovements.events.correction._aoi import get_word_locations_from_aois
 from pymovements.events.correction._aoi import has_word_x_coords
 from pymovements.events.correction._aoi import normalize_aois
+from pymovements.events.correction._utils import DataProcessing
+from pymovements.events.correction._utils import find_closest_bottom_box
+from pymovements.events.correction._utils import find_closest_left_box
+from pymovements.events.correction._utils import find_closest_right_box
+from pymovements.events.correction._utils import find_closest_top_box
 from pymovements.events.correction._utils import is_right_to_left
 from pymovements.events.correction._utils import line_index_to_y
 from pymovements.events.correction._utils import location_x
 from pymovements.events.correction._utils import nearest_line_index
+from pymovements.events.correction._utils import OCR_Reader
 from pymovements.events.correction.attach import attach
 from pymovements.events.correction.chain import chain
 from pymovements.events.correction.cluster import cluster
@@ -85,12 +91,6 @@ from pymovements.events.correction.split import split
 from pymovements.events.correction.stretch import stretch
 from pymovements.events.correction.warp import warp
 from pymovements.events.correction.wisdom_of_the_crowd import wisdom_of_the_crowd
-from pymovements.events.correction._utils import DataProcessing
-from  pymovements.events.correction._utils import find_closest_top_box
-from  pymovements.events.correction._utils import find_closest_bottom_box
-from  pymovements.events.correction._utils import find_closest_left_box
-from  pymovements.events.correction._utils import find_closest_right_box
-from  pymovements.events.correction._utils import OCR_Reader
 
 # The insertion order defines the default tie-breaking priority of the ensemble votes.
 _DRIFT_ALGORITHMS: dict[str, Callable[..., pl.Expr]] = {
@@ -940,6 +940,8 @@ def correct_fixations(
         events, indexed_events, corrected_indices, corrected_locations, algo_name,
         location_column,
     )
+
+
 class FixationCorrection:
     """A class to manually correct fixation points on an image.
 
@@ -1009,7 +1011,7 @@ class FixationCorrection:
             if i < len(self.fixation_coordinates):
                 next_x, next_y = self.fixation_coordinates[
                     self.next_valid_fixation_index(
-                        (i+1) % len(self.fixation_coordinates),
+                        (i + 1) % len(self.fixation_coordinates),
                     )
                 ]
                 cv2.line(

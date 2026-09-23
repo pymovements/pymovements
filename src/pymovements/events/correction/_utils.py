@@ -20,26 +20,24 @@
 """Provides shared helpers for the drift correction algorithms."""
 from __future__ import annotations
 
+import math
+import os
+import tkinter as tk
 from collections.abc import Callable
 from collections.abc import Sequence
-
-import polars as pl
-import math
-import cv2
-import numpy as np
-import pytesseract
-from pytesseract import Output
-import pandas as pd
-from pandas import DataFrame
-import os
 from pathlib import Path
-from typing import Any
-
-
-import tkinter as tk
 from tkinter import messagebox
 from tkinter import simpledialog
 from tkinter import ttk
+from typing import Any
+
+import cv2
+import numpy as np
+import pandas as pd
+import polars as pl
+import pytesseract
+from pandas import DataFrame
+from pytesseract import Output
 
 from pymovements._utils._expressions import as_expr
 
@@ -147,7 +145,6 @@ def is_right_to_left(directionality: str) -> bool:
     return directionality == 'right-to-left'
 
 
-
 def distance(p1: tuple[int, int], p2: tuple[int, int]) -> float:
     """Return the Euclidean distance between two points."""
     return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
@@ -162,8 +159,8 @@ def find_closest_top_box(
     closest_distance = math.inf
     for center in list_of_centers:
         cx, cy = center
-        if cy < py and np.hypot(px-cx, py-cy) < closest_distance:
-            closest_distance = np.hypot(px-cx, py-cy)
+        if cy < py and np.hypot(px - cx, py - cy) < closest_distance:
+            closest_distance = np.hypot(px - cx, py - cy)
             closest_top_box = center
     if closest_distance == math.inf:
         closest_top_box = (px, py)
@@ -179,8 +176,8 @@ def find_closest_left_box(
     closest_distance = math.inf
     for center in list_of_centers:
         cx, cy = center
-        if cx < px and np.hypot(px-cx, py-cy) < closest_distance:
-            closest_distance = np.hypot(px-cx, py-cy)
+        if cx < px and np.hypot(px - cx, py - cy) < closest_distance:
+            closest_distance = np.hypot(px - cx, py - cy)
             closest_left_box = center
     if closest_distance == math.inf:
         closest_left_box = (px, py)
@@ -196,8 +193,8 @@ def find_closest_bottom_box(
     closest_distance = math.inf
     for center in list_of_centers:
         cx, cy = center
-        if cy > py and np.hypot(px-cx, py-cy) < closest_distance:
-            closest_distance = np.hypot(px-cx, py-cy)
+        if cy > py and np.hypot(px - cx, py - cy) < closest_distance:
+            closest_distance = np.hypot(px - cx, py - cy)
             closest_bottom_box = center
     if closest_distance == math.inf:
         closest_bottom_box = (px, py)
@@ -213,8 +210,8 @@ def find_closest_right_box(
     closest_distance = math.inf
     for center in list_of_centers:
         cx, cy = center
-        if cx > px and np.hypot(px-cx, py-cy) < closest_distance:
-            closest_distance = np.hypot(px-cx, py-cy)
+        if cx > px and np.hypot(px - cx, py - cy) < closest_distance:
+            closest_distance = np.hypot(px - cx, py - cy)
             closest_right_box = center
     if closest_distance == math.inf:
         closest_right_box = (px, py)
@@ -511,6 +508,7 @@ class ColumnMappingDialog(simpledialog.Dialog):
         if entry is None:
             raise RuntimeError(f"{name} was not initialized")
         return entry
+
 
 class DataProcessing:
     """Handle loading, filtering, and grouping of CSV file.
