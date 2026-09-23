@@ -234,14 +234,14 @@ class DatasetDefinition:
     Raises
     ------
     ValueError
-        If two named sources share the same target ``filename`` (duplicate source filename), if
-        a resource references a source name that is missing from ``sources`` (dangling source
-        reference), if a named source is not referenced by any resource (unused source), or if
-        the resolved sources of the resources conflict (see
+        If two named sources share the same target ``filename`` but have different ``url``
+        values, if a resource references a source name that is missing from ``sources``
+        (dangling source reference), or if the resolved sources of the resources conflict (see
         :py:meth:`~pymovements.DatasetDefinition.resolved_sources`).
     TypeError
-        If ``resources`` is neither a :py:class:`~pymovements.ResourceDefinitions` instance nor
-        a list of dictionaries.
+        If ``sources`` contains a value that is neither a :py:class:`~pymovements.WebSource`
+        nor a dictionary, or if ``resources`` is neither a
+        :py:class:`~pymovements.ResourceDefinitions` instance nor a list of dictionaries.
 
     Notes
     -----
@@ -437,19 +437,35 @@ class DatasetDefinition:
     def _validate_sources(
             sources: dict[str, WebSource],
     ) -> None:
-        """Validate sources for uniqueness.
+        """Validate that named sources do not conflict.
+
+        Fully identical sources declared under different names are legal, matching the silent
+        deduplication of identical inline sources. A named source does not need to be
+        referenced by a resource, so it can be pre-declared for later selection.
 
         Parameters
         ----------
         sources: dict[str, WebSource]
             Mapping of source names to sources to validate.
+
+        Raises
+        ------
+        ValueError
+            If two named sources share the same ``filename`` but have different ``url``
+            values.
         """
-        filenames: set[str] = set()
+        filename_urls: dict[str, str] = {}
         for source in sources.values():
-            if source.filename is not None:
-                if source.filename in filenames:
-                    raise ValueError(f"Duplicate source filename: '{source.filename}'")
-                filenames.add(source.filename)
+            if source.filename is None:
+                continue
+            existing_url = filename_urls.get(source.filename)
+            if existing_url is not None and existing_url != source.url:
+                raise ValueError(
+                    f"Conflicting sources for filename '{source.filename}': the same "
+                    f"filename is claimed by different urls "
+                    f"('{existing_url}' != '{source.url}').",
+                )
+            filename_urls[source.filename] = source.url
 
     @staticmethod
     def _validate_resource_sources(
@@ -465,8 +481,6 @@ class DatasetDefinition:
         sources: dict[str, WebSource]
             Mapping of source names to sources to validate against.
         """
-        referenced_names: set[str] = set()
-
         for resource in resources:
             # A string source is a reference to a named entry in ``sources``.
             if isinstance(resource.source, str):
@@ -475,12 +489,6 @@ class DatasetDefinition:
                         f"Dangling source reference: '{resource.source}' "
                         f"in resource '{resource.content}'",
                     )
-                referenced_names.add(resource.source)
-
-        unused_names = sources.keys() - referenced_names
-        if unused_names:
-            name = sorted(unused_names)[0]
-            raise ValueError(f"Unused source: '{name}' is not referenced by any resource.")
 
     @staticmethod
     def _initialize_sources(
@@ -490,10 +498,18 @@ class DatasetDefinition:
         if sources is None:
             return {}
 
-        return {
-            name: source if isinstance(source, WebSource) else WebSource.from_dict(source)
-            for name, source in sources.items()
-        }
+        initialized_sources: dict[str, WebSource] = {}
+        for name, source in sources.items():
+            if isinstance(source, WebSource):
+                initialized_sources[name] = source
+            elif isinstance(source, dict):
+                initialized_sources[name] = WebSource.from_dict(source)
+            else:
+                raise TypeError(
+                    f"source '{name}' must be WebSource or dict, "
+                    f'but is {type(source).__name__}',
+                )
+        return initialized_sources
 
     @staticmethod
     def _initialize_resources(

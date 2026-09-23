@@ -812,6 +812,34 @@ def test_dataset_definition_init_raises_exception(init_kwargs, exception, except
     assert msg == exception_msg
 
 
+@pytest.mark.parametrize(
+    ('source_value', 'exception_msg'),
+    [
+        pytest.param(
+            'http://example.com/file.zip',
+            "source 'main' must be WebSource or dict, but is str",
+            id='str',
+        ),
+        pytest.param(
+            1,
+            "source 'main' must be WebSource or dict, but is int",
+            id='int',
+        ),
+        pytest.param(
+            None,
+            "source 'main' must be WebSource or dict, but is NoneType",
+            id='none',
+        ),
+    ],
+)
+def test_dataset_definition_sources_wrong_value_type_raises(source_value, exception_msg):
+    with pytest.raises(TypeError) as excinfo:
+        DatasetDefinition(name='test', sources={'main': source_value})
+
+    msg, = excinfo.value.args
+    assert msg == exception_msg
+
+
 def test_dataset_definition_inline_source_is_preserved():
     """Test that an inline WebSource is kept as-is (not rewritten to a reference)."""
     source = WebSource(url='http://example.com/file.zip', filename='file.zip')
@@ -846,12 +874,19 @@ def test_dataset_definition_named_source_reference_from_dict():
     )
 
 
-def test_dataset_definition_validation_duplicate_filenames():
-    """Test that duplicate target filenames raise ValueError."""
-    source1 = WebSource(url='http://example.com/1.zip', filename='file.zip')
-    source2 = WebSource(url='http://example.com/2.zip', filename='file.zip')
-    with pytest.raises(ValueError, match="Duplicate source filename: 'file.zip'"):
-        DatasetDefinition(name='test', sources={'a': source1, 'b': source2})
+def test_dataset_definition_identical_named_sources_deduplicate():
+    """Test that fully identical named sources are legal and deduplicated when resolved."""
+    source1 = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    source2 = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    resources = [
+        ResourceDefinition(content='gaze', source='a'),
+        ResourceDefinition(content='precomputed_events', source='b'),
+    ]
+    definition = DatasetDefinition(
+        name='test', resources=resources, sources={'a': source1, 'b': source2},
+    )
+
+    assert definition.resolved_sources() == [source1]
 
 
 def test_dataset_definition_validation_dangling_reference():
@@ -875,11 +910,13 @@ def test_dataset_definition_resolved_sources_dangling_reference_after_mutation()
         definition.resolved_sources()
 
 
-def test_dataset_definition_validation_unused_named_source():
-    """Test that a named source not referenced by any resource raises ValueError."""
+def test_dataset_definition_unreferenced_named_source_is_legal():
+    """Test that a named source not referenced by any resource constructs cleanly."""
     source = WebSource(url='http://example.com/file.zip', filename='file.zip')
-    with pytest.raises(ValueError, match="Unused source: 'main' is not referenced"):
-        DatasetDefinition(name='test', sources={'main': source})
+    definition = DatasetDefinition(name='test', sources={'main': source})
+
+    assert definition.sources == {'main': source}
+    assert not definition.resolved_sources()
 
 
 def test_dataset_definition_filename_none_excluded_from_uniqueness():
@@ -1010,6 +1047,14 @@ def test_dataset_definition_conflicting_sources_other_field_raises():
             ],
             {'main': WebSource(url='http://example.com/a.zip', filename='file.zip')},
             id='named_and_inline_sources',
+        ),
+        pytest.param(
+            None,
+            {
+                'a': WebSource(url='http://example.com/a.zip', filename='file.zip'),
+                'b': WebSource(url='http://example.com/b.zip', filename='file.zip'),
+            },
+            id='named_sources',
         ),
     ],
 )
