@@ -88,7 +88,6 @@ dev = [
   "opencv-python>=4.10.0.84",
   "pynput==1.8.1",
   "pytesseract==0.3.13"
-
 ]
 
 [project.urls]
