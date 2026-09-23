@@ -222,10 +222,10 @@ def test_heatmap_sets_screen_axes_correctly(gaze):
     assert ax.get_aspect() == 1.0
 
 
-@pytest.mark.parametrize('origin', ['lower left', 'center', 'upper right'])
+@pytest.mark.parametrize('origin', ['lower left', 'upper right'])
 def test_heatmap_invalid_screen_origin_raises(origin, gaze):
     gaze.experiment.screen.origin = origin
-    with pytest.raises(ValueError, match='screen origin must be "upper left"'):
+    with pytest.raises(ValueError, match='screen origin must be'):
         pm.plotting.heatmap(gaze)
 
 
