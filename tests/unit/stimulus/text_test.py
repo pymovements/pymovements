@@ -1218,6 +1218,22 @@ def test_text_stimulus_plot_creates_own_figure_when_ax_not_provided(sample_aoi_d
     assert ax.get_aspect() == 1.0
 
 
+def test_text_stimulus_plot_uses_provided_ax(sample_aoi_dataframe):
+    stimulus = TextStimulus(
+        aois=sample_aoi_dataframe,
+        aoi_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        **WIDTH_HEIGHT_COLUMNS,
+    )
+
+    existing_fig, existing_ax = plt.subplots()
+
+    returned_fig, returned_ax = stimulus.plot(ax=existing_ax)
+
+    assert returned_ax is existing_ax
+    assert returned_fig is existing_fig
+
 
 def test_text_stimulus_plot_show_boxes_false_draws_labels_only(sample_aoi_dataframe):
     stimulus = TextStimulus(
