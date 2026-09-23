@@ -17,5 +17,6 @@ Plotting
     heatmap
     main_sequence_plot
     scanpathplot
+    screen
     traceplot
     tsplot
