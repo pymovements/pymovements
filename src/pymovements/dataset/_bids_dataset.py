@@ -116,12 +116,17 @@ def _polars_datatype_to_bids_format(dtype: polars.DataType) -> str:
         return 'bool'
     if dtype == polars.String:
         return 'string'
+    # Categorical and Enum columns hold string values, so they describe as 'string'.
+    # Note that they do not round-trip: _cast_columns_to_metadata_format casts a
+    # 'string' column back to String, matching the behaviour for loaded data.
+    if dtype in (polars.Categorical, polars.Enum):
+        return 'string'
     if dtype == polars.Null:
         return 'string'
 
     raise TypeError(
         f"polars datatype {dtype} has no mapping to bids format descriptor. "
-        f"Supported polars datatypes are: Integer, Float, String",
+        f"Supported polars datatypes are: Integer, Float, String, Categorical, Enum",
     )
 
 
