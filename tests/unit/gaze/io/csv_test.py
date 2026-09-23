@@ -345,3 +345,43 @@ def test_from_csv_deprecated_schema_overrides_merged_with_column_schema_override
     # while non-conflicting deprecated overrides are still applied.
     assert gaze.samples.schema['pupil'] == pl.Float32
     assert gaze.samples.schema['extra'] == pl.Float64
+
+
+def test_from_csv_adds_no_source_for_file_object(make_example_file):
+    filepath = make_example_file('monocular_example.csv')
+    with open(filepath, encoding='utf-8') as csv_file:
+        buffer = io.StringIO(csv_file.read())
+
+    gaze = from_csv(buffer, pixel_columns=['x_left_pix', 'y_left_pix'])
+
+    assert 'sources' not in gaze.metadata
+    assert 'sources' not in gaze.events.metadata
+
+
+def test_from_csv_respects_user_provided_sources(make_example_file):
+    filepath = make_example_file('monocular_example.csv')
+
+    gaze = from_csv(
+        filepath,
+        metadata={'sources': ['my/custom/source.csv']},
+        pixel_columns=['x_left_pix', 'y_left_pix'],
+    )
+
+    assert gaze.metadata['sources'] == ['my/custom/source.csv']
+
+
+def test_from_csv_does_not_mutate_passed_metadata(make_example_file):
+    filepath = make_example_file('monocular_example.csv')
+    metadata = {'subject_id': 42}
+
+    gaze = from_csv(
+        filepath,
+        metadata=metadata,
+        pixel_columns=['x_left_pix', 'y_left_pix'],
+    )
+
+    assert metadata == {'subject_id': 42}
+    assert gaze.metadata == {
+        'subject_id': 42,
+        'sources': [filepath.resolve().as_posix()],
+    }

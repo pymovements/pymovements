@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2026 The pymovements Project Authors
+# Copyright (c) 2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,41 +17,23 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Module for the precomputed events dataframe."""
-from __future__ import annotations
-
-from typing import Any
-
+"""Test PrecomputedEventDataFrame class."""
 import polars as pl
 
-from pymovements._utils._html import repr_html
+from pymovements.events.precomputed import PrecomputedEventDataFrame
 
 
-@repr_html()
-class PrecomputedEventDataFrame:
-    """A DataFrame for precomputed eye movement event data.
+def test_precomputed_event_dataframe_metadata_defaults_to_empty_dict():
+    precomputed = PrecomputedEventDataFrame(data=pl.DataFrame())
+    assert precomputed.metadata == {}
 
-    Parameters
-    ----------
-    data: pl.DataFrame
-        A precomputed event dataframe.
-    metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. A ``sources`` entry lists the files the
-        event data was loaded from. (default: None)
 
-    Attributes
-    ----------
-    frame: pl.DataFrame
-        A dataframe of precomputed events.
-    metadata: dict[str, Any]
-        Dictionary containing additional metadata.
-    """
-
-    frame: pl.DataFrame
-
-    metadata: dict[str, Any]
-
-    def __init__(self, data: pl.DataFrame, metadata: dict[str, Any] | None = None) -> None:
-
-        self.frame = data.clone()
-        self.metadata = metadata if metadata is not None else {}
+def test_precomputed_event_dataframe_metadata_is_stored():
+    precomputed = PrecomputedEventDataFrame(
+        data=pl.DataFrame(),
+        metadata={'sources': ['precomputed_events/events.csv'], 'subject_id': 1},
+    )
+    assert precomputed.metadata == {
+        'sources': ['precomputed_events/events.csv'],
+        'subject_id': 1,
+    }

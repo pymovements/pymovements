@@ -23,6 +23,7 @@ from __future__ import annotations
 import math
 import warnings
 from collections.abc import Sequence
+from copy import deepcopy
 from dataclasses import dataclass
 from dataclasses import KW_ONLY
 from pathlib import Path
@@ -34,6 +35,7 @@ import polars as pl
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
+from pymovements._utils._sources import add_source
 
 
 @dataclass(frozen=True)
@@ -252,7 +254,8 @@ class TextStimulus:
         Returns
         -------
         list[TextStimulus]
-            A list of TextStimulus objects.
+            A list of TextStimulus objects. Each split holds a deep copy of the
+            metadata dictionary.
         """
         return [
             TextStimulus(
@@ -267,6 +270,7 @@ class TextStimulus:
                 page_column=self.page_column,
                 trial_column=self.trial_column,
                 writing_system=self.writing_system,
+                metadata=deepcopy(self.metadata),
             )
             for df in self.aois.partition_by(by, as_dict=False)
         ]
@@ -377,7 +381,8 @@ class TextStimulus:
             :py:meth:`~pymovements.stimulus.WritingSystem.from_descriptor()` for initialization.
             (default: ``'left-to-right'``)
         metadata: dict[str, Any] | None
-            Dictionary containing additional metadata. (default: None)
+            Dictionary containing additional metadata. Unless already present, a ``sources``
+            entry holding the resolved path of ``path`` is added. (default: None)
         read_csv_kwargs: dict[str, Any] | None
             Custom read keyword arguments for polars. (default: None)
 
@@ -413,7 +418,7 @@ class TextStimulus:
             page_column=page_column,
             trial_column=trial_column,
             writing_system=writing_system,
-            metadata=metadata,
+            metadata=add_source(metadata, path),
         )
 
 
@@ -500,7 +505,8 @@ def from_file(
         Text writing system. See TextStimulus.__init__ for details.
         (default: WritingSystem(horizontal, top-to-bottom, left-to-right))
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. (default: None)
+        Dictionary containing additional metadata. Unless already present, a ``sources``
+        entry holding the resolved path of ``aoi_path`` is added. (default: None)
 
 
     Returns
