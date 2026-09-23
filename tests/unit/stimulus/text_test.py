@@ -1185,6 +1185,40 @@ def test_text_stimulus_plot_text_kwargs_override_defaults(sample_aoi_dataframe):
     assert all(text.get_fontsize() == 20 for text in ax.texts)
 
 
+def test_text_stimulus_plot_box_kwargs_override_defaults(sample_aoi_dataframe):
+    stimulus = TextStimulus(
+        aois=sample_aoi_dataframe,
+        aoi_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        **WIDTH_HEIGHT_COLUMNS,
+    )
+
+    _, ax = stimulus.plot(box_kwargs={'fill': True, 'edgecolor': 'red', 'linewidth': 2})
+
+    assert len(ax.patches) == 3
+    assert all(patch.get_fill() for patch in ax.patches)
+    assert all(patch.get_edgecolor()[:3] == (1.0, 0.0, 0.0) for patch in ax.patches)
+    assert all(patch.get_linewidth() == 2 for patch in ax.patches)
+
+
+def test_text_stimulus_plot_creates_own_figure_when_ax_not_provided(sample_aoi_dataframe):
+    stimulus = TextStimulus(
+        aois=sample_aoi_dataframe,
+        aoi_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        **WIDTH_HEIGHT_COLUMNS,
+    )
+
+    fig, ax = stimulus.plot()
+
+    assert isinstance(fig, plt.Figure)
+    assert ax.figure is fig
+    assert ax.get_aspect() == 1.0
+
+
+
 def test_text_stimulus_plot_show_boxes_false_draws_labels_only(sample_aoi_dataframe):
     stimulus = TextStimulus(
         aois=sample_aoi_dataframe,
