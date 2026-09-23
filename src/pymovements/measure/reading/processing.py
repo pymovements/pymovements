@@ -41,6 +41,7 @@ from pymovements.measure.reading.measures import rereading_time
 from pymovements.measure.reading.measures import right_bounded_reading_time
 from pymovements.measure.reading.measures import saccade_length_in
 from pymovements.measure.reading.measures import saccade_length_out
+from pymovements.measure.reading.measures import skipped
 from pymovements.measure.reading.measures import total_fixation_count
 
 # Measure output columns, in order. Group columns and word identity are prepended on output.
@@ -725,8 +726,7 @@ def _assemble_word_level_measures(
     table = table.with_columns(
         [pl.col(column).fill_null(0) for column in joined_measure_columns],
     ).with_columns(
-        # total skipping: the word received no fixation at all
-        (pl.col('TFC') == 0).cast(pl.Int64).alias('skipped'),
+        skipped(),
     )
 
     if 'LP' in table.columns:
