@@ -40,6 +40,9 @@ def compare(
 ) -> pl.Expr:
     """Match fixation lines to candidate text lines using Dynamic Time Warping (DTW).
 
+    The fixation sequence is segmented into gaze lines at large leftward saccades. Each
+    gaze line is assigned to the candidate text line with the lowest warping cost.
+
     Reference: :cite:p:`LimaSanches2015,Carr2022`.
 
     Parameters

@@ -41,6 +41,10 @@ def stretch(
 ) -> pl.Expr:
     """Fit scale and offset bounds to stretch/compress fixations onto line centers.
 
+    The fitted parameters stretch or compress the fixation sequence onto the line
+    centers. The transformed y-coordinates are then snapped to their nearest text
+    lines.
+
     Reference: :cite:p:`Lohmeier2015,Carr2022`.
 
     Parameters

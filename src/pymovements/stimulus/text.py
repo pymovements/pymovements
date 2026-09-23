@@ -319,6 +319,35 @@ class TextStimulus:
         For invalid or missing coordinates (e.g. `None` or strings), a `UserWarning` is emitted,
         and the lookup returns a single row of `None` values.
 
+        Examples
+        --------
+        Looking up the AOI containing a gaze coordinate returns the matching row:
+
+        >>> import polars as pl
+        >>> from pymovements.stimulus import TextStimulus
+        >>> stimulus = TextStimulus(
+        ...     aois=pl.DataFrame({
+        ...         'word': ['Hello', 'world'],
+        ...         'start_x': [100.0, 200.0],
+        ...         'start_y': [100.0, 100.0],
+        ...         'width': [80.0, 80.0],
+        ...         'height': [40.0, 40.0],
+        ...     }),
+        ...     aoi_column='word',
+        ...     start_x_column='start_x',
+        ...     start_y_column='start_y',
+        ...     width_column='width',
+        ...     height_column='height',
+        ... )
+        >>> stimulus.get_aoi(row={'x': 120.0, 'y': 110.0}, x_eye='x', y_eye='y')
+        shape: (1, 5)
+        ┌───────┬─────────┬─────────┬───────┬────────┐
+        │ word  ┆ start_x ┆ start_y ┆ width ┆ height │
+        │ ---   ┆ ---     ┆ ---     ┆ ---   ┆ ---    │
+        │ str   ┆ f64     ┆ f64     ┆ f64   ┆ f64    │
+        ╞═══════╪═════════╪═════════╪═══════╪════════╡
+        │ Hello ┆ 100.0   ┆ 100.0   ┆ 80.0  ┆ 40.0   │
+        └───────┴─────────┴─────────┴───────┴────────┘
         """
         aois = _get_aoi(self, row=row, x_eye=x_eye, y_eye=y_eye)
         if max_matches:
@@ -386,6 +415,46 @@ class TextStimulus:
         -------
         TextStimulus
             Returns the text stimulus file.
+
+        Examples
+        --------
+        .. testsetup::
+
+            >>> getfixture('doctest_tmp_cwd')
+
+        First we write a small AOI file with one row per word to disk:
+
+        >>> import polars as pl
+        >>> pl.DataFrame({
+        ...     'word': ['Hello', 'world'],
+        ...     'start_x': [100.0, 200.0],
+        ...     'start_y': [100.0, 100.0],
+        ...     'width': [80.0, 80.0],
+        ...     'height': [40.0, 40.0],
+        ... }).write_csv('aois.csv')
+
+        Loading the file returns a :py:class:`~pymovements.stimulus.TextStimulus`
+        holding the AOIs:
+
+        >>> from pymovements.stimulus import TextStimulus
+        >>> stimulus = TextStimulus.from_csv(
+        ...     'aois.csv',
+        ...     aoi_column='word',
+        ...     start_x_column='start_x',
+        ...     start_y_column='start_y',
+        ...     width_column='width',
+        ...     height_column='height',
+        ... )
+        >>> stimulus.aois
+        shape: (2, 5)
+        ┌───────┬─────────┬─────────┬───────┬────────┐
+        │ word  ┆ start_x ┆ start_y ┆ width ┆ height │
+        │ ---   ┆ ---     ┆ ---     ┆ ---   ┆ ---    │
+        │ str   ┆ f64     ┆ f64     ┆ f64   ┆ f64    │
+        ╞═══════╪═════════╪═════════╪═══════╪════════╡
+        │ Hello ┆ 100.0   ┆ 100.0   ┆ 80.0  ┆ 40.0   │
+        │ world ┆ 200.0   ┆ 100.0   ┆ 80.0  ┆ 40.0   │
+        └───────┴─────────┴─────────┴───────┴────────┘
         """
         if isinstance(path, str):
             path = Path(path)
@@ -507,6 +576,38 @@ def from_file(
     -------
     TextStimulus
         Returns the text stimulus file.
+
+    Examples
+    --------
+    .. testsetup::
+
+        >>> getfixture('doctest_tmp_cwd')
+
+    First we write a small AOI file with one row per word to disk:
+
+    >>> import polars as pl
+    >>> pl.DataFrame({
+    ...     'word': ['Hello', 'world'],
+    ...     'start_x': [100.0, 200.0],
+    ...     'start_y': [100.0, 100.0],
+    ...     'width': [80.0, 80.0],
+    ...     'height': [40.0, 40.0],
+    ... }).write_csv('aois.csv')
+
+    Loading the file returns a :py:class:`~pymovements.stimulus.TextStimulus` holding
+    the AOIs:
+
+    >>> from pymovements.stimulus import text
+    >>> stimulus = text.from_file(
+    ...     'aois.csv',
+    ...     aoi_column='word',
+    ...     start_x_column='start_x',
+    ...     start_y_column='start_y',
+    ...     width_column='width',
+    ...     height_column='height',
+    ... )
+    >>> stimulus.aois['word'].to_list()
+    ['Hello', 'world']
     """
     return TextStimulus.from_csv(
         path=aoi_path,
