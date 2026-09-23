@@ -73,8 +73,8 @@ def test_events_split_dict_propagates_metadata():
         assert events_split.metadata == {'sources': ['raw/sub_1.csv']}
 
 
-def test_events_correct_fixations_not_inplace_propagates_metadata():
-    events = Events(
+def make_correction_events():
+    return Events(
         pl.DataFrame({
             'name': ['fixation'],
             'onset': [0],
@@ -83,7 +83,10 @@ def test_events_correct_fixations_not_inplace_propagates_metadata():
         }),
         metadata={'sources': ['raw/sub_1.csv']},
     )
-    stimulus = TextStimulus(
+
+
+def make_correction_stimulus():
+    return TextStimulus(
         aois=pl.DataFrame({
             'word': ['first'],
             'start_x': [90.0],
@@ -96,14 +99,30 @@ def test_events_correct_fixations_not_inplace_propagates_metadata():
         start_y_column='start_y',
         end_x_column='end_x',
         end_y_column='end_y',
+        metadata={'sources': ['stimuli/text_1.csv']},
     )
+
+
+def test_events_correct_fixations_inplace_merges_stimulus_sources():
+    events = make_correction_events()
+    stimulus = make_correction_stimulus()
+
+    events.correct_fixations(stimulus, algorithm='attach')
+
+    assert events.metadata['sources'] == ['raw/sub_1.csv', 'stimuli/text_1.csv']
+
+
+def test_events_correct_fixations_not_inplace_propagates_metadata():
+    events = make_correction_events()
+    stimulus = make_correction_stimulus()
 
     corrected = events.correct_fixations(stimulus, algorithm='attach', inplace=False)
 
-    assert corrected.metadata == {'sources': ['raw/sub_1.csv']}
-    # The metadata is deepcopied, not shared.
+    # The new object unions the event sources with the stimulus sources.
+    assert corrected.metadata == {'sources': ['raw/sub_1.csv', 'stimuli/text_1.csv']}
+    # The original events and their metadata stay untouched and unshared.
     corrected.metadata['sources'].append('other.csv')
-    assert events.metadata['sources'] == ['raw/sub_1.csv']
+    assert events.metadata == {'sources': ['raw/sub_1.csv']}
 
 
 def test_events_map_to_aois_merges_stimulus_sources(simple_stimulus: TextStimulus) -> None:

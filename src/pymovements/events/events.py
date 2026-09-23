@@ -1197,13 +1197,15 @@ class Events:
             fixation_name=fixation_name,
             character_level=character_level,
         )
+        # The corrected fixations are derived from the stimulus file as well.
         if inplace:
             self.frame = corrected_frame
+            self.metadata = merge_sources(self.metadata, aois.metadata)
             return None
         return Events(
             corrected_frame,
             trial_columns=self.trial_columns,
-            metadata=deepcopy(self.metadata),
+            metadata=merge_sources(deepcopy(self.metadata), aois.metadata),
         )
 
     def __eq__(self, other: Events) -> bool:
