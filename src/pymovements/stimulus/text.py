@@ -30,8 +30,8 @@ from typing import Any
 from typing import ClassVar
 from typing import Literal
 
-import polars as pl
 import matplotlib.pyplot as plt
+import polars as pl
 from matplotlib import patches
 
 from pymovements._utils import _checks
@@ -415,9 +415,8 @@ class TextStimulus:
             page_column=page_column,
             trial_column=trial_column,
             writing_system=writing_system,
-            metadata=metadata
+            metadata=metadata,
         )
-
 
     def resolve_boxes(
         self,
@@ -432,7 +431,7 @@ class TextStimulus:
         page: str | int | None
             Page number of text to resolve
         trial: str | int | None
-            Trial number of text to resolve 
+            Trial number of text to resolve
 
         Returns
         -------
@@ -450,12 +449,12 @@ class TextStimulus:
 
         if page is not None and self.page_column is None:
             raise ValueError(
-                f"page={page!r} was provided, but no page_column is configured."
+                f"page={page!r} was provided, but no page_column is configured.",
             )
 
         if trial is not None and self.trial_column is None:
             raise ValueError(
-                f"trial={trial!r} was provided, but no trial_column is configured."
+                f"trial={trial!r} was provided, but no trial_column is configured.",
             )
 
         df = self.aois
@@ -464,28 +463,28 @@ class TextStimulus:
             if page is None:
                 raise ValueError(
                     f"page must be provided because page_column "
-                    f"'{self.page_column}' is configured."
+                    f"'{self.page_column}' is configured.",
                 )
 
             df = df.filter(pl.col(self.page_column) == page)
 
             if df.is_empty():
                 raise ValueError(
-                    f"No AOIs found for page={page!r}."
+                    f"No AOIs found for page={page!r}.",
                 )
 
         if self.trial_column is not None:
             if trial is None:
                 raise ValueError(
                     f"trial must be provided because trial_column "
-                    f"'{self.trial_column}' is configured."
+                    f"'{self.trial_column}' is configured.",
                 )
 
             df = df.filter(pl.col(self.trial_column) == trial)
 
             if df.is_empty():
                 raise ValueError(
-                    f"No AOIs found for trial={trial!r}."
+                    f"No AOIs found for trial={trial!r}.",
                 )
 
         has_width = self.width_column is not None
@@ -501,18 +500,18 @@ class TextStimulus:
 
         if width_height_partial:
             raise ValueError(
-                "Both width_column and height_column must be configured together."
+                'Both width_column and height_column must be configured together.',
             )
 
         if end_partial:
             raise ValueError(
-                "Both end_x_column and end_y_column must be configured together."
+                'Both end_x_column and end_y_column must be configured together.',
             )
 
         if not width_height_complete and not end_complete:
             raise ValueError(
-                "AOI geometry cannot be resolved: configure either "
-                "width_column/height_column or end_x_column/end_y_column."
+                'AOI geometry cannot be resolved: configure either '
+                'width_column/height_column or end_x_column/end_y_column.',
             )
 
         resolved = []
@@ -563,24 +562,23 @@ class TextStimulus:
                 continue
 
             resolved.append({
-                "text": row[self.aoi_column],
-                "start_x": float(start_x),
-                "start_y": float(start_y),
-                "width": float(width),
-                "height": float(height),
+                'text': row[self.aoi_column],
+                'start_x': float(start_x),
+                'start_y': float(start_y),
+                'width': float(width),
+                'height': float(height),
             })
 
         return pl.DataFrame(
             resolved,
             schema={
-                "text": pl.String,
-                "start_x": pl.Float64,
-                "start_y": pl.Float64,
-                "width": pl.Float64,
-                "height": pl.Float64,
+                'text': pl.String,
+                'start_x': pl.Float64,
+                'start_y': pl.Float64,
+                'width': pl.Float64,
+                'height': pl.Float64,
             },
         )
-
 
     def plot(
         self,
@@ -625,12 +623,12 @@ class TextStimulus:
             left-to-right.
         """
         if (
-            self.writing_system.directionality != "left-to-right"
-            or self.writing_system.axis != "horizontal"
+            self.writing_system.directionality != 'left-to-right'
+            or self.writing_system.axis != 'horizontal'
         ):
             raise NotImplementedError(
-                "TextStimulus.plot currently supports only horizontal "
-                "left-to-right writing systems."
+                'TextStimulus.plot currently supports only horizontal '
+                'left-to-right writing systems.',
             )
 
         boxes = self.resolve_boxes(page=page, trial=trial)
@@ -639,26 +637,26 @@ class TextStimulus:
 
         if own_axes:
             fig, ax = plt.subplots()
-            ax.set_aspect("equal")
+            ax.set_aspect('equal')
         else:
             fig = ax.figure
 
         default_box_kwargs = {
-            "fill": False,
+            'fill': False,
         }
         if box_kwargs is not None:
             default_box_kwargs.update(box_kwargs)
 
-        default_text_kwargs = {"ha": "center", "va": "center"}
+        default_text_kwargs = {'ha': 'center', 'va': 'center'}
         if text_kwargs is not None:
             default_text_kwargs.update(text_kwargs)
 
         for row in boxes.iter_rows(named=True):
-            start_x = row["start_x"]
-            start_y = row["start_y"]
-            width = row["width"]
-            height = row["height"]
-            text = row["text"]
+            start_x = row['start_x']
+            start_y = row['start_y']
+            width = row['width']
+            height = row['height']
+            text = row['text']
 
             if show_boxes:
                 rectangle = patches.Rectangle(
@@ -680,13 +678,13 @@ class TextStimulus:
             ax.invert_yaxis()
 
             ax.set_xlim(
-                boxes["start_x"].min(),
-                (boxes["start_x"] + boxes["width"]).max(),
+                boxes['start_x'].min(),
+                (boxes['start_x'] + boxes['width']).max(),
             )
 
             ax.set_ylim(
-                (boxes["start_y"] + boxes["height"]).max(),
-                boxes["start_y"].min(),
+                (boxes['start_y'] + boxes['height']).max(),
+                boxes['start_y'].min(),
             )
 
         return fig, ax
