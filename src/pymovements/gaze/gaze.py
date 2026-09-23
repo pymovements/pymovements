@@ -91,11 +91,12 @@ class Gaze:
         the input data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
     calibrations: polars.DataFrame | None
-        The calibrations from the data: timestamp, num_points, tracked eye, tracking_mode.
+        The calibrations from the data: timestamp, num_points, tracked eye, tracking_mode,
+        quality.
         None by default, to be populated by I/O helpers (e.g. from_asc). (default: None)
     validations: polars.DataFrame | None
         The validations from the data: timestamp, num_points, tracked eye, accuracy_avg,
-        accuracy_max. None by default, to be populated by I/O helpers (e.g. from_asc).
+        accuracy_max, quality. None by default, to be populated by I/O helpers (e.g. from_asc).
         (default: None)
     time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
@@ -149,11 +150,12 @@ class Gaze:
     n_components: int | None
         The number of components in the pixel, position, velocity and acceleration columns.
     calibrations: polars.DataFrame | None
-        The calibrations from the data: timestamp, num_points, tracked eye, tracking_mode.
+        The calibrations from the data: timestamp, num_points, tracked eye, tracking_mode,
+        quality.
         None by default, to be populated by I/O helpers (e.g. from_asc).
     validations: polars.DataFrame | None
         The validations from the data: timestamp, num_points, tracked eye, accuracy_avg,
-        accuracy_max.
+        accuracy_max, quality.
         None by default, to be populated by I/O helpers (e.g. from_asc).
     schema: polars.type_aliases.SchemaDict
         Schema of the samples dataframe.
