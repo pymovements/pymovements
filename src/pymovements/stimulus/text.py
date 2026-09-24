@@ -453,7 +453,6 @@ class TextStimulus:
             If an AOI has a non-positive extent
 
         """
-
         if page is not None and self.page_column is None:
             raise ValueError(
                 f"page={page!r} was provided, but no page_column is configured.",
@@ -595,17 +594,17 @@ class TextStimulus:
 
         Parameters
         ----------
-        page
+        page: str | int | None
             Page to plot. Passed to :meth:`resolve_boxes`.
-        trial
+        trial: str | int | None
             Trial to plot. Passed to :meth:`resolve_boxes`.
-        show_boxes
+        show_boxes: bool
             Whether to draw AOI rectangles. Labels are always drawn.
-        text_kwargs
+        text_kwargs: dict[str, Any] | None
             Keyword arguments passed to ``Axes.text``.
-        box_kwargs
+        box_kwargs: dict[str, Any] | None
             Keyword arguments passed to ``patches.Rectangle``.
-        ax
+        ax: plt.Axes | None
             Existing axes to draw into. If ``None``, a new figure and axes
             are created.
 
