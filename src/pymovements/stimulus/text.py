@@ -445,6 +445,13 @@ class TextStimulus:
             If page/trial are provided but their columns are not configured
             If page/trial columns are configured but are not provided
             If dimension columns are not configured in their respective pairs
+            If AOIs are not found for a given page/trial
+
+        Warns
+        -----
+            If a row has null/NaN geometry
+            If an AOI has a non-positive extent
+
         """
 
         if page is not None and self.page_column is None:
@@ -514,70 +521,61 @@ class TextStimulus:
                 'width_column/height_column or end_x_column/end_y_column.',
             )
 
-        resolved = []
+        configured = [
+            self.start_x_column,
+            self.start_y_column,
+            *(
+                [self.end_x_column, self.end_y_column]
+                if end_complete
+                else [self.width_column, self.height_column]
+            ),
+        ]
 
-        for row in df.iter_rows(named=True):
-            start_x = row.get(self.start_x_column)
-            start_y = row.get(self.start_y_column)
-
-            if width_height_complete:
-                width = row.get(self.width_column)
-                height = row.get(self.height_column)
-            else:
-                end_x = row.get(self.end_x_column)
-                end_y = row.get(self.end_y_column)
-
-                values = (start_x, start_y, end_x, end_y)
-
-                if any(not _is_number(value) for value in values):
-                    warnings.warn(
-                        f"Skipping defective AOI row: {row}",
-                        UserWarning,
-                    )
-                    continue
-
-                width = end_x - start_x
-                height = end_y - start_y
-
-            if width_height_complete:
-                values = (start_x, start_y, width, height)
-
-                if any(
-                    value is None
-                    or not isinstance(value, (int, float))
-                    or (isinstance(value, float) and math.isnan(value))
-                    for value in values
-                ):
-                    warnings.warn(
-                        f"Skipping defective AOI row: {row}",
-                        UserWarning,
-                    )
-                    continue
-
-            if width <= 0 or height <= 0:
-                warnings.warn(
-                    f"Skipping AOI with non-positive extent: {row}",
-                    UserWarning,
+        for column in configured:
+            if column not in df.columns:
+                raise ValueError(
+                    f"Configured geometry column '{column}' does not exist in the AOI dataframe.",
                 )
-                continue
 
-            resolved.append({
-                'text': row[self.aoi_column],
-                'start_x': float(start_x),
-                'start_y': float(start_y),
-                'width': float(width),
-                'height': float(height),
-            })
+        start_x = pl.col(self.start_x_column).cast(pl.Float64, strict=False)
+        start_y = pl.col(self.start_y_column).cast(pl.Float64, strict=False)
 
-        return pl.DataFrame(
-            resolved,
-            schema={
-                'text': pl.String,
-                'start_x': pl.Float64,
-                'start_y': pl.Float64,
-                'width': pl.Float64,
-                'height': pl.Float64,
-            },
+        if width_height_complete:
+            width = pl.col(self.width_column).cast(pl.Float64, strict=False)
+            height = pl.col(self.height_column).cast(pl.Float64, strict=False)
+        else:
+            end_x = pl.col(self.end_x_column).cast(pl.Float64, strict=False)
+            end_y = pl.col(self.end_y_column).cast(pl.Float64, strict=False)
+
+            width = end_x - start_x
+            height = end_y - start_y
+
+        geometry = [start_x, start_y, width, height]
+
+        defective = pl.any_horizontal(
+            [expr.is_null() | expr.is_nan() for expr in geometry]
+        )
+
+        nonpositive = (width <= 0) | (height <= 0)
+
+        for row in df.filter(defective).iter_rows(named=True):
+            warnings.warn(
+                f"Skipping defective AOI row: {row}",
+                UserWarning,
+            )
+
+        for row in df.filter(~defective & nonpositive).iter_rows(named=True):
+            warnings.warn(
+                f"Skipping AOI with non-positive extent: {row}",
+                UserWarning,
+            )
+
+        return df.filter(~defective & ~nonpositive).select(
+            pl.col(self.aoi_column).alias('text'),
+            start_x.alias('start_x'),
+            start_y.alias('start_y'),
+            width.alias('width'),
+            height.alias('height'),
         )
 
     def plot(
@@ -633,13 +631,13 @@ class TextStimulus:
 
         boxes = self.resolve_boxes(page=page, trial=trial)
 
-        own_axes = ax is None
-
-        if own_axes:
+        if ax is None:
             fig, ax = plt.subplots()
             ax.set_aspect('equal')
+            own_axes = True
         else:
             fig = ax.figure
+            own_axes = False
 
         default_box_kwargs = {
             'fill': False,

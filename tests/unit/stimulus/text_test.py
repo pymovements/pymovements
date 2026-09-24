@@ -1293,3 +1293,63 @@ def test_text_stimulus_plot_unsupported_writing_system_raises(
     message = 'currently supports only horizontal left-to-right writing systems'
     with pytest.raises(NotImplementedError, match=message):
         stimulus.plot()
+
+@pytest.mark.parametrize(
+    ('stimulus_kwargs', 'missing_column'),
+    [
+        pytest.param(
+            {'start_x_column': 'nonexistent', **WIDTH_HEIGHT_COLUMNS},
+            'nonexistent',
+            id='missing_start_x_column',
+        ),
+        pytest.param(
+            {'start_y_column': 'nonexistent', **WIDTH_HEIGHT_COLUMNS},
+            'nonexistent',
+            id='missing_start_y_column',
+        ),
+        pytest.param(
+            {'width_column': 'nonexistent', 'height_column': 'height'},
+            'nonexistent',
+            id='missing_width_column',
+        ),
+        pytest.param(
+            {'width_column': 'width', 'height_column': 'nonexistent'},
+            'nonexistent',
+            id='missing_height_column',
+        ),
+        pytest.param(
+            {'end_x_column': 'nonexistent', 'end_y_column': 'y_max'},
+            'nonexistent',
+            id='missing_end_x_column',
+        ),
+        pytest.param(
+            {'end_x_column': 'x_max', 'end_y_column': 'nonexistent'},
+            'nonexistent',
+            id='missing_end_y_column',
+        ),
+    ],
+)
+def test_text_stimulus_resolve_boxes_missing_column_raises(
+    sample_aoi_dataframe,
+    stimulus_kwargs,
+    missing_column,
+):
+    aois = sample_aoi_dataframe.with_columns(
+        x_max=pl.col('x_min') + pl.col('width'),
+        y_max=pl.col('y_min') + pl.col('height'),
+    )
+    kwargs = {
+        'start_x_column': 'x_min',
+        'start_y_column': 'y_min',
+        **stimulus_kwargs,
+    }
+
+    stimulus = TextStimulus(
+        aois=aois,
+        aoi_column='aoi',
+        **kwargs,
+    )
+
+    message = f"Configured geometry column '{missing_column}' does not exist in the AOI dataframe."
+    with pytest.raises(ValueError, match=message):
+        stimulus.resolve_boxes()
