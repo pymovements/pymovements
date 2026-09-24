@@ -73,6 +73,7 @@ from pymovements.events.correction.chain import chain
 from pymovements.events.correction.cluster import cluster
 from pymovements.events.correction.compare import compare
 from pymovements.events.correction.merge import merge
+from pymovements.events.correction.metrics import ensemble_agreement
 from pymovements.events.correction.regress import regress
 from pymovements.events.correction.segment import segment
 from pymovements.events.correction.slice import slice  # pylint: disable=redefined-builtin
@@ -354,7 +355,7 @@ def _correct_ensemble(
     algorithm_kwargs: dict[str, Any],
     location: str | pl.Expr,
     character_level: bool,
-) -> pl.Series:
+) -> tuple[pl.Series, pl.Series]:
     """Correct fixation locations by majority voting across the candidate algorithms."""
     if {'compare', 'warp'} & set(candidate_algos) and word_locations is None:
         word_locations = get_word_locations_from_aois(aois, character_level)
@@ -379,12 +380,14 @@ def _correct_ensemble(
     votes = fixations.select(
         [location_x(location).alias('__location_x')] + vote_exprs,
     )
-    return votes.select(
+    corrected_locations = votes.select(
         pl.concat_list([
             pl.col('__location_x'),
             line_index_to_y(wisdom_of_the_crowd(candidate_algos), line_values),
         ]).alias('location'),
     ).to_series()
+    confidence = ensemble_agreement(votes.select(candidate_algos))
+    return corrected_locations, confidence
 
 
 def _fixation_location(fixations: pl.DataFrame, location_column: str) -> str | pl.Expr:
@@ -420,6 +423,7 @@ def _fixation_location(fixations: pl.DataFrame, location_column: str) -> str | p
     )
 
 
+# pylint: disable=useless-param-doc,useless-type-doc
 def correct_fixation_locations(
     events: pl.DataFrame,
     aois: pl.DataFrame,
@@ -430,7 +434,8 @@ def correct_fixation_locations(
     fixation_name: str = 'fixation',
     location_column: str = 'location',
     character_level: bool = False,
-) -> pl.Series:
+    _return_confidence: bool = False,
+) -> pl.Series | tuple[pl.Series, pl.Series]:
     """Correct fixations based on the specified drift algorithm and AOIs.
 
     Parameters
@@ -483,11 +488,16 @@ def correct_fixation_locations(
         Set to True when the AOIs are finer than words, e.g. one row per character. The
         AOIs are then aggregated to one location per word via the 'word' column, which
         must be present. (default: False)
+    _return_confidence: bool
+        If True, return a tuple containing corrected locations and per-fixation
+        ensemble confidence values. This parameter is intended for internal use.
+        (default: False)
 
     Returns
     -------
-    pl.Series
-        Series of corrected [x, y] fixation locations.
+    pl.Series | tuple[pl.Series, pl.Series]
+        Series of corrected [x, y] fixation locations, or, when ``_return_confidence``is True,
+        a tuple containing corrected locations and their corresponding confidence values.
 
     Raises
     ------
@@ -551,13 +561,18 @@ def correct_fixation_locations(
             algorithm_kwargs=algorithm_kwargs, location=location,
             character_level=character_level,
         )
+        confidence = pl.Series(
+            'correction_confidence', [1.0] * corrected.len(), dtype=pl.Float64,
+        )
     else:
-        corrected = _correct_ensemble(
+        corrected, confidence = _correct_ensemble(
             fixations, aois, candidate_algos,
             directionality=directionality, word_locations=word_locations,
             algorithm_kwargs=algorithm_kwargs, location=location,
             character_level=character_level,
         )
+    if _return_confidence:
+        return corrected.rename(location_column), confidence
     return corrected.rename(location_column)
 
 
@@ -621,7 +636,7 @@ def _correct_trial(
     fixation_name: str,
     location_column: str,
     character_level: bool,
-) -> pl.Series | None:
+) -> tuple[pl.Series, pl.Series] | None:
     """Correct the fixations of a single trial, or return None if the trial is skipped."""
     n_lines = count_text_lines(trial_aois, word_locations)
     if n_lines is not None:
@@ -649,6 +664,7 @@ def _correct_trial(
         directionality=directionality, word_locations=word_locations,
         algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,
         location_column=location_column, character_level=character_level,
+        _return_confidence=True,
     )
 
 
@@ -672,6 +688,7 @@ def _apply_corrections(
     indexed_events: pl.DataFrame,
     corrected_indices: list[int],
     corrected_locations: list[pl.Series],
+    corrected_confidences: list[pl.Series],
     algo_name: str,
     location_column: str,
 ) -> pl.DataFrame:
@@ -679,6 +696,7 @@ def _apply_corrections(
     updates = pl.DataFrame({
         '__fixation_correction_index': pl.Series(corrected_indices, dtype=pl.UInt32),
         '__corrected_location': pl.concat(corrected_locations),
+        '__correction_confidence': pl.concat(corrected_confidences),
     })
     frame = (
         indexed_events
@@ -724,11 +742,21 @@ def _apply_corrections(
     update_columns.append(
         _preserved_column(events, 'correction_algorithm', pl.lit(algo_name), pl.Utf8),
     )
+    if algo_name == 'wisdom_of_the_crowd':
+        update_columns.append(
+            _preserved_column(
+                events, 'correction_confidence',
+                pl.col('__correction_confidence'), pl.Float64,
+            ),
+        )
 
     return (
         frame
         .with_columns(update_columns)
-        .drop(['__fixation_correction_index', '__corrected_location'])
+        .drop([
+            '__fixation_correction_index', '__corrected_location',
+            '__correction_confidence',
+        ])
     )
 
 
@@ -750,6 +778,8 @@ def correct_fixations(
     locations are preserved in a 'location_original' column ('location_x_original' /
     'location_y_original' for split component columns) and the applied algorithm is
     recorded in a 'correction_algorithm' column, which is null for uncorrected rows.
+    Ensemble corrections also add a 'correction_confidence' column containing the
+    per-fixation vote agreement.
 
     Trials with too few fixations for the requested algorithms ('cluster' needs at least
     one fixation per text line, 'split' at least three fixations) are skipped with a
@@ -886,6 +916,7 @@ def correct_fixations(
 
     corrected_indices: list[int] = []
     corrected_locations: list[pl.Series] = []
+    corrected_confidences: list[pl.Series] = []
     matched_fixation_count = 0
     for trial_events in trial_event_frames:
         trial_aois = _trial_aois(aois, trial_events, aoi_trial_columns)
@@ -901,18 +932,20 @@ def correct_fixations(
             }
             raise ValueError(f'no AOIs found for trial {trial_values}.')
 
-        corrected_locs = _correct_trial(
+        corrected_result = _correct_trial(
             fixation_events, trial_aois, algorithm=algorithm,
             requested_algorithms=requested_algorithms, trial_columns=trial_columns,
             directionality=directionality, word_locations=word_locations,
             algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,
             location_column=location_column, character_level=character_level,
         )
-        if corrected_locs is None:
+        if corrected_result is None:
             continue
+        corrected_locs, trial_confidences = corrected_result
 
         corrected_indices.extend(fixation_events['__fixation_correction_index'].to_list())
         corrected_locations.append(corrected_locs)
+        corrected_confidences.append(trial_confidences)
 
     if not corrected_indices:
         if events.height > 0 and matched_fixation_count == 0:
@@ -926,6 +959,6 @@ def correct_fixations(
         return events
 
     return _apply_corrections(
-        events, indexed_events, corrected_indices, corrected_locations, algo_name,
-        location_column,
+        events, indexed_events, corrected_indices, corrected_locations,
+        corrected_confidences, algo_name, location_column,
     )
