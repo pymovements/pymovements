@@ -552,7 +552,7 @@ class TextStimulus:
         geometry = [start_x, start_y, width, height]
 
         defective = pl.any_horizontal(
-            [expr.is_null() | expr.is_nan() for expr in geometry]
+            [expr.is_null() | expr.is_nan() for expr in geometry],
         )
 
         nonpositive = (width <= 0) | (height <= 0)

@@ -1294,6 +1294,7 @@ def test_text_stimulus_plot_unsupported_writing_system_raises(
     with pytest.raises(NotImplementedError, match=message):
         stimulus.plot()
 
+
 @pytest.mark.parametrize(
     ('stimulus_kwargs', 'missing_column'),
     [
