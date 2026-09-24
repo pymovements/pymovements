@@ -62,6 +62,15 @@ resources:
   load_kwargs:
     read_csv_kwargs:
       separator: "\t"
+- content: precomputed_events
+  source:
+    url: https://osf.io/download/w3gan/
+    filename: fixations_corrected.csv
+    md5: 0eb2fd2bb32169eb7f828dadd6d70d3b
+  filename_pattern: fixations_corrected.csv
+  load_kwargs:
+    read_csv_kwargs:
+      separator: "\t"
 - content: precomputed_reading_measures
   source:
     url: https://osf.io/download/s4ny8/
