@@ -18,10 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Text stimulus class."""
+import math
 from copy import deepcopy
 from dataclasses import replace
 
-import math
 import matplotlib.pyplot as plt
 import polars as pl
 import pytest
