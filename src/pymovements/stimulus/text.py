@@ -30,7 +30,9 @@ from typing import Any
 from typing import ClassVar
 from typing import Literal
 
+import matplotlib.pyplot as plt
 import polars as pl
+from matplotlib import patches
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
@@ -415,6 +417,274 @@ class TextStimulus:
             writing_system=writing_system,
             metadata=metadata,
         )
+
+    def resolve_boxes(
+        self,
+        *,
+        page: str | int | None = None,
+        trial: str | int | None = None,
+    ) -> pl.DataFrame:
+        """Resolve AOIs into a fixed box representation.
+
+        Parameters
+        ----------
+        page: str | int | None
+            Page number of text to resolve
+        trial: str | int | None
+            Trial number of text to resolve
+
+        Returns
+        -------
+        pl.DataFrame
+            DataFrame with columns:
+            ``text, start_x, start_y, width, height``.
+
+        Raises
+        ------
+        ValueError
+            If page/trial are provided but their columns are not configured
+            If page/trial columns are configured but are not provided
+            If dimension columns are not configured in their respective pairs
+            If AOIs are not found for a given page/trial
+
+        Warns
+        -----
+            If a row has null/NaN geometry
+            If an AOI has a non-positive extent
+
+        """
+        if page is not None and self.page_column is None:
+            raise ValueError(
+                f"page={page!r} was provided, but no page_column is configured.",
+            )
+
+        if trial is not None and self.trial_column is None:
+            raise ValueError(
+                f"trial={trial!r} was provided, but no trial_column is configured.",
+            )
+
+        df = self.aois
+
+        if self.page_column is not None:
+            if page is None:
+                raise ValueError(
+                    f"page must be provided because page_column "
+                    f"'{self.page_column}' is configured.",
+                )
+
+            df = df.filter(pl.col(self.page_column) == page)
+
+            if df.is_empty():
+                raise ValueError(
+                    f"No AOIs found for page={page!r}.",
+                )
+
+        if self.trial_column is not None:
+            if trial is None:
+                raise ValueError(
+                    f"trial must be provided because trial_column "
+                    f"'{self.trial_column}' is configured.",
+                )
+
+            df = df.filter(pl.col(self.trial_column) == trial)
+
+            if df.is_empty():
+                raise ValueError(
+                    f"No AOIs found for trial={trial!r}.",
+                )
+
+        has_width = self.width_column is not None
+        has_height = self.height_column is not None
+        has_end_x = self.end_x_column is not None
+        has_end_y = self.end_y_column is not None
+
+        width_height_complete = has_width and has_height
+        end_complete = has_end_x and has_end_y
+
+        width_height_partial = has_width != has_height
+        end_partial = has_end_x != has_end_y
+
+        if width_height_partial:
+            raise ValueError(
+                'Both width_column and height_column must be configured together.',
+            )
+
+        if end_partial:
+            raise ValueError(
+                'Both end_x_column and end_y_column must be configured together.',
+            )
+
+        if not width_height_complete and not end_complete:
+            raise ValueError(
+                'AOI geometry cannot be resolved: configure either '
+                'width_column/height_column or end_x_column/end_y_column.',
+            )
+
+        configured = [
+            self.start_x_column,
+            self.start_y_column,
+            *(
+                [self.end_x_column, self.end_y_column]
+                if end_complete
+                else [self.width_column, self.height_column]
+            ),
+        ]
+
+        for column in configured:
+            if column not in df.columns:
+                raise ValueError(
+                    f"Configured geometry column '{column}' does not exist in the AOI dataframe.",
+                )
+
+        start_x = pl.col(self.start_x_column).cast(pl.Float64, strict=False)
+        start_y = pl.col(self.start_y_column).cast(pl.Float64, strict=False)
+
+        if width_height_complete:
+            width = pl.col(self.width_column).cast(pl.Float64, strict=False)
+            height = pl.col(self.height_column).cast(pl.Float64, strict=False)
+        else:
+            end_x = pl.col(self.end_x_column).cast(pl.Float64, strict=False)
+            end_y = pl.col(self.end_y_column).cast(pl.Float64, strict=False)
+
+            width = end_x - start_x
+            height = end_y - start_y
+
+        geometry = [start_x, start_y, width, height]
+
+        defective = pl.any_horizontal(
+            [expr.is_null() | expr.is_nan() for expr in geometry],
+        )
+
+        nonpositive = (width <= 0) | (height <= 0)
+
+        for row in df.filter(defective).iter_rows(named=True):
+            warnings.warn(
+                f"Skipping defective AOI row: {row}",
+                UserWarning,
+            )
+
+        for row in df.filter(~defective & nonpositive).iter_rows(named=True):
+            warnings.warn(
+                f"Skipping AOI with non-positive extent: {row}",
+                UserWarning,
+            )
+
+        return df.filter(~defective & ~nonpositive).select(
+            pl.col(self.aoi_column).alias('text'),
+            start_x.alias('start_x'),
+            start_y.alias('start_y'),
+            width.alias('width'),
+            height.alias('height'),
+        )
+
+    def plot(
+        self,
+        *,
+        page: str | int | None = None,
+        trial: str | int | None = None,
+        show_boxes: bool = True,
+        text_kwargs: dict[str, Any] | None = None,
+        box_kwargs: dict[str, Any] | None = None,
+        ax: plt.Axes | None = None,
+    ) -> tuple[plt.Figure, plt.Axes]:
+        """Plot a schematic reconstruction of text AOIs.
+
+        This is a schematic layout reconstruction from AOI boxes and is not
+        a pixel-accurate copy of the original stimulus font.
+
+        Parameters
+        ----------
+        page: str | int | None
+            Page to plot. Passed to :meth:`resolve_boxes`.
+        trial: str | int | None
+            Trial to plot. Passed to :meth:`resolve_boxes`.
+        show_boxes: bool
+            Whether to draw AOI rectangles. Labels are always drawn.
+        text_kwargs: dict[str, Any] | None
+            Keyword arguments passed to ``Axes.text``.
+        box_kwargs: dict[str, Any] | None
+            Keyword arguments passed to ``patches.Rectangle``.
+        ax: plt.Axes | None
+            Existing axes to draw into. If ``None``, a new figure and axes
+            are created.
+
+        Returns
+        -------
+        tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]
+            The figure and axes containing the plot.
+
+        Raises
+        ------
+        NotImplementedError
+            If the configured writing system is not horizontal
+            left-to-right.
+        """
+        if (
+            self.writing_system.directionality != 'left-to-right'
+            or self.writing_system.axis != 'horizontal'
+        ):
+            raise NotImplementedError(
+                'TextStimulus.plot currently supports only horizontal '
+                'left-to-right writing systems.',
+            )
+
+        boxes = self.resolve_boxes(page=page, trial=trial)
+
+        if ax is None:
+            fig, ax = plt.subplots()
+            ax.set_aspect('equal')
+            own_axes = True
+        else:
+            fig = ax.figure
+            own_axes = False
+
+        default_box_kwargs = {
+            'fill': False,
+        }
+        if box_kwargs is not None:
+            default_box_kwargs.update(box_kwargs)
+
+        default_text_kwargs = {'ha': 'center', 'va': 'center'}
+        if text_kwargs is not None:
+            default_text_kwargs.update(text_kwargs)
+
+        for row in boxes.iter_rows(named=True):
+            start_x = row['start_x']
+            start_y = row['start_y']
+            width = row['width']
+            height = row['height']
+            text = row['text']
+
+            if show_boxes:
+                rectangle = patches.Rectangle(
+                    (start_x, start_y),
+                    width,
+                    height,
+                    **default_box_kwargs,
+                )
+                ax.add_patch(rectangle)
+
+            ax.text(
+                start_x + width / 2,
+                start_y + height / 2,
+                text,
+                **default_text_kwargs,
+            )
+
+        if own_axes:
+            ax.invert_yaxis()
+
+            ax.set_xlim(
+                boxes['start_x'].min(),
+                (boxes['start_x'] + boxes['width']).max(),
+            )
+
+            ax.set_ylim(
+                (boxes['start_y'] + boxes['height']).max(),
+                boxes['start_y'].min(),
+            )
+
+        return fig, ax
 
 
 def _is_number(v: Any) -> bool:
