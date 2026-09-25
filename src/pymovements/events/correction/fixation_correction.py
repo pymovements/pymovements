@@ -64,6 +64,9 @@ from pymovements.events.correction._aoi import get_lines_of_text_from_aois
 from pymovements.events.correction._aoi import get_word_locations_from_aois
 from pymovements.events.correction._aoi import has_word_x_coords
 from pymovements.events.correction._aoi import normalize_aois
+from pymovements.events.correction._corrector_registry import all_registered_correctors
+from pymovements.events.correction._corrector_registry import is_registered_corrector
+from pymovements.events.correction._corrector_registry import reserve_names
 from pymovements.events.correction._utils import is_right_to_left
 from pymovements.events.correction._utils import line_index_to_y
 from pymovements.events.correction._utils import location_x
@@ -97,6 +100,9 @@ _DRIFT_ALGORITHMS: dict[str, Callable[..., pl.Expr]] = {
 }
 
 ALL_DRIFT_ALGORITHMS: list[str] = list(_DRIFT_ALGORITHMS)
+
+# Registered correctors share the algorithm= namespace, so they must not shadow these.
+reserve_names(ALL_DRIFT_ALGORITHMS)
 
 
 def _min_fixation_count(algorithms: set[str], n_lines: int) -> int:
@@ -137,6 +143,14 @@ def _select_ensemble_algorithms(
     ValueError
         If an algorithm name is unknown or no candidate algorithms remain.
     """
+    registered = [algo for algo in algorithms if is_registered_corrector(algo)]
+    if registered:
+        raise ValueError(
+            f'Registered correctors {registered} cannot take part in an ensemble. Their vote '
+            'would have to be weighed against the algorithmic votes, and there is no obvious '
+            f'weighting; pass a single name instead, e.g. algorithm={registered[0]!r}.',
+        )
+
     unknown_algos = [algo for algo in algorithms if algo not in ALL_DRIFT_ALGORITHMS]
     if unknown_algos:
         raise ValueError(
@@ -155,7 +169,7 @@ def _select_ensemble_algorithms(
         warnings.warn(
             "Word X coordinates ('start_x', 'end_x') are missing from aois DataFrame. "
             'As a consequence, algorithms requiring word X coordinates '
-            f"({excluded_algos}) are excluded from Wisdom of the Crowd ensemble.",
+            f'({excluded_algos}) are excluded from Wisdom of the Crowd ensemble.',
             UserWarning,
             stacklevel=4,
         )
@@ -217,15 +231,18 @@ def _resolve_algorithms(
         return candidate_algos, True
 
     if isinstance(algorithm, str):
+        if is_registered_corrector(algorithm):
+            return [algorithm], False
         if algorithm.lower() in {'wisdom_of_the_crowd', 'woc'}:
             candidate_algos = _select_ensemble_algorithms(
                 list(ALL_DRIFT_ALGORITHMS), has_word_coords, right_to_left,
             )
             return candidate_algos, True
         if algorithm not in ALL_DRIFT_ALGORITHMS:
+            valid = [*ALL_DRIFT_ALGORITHMS, *all_registered_correctors()]
             raise ValueError(
                 f"Unknown drift algorithm '{algorithm}'. "
-                f'Valid algorithms are: {ALL_DRIFT_ALGORITHMS}',
+                f'Valid algorithms are: {valid}',
             )
         if algorithm == 'compare' and right_to_left:
             raise ValueError(
@@ -414,7 +431,7 @@ def _fixation_location(fixations: pl.DataFrame, location_column: str) -> str | p
     if x_column in fixations.columns and y_column in fixations.columns:
         return pl.concat_list([pl.col(x_column), pl.col(y_column)])
     raise ValueError(
-        f"No valid location coordinates found in events dataframe: expected a "
+        f'No valid location coordinates found in events dataframe: expected a '
         f"'{location_column}' column of [x, y] lists or '{x_column}' and "
         f"'{y_column}' component columns.",
     )
