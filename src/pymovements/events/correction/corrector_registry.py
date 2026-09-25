@@ -79,22 +79,37 @@ def reserve_names(names: Iterable[str]) -> None:
     _RESERVED_NAMES.update(names)
 
 
-def register_corrector(name: str, factory: Callable[..., TrialCorrector]) -> None:
-    """Register a factory that builds a corrector.
+def register_corrector(
+        factory: Callable[..., TrialCorrector],
+) -> Callable[..., TrialCorrector]:
+    """Register a factory that builds a trial corrector, under the factory's own name.
+
+    Use it as a decorator::
+
+        @register_corrector
+        def my_corrector(**kwargs):
+            return MyCorrector(**kwargs)
+
+    The factory is called when a correction runs, not at import time, so registering a name
+    costs nothing and pulls in none of the corrector's dependencies.
 
     Parameters
     ----------
-    name: str
-        Name under which the corrector is selected via ``algorithm=``.
     factory: Callable[..., TrialCorrector]
-        Callable returning a :py:data:`TrialCorrector`. It is called at correction time, not
-        at import time, so that registering costs nothing.
+        Callable returning a :py:data:`TrialCorrector`. Its ``__name__`` becomes the name
+        passed as ``algorithm=``.
+
+    Returns
+    -------
+    Callable[..., TrialCorrector]
+        The factory that was passed in, so this works as a decorator.
 
     Raises
     ------
     ValueError
         If the name is already taken, here or by a drift algorithm.
     """
+    name = factory.__name__
     if name in _CORRECTORS:
         raise ValueError(f'a corrector named {name!r} is already registered')
     if name in _RESERVED_NAMES:
@@ -103,6 +118,7 @@ def register_corrector(name: str, factory: Callable[..., TrialCorrector]) -> Non
             'algorithms share one namespace so that algorithm= takes either kind',
         )
     _CORRECTORS[name] = factory
+    return factory
 
 
 def is_registered_corrector(name: str) -> bool:

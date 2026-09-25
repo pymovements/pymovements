@@ -26,7 +26,7 @@ import polars as pl
 import pytest
 
 import pymovements as pm
-from pymovements.events.correction import _corrector_registry
+from pymovements.events.correction import corrector_registry
 from pymovements.events.correction.fixation_correction import _resolve_algorithms
 from pymovements.events.correction.fixation_correction import ALL_DRIFT_ALGORITHMS
 
@@ -155,33 +155,56 @@ def fixture_temporary_registration() -> Iterator[str]:
         The registered name.
 
     """
-    name = 'stub_corrector'
-    _corrector_registry.register_corrector(name, lambda **kwargs: Stub())
-    yield name
-    _corrector_registry._CORRECTORS.pop(name, None)
+    @corrector_registry.register_corrector
+    def stub_corrector(**kwargs: object) -> Stub:
+        """Build a stub.
+
+        Parameters
+        ----------
+        **kwargs: object
+            Ignored.
+
+        Returns
+        -------
+        Stub
+            The stub.
+
+        """
+        del kwargs
+        return Stub()
+
+    yield stub_corrector.__name__
+    corrector_registry._CORRECTORS.pop(stub_corrector.__name__, None)
 
 
 def test_drift_algorithms_are_not_registered_correctors():
     assert not any(
-        _corrector_registry.is_registered_corrector(name) for name in ALL_DRIFT_ALGORITHMS
+        corrector_registry.is_registered_corrector(name) for name in ALL_DRIFT_ALGORITHMS
     )
 
 
 def test_registering_a_duplicate_is_refused(temporary_registration):
+    def stub_corrector(**kwargs: object) -> Stub:
+        del kwargs
+        return Stub()
+
+    assert stub_corrector.__name__ == temporary_registration
     with pytest.raises(ValueError, match='already registered'):
-        _corrector_registry.register_corrector(
-            temporary_registration, lambda **kwargs: Stub(),
-        )
+        corrector_registry.register_corrector(stub_corrector)
 
 
 def test_registering_over_a_drift_algorithm_is_refused():
+    def warp(**kwargs: object) -> Stub:
+        del kwargs
+        return Stub()
+
     with pytest.raises(ValueError, match='already a drift algorithm'):
-        _corrector_registry.register_corrector('warp', lambda **kwargs: Stub())
+        corrector_registry.register_corrector(warp)
 
 
 def test_building_an_unknown_corrector_names_the_known_ones():
     with pytest.raises(ValueError, match='no corrector named'):
-        _corrector_registry.build_corrector('nonexistent')
+        corrector_registry.build_corrector('nonexistent')
 
 
 def test_registry_holds_a_factory_not_an_instance():
@@ -192,13 +215,13 @@ def test_registry_holds_a_factory_not_an_instance():
         built.append(kwargs)
         return Stub()
 
-    _corrector_registry.register_corrector('counting', factory)
+    corrector_registry.register_corrector(factory)
     try:
         assert not built
-        _corrector_registry.build_corrector('counting', answer=42)
+        corrector_registry.build_corrector('factory', answer=42)
         assert built == [{'answer': 42}]
     finally:
-        _corrector_registry._CORRECTORS.pop('counting', None)
+        corrector_registry._CORRECTORS.pop('factory', None)
 
 
 def test_a_registered_name_in_an_ensemble_is_refused(temporary_registration):
@@ -238,7 +261,7 @@ def test_a_registered_name_resolves_to_itself_and_not_to_an_ensemble(temporary_r
     """Selecting a registered corrector by name must bypass the drift-algorithm table.
 
     This is the resolution step only. What happens with the resolved name afterwards depends
-    on the corrector's call shape, which is still open; see the note in _corrector_registry.
+    on the corrector's call shape, which is still open; see the note in corrector_registry.
     """
     resolved, ensemble = _resolve_algorithms(
         temporary_registration, has_word_coords=True, right_to_left=False,
@@ -287,7 +310,11 @@ def test_a_stateful_corrector_is_built_once_not_once_per_trial():
                 pl.concat_list([pl.col('location_x'), pl.lit(25.0)]).alias('location'),
             ).to_series()
 
-    _corrector_registry.register_corrector('stateful', lambda **kwargs: Stateful())
+    def stateful(**kwargs: object) -> Stateful:
+        del kwargs
+        return Stateful()
+
+    corrector_registry.register_corrector(stateful)
     try:
         events = pl.concat([
             make_events().with_columns(pl.lit(subject).alias('subject_id'))
@@ -297,7 +324,7 @@ def test_a_stateful_corrector_is_built_once_not_once_per_trial():
             events, make_aois(), algorithm='stateful', trial_columns=['subject_id'],
         )
     finally:
-        _corrector_registry._CORRECTORS.pop('stateful', None)
+        corrector_registry._CORRECTORS.pop('stateful', None)
 
     assert len(builds) == 1
 
@@ -318,14 +345,14 @@ def test_algorithm_kwargs_reach_a_registered_factory():
         seen.append(kwargs)
         return shift_down
 
-    _corrector_registry.register_corrector('configurable', factory)
+    corrector_registry.register_corrector(factory)
     try:
         pm.events.correction.correct_fixations(
-            make_events(), make_aois(), algorithm='configurable',
+            make_events(), make_aois(), algorithm='factory',
             algorithm_kwargs={'answer': 42},
         )
     finally:
-        _corrector_registry._CORRECTORS.pop('configurable', None)
+        corrector_registry._CORRECTORS.pop('factory', None)
 
     assert seen == [{'answer': 42}]
 
@@ -363,3 +390,120 @@ def test_a_non_callable_is_still_a_type_error():
         pm.events.correction.correct_fixations(
             make_events(), make_aois(), algorithm=123,
         )
+
+
+def three_components(
+        fixations: pl.DataFrame,
+        aois: pl.DataFrame,
+        *,
+        location_column: str,
+) -> pl.Series:
+    """Return three numbers per fixation instead of two.
+
+    Parameters
+    ----------
+    fixations: pl.DataFrame
+        The trial's fixations.
+    aois: pl.DataFrame
+        The trial's areas of interest.
+    location_column: str
+        Name of the location column.
+
+    Returns
+    -------
+    pl.Series
+        Lists of three numbers.
+
+    """
+    del aois, location_column
+    return pl.Series('location', [[1.0, 2.0, 3.0]] * fixations.height)
+
+
+def string_locations(
+        fixations: pl.DataFrame,
+        aois: pl.DataFrame,
+        *,
+        location_column: str,
+) -> pl.Series:
+    """Return strings where numbers are expected.
+
+    Parameters
+    ----------
+    fixations: pl.DataFrame
+        The trial's fixations.
+    aois: pl.DataFrame
+        The trial's areas of interest.
+    location_column: str
+        Name of the location column.
+
+    Returns
+    -------
+    pl.Series
+        Lists of strings.
+
+    """
+    del aois, location_column
+    return pl.Series('location', [['a', 'b']] * fixations.height)
+
+
+@pytest.mark.parametrize(
+    ('corrector', 'expected'),
+    [
+        pytest.param(three_components, 'lists of length', id='three_components'),
+        pytest.param(string_locations, 'expected numbers', id='string_locations'),
+    ],
+)
+def test_a_malformed_series_is_refused_by_name(corrector, expected):
+    """Both of these used to be accepted and to corrupt the result without a word.
+
+    Measured before the check existed: three components per fixation silently dropped the
+    third and wrote 2.0 into location_y; lists of strings silently turned location_y into a
+    String column. The drift algorithms cannot produce either, because they build the series
+    themselves -- a trial corrector is the first place where code outside the library does.
+    """
+    with pytest.raises(ValueError, match=expected) as error:
+        pm.events.correction.correct_fixations(
+            make_events(), make_aois(), algorithm=corrector,
+        )
+
+    assert corrector.__name__ in str(error.value)
+
+
+def test_a_series_of_the_wrong_length_is_refused_by_name():
+    def too_short(fixations, aois, *, location_column):
+        del aois, location_column
+        return pl.Series('location', [[1.0, 2.0]] * (fixations.height - 1))
+
+    with pytest.raises(ValueError, match='locations for .* fixations'):
+        pm.events.correction.correct_fixations(
+            make_events(), make_aois(), algorithm=too_short,
+        )
+
+
+def test_a_non_series_return_is_refused_by_name():
+    def plain_list(fixations, aois, *, location_column):
+        del aois, location_column
+        return [[0.0, 25.0]] * fixations.height
+
+    with pytest.raises(ValueError, match='expected a polars Series'):
+        pm.events.correction.correct_fixations(
+            make_events(), make_aois(), algorithm=plain_list,
+        )
+
+
+def test_a_series_that_is_not_lists_is_refused_by_name():
+    def flat_floats(fixations, aois, *, location_column):
+        del aois, location_column
+        return pl.Series('location', [25.0] * fixations.height)
+
+    with pytest.raises(ValueError, match='expected lists of'):
+        pm.events.correction.correct_fixations(
+            make_events(), make_aois(), algorithm=flat_floats,
+        )
+
+
+def test_register_corrector_is_reachable_without_a_private_import():
+    """The registry is only usable if registering is public; it was not, at first."""
+    assert pm.register_corrector is corrector_registry.register_corrector
+    assert 'register_corrector' in pm.__all__
+    assert 'TrialCorrector' in pm.events.correction.__all__

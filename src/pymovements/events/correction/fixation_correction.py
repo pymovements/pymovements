@@ -64,11 +64,6 @@ from pymovements.events.correction._aoi import get_lines_of_text_from_aois
 from pymovements.events.correction._aoi import get_word_locations_from_aois
 from pymovements.events.correction._aoi import has_word_x_coords
 from pymovements.events.correction._aoi import normalize_aois
-from pymovements.events.correction._corrector_registry import all_registered_correctors
-from pymovements.events.correction._corrector_registry import build_corrector
-from pymovements.events.correction._corrector_registry import is_registered_corrector
-from pymovements.events.correction._corrector_registry import reserve_names
-from pymovements.events.correction._corrector_registry import TrialCorrector
 from pymovements.events.correction._utils import is_right_to_left
 from pymovements.events.correction._utils import line_index_to_y
 from pymovements.events.correction._utils import location_x
@@ -77,6 +72,11 @@ from pymovements.events.correction.attach import attach
 from pymovements.events.correction.chain import chain
 from pymovements.events.correction.cluster import cluster
 from pymovements.events.correction.compare import compare
+from pymovements.events.correction.corrector_registry import all_registered_correctors
+from pymovements.events.correction.corrector_registry import build_corrector
+from pymovements.events.correction.corrector_registry import is_registered_corrector
+from pymovements.events.correction.corrector_registry import reserve_names
+from pymovements.events.correction.corrector_registry import TrialCorrector
 from pymovements.events.correction.merge import merge
 from pymovements.events.correction.regress import regress
 from pymovements.events.correction.segment import segment
@@ -659,6 +659,64 @@ def _trial_aois(
     )
 
 
+def _check_corrected_locations(
+        corrected: pl.Series,
+        corrector: TrialCorrector,
+        n_fixations: int,
+) -> None:
+    """Refuse a corrected series that is not one ``[x, y]`` pair per fixation.
+
+    The eleven drift algorithms build this series themselves and cannot get its shape wrong.
+    A trial corrector is the first place where code outside the library produces it, so the
+    invariant that used to hold by construction is checked here instead. Without the check a
+    three-element list silently loses its third element, and a list of strings silently turns
+    the location column into strings.
+
+    Parameters
+    ----------
+    corrected: pl.Series
+        What the corrector returned.
+    corrector: TrialCorrector
+        The corrector, named in the error message.
+    n_fixations: int
+        Number of fixations in the trial.
+
+    Raises
+    ------
+    ValueError
+        If the series is not a list series of exactly two numbers per fixation, or does not
+        have one entry per fixation.
+    """
+    name = _corrector_label(corrector)
+    if not isinstance(corrected, pl.Series):
+        raise ValueError(
+            f'corrector {name!r} returned {type(corrected).__name__}, expected a polars '
+            'Series of [x, y] lists or None',
+        )
+    if corrected.len() != n_fixations:
+        raise ValueError(
+            f'corrector {name!r} returned {corrected.len()} locations for {n_fixations} '
+            'fixations; it must return one per fixation, or None for the whole trial',
+        )
+    if corrected.dtype.base_type() != pl.List:
+        raise ValueError(
+            f'corrector {name!r} returned a series of {corrected.dtype}, expected lists of '
+            '[x, y]',
+        )
+    inner = corrected.dtype.inner
+    if not inner.is_numeric():
+        raise ValueError(
+            f'corrector {name!r} returned lists of {inner}, expected numbers; a non-numeric '
+            'location would silently change the dtype of the location column',
+        )
+    lengths = corrected.list.len().drop_nulls().unique().to_list()
+    if lengths not in ([2], []):
+        raise ValueError(
+            f'corrector {name!r} returned lists of length {sorted(lengths)}, expected 2 '
+            '([x, y]); anything beyond the first two values would be dropped silently',
+        )
+
+
 def _trial_description(
         fixation_events: pl.DataFrame,
         trial_columns: list[str] | None,
@@ -745,6 +803,8 @@ def _correct_trial(
         corrected = trial_corrector(
             fixation_events, trial_aois, location_column=location_column,
         )
+        if corrected is not None:
+            _check_corrected_locations(corrected, trial_corrector, fixation_events.height)
         if corrected is None:
             warnings.warn(
                 f'Skipping fixation correction'
