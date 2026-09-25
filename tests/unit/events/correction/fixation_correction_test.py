@@ -358,6 +358,9 @@ def test_correct_fixations_default_woc(sample_events_and_aois):
     assert res_df.height == 6
     corrected_rows = res_df.filter(pl.col('correction_algorithm') == 'wisdom_of_the_crowd')
     assert corrected_rows.height == 6
+    confidence = corrected_rows['correction_confidence'].to_list()
+    assert all(0.0 <= value <= 1.0 for value in confidence)
+    assert min(confidence) < 1.0
     assert corrected_rows['name'].to_list() == ['fixation'] * 6
     corrected_y = [location[1] for location in corrected_rows['location'].to_list()]
     assert corrected_y == [100.0, 100.0, 200.0, 200.0, 300.0, 300.0]
@@ -376,6 +379,7 @@ def test_correct_fixations_algorithm_list(sample_events_and_aois):
         events_df, aois_df, algorithm=['attach'],
     )
     assert res_single.filter(pl.col('correction_algorithm') == 'attach').height == 6
+    assert 'correction_confidence' not in res_single.columns
 
 
 @pytest.mark.parametrize(
