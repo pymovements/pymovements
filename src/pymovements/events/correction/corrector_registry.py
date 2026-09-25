@@ -38,6 +38,33 @@ A factory returns a :py:data:`TrialCorrector`: anything callable with one trial'
 and AOIs. A plain function is one, and so is an object holding state in ``__call__``. This
 module knows names and factories and never calls what a factory returns; the calling is
 :py:func:`~pymovements.events.correction.correct_fixations`'s business.
+
+An example without any model in it. A corpus shows the same stimulus to many readers: PoTeC
+has 12 texts and 75 readers, so every text is read in 75 trials. A corrector that derives the
+line geometry of a text from its AOIs can derive it once and keep it for every trial showing
+that text::
+
+    class CachedGeometry:
+        # Derive each stimulus' line geometry once, then reuse it.
+
+        def __init__(self) -> None:
+            self._lines: dict[tuple, list[float]] = {}
+
+        def __call__(self, fixations, aois, *, location_column):
+            key = tuple(aois['text_id'].unique().sort())
+            if key not in self._lines:
+                self._lines[key] = derive_line_centers(aois)   # the expensive part
+            return snap_to_nearest(fixations, self._lines[key], location_column)
+
+
+    @register_corrector
+    def cached_geometry(**kwargs):
+        return CachedGeometry(**kwargs)
+
+In the expression form that cache cannot exist: the expression is built inside the per-trial
+path, so the geometry would be derived once per trial -- 75 times per text rather than once --
+and the expression would receive the location column rather than the AOIs it is derived from.
+A parameter estimated per reader and kept across that reader's trials is the same case.
 """
 from __future__ import annotations
 
