@@ -34,11 +34,10 @@ The registry holds **factories, not instances**. Registering a name must not con
 anything and must not import the corrector's dependencies: ``import pymovements`` stays cheap,
 and an optional extra is only touched when someone actually asks for the corrector.
 
-.. note::
-
-   What a registered corrector *looks like* is deliberately not fixed here. This module knows
-   names and factories; it never calls what a factory returns. The call shape is the open
-   design question, and it is settled in the caller, not in the registry.
+A factory returns a :py:data:`TrialCorrector`: anything callable with one trial's fixations
+and AOIs. A plain function is one, and so is an object holding state in ``__call__``. This
+module knows names and factories and never calls what a factory returns; the calling is
+:py:func:`~pymovements.events.correction.correct_fixations`'s business.
 """
 from __future__ import annotations
 
@@ -46,7 +45,22 @@ from collections.abc import Callable
 from collections.abc import Iterable
 from typing import Any
 
-_CORRECTORS: dict[str, Callable[..., Any]] = {}
+import polars as pl
+
+#: A corrector that is handed one trial at a time.
+#:
+#: It is called as ``corrector(fixations, aois, location_column=...)`` and returns one
+#: ``[x, y]`` list per fixation, or ``None`` to leave the trial as it is. Returning ``None`` is
+#: how a corrector declines a trial it cannot serve -- too many fixations, missing AOIs -- and
+#: it is treated exactly like a drift algorithm skipping a trial: a warning naming the trial,
+#: and its fixations stay uncorrected.
+#:
+#: Anything callable qualifies. A stateful corrector is an object whose ``__call__`` has this
+#: shape; it is built once per :py:func:`correct_fixations` call, so whatever it holds is
+#: prepared once rather than per trial.
+TrialCorrector = Callable[..., pl.Series | None]
+
+_CORRECTORS: dict[str, Callable[..., TrialCorrector]] = {}
 _RESERVED_NAMES: set[str] = set()
 
 
@@ -65,16 +79,16 @@ def reserve_names(names: Iterable[str]) -> None:
     _RESERVED_NAMES.update(names)
 
 
-def register_corrector(name: str, factory: Callable[..., Any]) -> None:
+def register_corrector(name: str, factory: Callable[..., TrialCorrector]) -> None:
     """Register a factory that builds a corrector.
 
     Parameters
     ----------
     name: str
         Name under which the corrector is selected via ``algorithm=``.
-    factory: Callable[..., Any]
-        Callable returning the corrector. It is called at correction time, not at import time,
-        so that registering costs nothing.
+    factory: Callable[..., TrialCorrector]
+        Callable returning a :py:data:`TrialCorrector`. It is called at correction time, not
+        at import time, so that registering costs nothing.
 
     Raises
     ------
@@ -118,7 +132,7 @@ def all_registered_correctors() -> list[str]:
     return list(_CORRECTORS)
 
 
-def build_corrector(name: str, **kwargs: Any) -> Any:
+def build_corrector(name: str, **kwargs: Any) -> TrialCorrector:
     """Build the corrector registered under a name.
 
     Parameters
@@ -130,9 +144,8 @@ def build_corrector(name: str, **kwargs: Any) -> Any:
 
     Returns
     -------
-    Any
-        Whatever the factory returns. This module does not constrain that; see the note in the
-        module docstring.
+    TrialCorrector
+        The corrector the factory returns.
 
     Raises
     ------

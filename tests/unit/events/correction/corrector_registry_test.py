@@ -34,6 +34,116 @@ from pymovements.events.correction.fixation_correction import ALL_DRIFT_ALGORITH
 class Stub:
     """A stand-in for whatever a factory returns; the registry never calls it."""
 
+    def __call__(
+            self,
+            fixations: pl.DataFrame,
+            aois: pl.DataFrame,
+            *,
+            location_column: str,
+    ) -> None:
+        """Decline every trial.
+
+        Parameters
+        ----------
+        fixations: pl.DataFrame
+            The trial's fixations.
+        aois: pl.DataFrame
+            The trial's areas of interest.
+        location_column: str
+            Name of the location column.
+
+        """
+        del fixations, aois, location_column
+
+
+def make_events(n: int = 3) -> pl.DataFrame:
+    """Return a minimal fixation events frame.
+
+    Parameters
+    ----------
+    n: int
+        Number of fixations.
+
+    Returns
+    -------
+    pl.DataFrame
+        Fixation events with component location columns.
+
+    """
+    return pl.DataFrame({
+        'name': ['fixation'] * n,
+        'onset': list(range(n)),
+        'offset': list(range(1, n + 1)),
+        'location_x': [1.0 * i for i in range(n)],
+        'location_y': [1.0] * n,
+    })
+
+
+def make_aois() -> pl.DataFrame:
+    """Return a minimal two-line character AOI frame.
+
+    Returns
+    -------
+    pl.DataFrame
+        Areas of interest.
+
+    """
+    return pl.DataFrame({
+        'char': ['a', 'b'],
+        'start_x': [0.0, 10.0], 'start_y': [0.0, 20.0],
+        'end_x': [10.0, 20.0], 'end_y': [10.0, 30.0],
+    })
+
+
+def shift_down(
+        fixations: pl.DataFrame,
+        aois: pl.DataFrame,
+        *,
+        location_column: str,
+) -> pl.Series:
+    """Move every fixation onto the second line; a trial corrector in its simplest form.
+
+    Parameters
+    ----------
+    fixations: pl.DataFrame
+        The trial's fixations.
+    aois: pl.DataFrame
+        The trial's areas of interest.
+    location_column: str
+        Name of the location column.
+
+    Returns
+    -------
+    pl.Series
+        One [x, y] list per fixation.
+
+    """
+    del aois, location_column
+    return fixations.select(
+        pl.concat_list([pl.col('location_x'), pl.lit(25.0)]).alias('location'),
+    ).to_series()
+
+
+def decline(
+        fixations: pl.DataFrame,
+        aois: pl.DataFrame,
+        *,
+        location_column: str,
+) -> None:
+    """Decline every trial, the way a corrector reports it cannot serve one.
+
+    Parameters
+    ----------
+    fixations: pl.DataFrame
+        The trial's fixations.
+    aois: pl.DataFrame
+        The trial's areas of interest.
+    location_column: str
+        Name of the location column.
+
+    """
+    del fixations, aois, location_column
+
 
 @pytest.fixture(name='temporary_registration')
 def fixture_temporary_registration() -> Iterator[str]:
@@ -136,3 +246,120 @@ def test_a_registered_name_resolves_to_itself_and_not_to_an_ensemble(temporary_r
 
     assert resolved == [temporary_registration]
     assert ensemble is False
+
+
+def test_a_callable_corrects_without_being_registered():
+    """Daniel's second point: pass the corrector itself, no registration step."""
+    corrected = pm.events.correction.correct_fixations(
+        make_events(), make_aois(), algorithm=shift_down,
+    )
+
+    assert corrected['correction_algorithm'].unique().to_list() == ['shift_down']
+    assert corrected['location_y'].to_list() == [25.0, 25.0, 25.0]
+    assert corrected['location_y_original'].to_list() == [1.0, 1.0, 1.0]
+
+
+def test_a_declining_corrector_skips_the_trial_and_says_so():
+    """Returning None must behave like a drift algorithm skipping a trial, not like an error."""
+    events = make_events()
+
+    with pytest.warns(UserWarning, match='stay uncorrected'):
+        corrected = pm.events.correction.correct_fixations(
+            events, make_aois(), algorithm=decline,
+        )
+
+    assert corrected['location_y'].to_list() == events['location_y'].to_list()
+    assert 'location_y_original' not in corrected.columns
+    assert 'correction_algorithm' not in corrected.columns
+
+
+def test_a_stateful_corrector_is_built_once_not_once_per_trial():
+    """The whole reason for the second form: what it holds is prepared once."""
+    builds: list[int] = []
+
+    class Stateful:
+        def __init__(self) -> None:
+            builds.append(1)
+
+        def __call__(self, fixations, aois, *, location_column):
+            del aois, location_column
+            return fixations.select(
+                pl.concat_list([pl.col('location_x'), pl.lit(25.0)]).alias('location'),
+            ).to_series()
+
+    _corrector_registry.register_corrector('stateful', lambda **kwargs: Stateful())
+    try:
+        events = pl.concat([
+            make_events().with_columns(pl.lit(subject).alias('subject_id'))
+            for subject in (1, 2, 3)
+        ])
+        pm.events.correction.correct_fixations(
+            events, make_aois(), algorithm='stateful', trial_columns=['subject_id'],
+        )
+    finally:
+        _corrector_registry._CORRECTORS.pop('stateful', None)
+
+    assert len(builds) == 1
+
+
+def test_algorithm_kwargs_are_refused_for_a_callable():
+    """There is no factory to take them, and per-trial binding would undo building once."""
+    with pytest.raises(ValueError, match='functools.partial'):
+        pm.events.correction.correct_fixations(
+            make_events(), make_aois(), algorithm=shift_down,
+            algorithm_kwargs={'answer': 42},
+        )
+
+
+def test_algorithm_kwargs_reach_a_registered_factory():
+    seen: list[dict] = []
+
+    def factory(**kwargs):
+        seen.append(kwargs)
+        return shift_down
+
+    _corrector_registry.register_corrector('configurable', factory)
+    try:
+        pm.events.correction.correct_fixations(
+            make_events(), make_aois(), algorithm='configurable',
+            algorithm_kwargs={'answer': 42},
+        )
+    finally:
+        _corrector_registry._CORRECTORS.pop('configurable', None)
+
+    assert seen == [{'answer': 42}]
+
+
+def test_a_callable_in_an_ensemble_is_refused():
+    with pytest.raises(ValueError, match='cannot take part in an ensemble'):
+        pm.events.correction.correct_fixations(
+            make_events(), make_aois(), algorithm=['attach', shift_down],
+        )
+
+
+def test_a_stateful_corrector_is_labelled_by_its_class():
+    """A callable object has no __name__; the column must still get a usable name."""
+    class NamedByClass:
+        def __call__(self, fixations, aois, *, location_column):
+            del aois, location_column
+            return fixations.select(
+                pl.concat_list([pl.col('location_x'), pl.lit(25.0)]).alias('location'),
+            ).to_series()
+
+    corrected = pm.events.correction.correct_fixations(
+        make_events(), make_aois(), algorithm=NamedByClass(),
+    )
+
+    assert corrected['correction_algorithm'].unique().to_list() == ['NamedByClass']
+
+
+def test_a_non_callable_is_still_a_type_error():
+    """Widening algorithm= must not swallow nonsense: only a callable is a trial corrector.
+
+    Without this, an int is taken for a corrector named 'int' and fails much later with a
+    KeyError, which is what happened while this was being written.
+    """
+    with pytest.raises(TypeError, match='algorithm must be a string or a list of strings'):
+        pm.events.correction.correct_fixations(
+            make_events(), make_aois(), algorithm=123,
+        )

@@ -65,8 +65,10 @@ from pymovements.events.correction._aoi import get_word_locations_from_aois
 from pymovements.events.correction._aoi import has_word_x_coords
 from pymovements.events.correction._aoi import normalize_aois
 from pymovements.events.correction._corrector_registry import all_registered_correctors
+from pymovements.events.correction._corrector_registry import build_corrector
 from pymovements.events.correction._corrector_registry import is_registered_corrector
 from pymovements.events.correction._corrector_registry import reserve_names
+from pymovements.events.correction._corrector_registry import TrialCorrector
 from pymovements.events.correction._utils import is_right_to_left
 from pymovements.events.correction._utils import line_index_to_y
 from pymovements.events.correction._utils import location_x
@@ -118,7 +120,7 @@ def _min_fixation_count(algorithms: set[str], n_lines: int) -> int:
 
 
 def _select_ensemble_algorithms(
-    algorithms: list[str],
+    algorithms: list[str | TrialCorrector],
     has_word_coords: bool,
     right_to_left: bool,
 ) -> list[str]:
@@ -126,7 +128,7 @@ def _select_ensemble_algorithms(
 
     Parameters
     ----------
-    algorithms: list[str]
+    algorithms: list[str | TrialCorrector]
         Requested algorithm names.
     has_word_coords: bool
         Whether word X coordinates are available for the DTW-based algorithms.
@@ -143,15 +145,26 @@ def _select_ensemble_algorithms(
     ValueError
         If an algorithm name is unknown or no candidate algorithms remain.
     """
-    registered = [algo for algo in algorithms if is_registered_corrector(algo)]
-    if registered:
+    correctors = [
+        algo for algo in algorithms
+        if (callable(algo) and not isinstance(algo, str)) or (
+            isinstance(algo, str) and is_registered_corrector(algo)
+        )
+    ]
+    if correctors:
+        shown = [
+            algo if isinstance(algo, str) else _corrector_label(algo) for algo in correctors
+        ]
         raise ValueError(
-            f'Registered correctors {registered} cannot take part in an ensemble. Their vote '
-            'would have to be weighed against the algorithmic votes, and there is no obvious '
-            f'weighting; pass a single name instead, e.g. algorithm={registered[0]!r}.',
+            f'Trial correctors {shown} cannot take part in an ensemble. Their vote would have '
+            'to be weighed against the algorithmic votes, and there is no obvious weighting; '
+            f'pass a single one instead, e.g. algorithm={shown[0]!r}.',
         )
 
-    unknown_algos = [algo for algo in algorithms if algo not in ALL_DRIFT_ALGORITHMS]
+    # Everything that is not a drift algorithm name was rejected above.
+    names: list[str] = [algo for algo in algorithms if isinstance(algo, str)]
+
+    unknown_algos = [algo for algo in names if algo not in ALL_DRIFT_ALGORITHMS]
     if unknown_algos:
         raise ValueError(
             f'Unknown drift algorithms {unknown_algos}. '
@@ -160,7 +173,7 @@ def _select_ensemble_algorithms(
 
     candidate_algos = []
     excluded_algos = []
-    for algo in algorithms:
+    for algo in names:
         if algo in {'compare', 'warp'} and not has_word_coords:
             excluded_algos.append(algo)
         else:
@@ -189,8 +202,25 @@ def _select_ensemble_algorithms(
     return candidate_algos
 
 
+def _corrector_label(corrector: TrialCorrector) -> str:
+    """Return a column-name label for a corrector passed as a callable.
+
+    Parameters
+    ----------
+    corrector: TrialCorrector
+        The callable passed as ``algorithm``.
+
+    Returns
+    -------
+    str
+        Its ``__name__`` if it has one, else the name of its type -- a stateful corrector is
+        an object, and objects carry their name on the class.
+    """
+    return getattr(corrector, '__name__', type(corrector).__name__)
+
+
 def _resolve_algorithms(
-    algorithm: str | list[str],
+    algorithm: str | list[str] | TrialCorrector,
     has_word_coords: bool,
     right_to_left: bool,
 ) -> tuple[list[str], bool]:
@@ -198,9 +228,10 @@ def _resolve_algorithms(
 
     Parameters
     ----------
-    algorithm: str | list[str]
-        Name of a single drift algorithm, 'wisdom_of_the_crowd' (or 'woc'), or a list of
-        algorithm names to combine via ensemble correction.
+    algorithm: str | list[str] | TrialCorrector
+        Name of a single drift algorithm, 'wisdom_of_the_crowd' (or 'woc'), a list of
+        algorithm names to combine via ensemble correction, the name of a registered trial
+        corrector, or a trial corrector itself.
     has_word_coords: bool
         Whether word X coordinates are available for the DTW-based algorithms.
     right_to_left: bool
@@ -229,6 +260,9 @@ def _resolve_algorithms(
             list(algorithm), has_word_coords, right_to_left,
         )
         return candidate_algos, True
+
+    if not isinstance(algorithm, (str, list)) and callable(algorithm):
+        return [_corrector_label(algorithm)], False
 
     if isinstance(algorithm, str):
         if is_registered_corrector(algorithm):
@@ -593,7 +627,7 @@ def _check_not_already_corrected(events: pl.DataFrame, fixation_name: str) -> No
         )
 
 
-def _algorithm_label(algorithm: str | list[str]) -> tuple[str, set[str]]:
+def _algorithm_label(algorithm: str | list[str] | TrialCorrector) -> tuple[str, set[str]]:
     """Resolve and validate the bookkeeping algorithm name and the requested algorithms.
 
     Resolving with word coordinates assumed present and left-to-right reading excludes
@@ -625,6 +659,70 @@ def _trial_aois(
     )
 
 
+def _trial_description(
+        fixation_events: pl.DataFrame,
+        trial_columns: list[str] | None,
+) -> str:
+    """Return a description of a trial for a warning, or an empty string without trials.
+
+    Parameters
+    ----------
+    fixation_events: pl.DataFrame
+        The trial's fixation events.
+    trial_columns: list[str] | None
+        Columns identifying a trial, if the events carry any.
+
+    Returns
+    -------
+    str
+        Something like ``" for trial {'subject_id': 1}"``, or ``""``.
+    """
+    if not trial_columns:
+        return ''
+    values = {column: fixation_events[column][0] for column in trial_columns}
+    return f' for trial {values}'
+
+
+def _build_trial_corrector(
+        algorithm: str | list[str] | TrialCorrector,
+        algo_name: str,
+        algorithm_kwargs: dict[str, Any] | None,
+) -> TrialCorrector | None:
+    """Return the trial corrector to use, or None when drift algorithms are requested.
+
+    Parameters
+    ----------
+    algorithm: str | list[str] | TrialCorrector
+        The algorithm argument as passed by the caller.
+    algo_name: str
+        The resolved bookkeeping name.
+    algorithm_kwargs: dict[str, Any] | None
+        Keyword arguments for the algorithms, or for a registered corrector's factory.
+
+    Returns
+    -------
+    TrialCorrector | None
+        The corrector, built once, or None.
+
+    Raises
+    ------
+    ValueError
+        If keyword arguments are given for a corrector passed as a callable. There is no
+        factory to hand them to, and handing them to every trial would undo building once.
+    """
+    if not isinstance(algorithm, (str, list)) and callable(algorithm):
+        if algorithm_kwargs:
+            raise ValueError(
+                f'algorithm_kwargs does not apply to a corrector passed as a callable: '
+                f'{algo_name!r} is used as it is. Bind its arguments with functools.partial, '
+                'or register it under a name and let its factory take them.',
+            )
+        return algorithm
+    if isinstance(algorithm, str) and is_registered_corrector(algorithm):
+        return build_corrector(algorithm, **(algorithm_kwargs or {}))
+    return None
+
+
 def _correct_trial(
     fixation_events: pl.DataFrame,
     trial_aois: pl.DataFrame,
@@ -638,21 +736,33 @@ def _correct_trial(
     fixation_name: str,
     location_column: str,
     character_level: bool,
+    trial_corrector: TrialCorrector | None = None,
 ) -> pl.Series | None:
     """Correct the fixations of a single trial, or return None if the trial is skipped."""
+    if trial_corrector is not None:
+        # Before the line count on purpose: a trial corrector brings its own limits, and it
+        # must not be stopped by the ones the eleven drift algorithms need.
+        corrected = trial_corrector(
+            fixation_events, trial_aois, location_column=location_column,
+        )
+        if corrected is None:
+            warnings.warn(
+                f'Skipping fixation correction'
+                f'{_trial_description(fixation_events, trial_columns)}: the corrector '
+                'returned no correction for it. The affected fixation locations stay '
+                'uncorrected.',
+                UserWarning,
+                stacklevel=3,
+            )
+        return corrected
+
     n_lines = count_text_lines(trial_aois, word_locations)
     if n_lines is not None:
         min_fixations = _min_fixation_count(requested_algorithms, n_lines)
         if fixation_events.height < min_fixations:
-            if trial_columns:
-                trial_values = {
-                    column: fixation_events[column][0] for column in trial_columns
-                }
-                trial_part = f' for trial {trial_values}'
-            else:
-                trial_part = ''
             warnings.warn(
-                f'Skipping fixation correction{trial_part}: '
+                f'Skipping fixation correction'
+                f'{_trial_description(fixation_events, trial_columns)}: '
                 f'{fixation_events.height} fixations are too few for the requested '
                 f'algorithms on {n_lines} text lines. The affected fixation '
                 'locations stay uncorrected.',
@@ -752,7 +862,7 @@ def _apply_corrections(
 def correct_fixations(
     events: pl.DataFrame,
     aois: pl.DataFrame,
-    algorithm: str | list[str] = 'wisdom_of_the_crowd',
+    algorithm: str | list[str] | TrialCorrector = 'wisdom_of_the_crowd',
     trial_columns: list[str] | str | None = None,
     directionality: str = 'left-to-right',
     word_locations: pl.Series | None = None,
@@ -784,10 +894,15 @@ def correct_fixations(
         present, otherwise by their y-coordinate. The DTW-based algorithms additionally
         use the word X coordinate columns 'start_x' and 'end_x', with 'end_x' derived
         from 'start_x' and 'width' if missing.
-    algorithm: str | list[str]
+    algorithm: str | list[str] | TrialCorrector
         Name of drift algorithm or list of algorithm names. Default is 'wisdom_of_the_crowd'.
         If word X coordinates ('start_x', 'end_x') are not present in aois, 'compare' and 'warp'
         are automatically excluded from the Wisdom of the Crowd ensemble with a UserWarning.
+        It may instead select a trial corrector: the name one is registered under, or the
+        corrector itself. A trial corrector is handed one trial's fixations and AOIs, and it is
+        built once per call rather than once per trial, so that whatever it holds is prepared
+        once. Passed directly it is used as it is, so ``algorithm_kwargs`` does not apply;
+        bind them with :py:func:`functools.partial` instead.
     trial_columns: list[str] | str | None
         Column names identifying trials. Each trial is corrected independently. AOIs are
         filtered on those trial columns that are present in the aois dataframe. If None,
@@ -891,6 +1006,13 @@ def correct_fixations(
     _check_not_already_corrected(events, fixation_name)
     algo_name, requested_algorithms = _algorithm_label(algorithm)
 
+    # Built once, not once per trial: whatever a trial corrector holds -- loaded weights,
+    # precomputed geometry, a per-reader parameter -- is prepared here and reused.
+    trial_corrector = _build_trial_corrector(algorithm, algo_name, algorithm_kwargs)
+    # With a trial corrector the drift path is not taken; pass its name so the signature of
+    # _correct_trial stays as narrow as the drift path needs it.
+    drift_algorithm = algorithm if isinstance(algorithm, (str, list)) else algo_name
+
     aois = normalize_aois(aois)
     indexed_events = events.with_row_index('__fixation_correction_index')
 
@@ -919,11 +1041,12 @@ def correct_fixations(
             raise ValueError(f'no AOIs found for trial {trial_values}.')
 
         corrected_locs = _correct_trial(
-            fixation_events, trial_aois, algorithm=algorithm,
+            fixation_events, trial_aois, algorithm=drift_algorithm,
             requested_algorithms=requested_algorithms, trial_columns=trial_columns,
             directionality=directionality, word_locations=word_locations,
             algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,
             location_column=location_column, character_level=character_level,
+            trial_corrector=trial_corrector,
         )
         if corrected_locs is None:
             continue
