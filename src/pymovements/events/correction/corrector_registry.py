@@ -19,52 +19,14 @@
 # SOFTWARE.
 """Registry for correctors that do not fit the drift-algorithm shape.
 
-The eleven algorithms in :py:data:`~pymovements.events.correction.ALL_DRIFT_ALGORITHMS` are
-functions returning a polars expression over a column. That shape carries no state: each call
-builds an expression, polars evaluates it, nothing survives. A corrector that has to *hold*
-something -- weights it loaded, geometry it precomputed, a fitted per-reader parameter --
-cannot be written that way. Its cost would also be hidden inside an expression, where neither
-the caller nor the ensemble vote can see it.
+The algorithms in :py:data:`~pymovements.events.correction.ALL_DRIFT_ALGORITHMS` return a polars
+expression, which carries no state and never sees the trial. A corrector that has to hold
+something -- precomputed geometry, a fitted parameter, loaded weights -- needs a different shape
+and is registered here, sharing the ``algorithm=`` namespace of
+:py:func:`~pymovements.events.correction.correct_fixations`.
 
-Correctors of that kind therefore live in a registry of their own, while sharing the
-``algorithm=`` namespace of :py:func:`~pymovements.events.correction.correct_fixations`, so
-that selecting one does not look different from selecting ``'warp'``.
-
-The registry holds **factories, not instances**. Registering a name must not construct
-anything and must not import the corrector's dependencies: ``import pymovements`` stays cheap,
-and an optional extra is only touched when someone actually asks for the corrector.
-
-A factory returns a :py:data:`TrialCorrector`: anything callable with one trial's fixations
-and AOIs. A plain function is one, and so is an object holding state in ``__call__``. This
-module knows names and factories and never calls what a factory returns; the calling is
-:py:func:`~pymovements.events.correction.correct_fixations`'s business.
-
-An example without any model in it. A corpus shows the same stimulus to many readers: PoTeC
-has 12 texts and 75 readers, so every text is read in 75 trials. A corrector that derives the
-line geometry of a text from its AOIs can derive it once and keep it for every trial showing
-that text::
-
-    class CachedGeometry:
-        # Derive each stimulus' line geometry once, then reuse it.
-
-        def __init__(self) -> None:
-            self._lines: dict[tuple, list[float]] = {}
-
-        def __call__(self, fixations, aois, *, location_column):
-            key = tuple(aois['text_id'].unique().sort())
-            if key not in self._lines:
-                self._lines[key] = derive_line_centers(aois)   # the expensive part
-            return snap_to_nearest(fixations, self._lines[key], location_column)
-
-
-    @register_corrector
-    def cached_geometry(**kwargs):
-        return CachedGeometry(**kwargs)
-
-In the expression form that cache cannot exist: the expression is built inside the per-trial
-path, so the geometry would be derived once per trial -- 75 times per text rather than once --
-and the expression would receive the location column rather than the AOIs it is derived from.
-A parameter estimated per reader and kept across that reader's trials is the same case.
+The registry holds **factories, not instances**: registering a name constructs nothing and
+imports none of the corrector's dependencies. It never calls what a factory returns.
 """
 from __future__ import annotations
 
@@ -74,17 +36,12 @@ from typing import Any
 
 import polars as pl
 
-#: A corrector that is handed one trial at a time.
-#:
-#: It is called as ``corrector(fixations, aois, location_column=...)`` and returns one
-#: ``[x, y]`` list per fixation, or ``None`` to leave the trial as it is. Returning ``None`` is
-#: how a corrector declines a trial it cannot serve -- too many fixations, missing AOIs -- and
-#: it is treated exactly like a drift algorithm skipping a trial: a warning naming the trial,
-#: and its fixations stay uncorrected.
-#:
-#: Anything callable qualifies. A stateful corrector is an object whose ``__call__`` has this
-#: shape; it is built once per :py:func:`correct_fixations` call, so whatever it holds is
-#: prepared once rather than per trial.
+#: A corrector handed one trial at a time, called as
+#: ``corrector(fixations, aois, location_column=...)``. It returns one ``[x, y]`` list per
+#: fixation, or ``None`` to decline the trial, which skips it with a warning as a drift
+#: algorithm would. Anything callable qualifies; a stateful corrector is an object whose
+#: ``__call__`` has this shape, built once per
+#: :py:func:`~pymovements.events.correction.correct_fixations` call rather than per trial.
 TrialCorrector = Callable[..., pl.Series | None]
 
 _CORRECTORS: dict[str, Callable[..., TrialCorrector]] = {}
@@ -111,14 +68,7 @@ def register_corrector(
 ) -> Callable[..., TrialCorrector]:
     """Register a factory that builds a trial corrector, under the factory's own name.
 
-    Use it as a decorator::
-
-        @register_corrector
-        def my_corrector(**kwargs):
-            return MyCorrector(**kwargs)
-
-    The factory is called when a correction runs, not at import time, so registering a name
-    costs nothing and pulls in none of the corrector's dependencies.
+    Meant as a decorator. The factory is called when a correction runs, not at import time.
 
     Parameters
     ----------
