@@ -70,7 +70,8 @@ The algorithms listed below are functions returning a polars expression over a c
 shape carries no state, so a corrector that has to hold something -- geometry it precomputed,
 a parameter it estimated per reader -- cannot be written as one: the expression is built inside
 the per-trial path, so whatever it prepares is prepared again for every trial, and it receives
-the location column rather than the trial's areas of interest.
+the location column rather than the trial's areas of interest. For the 12 texts and 75 readers of
+``PoTeC``, that is geometry derived 900 times rather than 12.
 
 For those, ``algorithm=`` also takes a **trial corrector**: anything callable as
 ``corrector(fixations, aois, location_column=...)``, returning one ``[x, y]`` list per fixation
