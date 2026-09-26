@@ -23,3 +23,4 @@ These How-Tos provide detailed guides to implement the most important use cases 
     blink-detection
     blink-cleaning
     R-tutorial
+    fixation-drift-correction
