@@ -449,6 +449,7 @@ class TextStimulus:
 
         Warns
         -----
+        UserWarning
             If a row has null/NaN geometry
             If an AOI has a non-positive extent
 
@@ -570,7 +571,7 @@ class TextStimulus:
             )
 
         return df.filter(~defective & ~nonpositive).select(
-            pl.col(self.aoi_column).alias('text'),
+            pl.col(self.aoi_column).cast(pl.String).alias('text'),
             start_x.alias('start_x'),
             start_y.alias('start_y'),
             width.alias('width'),
@@ -610,7 +611,7 @@ class TextStimulus:
 
         Returns
         -------
-        tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]
+        tuple[plt.Figure, plt.Axes]
             The figure and axes containing the plot.
 
         Raises
