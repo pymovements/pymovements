@@ -20,6 +20,8 @@
 """Module for the Reading Measure DataFrame."""
 from __future__ import annotations
 
+from typing import Any
+
 import polars as pl
 
 from pymovements._utils._html import repr_html
@@ -33,11 +35,29 @@ class ReadingMeasures:
     ----------
     reading_measure_df: pl.DataFrame | None
         A reading measure dataframe. (default: None)
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. A ``sources`` entry lists the files the
+        reading measures were generated from. (default: None)
+
+    Attributes
+    ----------
+    frame: pl.DataFrame
+        A dataframe of reading measures.
+    metadata: dict[str, Any]
+        Dictionary containing additional metadata.
     """
 
-    def __init__(self, reading_measure_df: pl.DataFrame | None = None) -> None:
-        self.frame: pl.DataFrame
+    frame: pl.DataFrame
+
+    metadata: dict[str, Any]
+
+    def __init__(
+            self,
+            reading_measure_df: pl.DataFrame | None = None,
+            metadata: dict[str, Any] | None = None,
+    ) -> None:
         if reading_measure_df is None:
             self.frame = pl.DataFrame()
         else:
             self.frame = reading_measure_df
+        self.metadata = metadata if metadata is not None else {}
