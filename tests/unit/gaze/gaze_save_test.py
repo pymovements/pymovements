@@ -286,35 +286,37 @@ def test_gaze_save_dataframes(tmp_path, gaze, save_func, expected_file):
 
 
 @pytest.mark.parametrize(
-    'save_method,data',
+    ('gaze_kwargs', 'filename', 'expected_time'),
     [
         pytest.param(
-            'save_calibrations',
-            pl.DataFrame({'time': [1.5], 'num_points': [9]}),
+            {'calibrations': pl.DataFrame({'time': [1.5], 'num_points': [9]})},
+            'calibrations.csv',
+            [1.5],
             id='calibrations',
         ),
         pytest.param(
-            'save_validations',
-            pl.DataFrame({'time': [1.5], 'accuracy_avg': [0.5]}),
+            {'validations': pl.DataFrame({'time': [1.5], 'accuracy_avg': [0.5]})},
+            'validations.csv',
+            [1.5],
             id='validations',
         ),
     ],
 )
-def test_gaze_save_dataframes_csv_writes_time_as_milliseconds(tmp_path, save_method, data):
+def test_gaze_save_dataframes_csv_writes_time_as_milliseconds(
+        tmp_path, gaze_kwargs, filename, expected_time,
+):
     # Numeric time input is interpreted as milliseconds and stored as Duration('us').
-    # Saving to csv must write 1.5 ms back as 1.5, not the raw microsecond int 1500.
-    attribute = save_method.replace('save_', '')
+    # Saving to csv must write it back in milliseconds, not as raw microsecond ints.
     gaze = Gaze(
         pl.DataFrame({'x': [1, 2], 'y': [3, 4]}),
         pixel_columns=['x', 'y'],
-        **{attribute: data},
+        **gaze_kwargs,
     )
-    path = tmp_path / f'{attribute}.csv'
 
-    getattr(gaze, save_method)(path)
+    gaze.save(tmp_path, extension='csv', verbose=0)
 
-    written = pl.read_csv(path)
-    assert written['time'].to_list() == [1.5]
+    written = pl.read_csv(tmp_path / filename)
+    assert written['time'].to_list() == expected_time
 
 
 @pytest.mark.parametrize(
