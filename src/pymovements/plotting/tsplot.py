@@ -124,8 +124,6 @@ def tsplot(
     Raises
     ------
     ValueError
-        If array has more than two dimensions.
-    ValueError
         If ``gap_factor`` is less than 1.
     ValueError
         If there are no channels to plot, e.g. if ``channels`` is an empty list or if ``time`` is
