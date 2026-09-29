@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from dataclasses import fields
 from numbers import Number
 from typing import Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 from deprecated.sphinx import deprecated
@@ -32,6 +33,9 @@ from deprecated.sphinx import deprecated
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
 from pymovements.transforms.numpy import pix2deg
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
 
 
 @repr_html()
@@ -507,6 +511,55 @@ class Screen:
                     del data[key]
 
         return data
+
+    def plot(self, *, ax: plt.Axes | None = None) -> tuple[plt.Figure, plt.Axes]:
+        """Create an empty axes spanning the screen's pixel extent.
+
+        The axes is set up from the screen's ``width_px``, ``height_px`` and ``origin``.
+
+        Parameters
+        ----------
+        ax: plt.Axes | None
+            Axes to set up. A new figure and axes are created if ``None``.
+            (default: None)
+
+        Returns
+        -------
+        tuple[plt.Figure, plt.Axes]
+            The figure and the display-space axes.
+
+        Raises
+        ------
+        ValueError
+            If ``width_px`` or ``height_px`` is unset or not positive.
+        ValueError
+            If ``origin`` is unset or not a supported origin.
+
+        See Also
+        --------
+        pymovements.plotting.screen : Create an empty axes spanning a display's pixel extent.
+
+        Examples
+        --------
+        >>> screen = Screen(
+        ...     width_px=1280,
+        ...     height_px=1024,
+        ...     width_cm=38.0,
+        ...     height_cm=30.0,
+        ...     distance_cm=68.0,
+        ...     origin='upper left',
+        ... )
+        >>> fig, ax = screen.plot()
+        >>> tuple(float(value) for value in ax.get_xlim())
+        (0.0, 1280.0)
+        >>> tuple(float(value) for value in ax.get_ylim())
+        (1024.0, 0.0)
+        """
+        # Local import avoids a circular import, as plotting still imports Gaze and Events.
+        # Move it to the top level once plotting no longer imports them (follow-up of #1703).
+        from pymovements.plotting.screen import screen  # pylint: disable=import-outside-toplevel
+
+        return screen(self.width_px, self.height_px, origin=self.origin, ax=ax)
 
     def __bool__(self) -> bool:
         """Return True if the screen has data defined, else False."""
