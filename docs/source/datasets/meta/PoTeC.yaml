@@ -43,7 +43,7 @@ resources:
     url: https://osf.io/download/d8pyg/
     filename: fixation.zip
     md5: ecd9a998d07158922bb9b8cdd52f5688
-  filename_pattern: reader{subject_id:d}_{text_id}_uncorrected_fixations.tsv
+  filename_pattern: reader{subject_id:d}_{text_id:2}_uncorrected_fixations.tsv
   filename_pattern_schema_overrides:
     subject_id: '!int'
     text_id: '!str'
@@ -51,6 +51,36 @@ resources:
     read_csv_kwargs:
       separator: "\t"
       null_values: .
+- content: precomputed_events
+  source:
+    url: https://osf.io/download/53zwb/
+    filename: fixations.zip
+    md5: df1b34fd053531ed9d481093b5c5befc
+  filename_pattern: reader{subject_id:d}_{text_id:2}_fixations.tsv
+  filename_pattern_schema_overrides:
+    subject_id: '!int'
+    text_id: '!str'
+  load_kwargs:
+    read_csv_kwargs:
+      separator: "\t"
+      null_values: .
+- content: textstimulus
+  source:
+    url: https://osf.io/download/6ab4ea6fdfcbd8c365d32b08/
+    filename: aoi_texts.zip
+    md5: 57620a2a79ff8a6e6db0786ab445354c
+  filename_pattern: '{text_id:2}.ias'
+  filename_pattern_schema_overrides:
+    text_id: '!str'
+  load_kwargs:
+    aoi_column: character
+    start_x_column: start_x
+    start_y_column: start_y
+    end_x_column: end_x
+    end_y_column: end_y
+    read_csv_kwargs:
+      separator: "\t"
+      quote_char: null
 - content: precomputed_reading_measures
   source:
     url: https://osf.io/download/3ywhz/
