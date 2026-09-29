@@ -126,7 +126,7 @@ def _polars_datatype_to_bids_format(dtype: polars.DataType) -> str:
 
     raise TypeError(
         f"polars datatype {dtype} has no mapping to bids format descriptor. "
-        f"Supported polars datatypes are: Integer, Float, String, Categorical, Enum",
+        f"Supported polars datatypes are: Boolean, Integer, Float, String, Categorical, Enum",
     )
 
 
