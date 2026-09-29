@@ -64,6 +64,8 @@ def screen(
     ValueError
         If ``width_px`` or ``height_px`` is ``None``.
     ValueError
+        If ``width_px`` or ``height_px`` is zero or negative.
+    ValueError
         If ``origin`` is ``None`` or not a supported origin.
 
     Notes
@@ -96,6 +98,11 @@ def screen(
     if width_px is None or height_px is None:
         raise ValueError(
             'screen width and height must be set, '
+            f'got width_px={width_px} and height_px={height_px}.',
+        )
+    if width_px <= 0 or height_px <= 0:
+        raise ValueError(
+            'screen width and height must be positive, '
             f'got width_px={width_px} and height_px={height_px}.',
         )
 

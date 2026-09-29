@@ -20,6 +20,8 @@
 """Test pymovements.plotting.screen."""
 from __future__ import annotations
 
+import re
+
 import matplotlib.pyplot as plt
 import pytest
 
@@ -66,15 +68,47 @@ def test_screen_y_increases_downward(origin):
 
 
 @pytest.mark.parametrize(
-    ('width_px', 'height_px'),
+    ('width_px', 'height_px', 'expected_message'),
     [
-        pytest.param(None, None, id='both_none'),
-        pytest.param(None, 1024, id='width_none'),
-        pytest.param(1280, None, id='height_none'),
+        pytest.param(
+            None, None,
+            'screen width and height must be set, got width_px=None and height_px=None.',
+            id='both_none',
+        ),
+        pytest.param(
+            None, 1024,
+            'screen width and height must be set, got width_px=None and height_px=1024.',
+            id='width_none',
+        ),
+        pytest.param(
+            1280, None,
+            'screen width and height must be set, got width_px=1280 and height_px=None.',
+            id='height_none',
+        ),
+        pytest.param(
+            0, 1024,
+            'screen width and height must be positive, got width_px=0 and height_px=1024.',
+            id='width_zero',
+        ),
+        pytest.param(
+            1280, 0,
+            'screen width and height must be positive, got width_px=1280 and height_px=0.',
+            id='height_zero',
+        ),
+        pytest.param(
+            -1280, 1024,
+            'screen width and height must be positive, got width_px=-1280 and height_px=1024.',
+            id='width_negative',
+        ),
+        pytest.param(
+            1280, -1024,
+            'screen width and height must be positive, got width_px=1280 and height_px=-1024.',
+            id='height_negative',
+        ),
     ],
 )
-def test_screen_unset_resolution_raises(width_px, height_px):
-    with pytest.raises(ValueError, match='screen width and height must be set'):
+def test_screen_invalid_resolution_raises(width_px, height_px, expected_message):
+    with pytest.raises(ValueError, match=re.escape(expected_message)):
         screen(width_px, height_px)
 
 
