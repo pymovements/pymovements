@@ -324,16 +324,18 @@ def test_tsplot_numeric_time_column_plotted_as_is(gaze):
     assert list(ax.get_lines()[0].get_xdata()) == gaze.samples['time'].to_list()
 
 
-def test_tsplot_explicit_duration_channel_converted_to_ms(gaze):
+def test_tsplot_explicit_duration_channel_converted_to_ms():
     # 'time' is excluded only from the auto-selected channel list; requesting
     # it explicitly must still convert it from Duration like any other
     # Duration-typed channel would be.
+    gaze = make_gaze(
+        [0.0, 1.5, 2.25], [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]], 'duration',
+    )
     assert isinstance(gaze.samples.schema['time'], pl.Duration)
 
     _, ax = tsplot(gaze=gaze, channels=['time'])
 
-    expected = (gaze.samples['time'].dt.total_microseconds() / 1000).to_list()
-    assert list(ax.get_lines()[0].get_ydata()) == expected
+    assert list(ax.get_lines()[0].get_ydata()) == [0.0, 1.5, 2.25]
 
 
 def test_tsplot_events_cycles_colors_beyond_ten_event_names():
@@ -573,40 +575,36 @@ def test_tsplot_gap_factor_below_one_raises(gap_factor):
         tsplot(gaze=gaze, gap_factor=gap_factor)
 
 
-def test_tsplot_keeps_gap_from_null_rows_visible():
+@pytest.mark.parametrize('time_dtype', ['numeric', 'duration'])
+def test_tsplot_keeps_gap_from_null_rows_visible(time_dtype):
     # samples 30..59 present as rows but null -> already NaN, must stay NaN
     pixel = [
         [float(i), 2.0 * i] if not 30 <= i < 60 else None
         for i in range(100)
     ]
-    gaze = Gaze(
-        samples=pl.DataFrame(
-            {'time': [float(i) for i in range(100)], 'pixel': pixel},
-        ),
+    gaze = make_gaze([float(i) for i in range(100)], pixel, time_dtype)
+
+    _, ax = tsplot(gaze=gaze, channels='pixel')
+
+    xdata, ydata = get_line_data(ax)
+    assert xdata.shape == (100,)
+    np.testing.assert_array_equal(xdata, [float(i) for i in range(100)])
+    np.testing.assert_array_equal(np.flatnonzero(np.isnan(ydata)), list(range(30, 60)))
+
+
+@pytest.mark.parametrize('time_dtype', ['numeric', 'duration'])
+def test_tsplot_no_gap_leaves_samples_untouched(time_dtype):
+    gaze = make_gaze(
+        [float(i) for i in range(50)],
+        [[float(i), 2.0 * i] for i in range(50)],
+        time_dtype,
     )
 
     _, ax = tsplot(gaze=gaze, channels='pixel')
 
-    ydata = np.asarray(ax.get_lines()[0].get_ydata(), dtype='float64')
-    assert np.isnan(ydata).any()
-
-
-def test_tsplot_no_gap_leaves_samples_untouched():
-    n = 50
-    gaze = Gaze(
-        samples=pl.DataFrame(
-            {
-                'time': [float(i) for i in range(n)],
-                'pixel': [[float(i), 2.0 * i] for i in range(n)],
-            },
-        ),
-    )
-
-    _, ax = tsplot(gaze=gaze, channels='pixel')
-
-    xdata = np.asarray(ax.get_lines()[0].get_xdata(), dtype='float64')
-    assert xdata.shape == (n,)
-    assert not np.isnan(np.asarray(ax.get_lines()[0].get_ydata(), dtype='float64')).any()
+    xdata, ydata = get_line_data(ax)
+    np.testing.assert_array_equal(xdata, [float(i) for i in range(50)])
+    np.testing.assert_array_equal(ydata, [float(i) for i in range(50)])
 
 
 @pytest.mark.parametrize('time_dtype', ['numeric', 'duration'])
