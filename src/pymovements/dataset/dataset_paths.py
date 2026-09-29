@@ -350,7 +350,7 @@ class DatasetPaths:
         >>> dataset.paths.preprocessed  # doctest: +SKIP
         Path('path/to/your/common/root/ToyDataset/preprocessed')
 
-        This way you can also explicitly specify the events directory name. The default is
+        This way you can also explicitly specify the preprocessed directory name. The default is
         `preprocessed`.
 
         >>> paths = pm.DatasetPaths(
@@ -480,21 +480,25 @@ class DatasetPaths:
         >>> dataset.paths.precomputed_reading_measures  # doctest: +SKIP
         Path('path/to/your/common/root/ToyDataset/precomputed_reading_measures')
 
-        This way you can also explicitly specify the raw directory name. The default is
-        `precomputed_rm`.
+        This way you can also explicitly specify the precomputed reading measures directory name.
+        The default is `precomputed_reading_measures`.
 
-        >>> paths = pm.DatasetPaths(root='/path/to/your/datasets/', raw='my_precomputed_rm')
+        >>> paths = pm.DatasetPaths(
+        ...     root='/path/to/your/datasets/', precomputed_reading_measures='my_precomputed_rm',
+        ... )
         >>> dataset = pm.Dataset("ToyDataset", path=paths)
         >>> dataset.paths.precomputed_reading_measures  # doctest: +SKIP
         Path('/path/to/your/datasets/ToyDataset/my_precomputed_rm')
 
-        If your precomputed event  data is not in a separate directory under the root path then you
-        can also specify `.` as the directory name. We discourage this and advise the user to keep
-        precomputed data and preprocessed data separated.
+        If your precomputed reading measures are not in a separate directory under the root path
+        then you can also specify `.` as the directory name. We discourage this and advise the user
+        to keep precomputed data and preprocessed data separated.
 
-        >>> paths = pm.DatasetPaths(root='/path/to/your/datasets/',precomputed_reading_measures='.')
+        >>> paths = pm.DatasetPaths(
+        ...     root='/path/to/your/datasets/', precomputed_reading_measures='.',
+        ... )
         >>> dataset = pm.Dataset("ToyDataset", path=paths)
-        >>> dataset.paths.precomputed_events  # doctest: +SKIP
+        >>> dataset.paths.precomputed_reading_measures  # doctest: +SKIP
         Path('/path/to/your/datasets/ToyDataset')
         """
         return self.dataset / self._precomputed_reading_measures
