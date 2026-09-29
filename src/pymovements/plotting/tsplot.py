@@ -127,6 +127,9 @@ def tsplot(
         If array has more than two dimensions.
     ValueError
         If ``gap_factor`` is less than 1.
+    ValueError
+        If there are no channels to plot, e.g. if ``channels`` is an empty list or if ``time`` is
+        the only numeric column of the gaze samples.
     """
     if gap_factor is not None and gap_factor < 1:
         raise ValueError(f'gap_factor must be at least 1 or None, got {gap_factor}')
@@ -162,6 +165,11 @@ def tsplot(
     if nested_columns:
         df = unnest_list_columns(df, nested_columns)
     channels = df.columns
+    if not channels:
+        raise ValueError(
+            'tsplot: no channels to plot. '
+            "Pass channels explicitly or add numeric sample columns besides 'time'.",
+        )
     arr = df.to_numpy().transpose()
 
     channel_axis = 0

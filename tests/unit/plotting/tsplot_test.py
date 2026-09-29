@@ -406,6 +406,21 @@ def test_tsplot_does_not_plot_time_column_as_channel():
     assert [ax.get_ylabel() for ax in fig.axes] == ['pixel_x', 'pixel_y']
 
 
+@pytest.mark.parametrize(
+    ('columns', 'channels'),
+    [
+        pytest.param(['time'], None, id='time_only_numeric_column'),
+        pytest.param(['time', 'pixel'], [], id='empty_channels_list'),
+    ],
+)
+def test_tsplot_no_channels_raises(columns, channels):
+    gaze = make_gaze([0.0, 1.0], [[0.0, 0.0], [1.0, 1.0]], 'duration')
+    gaze.samples = gaze.samples.select(columns)
+
+    with pytest.raises(ValueError, match='tsplot: no channels to plot.'):
+        tsplot(gaze=gaze, channels=channels)
+
+
 @pytest.mark.parametrize('time_dtype', ['numeric', 'duration'])
 def test_tsplot_breaks_line_at_gap_from_absent_rows(time_dtype):
     # samples 30..59 are missing as absent rows (tracker gap / drop_nulls())
