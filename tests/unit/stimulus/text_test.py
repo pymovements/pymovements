@@ -19,7 +19,6 @@
 # SOFTWARE.
 """Test Text stimulus class."""
 import math
-from copy import deepcopy
 from dataclasses import replace
 
 import matplotlib.pyplot as plt
