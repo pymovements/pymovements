@@ -23,6 +23,8 @@ import pytest
 from polars.testing import assert_frame_equal
 
 from pymovements.measure.samples import location
+from pymovements.measure.samples import location_offset
+from pymovements.measure.samples import location_onset
 
 
 @pytest.mark.parametrize(
@@ -42,9 +44,10 @@ def test_location_exceptions(init_kwargs, exception, message):
 
 
 @pytest.mark.parametrize(
-    ('init_kwargs', 'input_df', 'expected_df'),
+    ('measure', 'init_kwargs', 'input_df', 'expected_df'),
     [
         pytest.param(
+            location,
             {'method': 'mean'},
             pl.DataFrame(
                 {'position': [[0, 0], [1, 0]]},
@@ -58,6 +61,7 @@ def test_location_exceptions(init_kwargs, exception, message):
         ),
 
         pytest.param(
+            location,
             {'method': 'mean'},
             pl.DataFrame(
                 {'position': [[0, 0], [0, 1], [0, 3]]},
@@ -71,6 +75,7 @@ def test_location_exceptions(init_kwargs, exception, message):
         ),
 
         pytest.param(
+            location,
             {'method': 'median'},
             pl.DataFrame(
                 {'position': [[0, 0], [2, 1], [3, 3]]},
@@ -82,10 +87,38 @@ def test_location_exceptions(init_kwargs, exception, message):
             ),
             id='position_three_samples_median',
         ),
+
+        pytest.param(
+            location_onset,
+            {},
+            pl.DataFrame(
+                {'position': [[0, 0], [2, 1], [3, 3]]},
+                schema={'position': pl.List(pl.Float64)},
+            ),
+            pl.DataFrame(
+                {'location_onset': [[0, 0]]},
+                schema={'location_onset': pl.List(pl.Float64)},
+            ),
+            id='position_three_samples_onset',
+        ),
+
+        pytest.param(
+            location_offset,
+            {},
+            pl.DataFrame(
+                {'position': [[0, 0], [2, 1], [3, 3]]},
+                schema={'position': pl.List(pl.Float64)},
+            ),
+            pl.DataFrame(
+                {'location_offset': [[3, 3]]},
+                schema={'location_offset': pl.List(pl.Float64)},
+            ),
+            id='position_three_samples_offset',
+        ),
     ],
 )
-def test_location_has_expected_result(init_kwargs, input_df, expected_df):
-    expression = location(**init_kwargs)
+def test_location_has_expected_result(measure, init_kwargs, input_df, expected_df):
+    expression = measure(**init_kwargs)
     result_df = input_df.select([expression])
 
     assert_frame_equal(result_df, expected_df)
