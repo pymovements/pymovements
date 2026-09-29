@@ -220,7 +220,13 @@ def heatmap(
     heatmap_plot.set_alpha(np.where(heatmap_plot.get_array().data > 0, alpha, 0.0))
 
     # Apply screen-based axis limits and aspect ratio
-    _set_screen_axes(ax, gaze.experiment.screen, func_name='heatmap')
+    _set_screen_axes(
+        ax,
+        gaze.experiment.screen.width_px,
+        gaze.experiment.screen.height_px,
+        gaze.experiment.screen.origin,
+        func_name='heatmap',
+    )
 
     # Set the plot title and axis labels
     if title:

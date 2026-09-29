@@ -13,7 +13,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 maintainers = [
-  {name = "Daniel Krakowczyk", email = "daniel.krakowczyk@uni-potsdam.de"}
+  { name = "Daniel Krakowczyk", email = "daniel.krakowczyk@uni-potsdam.de" }
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -141,6 +141,10 @@ disable_error_code = ["override"]
 
 [[tool.mypy.overrides]]
 module = "scipy.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "sklearn.*"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
