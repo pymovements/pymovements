@@ -219,14 +219,11 @@ def tsplot(
         if isinstance(time_series.dtype, pl.Duration):
             time_series = duration_to_ms(time_series)
         t = time_series.to_numpy()
-        if gap_factor is not None:
-            # Break the line at temporal gaps so that missing samples encoded as
-            # absent rows (tracker gaps, drop_nulls()) show up as gaps instead of
-            # a straight line drawn across them.
-            nominal_step = None
-            if gaze.experiment is not None and gaze.experiment.sampling_rate is not None:
-                nominal_step = 1000 / gaze.experiment.sampling_rate
-            t, arr = _insert_gap_breaks(t, arr, gap_factor=gap_factor, nominal_step=nominal_step)
+        # Break the line at temporal gaps so that missing samples encoded as
+        # absent rows (tracker gaps, drop_nulls()) show up as gaps instead of
+        # a straight line drawn across them.
+        sampling_rate = gaze.experiment.sampling_rate if gaze.experiment is not None else None
+        t, arr = _insert_gap_breaks(t, arr, gap_factor=gap_factor, sampling_rate=sampling_rate)
     else:
         t = np.arange(arr.shape[1])
     xlims = t.min(), t.max()
@@ -326,8 +323,8 @@ def _insert_gap_breaks(
         t: np.ndarray,
         arr: np.ndarray,
         *,
-        gap_factor: float,
-        nominal_step: float | None,
+        gap_factor: float | None,
+        sampling_rate: float | None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Insert a NaN sample after every temporal gap in ``t``.
 
@@ -338,8 +335,10 @@ def _insert_gap_breaks(
     Splitting the line with a NaN at each discontinuity keeps the gap visible.
 
     A step larger than ``gap_factor`` times the nominal sample step counts as a
-    gap. If no nominal step is given, the median positive sample step is used.
-    ``t`` and ``arr`` are returned unchanged if no gap is found.
+    gap. The nominal step is ``1000 / sampling_rate`` milliseconds. If no
+    sampling rate is given, the median positive sample step is used instead.
+    ``t`` and ``arr`` are returned unchanged if ``gap_factor`` is None or no gap
+    is found.
 
     Parameters
     ----------
@@ -347,21 +346,27 @@ def _insert_gap_breaks(
         One-dimensional array of sample times, shape ``(n_samples,)``.
     arr: np.ndarray
         Channel values, shape ``(n_channels, n_samples)``.
-    gap_factor: float
-        Multiple of the nominal sample step above which a step is a gap.
-    nominal_step: float | None
-        Expected step between two consecutive samples, in the unit of ``t``. If None, the
-        median positive sample step is used.
+    gap_factor: float | None
+        Multiple of the nominal sample step above which a step is a gap. If None, no gaps are
+        detected.
+    sampling_rate: float | None
+        Sampling rate in Hz used to compute the nominal sample step in milliseconds. If None, the
+        median positive sample step is used as the nominal step.
 
     Returns
     -------
     tuple[np.ndarray, np.ndarray]
         ``t`` and ``arr`` with a NaN column inserted after each gap.
     """
+    if gap_factor is None:
+        return t, arr
+
     t_float = np.asarray(t, dtype='float64')
     steps = np.diff(t_float)
 
-    if nominal_step is None:
+    if sampling_rate is not None:
+        nominal_step = 1000 / sampling_rate
+    else:
         positive_steps = steps[np.isfinite(steps) & (steps > 0)]
         if positive_steps.size == 0:
             return t, arr
