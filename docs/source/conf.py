@@ -140,7 +140,7 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 # Generated files are only pulled in via mdinclude and must not be picked up
 # as standalone documents.
-exclude_patterns = ['_generated']
+exclude_patterns = ['_generated', 'pmep/TEMPLATE.md']
 suppress_warnings = [
     'myst.header',
 ]
