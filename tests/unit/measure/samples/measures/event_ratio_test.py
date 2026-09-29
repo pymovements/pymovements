@@ -176,9 +176,10 @@ class TestEventRatio:
                     {'name': 'blink', 'onset': 0.0, 'offset': 2.0, 'trial': 1},
                     {'name': 'blink', 'onset': 2.0, 'offset': 3.0, 'trial': 1},
                 ],
-                {1: 1.25},
+                # overlapping intervals [0, 2] and [2, 3] are merged into [0, 3]
+                # before summing, so the ratio is (3 - 0 + 1) / (3 - 0 + 1) = 1.0
+                {1: 1.0},
                 id='overlapping_events',
-                marks=pytest.mark.filterwarnings('ignore:Overlapping events detected'),
             ),
             pytest.param(
                 pl.DataFrame({

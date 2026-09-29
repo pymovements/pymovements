@@ -28,43 +28,20 @@ import pytest
 from pymovements.gaze import from_asc
 
 
-@pytest.mark.parametrize(
-    'expected_ratio',
-    [
-        pytest.param(
-            # durations are summed without merging the overlap:
-            # ((1101 - 1005 + 1) + (1090 - 1011 + 1)) / (1104 - 1000 + 1) = 177 / 105
-            177 / 105,
-            id='current_behavior_overlap_double_counted',
-        ),
-        pytest.param(
-            # merging the overlapping intervals yields (1101 - 1005 + 1) / 105 = 97 / 105,
-            # the value the removed data_loss_ratio_blinks metadata field reported
-            97 / 105,
-            marks=pytest.mark.xfail(
-                reason='overlapping events are not merged before summing durations (#1584)',
-                strict=True,
-            ),
-            id='expected_behavior_overlap_merged',
-        ),
-    ],
-)
 @pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
-def test_from_asc_binocular_overlapping_blinks_events_ratio(make_text_file, expected_ratio):
-    """Overlapping binocular blink events are double-counted by measure_events_ratio.
+def test_from_asc_binocular_overlapping_blinks_events_ratio(make_text_file):
+    """Overlapping binocular blink events are merged by measure_events_ratio.
 
     Binocular recordings emit separate left-eye and right-eye blink events which
-    typically overlap in time. ``measure_events_ratio`` sums the durations of all
-    ``blink_eyelink`` events without merging overlapping intervals, so the ratio
-    can exceed 1.0.
+    typically overlap in time. ``measure_events_ratio`` merges overlapping
+    intervals of the ``blink_eyelink`` events before summing durations, so the
+    overlap is counted only once and the ratio cannot exceed 1.0.
 
-    The removed ``data_loss_ratio_blinks`` metadata field merged overlapping blink
-    intervals before counting and reported 97 / 105 for this scenario, so the
-    suggested migration to ``measure_events_ratio`` is not equivalent for
-    binocular data (see issue #1584). The xfailing parametrization asserts the
-    correct merged result and is to be addressed in a follow-up PR.
+    This matches the behavior of the removed ``data_loss_ratio_blinks`` metadata
+    field, which merged overlapping blink intervals before counting and reported
+    97 / 105 for this scenario (see issues #1584 and #1661).
     """
     start = 1000
     end = 1104
@@ -108,4 +85,6 @@ def test_from_asc_binocular_overlapping_blinks_events_ratio(make_text_file, expe
         gaze.measure_events_ratio('blink_eyelink', sampling_rate=1000.0),
     ).item()
 
-    assert ratio == pytest.approx(expected_ratio)
+    # merging the overlapping intervals yields (1101 - 1005 + 1) / 105 = 97 / 105,
+    # the value the removed data_loss_ratio_blinks metadata field reported
+    assert ratio == pytest.approx(97 / 105)

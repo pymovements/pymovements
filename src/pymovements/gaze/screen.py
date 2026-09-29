@@ -160,23 +160,6 @@ class Screen:
         self.distance_cm = distance_cm
         self.origin = origin
 
-    def __post_init__(self) -> None:
-        """Check fields for validity."""
-        if self.width_px is not None:
-            _checks.check_is_greater_than_zero(width_px=self.width_px)
-
-        if self.height_px is not None:
-            _checks.check_is_greater_than_zero(height_px=self.height_px)
-
-        if self.width_cm is not None:
-            _checks.check_is_greater_than_zero(width_cm=self.width_cm)
-
-        if self.height_cm is not None:
-            _checks.check_is_greater_than_zero(height_cm=self.height_cm)
-
-        if self.distance_cm is not None:
-            _checks.check_is_greater_than_zero(distance_cm=self.distance_cm)
-
     @property
     def width_px(self) -> int | None:
         """Width of screen in pixels."""

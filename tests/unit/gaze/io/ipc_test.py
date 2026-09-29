@@ -75,6 +75,28 @@ from pymovements.gaze import from_ipc
             ),
             id='feather_mono_shape_column_map',
         ),
+        pytest.param(
+            'monocular_example.feather',
+            {
+                'add_columns': {'subject_id': '1'},
+            },
+            (10, 3),
+            marks=pytest.mark.filterwarnings(
+                'ignore:Gaze contains samples but no.*:UserWarning',
+            ),
+            id='feather_mono_shape_add_columns',
+        ),
+        pytest.param(
+            'monocular_example.feather',
+            {
+                'column_schema_overrides': {'time': float},
+            },
+            (10, 2),
+            marks=pytest.mark.filterwarnings(
+                'ignore:Gaze contains samples but no.*:UserWarning',
+            ),
+            id='feather_mono_shape_column_schema_overrides',
+        ),
     ],
 )
 def test_shapes(filename, kwargs, shape, make_example_file):

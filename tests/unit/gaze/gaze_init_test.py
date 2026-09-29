@@ -1097,8 +1097,30 @@ from pymovements import Gaze
 )
 def test_init_gaze_has_expected_attrs(init_kwargs, expected_samples, expected_n_components):
     gaze = Gaze(**init_kwargs)
+    if 'time' in expected_samples.columns:
+        time_dtype = expected_samples.schema['time']
+        if time_dtype in (pl.Float64, pl.Int64, pl.Int32, pl.Float32):
+            expected_samples = expected_samples.with_columns(
+                (pl.col('time').cast(pl.Float64) * 1000).round().cast(pl.Duration('us')),
+            )
     assert_frame_equal(gaze.samples, expected_samples)
     assert gaze.n_components == expected_n_components
+
+
+def test_init_rounds_sub_microsecond_duration_time():
+    # A sub-microsecond Duration time column is rounded to the nearest microsecond, not truncated.
+    gaze = Gaze(
+        pl.DataFrame({
+            'time': pl.Series([1500, 2600, 4500], dtype=pl.Duration('ns')),
+            'x': [1.0, 2.0, 3.0],
+            'y': [1.0, 2.0, 3.0],
+        }),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+    )
+
+    assert gaze.samples.schema['time'] == pl.Duration('us')
+    assert gaze.samples['time'].dt.total_microseconds().to_list() == [2, 3, 4]
 
 
 @pytest.mark.parametrize(
@@ -1705,6 +1727,25 @@ def test_init_gaze_has_expected_trial_columns(init_kwargs, expected_trial_column
             "Supported units are 's' for seconds, 'ms' for milliseconds, "
             "'us' for microseconds and 'step' for steps.",
             id='time_unit_unsupported',
+        ),
+
+        pytest.param(
+            {
+                'samples': pl.DataFrame(
+                    schema={
+                        'x': pl.Float64, 'y': pl.Float64,
+                        'time': pl.Duration('us'),
+                    },
+                ),
+                'pixel_columns': ['x', 'y'],
+                'time_column': 'time',
+                'time_unit': 'invalid',
+            },
+            ValueError,
+            "unsupported time unit 'invalid'. "
+            "Supported units are 's' for seconds, 'ms' for milliseconds, "
+            "'us' for microseconds and 'step' for steps.",
+            id='time_unit_unsupported_with_duration_time',
         ),
 
         pytest.param(

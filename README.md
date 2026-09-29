@@ -32,10 +32,27 @@ and render plots to visually analyze your results.
 - **Mailing list:** pymovements@python.org ([subscribe](https://mail.python.org/mailman3/lists/pymovements.python.org/))
 - **Discord:** https://discord.gg/K2uS2R6PNj
 
+## Installation
+
+pymovements can be installed from [PyPI](https://pypi.org/project/pymovements) via pip:
+
+```bash
+pip install pymovements
+```
+
+or from [conda-forge](https://anaconda.org/conda-forge/pymovements):
+
+```bash
+conda install -c conda-forge pymovements
+```
+
+For other options, including uv and installing from source for development, see the
+[installation guide](https://pymovements.readthedocs.io/en/stable/user-guide/getting-started/installation.html).
+
 ## Getting Started
 
 If you are new to pymovements or to eye-tracking data analysis, we recommend starting with the **User Guide**, which introduces the concepts, data
-structures, and workflows used throughout the library: 👉 :doc:`user-guide/index`
+structures, and workflows used throughout the library: 👉 [User Guide](https://pymovements.readthedocs.io/en/stable/user-guide/index.html)
 
 
 ### Quick example
@@ -70,7 +87,7 @@ dataset.detect('microsaccades')  # detect saccades using the microsaccades algor
 <!-- With pymovements loading your eye movement [datasets](https://pymovements.readthedocs.io/en/stable/datasets/index.html) is just a few lines of code away -->
 
 ### Quick Links
-- :doc:`Installation Options <user-guide/getting-started/installation>`
+- [Installation Options](https://pymovements.readthedocs.io/en/stable/user-guide/getting-started/installation.html)
 - [Tutorials](https://pymovements.readthedocs.io/en/stable/tutorials/index.html)
 - [API Reference](https://pymovements.readthedocs.io/en/stable/reference/index.html)
 
@@ -83,6 +100,17 @@ For a detailed guide, please refer to our [CONTRIBUTING.md](https://github.com/p
 If you have any questions, please [open an issue](
 https://github.com/pymovements/pymovements/issues/new/choose) or write to us at
 [pymovements@python.org](mailto:pymovements@python.org)
+
+## Use of Generative AI
+
+Generative AI tools are used, under human direction, in the development and maintenance of
+pymovements. Anthropic's Claude, JetBrains' Junie, and GitHub Copilot assist some contributors
+and maintainers with tasks such as code generation, drafting tests and documentation, and code
+review.
+
+Every change to the codebase requires an approving review from at least one maintainer before
+merging, and the maintainer team takes responsibility for the correctness and quality of all code
+and documentation in this package.
 
 ## Citing
 
