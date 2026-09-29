@@ -1779,23 +1779,26 @@ class Dataset:
         -------
         By passing a `str` or a `Path` as `path` during initialization, you can explicitly set the
         directory path of the dataset:
+
         >>> import pymovements as pm
         >>>
         >>> dataset = pm.Dataset("ToyDataset", path='/path/to/your/dataset')
-        >>> dataset.path# doctest: +SKIP
+        >>> dataset.path  # doctest: +SKIP
         Path('/path/to/your/dataset')
 
         If you just want to specify the root directory path which holds all your local datasets, you
-        can create pass a :py:class:`~pymovements.DatasetPaths` object and set the `root`:
+        can pass a :py:class:`~pymovements.DatasetPaths` object and set the `root`:
+
         >>> paths = pm.DatasetPaths(root='/path/to/your/common/root/')
         >>> dataset = pm.Dataset("ToyDataset", path=paths)
-        >>> dataset.path# doctest: +SKIP
+        >>> dataset.path  # doctest: +SKIP
         Path('/path/to/your/common/root/ToyDataset')
 
         You can also specify an alternative dataset directory name:
+
         >>> paths = pm.DatasetPaths(root='/path/to/your/common/root/', dataset='my_dataset')
         >>> dataset = pm.Dataset("ToyDataset", path=paths)
-        >>> dataset.path# doctest: +SKIP
+        >>> dataset.path  # doctest: +SKIP
         Path('/path/to/your/common/root/my_dataset')
         """
         return self.paths.dataset
