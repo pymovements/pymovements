@@ -33,6 +33,26 @@ from pymovements.gaze import Gaze
 from pymovements.plotting import tsplot
 
 
+def make_gaze(times, pixel, time_dtype, sampling_rate=None):
+    # Gaze normalizes a numeric time column to Duration at construction, so a
+    # numeric time column can only be set by replacing the samples afterwards.
+    experiment = None if sampling_rate is None else Experiment(sampling_rate=sampling_rate)
+    gaze = Gaze(
+        samples=pl.DataFrame({'time': times, 'pixel': pixel}),
+        experiment=experiment,
+    )
+    if time_dtype == 'numeric':
+        gaze.samples = gaze.samples.with_columns(pl.Series('time', times, dtype=pl.Float64))
+    return gaze
+
+
+def get_line_data(ax):
+    line = ax.get_lines()[0]
+    xdata = np.asarray(line.get_xdata(), dtype='float64')
+    ydata = np.asarray(line.get_ydata(), dtype='float64')
+    return xdata, ydata
+
+
 @pytest.fixture(
     name='gaze',
     params=[
@@ -386,32 +406,156 @@ def test_tsplot_does_not_plot_time_column_as_channel():
     assert [ax.get_ylabel() for ax in fig.axes] == ['pixel_x', 'pixel_y']
 
 
-def test_tsplot_breaks_line_at_gap_from_absent_rows():
+@pytest.mark.parametrize('time_dtype', ['numeric', 'duration'])
+def test_tsplot_breaks_line_at_gap_from_absent_rows(time_dtype):
     # samples 30..59 are missing as absent rows (tracker gap / drop_nulls())
-    times = [i for i in range(100) if not 30 <= i < 60]
-    gaze = Gaze(
-        samples=pl.DataFrame(
-            {
-                'time': [float(t) for t in times],
-                'pixel': [[float(t), 2.0 * t] for t in times],
-            },
-        ),
+    times = [float(i) for i in range(100) if not 30 <= i < 60]
+    gaze = make_gaze(times, [[t, 2.0 * t] for t in times], time_dtype)
+
+    fig, _ = tsplot(gaze=gaze, channels='pixel')
+
+    # exactly one NaN break at 30.0, right after the last sample before the
+    # gap, so matplotlib does not draw a segment across it
+    expected_x = [float(i) for i in range(31)] + [float(i) for i in range(60, 100)]
+    expected_pixel_x = (
+        [float(i) for i in range(30)] + [np.nan] + [float(i) for i in range(60, 100)]
     )
+    expected_pixel_y = (
+        [2.0 * i for i in range(30)] + [np.nan] + [2.0 * i for i in range(60, 100)]
+    )
+    xdata, ydata = get_line_data(fig.axes[0])
+    np.testing.assert_array_equal(xdata, expected_x)
+    np.testing.assert_array_equal(ydata, expected_pixel_x)
+    xdata, ydata = get_line_data(fig.axes[1])
+    np.testing.assert_array_equal(xdata, expected_x)
+    np.testing.assert_array_equal(ydata, expected_pixel_y)
+
+
+@pytest.mark.parametrize('time_dtype', ['numeric', 'duration'])
+def test_tsplot_breaks_line_at_two_gaps(time_dtype):
+    times = [0.0, 1.0, 2.0, 6.0, 7.0, 8.0, 15.0, 16.0]
+    pixel = [[float(i), 100.0 + i] for i in range(8)]
+    gaze = make_gaze(times, pixel, time_dtype)
+
+    fig, _ = tsplot(gaze=gaze, channels='pixel')
+
+    expected_x = [0.0, 1.0, 2.0, 3.0, 6.0, 7.0, 8.0, 9.0, 15.0, 16.0]
+    xdata, ydata = get_line_data(fig.axes[0])
+    np.testing.assert_array_equal(xdata, expected_x)
+    np.testing.assert_array_equal(
+        ydata, [0.0, 1.0, 2.0, np.nan, 3.0, 4.0, 5.0, np.nan, 6.0, 7.0],
+    )
+    xdata, ydata = get_line_data(fig.axes[1])
+    np.testing.assert_array_equal(xdata, expected_x)
+    np.testing.assert_array_equal(
+        ydata, [100.0, 101.0, 102.0, np.nan, 103.0, 104.0, 105.0, np.nan, 106.0, 107.0],
+    )
+
+
+@pytest.mark.parametrize('time_dtype', ['numeric', 'duration'])
+@pytest.mark.parametrize(
+    ('sampling_rate', 'expected_x', 'expected_y'),
+    [
+        pytest.param(
+            None,
+            [0.0, 10.0, 20.0, 40.0, 60.0],
+            [0.0, 1.0, 2.0, 3.0, 4.0],
+            id='median_step_15ms',
+        ),
+        pytest.param(
+            100.0,
+            [0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0],
+            [0.0, 1.0, 2.0, np.nan, 3.0, np.nan, 4.0],
+            id='sampling_rate_100hz',
+        ),
+    ],
+)
+def test_tsplot_gap_step_follows_sampling_rate(
+        time_dtype, sampling_rate, expected_x, expected_y,
+):
+    # The median step is 15 ms, but at 100 Hz the nominal step is 10 ms, so the
+    # 20 ms steps are gaps only if the sampling rate is known.
+    times = [0.0, 10.0, 20.0, 40.0, 60.0]
+    pixel = [[float(i), float(i)] for i in range(5)]
+    gaze = make_gaze(times, pixel, time_dtype, sampling_rate=sampling_rate)
 
     _, ax = tsplot(gaze=gaze, channels='pixel')
 
-    line = ax.get_lines()[0]
-    xdata = np.asarray(line.get_xdata(), dtype='float64')
-    ydata = np.asarray(line.get_ydata(), dtype='float64')
+    xdata, ydata = get_line_data(ax)
+    np.testing.assert_array_equal(xdata, expected_x)
+    np.testing.assert_array_equal(ydata, expected_y)
 
-    # exactly one NaN break, sitting inside the gap, so matplotlib does not
-    # draw a segment across it
-    nan_positions = np.flatnonzero(np.isnan(ydata))
-    assert nan_positions.size == 1
-    (break_idx,) = nan_positions
-    assert 29 < xdata[break_idx] < 60
-    assert xdata[break_idx - 1] == 29.0
-    assert xdata[break_idx + 1] == 60.0
+
+@pytest.mark.parametrize('time_dtype', ['numeric', 'duration'])
+def test_tsplot_breaks_two_sample_line_with_sampling_rate(time_dtype):
+    gaze = make_gaze([0.0, 10.0], [[0.0, 0.0], [1.0, 1.0]], time_dtype, sampling_rate=1000.0)
+
+    _, ax = tsplot(gaze=gaze, channels='pixel')
+
+    xdata, ydata = get_line_data(ax)
+    np.testing.assert_array_equal(xdata, [0.0, 1.0, 10.0])
+    np.testing.assert_array_equal(ydata, [0.0, np.nan, 1.0])
+
+
+@pytest.mark.parametrize('time_dtype', ['numeric', 'duration'])
+def test_tsplot_gap_factor_none_does_not_break_line(time_dtype):
+    times = [0.0, 1.0, 2.0, 10.0, 11.0]
+    pixel = [[float(i), float(i)] for i in range(5)]
+    gaze = make_gaze(times, pixel, time_dtype, sampling_rate=1000.0)
+
+    _, ax = tsplot(gaze=gaze, channels='pixel', gap_factor=None)
+
+    xdata, ydata = get_line_data(ax)
+    np.testing.assert_array_equal(xdata, [0.0, 1.0, 2.0, 10.0, 11.0])
+    np.testing.assert_array_equal(ydata, [0.0, 1.0, 2.0, 3.0, 4.0])
+
+
+@pytest.mark.parametrize('time_dtype', ['numeric', 'duration'])
+@pytest.mark.parametrize(
+    ('gap_factor', 'expected_x', 'expected_y'),
+    [
+        pytest.param(
+            1.0,
+            [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0],
+            [0.0, 1.0, 2.0, np.nan, 3.0, 4.0, np.nan, 5.0, 6.0],
+            id='1.0',
+        ),
+        pytest.param(
+            2.5,
+            [0.0, 1.0, 2.0, 4.0, 5.0, 6.0, 8.0, 9.0],
+            [0.0, 1.0, 2.0, 3.0, 4.0, np.nan, 5.0, 6.0],
+            id='2.5',
+        ),
+        pytest.param(
+            3.0,
+            [0.0, 1.0, 2.0, 4.0, 5.0, 8.0, 9.0],
+            [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            id='3.0',
+        ),
+    ],
+)
+def test_tsplot_gap_factor_sets_gap_threshold(time_dtype, gap_factor, expected_x, expected_y):
+    # steps are 1, 1, 2, 1, 3, 1 ms at a nominal step of 1 ms
+    times = [0.0, 1.0, 2.0, 4.0, 5.0, 8.0, 9.0]
+    pixel = [[float(i), float(i)] for i in range(7)]
+    gaze = make_gaze(times, pixel, time_dtype, sampling_rate=1000.0)
+
+    _, ax = tsplot(gaze=gaze, channels='pixel', gap_factor=gap_factor)
+
+    xdata, ydata = get_line_data(ax)
+    np.testing.assert_array_equal(xdata, expected_x)
+    np.testing.assert_array_equal(ydata, expected_y)
+
+
+@pytest.mark.parametrize('gap_factor', [0.5, 0.0, -1.0])
+def test_tsplot_gap_factor_below_one_raises(gap_factor):
+    gaze = make_gaze([0.0, 1.0], [[0.0, 0.0], [1.0, 1.0]], 'duration')
+
+    with pytest.raises(
+        ValueError,
+        match=f'gap_factor must be at least 1 or None, got {gap_factor}',
+    ):
+        tsplot(gaze=gaze, gap_factor=gap_factor)
 
 
 def test_tsplot_keeps_gap_from_null_rows_visible():
@@ -450,21 +594,16 @@ def test_tsplot_no_gap_leaves_samples_untouched():
     assert not np.isnan(np.asarray(ax.get_lines()[0].get_ydata(), dtype='float64')).any()
 
 
-def test_tsplot_constant_time_has_no_positive_step_to_size_a_gap_from():
+@pytest.mark.parametrize('time_dtype', ['numeric', 'duration'])
+def test_tsplot_constant_time_has_no_positive_step_to_size_a_gap_from(time_dtype):
     # Every step is <= 0, so there is no positive step to compute a gap
     # threshold from; samples must be returned unchanged rather than raising.
-    gaze = Gaze(
-        samples=pl.DataFrame(
-            {
-                'time': [0.0, 0.0, 0.0],
-                'pixel': [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]],
-            },
-        ),
+    gaze = make_gaze(
+        [0.0, 0.0, 0.0], [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]], time_dtype,
     )
 
     _, ax = tsplot(gaze=gaze, channels='pixel')
 
-    xdata = np.asarray(ax.get_lines()[0].get_xdata(), dtype='float64')
-    ydata = np.asarray(ax.get_lines()[0].get_ydata(), dtype='float64')
-    assert xdata.shape == (3,)
-    assert not np.isnan(ydata).any()
+    xdata, ydata = get_line_data(ax)
+    np.testing.assert_array_equal(xdata, [0.0, 0.0, 0.0])
+    np.testing.assert_array_equal(ydata, [0.0, 1.0, 2.0])
