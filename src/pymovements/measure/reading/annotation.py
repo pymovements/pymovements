@@ -19,6 +19,11 @@
 # SOFTWARE.
 """Fixation annotation expressions for reading measure computation.
 
+To compute all reading measures from fixations and an AOI table at once, use
+:func:`~pymovements.measure.reading.compute_reading_measures`, which annotates the fixations
+implicitly. The functions in this module are its building blocks, useful for custom analyses on
+the fixation level.
+
 Every function except :func:`annotate_fixations` returns a polars expression producing one
 annotation column. The expressions do not alter any DataFrame themselves: the consumer applies
 them via ``with_columns`` and supplies the partitioning into independent reading sequences with
@@ -39,6 +44,10 @@ import polars as pl
 
 from pymovements._utils._expressions import as_expr
 
+# Expression parameters are deliberately named after the annotation columns they default to,
+# which shadows the sibling factory functions producing those columns.
+# pylint: disable=redefined-outer-name
+
 
 def _over(expr: pl.Expr, group_columns: list[str] | None) -> pl.Expr:
     """Apply a window over the group columns, or leave the expression global without groups."""
@@ -51,6 +60,8 @@ def run_id(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     A run is a contiguous sequence of fixations on the same word. Apply ``.over(group_columns)``
     to partition into independent reading sequences.
 
+    .. warning:: Requires onset-sorted input within each sequence.
+
     Parameters
     ----------
     word_idx : str | pl.Expr
@@ -62,8 +73,9 @@ def run_id(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     pl.Expr
         Expression producing the ``run_id`` column.
     """
+    word_idx_expr = as_expr(word_idx)
     return (
-        (as_expr(word_idx) != as_expr(word_idx).shift())
+        (word_idx_expr != word_idx_expr.shift())
         .fill_null(True)
         .cast(pl.Int8)
         .cum_sum()
@@ -76,6 +88,8 @@ def prev_word_idx(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
 
     Apply ``.over(group_columns)`` to partition into independent reading sequences.
 
+    .. warning:: Requires onset-sorted input within each sequence.
+
     Parameters
     ----------
     word_idx : str | pl.Expr
@@ -87,13 +101,16 @@ def prev_word_idx(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     pl.Expr
         Expression producing the ``prev_word_idx`` column.
     """
-    return as_expr(word_idx).shift().alias('prev_word_idx')
+    word_idx_expr = as_expr(word_idx)
+    return word_idx_expr.shift().alias('prev_word_idx')
 
 
 def next_word_idx(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     """Get the word index of the next fixation.
 
     Apply ``.over(group_columns)`` to partition into independent reading sequences.
+
+    .. warning:: Requires onset-sorted input within each sequence.
 
     Parameters
     ----------
@@ -106,7 +123,8 @@ def next_word_idx(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     pl.Expr
         Expression producing the ``next_word_idx`` column.
     """
-    return as_expr(word_idx).shift(-1).alias('next_word_idx')
+    word_idx_expr = as_expr(word_idx)
+    return word_idx_expr.shift(-1).alias('next_word_idx')
 
 
 def delta_in(
@@ -131,7 +149,9 @@ def delta_in(
     pl.Expr
         Expression producing the ``delta_in`` column.
     """
-    return (as_expr(word_idx) - as_expr(prev_word_idx)).alias('delta_in')
+    word_idx_expr = as_expr(word_idx)
+    prev_word_idx_expr = as_expr(prev_word_idx)
+    return (word_idx_expr - prev_word_idx_expr).alias('delta_in')
 
 
 def delta_out(
@@ -156,7 +176,9 @@ def delta_out(
     pl.Expr
         Expression producing the ``delta_out`` column.
     """
-    return (as_expr(next_word_idx) - as_expr(word_idx)).alias('delta_out')
+    word_idx_expr = as_expr(word_idx)
+    next_word_idx_expr = as_expr(next_word_idx)
+    return (next_word_idx_expr - word_idx_expr).alias('delta_out')
 
 
 def is_reg_in(delta_in: str | pl.Expr = 'delta_in') -> pl.Expr:
@@ -175,7 +197,8 @@ def is_reg_in(delta_in: str | pl.Expr = 'delta_in') -> pl.Expr:
     pl.Expr
         Expression producing the ``is_reg_in`` column.
     """
-    return (as_expr(delta_in) < 0).alias('is_reg_in')
+    delta_in_expr = as_expr(delta_in)
+    return (delta_in_expr < 0).alias('is_reg_in')
 
 
 def is_reg_out(delta_out: str | pl.Expr = 'delta_out') -> pl.Expr:
@@ -194,7 +217,8 @@ def is_reg_out(delta_out: str | pl.Expr = 'delta_out') -> pl.Expr:
     pl.Expr
         Expression producing the ``is_reg_out`` column.
     """
-    return (as_expr(delta_out) < 0).alias('is_reg_out')
+    delta_out_expr = as_expr(delta_out)
+    return (delta_out_expr < 0).alias('is_reg_out')
 
 
 def is_first_fixation(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
@@ -202,6 +226,8 @@ def is_first_fixation(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
 
     Apply ``.over(group_columns + ['word_idx'])`` so the flag is evaluated per word within each
     reading sequence.
+
+    .. warning:: Requires onset-sorted input within each sequence.
 
     Parameters
     ----------
@@ -214,7 +240,8 @@ def is_first_fixation(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     pl.Expr
         Expression producing the ``is_first_fix`` column.
     """
-    return as_expr(word_idx).cum_count().eq(1).alias('is_first_fix')
+    word_idx_expr = as_expr(word_idx)
+    return word_idx_expr.cum_count().eq(1).alias('is_first_fix')
 
 
 def is_first_pass(
@@ -234,6 +261,8 @@ def is_first_pass(
     Unlike the other annotation expressions, this one combines two different windows internally
     and therefore takes the group columns as a parameter instead of a trailing ``.over(...)``.
 
+    .. warning:: Requires onset-sorted input within each sequence.
+
     Parameters
     ----------
     group_columns : list[str] | None
@@ -252,13 +281,15 @@ def is_first_pass(
         Expression producing the ``is_first_pass`` column.
     """
     group_columns = list(group_columns or [])
+    word_idx_expr = as_expr(word_idx)
+    run_id_expr = as_expr(run_id)
 
     no_higher_word_seen = (
-        as_expr(word_idx) >= _over(as_expr(word_idx).cum_max().shift(), group_columns)
+        word_idx_expr >= _over(word_idx_expr.cum_max().shift(), group_columns)
     ).fill_null(True)
 
     first_run_of_word = (
-        as_expr(run_id) == as_expr(run_id).min().over(group_columns + [as_expr(word_idx)])
+        run_id_expr == run_id_expr.min().over(group_columns + [word_idx_expr])
     )
 
     return (no_higher_word_seen & first_run_of_word).alias('is_first_pass')
@@ -276,6 +307,8 @@ def regression_path_word(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
 
     Apply ``.over(group_columns)`` to partition into independent reading sequences.
 
+    .. warning:: Requires onset-sorted input within each sequence.
+
     Parameters
     ----------
     word_idx : str | pl.Expr
@@ -287,7 +320,8 @@ def regression_path_word(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     pl.Expr
         Expression producing the ``regression_path_word`` column.
     """
-    return as_expr(word_idx).cum_max().alias('regression_path_word')
+    word_idx_expr = as_expr(word_idx)
+    return word_idx_expr.cum_max().alias('regression_path_word')
 
 
 def annotate_fixations(
@@ -305,7 +339,8 @@ def annotate_fixations(
       fixations.
     * **is_reg_in / is_reg_out**: whether the fixation arrives from a higher-index word
       (regression in) or departs to a lower-index word (regression out).
-    * **is_first_fix**: whether this is the first fixation ever on the word within the trial.
+    * **is_first_fix**: whether this is the first fixation ever on the word within the reading
+      sequence.
     * **is_first_pass**: whether the fixation belongs to the first-pass reading episode of the word
       (see :func:`~pymovements.measure.reading.is_first_pass`).
     * **regression_path_word**: the word whose regression-path window the fixation belongs to
@@ -336,14 +371,58 @@ def annotate_fixations(
         ``next_word_idx``, ``delta_in``, ``delta_out``,
         ``is_reg_in``, ``is_reg_out``, ``is_first_fix``,
         ``is_first_pass``, and ``regression_path_word``.
+
+    Examples
+    --------
+    Four fixations over a three-word text, with a regression from the second word back to the
+    first:
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import annotate_fixations
+    >>> fixations = pl.DataFrame({
+    ...     'name': ['fixation'] * 4,
+    ...     'onset': [0, 250, 500, 750],
+    ...     'word_idx': [0, 1, 0, 2],
+    ... })
+    >>> annotated = annotate_fixations(fixations)
+    >>> annotated.select('word_idx', 'run_id', 'is_first_pass', 'regression_path_word')
+    shape: (4, 4)
+    ┌──────────┬────────┬───────────────┬──────────────────────┐
+    │ word_idx ┆ run_id ┆ is_first_pass ┆ regression_path_word │
+    │ ---      ┆ ---    ┆ ---           ┆ ---                  │
+    │ i64      ┆ i64    ┆ bool          ┆ i64                  │
+    ╞══════════╪════════╪═══════════════╪══════════════════════╡
+    │ 0        ┆ 1      ┆ true          ┆ 0                    │
+    │ 1        ┆ 2      ┆ true          ┆ 1                    │
+    │ 0        ┆ 3      ┆ false         ┆ 1                    │
+    │ 2        ┆ 4      ┆ true          ┆ 2                    │
+    └──────────┴────────┴───────────────┴──────────────────────┘
     """
     group_columns = list(group_columns or [])
+    word_idx_expr = as_expr(word_idx)
 
     fixations = (
-        events.filter((pl.col('name') == event_name) & (as_expr(word_idx).is_not_null()))
+        events.filter((pl.col('name') == event_name) & (word_idx_expr.is_not_null()))
         .with_row_index('fixation_id')
-        # fixation_id breaks onset ties deterministically (it preserves the input order), so the
-        # run/pass annotations are reproducible even when two fixations share an onset.
+    )
+
+    if not fixations.is_empty():
+        onsets_sorted = fixations.select(
+            (_over(pl.col('onset').diff(), group_columns) >= 0).all(),
+        ).item()
+        if not onsets_sorted:
+            warnings.warn(
+                'fixation onsets are not sorted within a reading sequence; sorting by onset. '
+                'If these fixations span several trials or pages, pass group_columns.',
+            )
+
+    fixations = (
+        fixations
+        # Every downstream expression assumes onset-sorted rows: the annotations use running
+        # windows (cum_max / cum_count / shift) and the word-level measures read the first row of
+        # each group (.first()), so both encode "temporally first" as "first by row position".
+        # fixation_id breaks onset ties deterministically (it preserves the input order), so these
+        # stay reproducible even when two fixations share an onset.
         .sort(group_columns + ['onset', 'fixation_id'])
     )
 

@@ -19,6 +19,11 @@
 # SOFTWARE.
 """Reading measure computation functions.
 
+To compute all reading measures from fixations and an AOI table at once, use
+:func:`~pymovements.measure.reading.compute_reading_measures`, which drives the full pipeline.
+The functions in this module are its building blocks, useful for computing individual measures
+or custom aggregations.
+
 Every function returns a polars aggregation expression to be used inside a
 ``group_by(...).agg(...)`` over word groups, e.g.::
 
@@ -34,8 +39,10 @@ the fixation table to be annotated (see
 group, which the annotation step guarantees.
 
 The regression-path measures are the exception to the word grouping: their windows span
-fixations on other words, so they aggregate over ``regression_path_word`` groups instead of ``word_idx``
-groups (see :func:`~pymovements.measure.reading.regression_path_word`).
+fixations on other words, so they aggregate over ``regression_path_word`` groups instead of
+``word_idx`` groups (see :func:`~pymovements.measure.reading.regression_path_word`). The
+sequence-level summary measures are the other exception: they describe a whole reading
+sequence, so they aggregate over reading-sequence groups (e.g. ``['trial', 'page']``).
 """
 from __future__ import annotations
 
@@ -61,7 +68,7 @@ def total_fixation_count() -> pl.Expr:
 
 
 def first_pass_fixation_count(is_first_pass: str | pl.Expr = 'is_first_pass') -> pl.Expr:
-    """Count the fixations during the first pass (FPFC).
+    """Total number of fixations during the first pass (FPFC).
 
     Parameters
     ----------
@@ -74,13 +81,14 @@ def first_pass_fixation_count(is_first_pass: str | pl.Expr = 'is_first_pass') ->
     pl.Expr
         Aggregation expression producing the ``FPFC`` column.
     """
-    return as_expr(is_first_pass).sum().cast(pl.UInt64).alias('FPFC')
+    is_first_pass_expr = as_expr(is_first_pass)
+    return is_first_pass_expr.sum().cast(pl.UInt64).alias('FPFC')
 
 
 def first_duration(duration: str | pl.Expr = 'duration') -> pl.Expr:
     """Duration of the first fixation on each word (FD), regardless of reading pass.
 
-    Requires onset-sorted input.
+    .. warning:: Requires onset-sorted input.
 
     Parameters
     ----------
@@ -93,7 +101,8 @@ def first_duration(duration: str | pl.Expr = 'duration') -> pl.Expr:
     pl.Expr
         Aggregation expression producing the ``FD`` column.
     """
-    return as_expr(duration).first().alias('FD')
+    duration_expr = as_expr(duration)
+    return duration_expr.first().alias('FD')
 
 
 def first_reading_time(
@@ -119,9 +128,11 @@ def first_reading_time(
     pl.Expr
         Aggregation expression producing the ``FRT`` column.
     """
+    duration_expr = as_expr(duration)
+    run_id_expr = as_expr(run_id)
     return (
-        as_expr(duration)
-        .filter(as_expr(run_id) == as_expr(run_id).min())
+        duration_expr
+        .filter(run_id_expr == run_id_expr.min())
         .sum()
         .alias('FRT')
     )
@@ -133,7 +144,7 @@ def first_fixation_duration(
 ) -> pl.Expr:
     """Duration of the first fixation during first pass only (FFD).
 
-    Requires onset-sorted input.
+    .. warning:: Requires onset-sorted input.
 
     Parameters
     ----------
@@ -149,7 +160,9 @@ def first_fixation_duration(
     pl.Expr
         Aggregation expression producing the ``FFD`` column.
     """
-    return as_expr(duration).filter(as_expr(is_first_pass)).first().alias('FFD')
+    duration_expr = as_expr(duration)
+    is_first_pass_expr = as_expr(is_first_pass)
+    return duration_expr.filter(is_first_pass_expr).first().alias('FFD')
 
 
 def first_pass_reading_time(
@@ -172,7 +185,9 @@ def first_pass_reading_time(
     pl.Expr
         Aggregation expression producing the ``FPRT`` column.
     """
-    return as_expr(duration).filter(as_expr(is_first_pass)).sum().alias('FPRT')
+    duration_expr = as_expr(duration)
+    is_first_pass_expr = as_expr(is_first_pass)
+    return duration_expr.filter(is_first_pass_expr).sum().alias('FPRT')
 
 
 def rereading_time(
@@ -195,7 +210,9 @@ def rereading_time(
     pl.Expr
         Aggregation expression producing the ``RRT`` column.
     """
-    return as_expr(duration).filter(~as_expr(is_first_pass)).sum().alias('RRT')
+    duration_expr = as_expr(duration)
+    is_first_pass_expr = as_expr(is_first_pass)
+    return duration_expr.filter(~is_first_pass_expr).sum().alias('RRT')
 
 
 # ---------------------------
@@ -217,7 +234,8 @@ def regression_count_in(is_reg_in: str | pl.Expr = 'is_reg_in') -> pl.Expr:
     pl.Expr
         Aggregation expression producing the ``TRC_in`` column.
     """
-    return as_expr(is_reg_in).sum().cast(pl.UInt64).alias('TRC_in')
+    is_reg_in_expr = as_expr(is_reg_in)
+    return is_reg_in_expr.sum().cast(pl.UInt64).alias('TRC_in')
 
 
 def regression_count_out(is_reg_out: str | pl.Expr = 'is_reg_out') -> pl.Expr:
@@ -234,13 +252,21 @@ def regression_count_out(is_reg_out: str | pl.Expr = 'is_reg_out') -> pl.Expr:
     pl.Expr
         Aggregation expression producing the ``TRC_out`` column.
     """
-    return as_expr(is_reg_out).sum().cast(pl.UInt64).alias('TRC_out')
+    is_reg_out_expr = as_expr(is_reg_out)
+    return is_reg_out_expr.sum().cast(pl.UInt64).alias('TRC_out')
 
 
 def landing_position(char_idx: str | pl.Expr = 'char_idx') -> pl.Expr:
-    """Character index of the first fixation on each word (LP).
+    """One-based character position of the first fixation on each word (LP).
 
-    Requires onset-sorted input.
+    The aggregation emits the ``char_idx`` of the word's first
+    fixation plus one. Within :func:`~pymovements.measure.reading.compute_reading_measures` the
+    word's start character is subtracted, making the position relative to the word (its first
+    character is 1), and words that were never fixated are filled with 0; a fixated word whose
+    first fixation has a null ``char_idx`` keeps a null position. The resulting values
+    match the landing position of the PoTeC reference implementation.
+
+    .. warning:: Requires onset-sorted input.
 
     Parameters
     ----------
@@ -253,7 +279,8 @@ def landing_position(char_idx: str | pl.Expr = 'char_idx') -> pl.Expr:
     pl.Expr
         Aggregation expression producing the ``LP`` column.
     """
-    return as_expr(char_idx).first().alias('LP')
+    char_idx_expr = as_expr(char_idx)
+    return (char_idx_expr.first() + 1).alias('LP')
 
 
 def saccade_length_in(
@@ -285,9 +312,12 @@ def saccade_length_in(
     pl.Expr
         Aggregation expression producing the ``SL_in`` column.
     """
+    word_idx_expr = as_expr(word_idx)
+    prev_word_idx_expr = as_expr(prev_word_idx)
+    is_first_fix_expr = as_expr(is_first_fix)
     return (
-        (as_expr(word_idx) - as_expr(prev_word_idx))
-        .filter(as_expr(is_first_fix))
+        (word_idx_expr - prev_word_idx_expr)
+        .filter(is_first_fix_expr)
         .first()
         .alias('SL_in')
     )
@@ -301,8 +331,9 @@ def saccade_length_out(
     """Saccade length at first-pass word exit (SL_out).
 
     SL_out is the signed word distance from the current word to the next fixated word, measured
-    at the last fixation of the first run. Requires onset-sorted input. Zero when the word ends
-    the sequence.
+    at the last fixation of the first run. Zero when the word ends the sequence.
+
+    .. warning:: Requires onset-sorted input.
 
     Parameters
     ----------
@@ -321,9 +352,12 @@ def saccade_length_out(
     pl.Expr
         Aggregation expression producing the ``SL_out`` column.
     """
+    word_idx_expr = as_expr(word_idx)
+    next_word_idx_expr = as_expr(next_word_idx)
+    run_id_expr = as_expr(run_id)
     return (
-        (as_expr(next_word_idx) - as_expr(word_idx))
-        .filter(as_expr(run_id) == as_expr(run_id).min())
+        (next_word_idx_expr - word_idx_expr)
+        .filter(run_id_expr == run_id_expr.min())
         .last()
         .fill_null(0)
         .alias('SL_out')
@@ -336,11 +370,12 @@ def saccade_length_out(
 
 
 def regression_path_duration_inclusive(duration: str | pl.Expr = 'duration') -> pl.Expr:
-    """Sum all fixation durations within the regression-path window of a word (RPD_inc).
+    """Sum of all fixation durations within the regression-path window of a word (RPD_inc).
 
     The window spans from first entering the word until the first fixation to its right,
-    *including* fixations on the word itself. Aggregate over ``regression_path_word`` groups instead of
-    ``word_idx`` groups (see :func:`~pymovements.measure.reading.regression_path_word`).
+    *including* fixations on the word itself. Aggregate over ``regression_path_word`` groups
+    instead of ``word_idx`` groups (see
+    :func:`~pymovements.measure.reading.regression_path_word`).
 
     Parameters
     ----------
@@ -353,7 +388,8 @@ def regression_path_duration_inclusive(duration: str | pl.Expr = 'duration') -> 
     pl.Expr
         Aggregation expression producing the ``RPD_inc`` column.
     """
-    return as_expr(duration).sum().alias('RPD_inc')
+    duration_expr = as_expr(duration)
+    return duration_expr.sum().alias('RPD_inc')
 
 
 def regression_path_duration_exclusive(
@@ -361,7 +397,7 @@ def regression_path_duration_exclusive(
     word_idx: str | pl.Expr = 'word_idx',
     regression_path_word: str | pl.Expr = 'regression_path_word',
 ) -> pl.Expr:
-    """Sum the regressed-time fixation durations within the regression-path window (RPD_exc).
+    """Sum of the regressed-time fixation durations within the regression-path window (RPD_exc).
 
     Same window as :func:`regression_path_duration_inclusive`, but *excluding* fixations on the
     word itself (i.e., time spent on regressed words only). Aggregate over ``regression_path_word``
@@ -384,9 +420,12 @@ def regression_path_duration_exclusive(
     pl.Expr
         Aggregation expression producing the ``RPD_exc`` column.
     """
+    duration_expr = as_expr(duration)
+    word_idx_expr = as_expr(word_idx)
+    regression_path_word_expr = as_expr(regression_path_word)
     return (
-        as_expr(duration)
-        .filter(as_expr(word_idx) != as_expr(regression_path_word))
+        duration_expr
+        .filter(word_idx_expr != regression_path_word_expr)
         .sum()
         .alias('RPD_exc')
     )
@@ -397,7 +436,7 @@ def right_bounded_reading_time(
     word_idx: str | pl.Expr = 'word_idx',
     regression_path_word: str | pl.Expr = 'regression_path_word',
 ) -> pl.Expr:
-    """Sum the fixation durations on a word before any word to its right is visited (RBRT).
+    """Sum of fixation durations on a word before any word to its right is visited (RBRT).
 
     Aggregate over ``regression_path_word`` groups (see
     :func:`~pymovements.measure.reading.regression_path_word`).
@@ -419,9 +458,97 @@ def right_bounded_reading_time(
     pl.Expr
         Aggregation expression producing the ``RBRT`` column.
     """
+    duration_expr = as_expr(duration)
+    word_idx_expr = as_expr(word_idx)
+    regression_path_word_expr = as_expr(regression_path_word)
     return (
-        as_expr(duration)
-        .filter(as_expr(word_idx) == as_expr(regression_path_word))
+        duration_expr
+        .filter(word_idx_expr == regression_path_word_expr)
         .sum()
         .alias('RBRT')
+    )
+
+
+# ---------------------------
+# Sequence-level summary measures
+# ---------------------------
+
+
+def non_aoi_fixation_count_ratio(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
+    """Ratio of fixations outside any AOI, by count (NAFCR).
+
+    NAFCR is a summary of a whole reading sequence, not a word-level measure: aggregate it over
+    reading-sequence groups (e.g. ``['trial', 'page']``) instead of word groups.
+
+    A fixation counts as outside all AOIs if and only if its word index is null, which is the
+    convention produced by :py:meth:`~pymovements.Events.map_to_aois`. Datasets that encode
+    outside-AOI fixations with a sentinel value such as ``-1`` must convert those values to null
+    first, otherwise the ratio is silently underestimated.
+
+    The input must contain only fixation events, so filter the event frame to fixations first:
+    non-fixation rows carry null AOI columns after :py:meth:`~pymovements.Events.map_to_aois`
+    and would inflate the ratio.
+
+    Parameters
+    ----------
+    word_idx : str | pl.Expr
+        Column name or expression of the fixated word index.
+        (default: ``'word_idx'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``NAFCR`` column (proportion of fixations without
+        a mapped word, 0.0 to 1.0).
+    """
+    word_idx_expr = as_expr(word_idx)
+    return word_idx_expr.is_null().mean().alias('NAFCR')
+
+
+def non_aoi_fixation_duration_ratio(
+    duration: str | pl.Expr = 'duration',
+    word_idx: str | pl.Expr = 'word_idx',
+) -> pl.Expr:
+    """Ratio of fixation duration outside any AOI (NAFDR).
+
+    NAFDR is a summary of a whole reading sequence, not a word-level measure: aggregate it over
+    reading-sequence groups (e.g. ``['trial', 'page']``) instead of word groups. Null when the
+    total fixation duration of the group is zero.
+
+    A fixation counts as outside all AOIs if and only if its word index is null, which is the
+    convention produced by :py:meth:`~pymovements.Events.map_to_aois`. Datasets that encode
+    outside-AOI fixations with a sentinel value such as ``-1`` must convert those values to null
+    first, otherwise the ratio is silently underestimated.
+
+    The input must contain only fixation events, so filter the event frame to fixations first:
+    non-fixation rows carry null AOI columns after :py:meth:`~pymovements.Events.map_to_aois`
+    and would inflate the ratio.
+
+    Parameters
+    ----------
+    duration : str | pl.Expr
+        Column name or expression of the fixation duration.
+        (default: ``'duration'``)
+    word_idx : str | pl.Expr
+        Column name or expression of the fixated word index.
+        (default: ``'word_idx'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``NAFDR`` column (proportion of fixation duration
+        without a mapped word, 0.0 to 1.0).
+    """
+    duration_expr = as_expr(duration)
+    word_idx_expr = as_expr(word_idx)
+    total_duration = duration_expr.sum()
+    non_aoi_duration = duration_expr.filter(word_idx_expr.is_null()).sum()
+    # A group with zero total duration has no defined ratio; dividing would yield NaN, so it
+    # becomes null instead. Empty groups cannot occur inside group_by, so unlike this zero
+    # total duration case they need no guard.
+    return (
+        pl.when(total_duration > 0)
+        .then(non_aoi_duration / total_duration)
+        .otherwise(None)
+        .alias('NAFDR')
     )

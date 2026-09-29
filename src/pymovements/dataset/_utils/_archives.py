@@ -150,6 +150,33 @@ def extract_archive(
     return destination_path
 
 
+def _is_filesystem_metadata(member_name: str) -> bool:
+    """Check whether an archive member is operating system filesystem metadata.
+
+    macOS zip archives place resource forks in a ``__MACOSX`` directory as ``._`` prefixed twins
+    that mirror the tree they belong to, and the Finder scatters ``.DS_Store`` files into every
+    directory. Windows Explorer similarly leaves ``Thumbs.db`` thumbnail caches behind. None of
+    these carry payload, and a ``._archive.zip`` twin is not a valid archive and would break
+    nested extraction. An entry is treated as metadata when any path component is the
+    ``__MACOSX`` directory, the filename is ``.DS_Store``, or the filename is ``Thumbs.db``
+    (matched case-insensitively, as Windows filesystems are case-insensitive). The ``._`` prefix
+    on its own is intentionally not matched, so a legitimately named ``._`` file outside
+    ``__MACOSX`` is kept.
+
+    Parameters
+    ----------
+    member_name: str
+        The archive member path as stored in the archive.
+
+    Returns
+    -------
+    bool
+        ``True`` if the member is filesystem metadata and should be skipped during extraction.
+    """
+    parts = member_name.replace('\\', '/').split('/')
+    return '__MACOSX' in parts or parts[-1] == '.DS_Store' or parts[-1].lower() == 'thumbs.db'
+
+
 def _extract_tar(
         source_path: Path,
         destination_path: Path,
@@ -186,6 +213,8 @@ def _extract_tar(
                 ncols=80,
                 disable=not verbose,
         ):
+            if _is_filesystem_metadata(member.name):
+                continue
             if resume:
                 member_dest_path = os.path.join(destination_path, member.name)
                 if (
@@ -234,6 +263,8 @@ def _extract_zip(
                 unit='file',
                 disable=not verbose,
         ):
+            if _is_filesystem_metadata(member.filename):
+                continue
             if resume:
                 member_dest_path = os.path.join(destination_path, member.filename)
                 if (

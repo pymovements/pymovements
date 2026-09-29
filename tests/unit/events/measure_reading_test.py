@@ -79,7 +79,7 @@ def test_events_measure_reading_returns_reading_measures(fixation_events, stimul
     assert result.frame['TFC'].to_list() == [1, 1, 0]
     # the skipped word is flagged and landing positions were computed from char_idx
     assert result.frame['skipped'].to_list() == [0, 0, 1]
-    assert result.frame['LP'].to_list() == [0, 0, None]
+    assert result.frame['LP'].to_list() == [1, 1, 0]
 
 
 def test_events_measure_reading_does_not_mutate_events(fixation_events, stimulus):
@@ -100,7 +100,7 @@ def test_events_measure_reading_empty_returns_empty(stimulus):
     assert result.frame.is_empty()
 
 
-def test_events_measure_reading_multiple_stimuli(stimulus):
+def test_events_measure_reading_multiple_stimuli():
     events = Events(
         pl.DataFrame({
             'name': ['fixation'] * 3,
@@ -116,7 +116,8 @@ def test_events_measure_reading_multiple_stimuli(stimulus):
         'trial_2': _make_stimulus(['fox', 'jumps'], trial='trial_2'),
     }
 
-    result = events.measure_reading(stimuli).frame.sort(['trial', 'word_index'])
+    result = events.measure_reading(stimuli, group_columns=['trial'])
+    result = result.frame.sort(['trial', 'word_index'])
 
     assert result['trial'].to_list() == ['trial_1', 'trial_1', 'trial_1', 'trial_2', 'trial_2']
     assert result['word'].to_list() == ['The', 'quick', 'brown', 'fox', 'jumps']
@@ -136,7 +137,12 @@ def test_events_measure_reading_multiple_stimuli_requires_sequence_column(stimul
     )
 
     with pytest.raises(ValueError, match="no 'trial' column"):
-        events.measure_reading({'trial_1': stimulus})
+        events.measure_reading({'trial_1': stimulus}, group_columns=['trial'])
+
+
+def test_events_measure_reading_multiple_stimuli_requires_group_columns(fixation_events, stimulus):
+    with pytest.raises(ValueError, match='requires at least one group column'):
+        fixation_events.measure_reading({'trial_1': stimulus})
 
 
 def test_gaze_measure_reading_delegates_to_events(fixation_events, stimulus):

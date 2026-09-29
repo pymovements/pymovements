@@ -27,37 +27,57 @@ import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 
+from pymovements._utils._column_nesting import get_nested_columns
+from pymovements._utils._column_nesting import unnest_list_columns
+from pymovements._utils._time import duration_to_ms
 from pymovements.gaze import Gaze
 from pymovements.plotting._matplotlib import prepare_figure
 
 
 def tsplot(
         gaze: Gaze,
-        channels: list[str] | None = None,
+        channels: str | list[str] | None = None,
         *,
         xlabel: str | None = None,
         n_cols: int | None = None,
         n_rows: int | None = None,
         rotate_ylabels: bool = True,
-        share_y: bool = True,
-        zero_centered_yaxis: bool = True,
+        share_y: bool = False,
+        zero_centered_yaxis: bool = False,
         line_color: tuple[int, int, int] | str = 'k',
         line_width: int = 1,
         show_grid: bool = True,
         show_yticks: bool = True,
         figsize: tuple[int, int] = (15, 5),
         title: str | None = None,
+        show_events: bool = False,
+        gap_factor: float | None = 1.5,
         savepath: str | None = None,
         ax: plt.Axes | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot time series with each channel getting a separate subplot.
 
+    The x-axis shows the values of the ``time`` column of the gaze samples
+    (usually in milliseconds) if present, otherwise the sample index.
+
+    If a ``time`` column is present, the line of each channel is broken at temporal gaps, so no
+    line is drawn across missing samples. The nominal sample step is ``1000 / sampling_rate``
+    milliseconds, with the sampling rate taken from ``gaze.experiment.sampling_rate``. If no
+    sampling rate is set, the median of the positive time steps is used as the nominal step
+    instead. A step between two consecutive samples counts as a gap if it is larger than
+    ``gap_factor`` times the nominal step. The line is broken by inserting a NaN value into the
+    gap.
+
     Parameters
     ----------
     gaze: Gaze
         The Gaze to plot.
-    channels: list[str] | None
-        List of channel names to plot. If None, all channels will be plotted. (default: None)
+    channels: str | list[str] | None
+        Name(s) of channels to plot. List columns are unnested into one channel per component,
+        e.g. ``pixel`` becomes ``pixel_x`` and ``pixel_y``. If None, all numeric columns
+        including list columns with numeric components will be plotted, except for the ``time``
+        column. The ``time`` column is used as the x-axis and is never selected automatically.
+        (default: None)
     xlabel: str | None
         Set the x label. (default: None)
     n_cols: int | None
@@ -67,9 +87,9 @@ def tsplot(
     rotate_ylabels: bool
         Set whether to rotate ylabels. (default: True)
     share_y: bool
-        Set if y-axes should share a common axis. (default: True)
+        Set if y-axes should share a common axis. (default: False)
     zero_centered_yaxis: bool
-        Set if y-axis should be zero-centered. (default: True)
+        Set if y-axis should be zero-centered. (default: False)
     line_color: tuple[int, int, int] | str
         Set line color. (default: 'k')
     line_width: int
@@ -82,6 +102,14 @@ def tsplot(
         Figure size. (default: (15, 5))
     title: str | None
         Figure title. (default: None)
+    show_events: bool
+        Whether to plot events as shaded areas. Event spans are colored by event name and
+        their labels are registered, so calling ``fig.legend()`` on the returned figure
+        shows one entry per event name. (default: False)
+    gap_factor: float | None
+        Tolerance for detecting temporal gaps as a multiple of the nominal sample step. A step
+        larger than ``gap_factor`` times the nominal step counts as a gap. Must be at least 1.
+        If None, lines are not broken at gaps. (default: 1.5)
     savepath: str | None
         If given, figure will be saved to this path. (default: None)
     ax: plt.Axes | None
@@ -96,21 +124,55 @@ def tsplot(
     Raises
     ------
     ValueError
-        If array has more than two dimensions.
+        If ``gap_factor`` is less than 1.
+    ValueError
+        If there are no channels to plot, e.g. if ``channels`` is an empty list or if ``time`` is
+        the only numeric column of the gaze samples.
     """
+    if gap_factor is not None and gap_factor < 1:
+        raise ValueError(f'gap_factor must be at least 1 or None, got {gap_factor}')
+
     if channels is None:
-        channels = [c for c in gaze.samples.columns if gaze.samples[c].dtype != pl.List]
+        # Select all numeric (and nested numeric) channels. The ``time`` column
+        # is the x-axis, not a signal, so it is never auto-selected even though
+        # it is a (Duration) numeric column.
+        channels = [
+            c
+            for c in gaze.samples.columns
+            if c != 'time'
+            and (
+                gaze.samples[c].dtype.is_numeric()
+                or isinstance(gaze.samples[c].dtype, pl.Duration)
+                or (
+                    gaze.samples[c].dtype == pl.List
+                    and gaze.samples[c].dtype.inner.is_numeric()
+                )
+            )
+        ]
 
-    arr = gaze.samples[channels].to_numpy().transpose()
+    samples = gaze.samples
+    channel_list = channels if isinstance(channels, list) else [channels]
+    for col in channel_list:
+        if col in samples.columns and isinstance(samples.schema[col], pl.Duration):
+            samples = samples.with_columns(
+                duration_to_ms(pl.col(col)).alias(col),
+            )
 
-    if arr.ndim == 1:
-        arr = np.expand_dims(arr, axis=0)
+    df = samples.select(channels)
+    nested_columns = get_nested_columns(df)
+    if nested_columns:
+        df = unnest_list_columns(df, nested_columns)
+    channels = df.columns
+    if not channels:
+        raise ValueError(
+            'tsplot: no channels to plot. '
+            "Pass channels explicitly or add numeric sample columns besides 'time'.",
+        )
+    arr = df.to_numpy().transpose()
 
     channel_axis = 0
-    sample_axis = 1
 
     n_channels = arr.shape[channel_axis]
-    n_samples = arr.shape[sample_axis]
 
     if n_cols is None:
         if n_channels % 2 == 0:
@@ -150,20 +212,39 @@ def tsplot(
         )
         axs = axs_grid.flatten()
 
-    t = np.arange(n_samples)
+    if 'time' in gaze.samples.columns:
+        time_series = gaze.samples['time']
+        if isinstance(time_series.dtype, pl.Duration):
+            time_series = duration_to_ms(time_series)
+        t = time_series.to_numpy()
+        # Break the line at temporal gaps so that missing samples encoded as
+        # absent rows (tracker gaps, drop_nulls()) show up as gaps instead of
+        # a straight line drawn across them.
+        sampling_rate = gaze.experiment.sampling_rate if gaze.experiment is not None else None
+        t, arr = _insert_gap_breaks(t, arr, gap_factor=gap_factor, sampling_rate=sampling_rate)
+    else:
+        t = np.arange(arr.shape[1])
     xlims = t.min(), t.max()
-
-    y_pad_factor = 1.1
 
     # set ylims to have zero centered y-axis (for all axes)
     # will be overwritten if share_y is False
-    if zero_centered_yaxis:
-        ylim_abs = np.nanmax(np.abs(arr))
-        ylims = -ylim_abs * y_pad_factor, ylim_abs * y_pad_factor
+    ylims = _compute_ylims(arr, zero_centered_yaxis=zero_centered_yaxis)
+
+    if show_events:
+        # onset and offset are Duration columns; express them in milliseconds
+        # so the shaded spans line up with the millisecond time axis
+        events = gaze.events.frame.with_columns(
+            duration_to_ms(pl.col('onset', 'offset')),
+        )
+        palette = plt.colormaps['tab10'].colors
+        event_colors = {
+            name: palette[i % len(palette)]
+            for i, name in enumerate(sorted(events['name'].unique()))
+        }
+        event_rows = events.rows(named=True)
     else:
-        ylim_max = np.nanmax(arr)
-        ylim_min = np.nanmin(arr)
-        ylims = ylim_min * y_pad_factor, ylim_max * y_pad_factor
+        event_colors = {}
+        event_rows = []
 
     for channel_id in range(n_channels):
         ax = axs[channel_id]
@@ -171,17 +252,12 @@ def tsplot(
         x_channel = arr[channel_id, :]
         ax.plot(t, x_channel, color=line_color, linewidth=line_width)
 
-        if not share_y and zero_centered_yaxis:
-            ylim_abs = np.nanmax(np.abs(arr[channel_id]))
-            ylims = -ylim_abs * y_pad_factor, ylim_abs * y_pad_factor
-        elif not share_y and not zero_centered_yaxis:
-            ylim_max = np.nanmax(arr)
-            ylim_min = np.nanmin(arr)
-            ylims = ylim_min * y_pad_factor, ylim_max * y_pad_factor
+        if not share_y:
+            ylims = _compute_ylims(arr[channel_id], zero_centered_yaxis=zero_centered_yaxis)
 
         if xlims[0] != xlims[1]:
             ax.set_xlim(xlims)
-        if ylims[0] != ylims[1]:
+        if ylims is not None and ylims[0] != ylims[1]:
             ax.set_ylim(ylims)
 
         ax.grid(show_grid, which='major')
@@ -218,6 +294,20 @@ def tsplot(
         # share_y=True will automatically hide those that are not on the bottom
         ax.set_xlabel(xlabel)
 
+        # plot events as shaded areas
+        if show_events:
+            # only add each event to the legend once
+            add_to_legend = set(event_colors) if channel_id == 0 else set()
+            for event in event_rows:
+                event_name = event['name']
+                ax.axvspan(
+                    event['onset'], event['offset'],
+                    alpha=0.5,
+                    label=event_name if event_name in add_to_legend else None,
+                    color=event_colors[event_name],
+                )
+                add_to_legend.discard(event_name)
+
     if title:
         axs[0].set_title(title)
 
@@ -225,3 +315,86 @@ def tsplot(
         fig.savefig(savepath)
 
     return fig, axs[0]
+
+
+def _insert_gap_breaks(
+        t: np.ndarray,
+        arr: np.ndarray,
+        *,
+        gap_factor: float | None,
+        sampling_rate: float | None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Insert a NaN sample after every temporal gap in ``t``.
+
+    ``tsplot`` connects consecutive samples with a straight line. When the
+    recording skips samples but the surviving rows stay adjacent, for example a
+    tracker dropping samples during a blink or data cleaned with
+    ``drop_nulls()``, that line is drawn straight across the gap and hides it.
+    Splitting the line with a NaN at each discontinuity keeps the gap visible.
+
+    A step larger than ``gap_factor`` times the nominal sample step counts as a
+    gap. The nominal step is ``1000 / sampling_rate`` milliseconds. If no
+    sampling rate is given, the median positive sample step is used instead.
+    ``t`` and ``arr`` are returned unchanged if ``gap_factor`` is None or no gap
+    is found.
+
+    Parameters
+    ----------
+    t: np.ndarray
+        One-dimensional array of sample times, shape ``(n_samples,)``.
+    arr: np.ndarray
+        Channel values, shape ``(n_channels, n_samples)``.
+    gap_factor: float | None
+        Multiple of the nominal sample step above which a step is a gap. If None, no gaps are
+        detected.
+    sampling_rate: float | None
+        Sampling rate in Hz used to compute the nominal sample step in milliseconds. If None, the
+        median positive sample step is used as the nominal step.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        ``t`` and ``arr`` with a NaN column inserted after each gap.
+    """
+    if gap_factor is None:
+        return t, arr
+
+    t_float = np.asarray(t, dtype='float64')
+    steps = np.diff(t_float)
+
+    if sampling_rate is not None:
+        nominal_step = 1000 / sampling_rate
+    else:
+        positive_steps = steps[np.isfinite(steps) & (steps > 0)]
+        if positive_steps.size == 0:
+            return t, arr
+        nominal_step = float(np.median(positive_steps))
+
+    gap_starts = np.flatnonzero(steps > gap_factor * nominal_step)
+    if gap_starts.size == 0:
+        return t, arr
+
+    insert_positions = gap_starts + 1
+    break_times = t_float[gap_starts] + nominal_step
+    t_out = np.insert(t_float, insert_positions, break_times)
+    arr_out = np.insert(arr.astype('float64'), insert_positions, np.nan, axis=1)
+    return t_out, arr_out
+
+
+def _compute_ylims(
+        values: np.ndarray,
+        *,
+        zero_centered_yaxis: bool,
+        y_pad_factor: float = 1.1,
+) -> tuple[float, float] | None:
+    """Compute padded y-axis limits, or None if there are no finite values to infer them from."""
+    finite_values = values[np.isfinite(values)]
+    if finite_values.size == 0:
+        return None
+    if zero_centered_yaxis:
+        ylim_abs = np.max(np.abs(finite_values))
+        return -ylim_abs * y_pad_factor, ylim_abs * y_pad_factor
+    ylim_max = np.max(finite_values)
+    ylim_min = np.min(finite_values)
+    y_pad = (ylim_max - ylim_min) * (y_pad_factor - 1)
+    return ylim_min - y_pad, ylim_max + y_pad

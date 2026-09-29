@@ -397,6 +397,31 @@ def test_dataset_download_no_sources_raises(tmp_path):
         dataset.download()
 
 
+@mock.patch('pymovements.dataset.dataset_download.extract_dataset')
+@mock.patch('pymovements.dataset.websource.WebSource.download')
+def test_dataset_download_without_extract_skips_extraction(
+        mock_download, mock_extract_dataset, tmp_path,
+):
+    """download(extract=False) downloads resources but does not extract them."""
+    dataset_definition = DatasetDefinition(
+        name='CustomPublicDataset',
+        resources=[{
+            'content': 'gaze',
+            'source': {
+                'url': 'https://example.com/test.gz.tar',
+                'filename': 'test.gz.tar',
+                'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+            },
+        }],
+    )
+    dataset = Dataset(dataset_definition, path=tmp_path)
+
+    dataset.download(extract=False)
+
+    mock_download.assert_called_once()
+    mock_extract_dataset.assert_not_called()
+
+
 @mock.patch('pymovements.dataset.dataset_download.extract_archive')
 @pytest.mark.parametrize(
     'dataset_definition',

@@ -25,6 +25,7 @@ from typing import Any
 
 import polars as pl
 
+from pymovements._utils._time import durations_to_ms
 from pymovements.measure.reading.annotation import annotate_fixations
 from pymovements.measure.reading.measures import first_duration
 from pymovements.measure.reading.measures import first_fixation_duration
@@ -42,19 +43,9 @@ from pymovements.measure.reading.measures import saccade_length_in
 from pymovements.measure.reading.measures import saccade_length_out
 from pymovements.measure.reading.measures import total_fixation_count
 
-# Default grouping columns used to keep independent reading sequences apart.
-_DEFAULT_GROUP_COLUMNS = ['trial', 'page']
-
-# Measures that are joined onto the word table and filled with 0 for unfixated words. LP is
-# deliberately not in this list: 0 is a valid landing position, so unfixated words keep null.
-_JOINED_MEASURES = [
-    'TFC', 'FD', 'FFD', 'FPRT', 'FRT', 'RRT', 'FPFC', 'TRC_in', 'TRC_out',
-    'SL_in', 'SL_out', 'RPD_inc', 'RPD_exc', 'RBRT',
-]
-
 # Measure output columns, in order. Group columns and word identity are prepended on output.
 _MEASURE_COLUMNS = [
-    'FFD', 'SFD', 'FD', 'FPRT', 'FRT', 'TFT', 'RRT',
+    'FFD', 'SFD', 'FD', 'FPRT', 'FPFC', 'FRT', 'TFT', 'RRT',
     'RPD_inc', 'RPD_exc', 'RBRT', 'Fix', 'skipped', 'FPF', 'RR', 'FPReg', 'TRC_out',
     'TRC_in', 'SL_in', 'SL_out', 'LP', 'TFC',
 ]
@@ -86,12 +77,17 @@ def compute_reading_measures(
     * If both inputs carry a group column, it is used for grouping and preserved in the output.
     * If ``aois`` is a dict, its keys are the values of the first group column and each entry is
       the AOI table of that group. The fixations must then carry the first group column and
-      every fixation group must have an entry in the dict.
+      every fixation group must have an entry in the dict. Dict entries without any matching
+      fixations are kept in the output as fully skipped words (all measures zero,
+      ``skipped = 1``) and a warning names their keys.
     * If the fixations carry the first group column but a plain ``aois`` frame does not, the AOI
       table is broadcast to every fixation group and a warning is issued.
     * Any other one-sided group column raises a ``ValueError``, as the join would otherwise
       silently produce all-zero measures.
     * If neither input carries a group column, the fixations are treated as a single sequence.
+
+    Fixation onsets that are not sorted within a group trigger a warning, as this usually means
+    independent reading sequences were concatenated without a separating group column.
 
     The returned ``word_index`` preserves the word indexing of ``aois`` (zero-based, one-based, or
     any other start), so word indices are not shifted. Fixations whose word index has no entry in
@@ -99,9 +95,11 @@ def compute_reading_measures(
     like fixations with a null word index: they are excluded from the fixation sequence and do not
     affect any measure.
 
-    The landing position ``LP`` is the zero-based character position of the first fixation within
-    the word, computed from the ``char_idx`` columns of fixations and AOI table. If either input
-    has no ``char_idx`` column, ``LP`` is null.
+    The landing position ``LP`` is the one-based character position of the first fixation within
+    the word (the word's first character is 1), computed from the ``char_idx`` columns of
+    fixations and AOI table. Words that were never fixated get 0. If either input has no
+    ``char_idx`` column, or the word's first fixation carries a null ``char_idx`` value,
+    ``LP`` is null.
 
     Parameters
     ----------
@@ -126,9 +124,9 @@ def compute_reading_measures(
         (default: ``'fixation'``)
     group_columns : list[str] | None
         Column names used to partition the data into independent reading sequences. The first
-        column takes the trial role, the remaining columns take the page role (see above). An
-        empty list disables grouping entirely and treats the input as a single reading
-        sequence. If ``None``, defaults to ``['trial', 'page']``.
+        column takes the trial role, the remaining columns take the page role (see above). If
+        ``None`` or empty, the whole input is treated as a single reading sequence.
+        (default: None)
 
     Returns
     -------
@@ -142,14 +140,151 @@ def compute_reading_measures(
         If ``group_columns`` contains reserved column names, if a group column is present in
         only one of the inputs (except for the broadcast case described above), if its dtypes
         do not match, or if the ``aois`` dict is inconsistent with the fixation groups.
+
+    Notes
+    -----
+    The output contains one row per word. Group columns present in the input are prepended,
+    followed by these columns in order:
+
+    .. list-table::
+        :header-rows: 1
+        :widths: 15 85
+
+        * - Column
+          - Description
+        * - ``word_index``
+          - index of the word as given in the AOI definitions. The indexing of ``aois`` is
+            preserved, whether zero-based, one-based, or any other scheme.
+        * - ``word``
+          - the word (AOI) within the text.
+        * - ``FFD``
+          - **First Fixation Duration**: duration of the first fixation on the word during the
+            first pass, see :py:func:`~pymovements.measure.reading.first_fixation_duration`.
+        * - ``SFD``
+          - **Single Fixation Duration**: equal to ``FFD`` if the word received exactly one
+            fixation during the first pass, 0 otherwise.
+        * - ``FD``
+          - **Fixation Duration**: duration of the first fixation on the word, regardless of
+            reading pass, see :py:func:`~pymovements.measure.reading.first_duration`.
+        * - ``FPRT``
+          - **First Pass Reading Time**: sum of all fixation durations on the word during the
+            first pass, see :py:func:`~pymovements.measure.reading.first_pass_reading_time`.
+        * - ``FPFC``
+          - **First Pass Fixation Count**: number of fixations on the word during the first
+            pass, see :py:func:`~pymovements.measure.reading.first_pass_fixation_count`.
+        * - ``FRT``
+          - **First Reading Time**: total dwell time from first entering the word until first
+            leaving it, see :py:func:`~pymovements.measure.reading.first_reading_time`.
+        * - ``TFT``
+          - **Total Fixation Time**: total fixation time on the word (``FPRT + RRT``).
+        * - ``RRT``
+          - **Rereading Time**: sum of fixation durations on the word after the first pass,
+            see :py:func:`~pymovements.measure.reading.rereading_time`.
+        * - ``RPD_inc``
+          - **Regression-Path Duration, inclusive**: sum of all fixation durations from
+            first entering the word until the first fixation to its right, including fixations
+            on the word itself, see
+            :py:func:`~pymovements.measure.reading.regression_path_duration_inclusive`.
+        * - ``RPD_exc``
+          - **Regression-Path Duration, exclusive**: time spent on regressed words within
+            the regression-path window, excluding fixations on the word itself, see
+            :py:func:`~pymovements.measure.reading.regression_path_duration_exclusive`.
+        * - ``RBRT``
+          - **Right-Bounded Reading Time**: sum of fixation durations on the word before any
+            word to its right is fixated, see
+            :py:func:`~pymovements.measure.reading.right_bounded_reading_time`.
+        * - ``Fix``
+          - **Fixation Indicator**: 1 if the word was fixated (``TFT > 0``).
+        * - ``skipped``
+          - **Skipping Indicator**: 1 if the word was never fixated (``TFC == 0``).
+        * - ``FPF``
+          - **First Pass Fixation Indicator**: 1 if the word was fixated during the first pass
+            (``FPRT > 0``).
+        * - ``RR``
+          - **Rereading Indicator**: 1 if the word was reread (``RRT > 0``).
+        * - ``FPReg``
+          - **Regression Indicator**: 1 if a regression was initiated from the word
+            (``RPD_exc > 0``).
+        * - ``TRC_out``
+          - **Total Regression Count, outgoing**: number of regressions going out of the
+            word, see :py:func:`~pymovements.measure.reading.regression_count_out`.
+        * - ``TRC_in``
+          - **Total Regression Count, ingoing**: number of regressions landing on the word,
+            see :py:func:`~pymovements.measure.reading.regression_count_in`.
+        * - ``SL_in``
+          - **Saccade Length, ingoing**: signed word distance between the current word and the
+            previously fixated word at the first fixation on the current word, see
+            :py:func:`~pymovements.measure.reading.saccade_length_in`.
+        * - ``SL_out``
+          - **Saccade Length, outgoing**: signed word distance from the current word to the
+            next fixated word, measured at the last fixation of the first run, see
+            :py:func:`~pymovements.measure.reading.saccade_length_out`.
+        * - ``LP``
+          - **Landing Position**: one-based character position of the first fixation within
+            the word (the word's first character is 1), 0 if the word was never fixated, null
+            when either input has no character-level (``char_idx``) data or the word's first
+            fixation carries no ``char_idx`` value, see
+            :py:func:`~pymovements.measure.reading.landing_position`.
+        * - ``TFC``
+          - **Total Fixation Count**: total number of fixations on the word, see
+            :py:func:`~pymovements.measure.reading.total_fixation_count`.
+
+    Examples
+    --------
+    Four fixations over a three-word text, with a regression from the second word back to the
+    first. The fixation table needs the fixated word index and the fixation duration, the AOI
+    table maps word indices to words:
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import compute_reading_measures
+    >>> fixations = pl.DataFrame({
+    ...     'word_idx': [0, 1, 0, 2],
+    ...     'duration': [220, 180, 140, 250],
+    ... })
+    >>> aois = pl.DataFrame({
+    ...     'word_idx': [0, 1, 2],
+    ...     'word': ['The', 'quick', 'fox'],
+    ... })
+    >>> measures = compute_reading_measures(fixations, aois)
+    >>> measures.select('word_index', 'word', 'FFD', 'TFT', 'TFC', 'TRC_in', 'skipped')
+    shape: (3, 7)
+    ┌────────────┬───────┬─────┬─────┬─────┬────────┬─────────┐
+    │ word_index ┆ word  ┆ FFD ┆ TFT ┆ TFC ┆ TRC_in ┆ skipped │
+    │ ---        ┆ ---   ┆ --- ┆ --- ┆ --- ┆ ---    ┆ ---     │
+    │ i64        ┆ str   ┆ i64 ┆ i64 ┆ u64 ┆ u64    ┆ i64     │
+    ╞════════════╪═══════╪═════╪═════╪═════╪════════╪═════════╡
+    │ 0          ┆ The   ┆ 220 ┆ 360 ┆ 2   ┆ 1      ┆ 0       │
+    │ 1          ┆ quick ┆ 180 ┆ 180 ┆ 1   ┆ 0      ┆ 0       │
+    │ 2          ┆ fox   ┆ 250 ┆ 250 ┆ 1   ┆ 0      ┆ 0       │
+    └────────────┴───────┴─────┴─────┴─────┴────────┴─────────┘
+
+    Fixations recorded across several trials or pages are kept apart with ``group_columns``;
+    fixations produced by :py:meth:`~pymovements.Events.map_to_aois` already carry the word
+    index and duration columns.
     """
     if group_columns is None:
-        group_columns = list(_DEFAULT_GROUP_COLUMNS)
-    # Word identity columns cannot double as group columns: the user-facing names are renamed
-    # onto the internal schema and 'word_index' is produced on output.
-    reserved_columns = {word_index_column, word_column, 'word_idx', 'word', 'word_index'}
+        group_columns = []
+    # Columns the pipeline produces or consumes cannot double as group columns: the annotation
+    # step would silently overwrite them and the measures would be computed on wrong groups.
+    reserved_columns = {
+        # word identity columns: renamed onto the internal schema, 'word_index' is the output
+        word_index_column, word_column, 'word_idx', 'word', 'word_index',
+        # fixation schema columns consumed by the pipeline
+        'name', 'onset', 'duration',
+        # annotation columns produced by annotate_fixations
+        'fixation_id', 'run_id', 'prev_word_idx', 'next_word_idx', 'delta_in', 'delta_out',
+        'is_reg_in', 'is_reg_out', 'is_first_fix', 'is_first_pass', 'regression_path_word',
+        # internal working columns
+        'word_start_char', '_is_aoi', '_group',
+        # measure output columns
+        *_MEASURE_COLUMNS,
+    }
     if reserved := reserved_columns.intersection(group_columns):
         raise ValueError(f'group_columns must not contain the reserved columns {sorted(reserved)}.')
+
+    # Convert Duration columns (onset, duration) to numeric milliseconds; the measure
+    # expressions operate on numeric time values.
+    fixations = durations_to_ms(fixations)
 
     fixations = _normalize_fixations(
         fixations, word_index_column=word_index_column, event_name=event_name,
@@ -160,6 +295,7 @@ def compute_reading_measures(
         word_index_column=word_index_column,
         word_column=word_column,
         group_columns=group_columns,
+        event_name=event_name,
     )
 
     # Without group columns there is no grouping: the whole input is one reading sequence. The
@@ -206,9 +342,15 @@ def _normalize_fixations(
         event_name: str,
 ) -> pl.DataFrame:
     """Bring a fixation table into the internal schema expected by the annotation pipeline."""
-    # Word indices are integer by nature; non-integer entries become null and are dropped by the
-    # annotation step. This also keeps the join dtype consistent with the word table.
-    fixations = fixations.with_columns(pl.col(word_index_column).cast(pl.Int64, strict=False))
+    # Word indices are integer by nature; non-integer entries (unparsable strings, NaN,
+    # fractional numbers) become null and are dropped by the annotation step. This also keeps
+    # the join dtype consistent with the word table.
+    word_idx = pl.col(word_index_column).cast(pl.Int64, strict=False)
+    if fixations.schema[word_index_column].is_float():
+        # The cast truncates fractional values, which would silently count the fixation on the
+        # next lower word; null them out instead. NaN compares unequal and becomes null too.
+        word_idx = pl.when(pl.col(word_index_column) == word_idx).then(word_idx)
+    fixations = fixations.with_columns(word_idx.alias(word_index_column))
 
     if 'name' not in fixations.columns:
         fixations = fixations.with_columns(pl.lit(event_name).alias('name'))
@@ -235,7 +377,12 @@ def _normalize_aoi_frame(
     if rename:
         aois = aois.rename(rename)
 
-    return aois.with_columns(pl.col('word_idx').cast(pl.Int64, strict=False))
+    casts = [pl.col('word_idx').cast(pl.Int64, strict=False)]
+    if 'char_idx' in aois.columns:
+        # A common dtype keeps char-level tables from different sources compatible, e.g. aois
+        # dict entries whose char_idx columns carry different integer dtypes.
+        casts.append(pl.col('char_idx').cast(pl.Int64, strict=False))
+    return aois.with_columns(casts)
 
 
 def _build_word_table(
@@ -245,6 +392,7 @@ def _build_word_table(
         word_index_column: str,
         word_column: str,
         group_columns: list[str],
+        event_name: str,
 ) -> tuple[pl.DataFrame, list[str]]:
     """Build the word table from ``aois`` and validate group column symmetry with the fixations.
 
@@ -258,6 +406,7 @@ def _build_word_table(
             word_index_column=word_index_column,
             word_column=word_column,
             group_columns=group_columns,
+            event_name=event_name,
         )
     else:
         words, output_group_columns = _word_table_from_frame(
@@ -328,6 +477,7 @@ def _word_table_from_dict(
         word_index_column: str,
         word_column: str,
         group_columns: list[str],
+        event_name: str,
 ) -> tuple[pl.DataFrame, list[str]]:
     """Build the word table from a dict mapping sequence values to AOI frames."""
     if not group_columns:
@@ -357,6 +507,7 @@ def _word_table_from_dict(
 
     tables = []
     entries_with_column = dict.fromkeys(layout_columns, 0)
+    entries_with_char_idx = 0
     for sequence_key, frame in zip(sequence_keys, aois_dict.values()):
         frame = _normalize_aoi_frame(
             frame, word_index_column=word_index_column, word_column=word_column,
@@ -368,13 +519,23 @@ def _word_table_from_dict(
             )
         for column in layout_columns:
             entries_with_column[column] += int(column in frame.columns)
+        entries_with_char_idx += int('char_idx' in frame.columns)
         _check_group_dtypes(
-            fixations, frame, [column for column in layout_columns if column in frame.columns],
+            fixations, frame, [
+                column for column in layout_columns
+                if column in frame.columns and column in fixations.columns
+            ],
         )
         tables.append(
             _word_table(frame, group_columns).with_columns(
                 pl.lit(sequence_key, dtype=sequence_dtype).alias(sequence_column),
             ),
+        )
+
+    # Mixing character-level and word-level entries would make the word tables incompatible.
+    if entries_with_char_idx not in (0, len(tables)):
+        raise ValueError(
+            "either all or no aois dict entries must have a 'char_idx' column.",
         )
 
     present_layout_columns = []
@@ -398,8 +559,14 @@ def _word_table_from_dict(
 
     words = pl.concat(tables)
 
+    # Key symmetry is judged against the rows that will actually be processed: rows with a
+    # different event name are dropped by the annotation step and never produce measures.
+    # _normalize_fixations synthesizes the name column when the input has none, so in that
+    # case every row counts.
+    named_fixations = fixations.filter(pl.col('name') == event_name)
+
     missing_keys = (
-        fixations.select(sequence_column).unique().join(
+        named_fixations.select(sequence_column).unique().join(
             words.select(sequence_column).unique(), on=sequence_column, how='anti',
         )
     )
@@ -407,6 +574,21 @@ def _word_table_from_dict(
         raise ValueError(
             f'fixations contain {sequence_column} values without an entry in the aois dict: '
             f'{sorted(missing_keys[sequence_column].to_list())}',
+        )
+
+    # The converse is legitimate (e.g. the full stimulus set is passed while the fixations
+    # cover a subset), but the resulting all-skipped rows are indistinguishable from words a
+    # subject genuinely skipped, so it deserves a warning.
+    unused_keys = (
+        words.select(sequence_column).unique().join(
+            named_fixations.select(sequence_column).unique(), on=sequence_column, how='anti',
+        )
+    )
+    if unused_keys.height > 0:
+        warnings.warn(
+            f'aois dict contains {sequence_column} keys without any matching fixations: '
+            f'{sorted(unused_keys[sequence_column].to_list())}. Their words are kept in the '
+            'output with all measures zero and skipped = 1.',
         )
 
     output_group_columns = [sequence_column] + present_layout_columns
@@ -513,8 +695,9 @@ def _assemble_word_level_measures(
         [*group_columns, pl.col(word_index_column).alias('word_idx')],
     ).agg(aggregations)
 
-    # The regression-path measures aggregate over regression_path_word groups: a word's regression-path
-    # window spans fixations on other words, each attributed to the running rightmost word.
+    # The regression-path measures aggregate over regression_path_word groups: a word's
+    # regression-path window spans fixations on other words, each attributed to the running
+    # rightmost word.
     regression_paths = (
         fixations.group_by(group_columns + ['regression_path_word'])
         .agg([
@@ -531,14 +714,36 @@ def _assemble_word_level_measures(
         .join(regression_paths, on=on, how='left', nulls_equal=True)
     )
 
+    # Zero-fill the join misses and derive skipped first so the LP block below can reuse it;
+    # LP is excluded from the fill so its null states survive.
+    joined_measure_columns = [
+        column
+        for frame in (word_level, regression_paths)
+        for column in frame.columns
+        if column not in on and column != 'LP'
+    ]
+    table = table.with_columns(
+        [pl.col(column).fill_null(0) for column in joined_measure_columns],
+    ).with_columns(
+        # total skipping: the word received no fixation at all
+        (pl.col('TFC') == 0).cast(pl.Int64).alias('skipped'),
+    )
+
     if 'LP' in table.columns:
-        # Landing position within the word, zero-based. Null when the AOI table is word-level.
-        table = table.with_columns((pl.col('LP') - pl.col('word_start_char')).alias('LP'))
+        # A fixated word whose first fixation has a null char_idx keeps a null LP; the whole
+        # column stays null for word-level AOI tables.
+        table = table.with_columns(
+            pl.when(pl.col('word_start_char').is_not_null())
+            .then(
+                pl.when(pl.col('skipped') == 1)
+                .then(0)
+                .otherwise(pl.col('LP') - pl.col('word_start_char')),
+            )
+            .alias('LP'),
+        )
     else:
         table = table.with_columns(pl.lit(None, dtype=pl.Int64).alias('LP'))
     table = table.drop('word_start_char')
-
-    table = table.with_columns([pl.col(column).fill_null(0) for column in _JOINED_MEASURES])
 
     return table.with_columns([
         # total fixation time
@@ -552,6 +757,4 @@ def _assemble_word_level_measures(
     ]).with_columns([
         # fixated-at-all indicator (depends on the derived TFT column above)
         (pl.col('TFT') > 0).cast(pl.Int64).alias('Fix'),
-        # total skipping: the word received no fixation at all
-        (pl.col('TFC') == 0).cast(pl.Int64).alias('skipped'),
     ]).rename({'word_idx': 'word_index'})

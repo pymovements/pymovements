@@ -30,6 +30,7 @@
 import importlib.resources
 import inspect
 import os
+import pkgutil
 import string
 import sys
 from subprocess import CalledProcessError
@@ -60,6 +61,7 @@ author = 'The pymovements Project Authors'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
+    'sphinx.ext.doctest',
     'sphinx.ext.extlinks',
     'sphinx.ext.intersphinx',
     'sphinx.ext.linkcode',
@@ -96,11 +98,103 @@ def doctree_resolved_handler(app, doctree, docname):
             node['rel'] = 'noopener noreferrer'
 
 
+def collect_property_members():
+    """Collect public property names for every importable pymovements class path."""
+    package = importlib.import_module('pymovements')
+    modules = [package]
+    for module_info in pkgutil.walk_packages(package.__path__, f'{package.__name__}.'):
+        modules.append(importlib.import_module(module_info.name))
+
+    property_members = {}
+    for module in modules:
+        for name, obj in inspect.getmembers(module, inspect.isclass):
+            if not obj.__module__.startswith('pymovements'):
+                continue
+            properties = []
+            for member_name in dir(obj):
+                if member_name.startswith('_'):
+                    continue
+                member = inspect.getattr_static(obj, member_name, None)
+                if not isinstance(member, property):
+                    continue
+                if getattr(member.fget, '__module__', '').startswith('pymovements'):
+                    properties.append(member_name)
+            if properties:
+                property_members[f'{module.__name__}.{name}'] = properties
+    return property_members
+
+
+def _is_section_header(lines, index):
+    """Check if the line at index starts a numpy-style docstring section."""
+    return (
+        index + 1 < len(lines)
+        and bool(lines[index].strip())
+        and not lines[index][0].isspace()
+        and set(lines[index + 1].strip()) == {'-'}
+    )
+
+
+def strip_property_attributes_handler(app, what, name, obj, options, lines):
+    """Remove property entries from the Attributes section of a class docstring.
+
+    Properties are documented on their own pages (see ``_templates/property.rst``), which are
+    the canonical cross-reference targets. Listing them in the class Attributes section as well
+    would register duplicate object descriptions. Only the in-memory docstring lines are edited,
+    the source docstrings stay complete for pydoclint. Must run before napoleon converts the
+    numpy-style sections.
+    """
+    if what != 'class':
+        return
+    properties = set(app.config.autosummary_context['property_members'].get(name, []))
+    if not properties:
+        return
+
+    start = next(
+        (
+            index for index in range(len(lines))
+            if lines[index].strip() == 'Attributes' and _is_section_header(lines, index)
+        ),
+        None,
+    )
+    if start is None:
+        return
+    end = start + 2
+    while end < len(lines) and not _is_section_header(lines, end):
+        end += 1
+
+    body = lines[start + 2:end]
+    trailing_blank_count = 0
+    while trailing_blank_count < len(body) and not body[-1 - trailing_blank_count].strip():
+        trailing_blank_count += 1
+    core = body[:len(body) - trailing_blank_count]
+
+    # An entry is its unindented name line plus the following indented or blank lines.
+    kept = []
+    index = 0
+    while index < len(core):
+        entry_end = index + 1
+        while entry_end < len(core) and not core[entry_end][:1].strip():
+            entry_end += 1
+        entry_name = core[index].split(':', 1)[0].strip()
+        if entry_name not in properties:
+            kept.extend(core[index:entry_end])
+        index = entry_end
+    while kept and not kept[-1].strip():
+        kept.pop()
+
+    if kept:
+        lines[start + 2:end] = kept + body[len(body) - trailing_blank_count:]
+    else:
+        del lines[start:end]
+
+
 def setup(app):
     app.add_config_value('REVISION', 'master', 'env')
     app.add_config_value('generated_path', '_generated', 'env')
     app.connect('config-inited', config_inited_handler)
     app.connect('doctree-resolved', doctree_resolved_handler)
+    # napoleon connects with the default priority 500, lower priorities run first.
+    app.connect('autodoc-process-docstring', strip_property_attributes_handler, priority=400)
 
 
 # Add any paths that contain templates here, relative to this directory.
@@ -109,7 +203,7 @@ templates_path = ['_templates']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-# exclude_patterns = []
+exclude_patterns = ['pmep/TEMPLATE.md']
 suppress_warnings = [
     'myst.header',
 ]
@@ -176,14 +270,6 @@ nitpick_ignore_regex = [
     # Matplotlib pyplot short alias references like plt.X
     (r'py:(class|mod|func|meth|obj|attr)', r'^plt\..*'),
 
-
-
-    # Internal cross-refs to objects/attrs/methods that autosummary may not emit
-    (r'py:obj', r'^pymovements\..*'),
-
-
-
-
     # Matplotlib color types referenced in plotting API
     (
         r'py:class',
@@ -200,25 +286,16 @@ nitpick_ignore_regex = [
     # generic types https://github.com/sphinx-doc/sphinx/issues/14159
     (r'py:class', r'.*dict\[str'),
 
-
-
-    # Residual autosummary cross-refs to attributes/methods on our high-level classes
-    (r'py:(attr|meth)', r'^(?:Dataset|Gaze|DatasetPaths|Experiment)\..*'),
-
-    # Explicit :py:attr: cross-references to class attributes. broken until #713 is resolved
-    (r'py:attr', r'^pymovements\..*'),
-
     # Odd matplotlib reference seen in deprecated utils.plotting docs
     (r'py:class', r'^matplotlib\.pyplot\.figure$'),
 ]
 
 
 # -- Options for autosummary -------------------------------------------------
-numpydoc_show_class_members = False
-numpydoc_class_members_toctree = False
 autosummary_generate = True
 autosummary_generate_overwrite = True
 autosummary_imported_members = False
+autosummary_context = {'property_members': collect_property_members()}
 add_module_names = True
 
 # -- Options for HTML output -------------------------------------------------

@@ -20,6 +20,7 @@
 """Provides the scanpath plotting function."""
 from __future__ import annotations
 
+import datetime
 import math
 from warnings import warn
 
@@ -199,9 +200,12 @@ def scanpathplot(
     )
 
     for row in fixations.iter_rows(named=True):
+        duration = row['duration']
+        if isinstance(duration, datetime.timedelta):
+            duration = duration / datetime.timedelta(milliseconds=1)
         fixation = Circle(
             row[position_column],
-            math.sqrt(row['duration']),
+            math.sqrt(duration),
             color=color,
             fill=True,
             alpha=alpha,
@@ -239,7 +243,13 @@ def scanpathplot(
         )
 
     if gaze is not None and gaze.experiment is not None:
-        _set_screen_axes(ax, gaze.experiment.screen, func_name='scanpathplot')
+        _set_screen_axes(
+            ax,
+            gaze.experiment.screen.width_px,
+            gaze.experiment.screen.height_px,
+            gaze.experiment.screen.origin,
+            func_name='scanpathplot',
+        )
 
     if title:
         ax.set_title(title)
