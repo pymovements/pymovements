@@ -41,7 +41,7 @@ def download_dataset(
     """Download dataset resources.
 
     This downloads all resources of the dataset. Per default this also extracts all archives
-    into :py:meth:`Dataset.paths.raw`,
+    into :py:attr:`~pymovements.DatasetPaths.raw`,
     To save space on your device, you can remove the archive files after
     successful extraction with ``remove_finished=True``.
 

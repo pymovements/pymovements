@@ -25,6 +25,7 @@ from pymovements.measure.samples.measures import bcea
 from pymovements.measure.samples.measures import data_loss
 from pymovements.measure.samples.measures import dispersion
 from pymovements.measure.samples.measures import disposition
+from pymovements.measure.samples.measures import duration
 from pymovements.measure.samples.measures import location
 from pymovements.measure.samples.measures import null_ratio
 from pymovements.measure.samples.measures import peak_velocity
@@ -41,6 +42,7 @@ __all__ = [
     'data_loss',
     'dispersion',
     'disposition',
+    'duration',
     'location',
     'null_ratio',
     'peak_velocity',

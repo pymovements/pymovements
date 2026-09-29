@@ -20,6 +20,7 @@
 """Functionality to scan, load and save dataset files."""
 from __future__ import annotations
 
+import operator
 from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass
@@ -34,6 +35,7 @@ from tqdm.auto import tqdm
 
 from pymovements._utils._paths import match_filepaths
 from pymovements._utils._strings import curly_to_regex
+from pymovements._utils._time import durations_to_ms
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_paths import DatasetPaths
 from pymovements.dataset.resources import ResourceDefinition
@@ -60,7 +62,7 @@ class DatasetFile:
     definition: ResourceDefinition
         Associated :py:class:`~pymovements.ResourceDefinition`.
     metadata: dict[str, Any]
-        Additional metadata parsed via `:py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
+        Additional metadata parsed via :py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
 
     Parameters
     ----------
@@ -70,7 +72,7 @@ class DatasetFile:
         Associated :py:class:`~pymovements.ResourceDefinition`.
         (default: None)
     metadata: dict[str, Any] | None
-        Additional metadata parsed via `:py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
+        Additional metadata parsed via :py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
         (default: None)
     """
 
@@ -155,8 +157,8 @@ def scan_dataset(
         if not filepaths:
             raise RuntimeError(f'no matching files found in {resource_dirpath} with regex {regex}')
 
-        fileinfo_df = pl.from_dicts(data=filepaths, infer_schema_length=1)
-        fileinfo_df = fileinfo_df.sort(by='filepath')
+        filepaths = sorted(filepaths, key=operator.itemgetter('filepath'))
+        fileinfo_df = pl.from_dicts(data=filepaths, infer_schema_length=None)
 
         if resource_definition.filename_pattern_schema_overrides:
             items = resource_definition.filename_pattern_schema_overrides.items()
@@ -200,8 +202,6 @@ def load_event_files(
         Path of directory containing event files.
     events_dirname: str | None
         One-time usage of an alternative directory name to save data relative to dataset path.
-        This argument is used only for this single call and does not alter
-        :py:meth:`pymovements.Dataset.events_rootpath`.
     extension: str
         Specifies the file format for loading data. Valid options are: `csv`, `feather`,
         `tsv`, `txt`.
@@ -272,9 +272,7 @@ def load_gaze_files(
         (default: False)
     preprocessed_dirname : str | None
         One-time usage of an alternative directory name to save data relative to
-        :py:meth:`pymovements.Dataset.path`.
-        This argument is used only for this single call and does not alter
-        :py:meth:`pymovements.Dataset.preprocessed_rootpath`.
+        :py:attr:`pymovements.Dataset.path`.
     extension: str
         Specifies the file format for loading data. Valid options are: `csv`, `feather`,
         `txt`, `tsv`.
@@ -734,9 +732,8 @@ def save_events(
     paths: DatasetPaths
         Path of directory containing event files.
     events_dirname: str | None
-        One-time usage of an alternative directory name to save data relative to dataset path.
-        This argument is used only for this single call and does not alter
-        :py:meth:`pymovements.Dataset.events_rootpath`. (default: None)
+        One-time usage of an alternative directory name to save data relative to
+        dataset path. (default: None)
     verbose: int
         Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
         (default: 1)
@@ -773,7 +770,7 @@ def save_events(
         if extension == 'feather':
             events_instance.frame.write_ipc(events_filepath)
         elif extension == 'csv':
-            events_instance.frame.write_csv(events_filepath)
+            durations_to_ms(events_instance.frame).write_csv(events_filepath)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
@@ -804,9 +801,8 @@ def save_preprocessed(
     paths: DatasetPaths
         Path of directory containing event files.
     preprocessed_dirname: str | None
-        One-time usage of an alternative directory name to save data relative to dataset path.
-        This argument is used only for this single call and does not alter
-        :py:meth:`pymovements.Dataset.preprocessed_rootpath`. (default: None)
+        One-time usage of an alternative directory name to save data relative to
+        dataset path. (default: None)
     verbose: int
         Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
         (default: 1)
@@ -848,7 +844,7 @@ def save_preprocessed(
         if extension == 'feather':
             gaze.samples.write_ipc(preprocessed_filepath)
         elif extension == 'csv':
-            gaze.samples.write_csv(preprocessed_filepath)
+            durations_to_ms(gaze.samples).write_csv(preprocessed_filepath)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
@@ -939,6 +935,6 @@ def take_subset(
         files = [
             file for file in files
             if file.metadata.get(metadata_key) in metadata_values
-            or file.definition.content == 'stimulus'  # subset is only applied on gaze data.
+            or 'stimulus' in file.definition.content.lower()  # subset is only applied on gaze data.
         ]
     return fileinfo, files
