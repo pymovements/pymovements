@@ -32,6 +32,7 @@ from deprecated.sphinx import deprecated
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
+from pymovements.plotting.screen import screen
 from pymovements.transforms.numpy import pix2deg
 
 if TYPE_CHECKING:
@@ -555,10 +556,6 @@ class Screen:
         >>> tuple(float(value) for value in ax.get_ylim())
         (1024.0, 0.0)
         """
-        # Local import avoids a circular import, as plotting still imports Gaze and Events.
-        # Move it to the top level once plotting no longer imports them (follow-up of #1703).
-        from pymovements.plotting.screen import screen  # pylint: disable=import-outside-toplevel
-
         return screen(self.width_px, self.height_px, origin=self.origin, ax=ax)
 
     def __bool__(self) -> bool:
