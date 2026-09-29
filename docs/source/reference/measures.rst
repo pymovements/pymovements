@@ -65,10 +65,6 @@ Measures
     :template: function.rst
 
     compute_reading_measures
-    build_word_level_table
-    all_tokens_from_aois
-    mark_skipped_tokens
-    repair_word_labels
     first_duration
     first_fixation_duration
     first_pass_fixation_count
@@ -78,7 +74,9 @@ Measures
     rereading_time
     regression_count_in
     regression_count_out
-    regression_path_duration
+    regression_path_duration_exclusive
+    regression_path_duration_inclusive
+    right_bounded_reading_time
     saccade_length_in
     saccade_length_out
     total_fixation_count
@@ -92,12 +90,13 @@ Measures
     :template: function.rst
 
     annotate_fixations
-    annotate_run_id
-    annotate_prev_word_idx
-    annotate_next_word_idx
-    annotate_delta_in
-    annotate_delta_out
-    annotate_is_reg_in
-    annotate_is_reg_out
-    annotate_is_first_fixation
-    annotate_is_first_pass
+    run_id
+    prev_word_idx
+    next_word_idx
+    delta_in
+    delta_out
+    is_reg_in
+    is_reg_out
+    is_first_fixation
+    is_first_pass
+    regression_path_word

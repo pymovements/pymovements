@@ -1805,8 +1805,8 @@ def test_gaze_drop_nulls(trial_data, kwargs, expected_samples_kept, expected_eve
         ),
     )
     gaze.drop_nulls(**kwargs)
-    assert gaze.samples['time'].to_list() == expected_samples_kept
-    assert gaze.events.frame['onset'].to_list() == expected_events_kept
+    assert gaze.samples['time'].dt.total_milliseconds().to_list() == expected_samples_kept
+    assert gaze.events.frame['onset'].dt.total_milliseconds().to_list() == expected_events_kept
 
 
 def test_gaze_drop_nulls_raises_missing_columns():
@@ -1906,8 +1906,8 @@ def test_gaze_drop_nulls_empty_subset_is_noop():
         ),
     )
     gaze.drop_nulls(subset=[])
-    assert gaze.samples['time'].to_list() == [0, 1]
-    assert gaze.events.frame['onset'].to_list() == [0, 1]
+    assert gaze.samples['time'].dt.total_milliseconds().to_list() == [0, 1]
+    assert gaze.events.frame['onset'].dt.total_milliseconds().to_list() == [0, 1]
 
 
 @pytest.mark.parametrize(
@@ -1957,7 +1957,7 @@ def test_gaze_drop_nulls_nested_components(
         **{component_columns_kwarg: ['x', 'y']},
     )
     gaze.drop_nulls(subset=[nested_column], how=how, events=False)
-    assert gaze.samples['time'].to_list() == expected_times_kept
+    assert gaze.samples['time'].dt.total_milliseconds().to_list() == expected_times_kept
 
 
 def test_gaze_clear_events():
@@ -1981,9 +1981,19 @@ def test_gaze_clear_events():
         'trial': pl.Utf8,
         'page': pl.Int64,
         'name': pl.Utf8,
-        'onset': pl.Int64,
-        'offset': pl.Int64,
-        'duration': pl.Int64,
+        'onset': pl.Duration('us'),
+        'offset': pl.Duration('us'),
+        'duration': pl.Duration('us'),
     }
     assert gaze.events.frame.schema == expected_schema
     assert gaze.events.frame.is_empty()
+
+
+def test_gaze_schema_returns_samples_schema():
+    gaze = Gaze(
+        pl.DataFrame({'time': [0, 1], 'x': [0.0, 1.0], 'y': [0.0, 1.0]}),
+        pixel_columns=['x', 'y'],
+    )
+
+    assert gaze.schema == gaze.samples.schema
+    assert 'pixel' in gaze.schema

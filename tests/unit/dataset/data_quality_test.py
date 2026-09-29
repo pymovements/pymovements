@@ -60,8 +60,17 @@ def _make_gaze(
         samples: pl.DataFrame,
         trial_columns: list[str] | None = None,
         experiment: Experiment | None = None,
+        convert_time: bool = True,
 ) -> Gaze:
-    """Create a Gaze object from a ready-made samples DataFrame (no column renaming)."""
+    """Create a Gaze object from a ready-made samples DataFrame (no column renaming).
+
+    A numeric ``time`` column is interpreted as milliseconds and converted to
+    ``Duration('us')`` to mirror real Gaze construction, unless ``convert_time`` is False.
+    """
+    if convert_time and 'time' in samples.columns and samples['time'].dtype.is_numeric():
+        samples = samples.with_columns(
+            (pl.col('time').cast(pl.Float64) * 1000).round().cast(pl.Duration('us')).alias('time'),
+        )
     g = Gaze.__new__(Gaze)
     g.samples = samples
     g.trial_columns = trial_columns
@@ -236,15 +245,20 @@ class TestCheckTrialColumnsDtype:
 # ---------------------------------------------------------------------------
 
 class TestCheckTimeColumnExists:
-    def test_pass_time_present_integer(self) -> None:
+    def test_pass_time_present_duration(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'time': pl.Series([0, 1, 2], dtype=pl.Int64)}))
+        assert isinstance(gaze.samples['time'].dtype, pl.Duration)
         result = check_time_column_exists(gaze)
         assert result.severity == 'pass'
 
-    def test_pass_time_present_float(self) -> None:
-        gaze = _make_gaze(pl.DataFrame({'time': pl.Series([0.0, 1.0], dtype=pl.Float64)}))
+    def test_fail_time_numeric_dtype(self) -> None:
+        gaze = _make_gaze(
+            pl.DataFrame({'time': pl.Series([0, 1, 2], dtype=pl.Int64)}),
+            convert_time=False,
+        )
         result = check_time_column_exists(gaze)
-        assert result.severity == 'pass'
+        assert result.severity == 'fail'
+        assert 'time' in result.message
 
     def test_fail_time_absent(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'x': [1.0, 2.0]}))
@@ -322,6 +336,15 @@ class TestCheckTimeMonotone:
         assert result.severity == 'pass'
         assert 'skipped' in result.message
 
+    def test_error_time_not_duration(self) -> None:
+        gaze = _make_gaze(
+            pl.DataFrame({'time': pl.Series([0, 1, 2], dtype=pl.Int64)}),
+            convert_time=False,
+        )
+        result = check_time_monotone(gaze)
+        assert result.severity == 'error'
+        assert 'not a Duration' in result.message
+
     def test_pass_monotone_no_trial_columns(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'time': [0, 1, 2, 3]}))
         result = check_time_monotone(gaze)
@@ -397,6 +420,17 @@ class TestCheckMaxGap:
         assert result.severity == 'error'
         assert 'time' in result.message
 
+    def test_error_time_not_duration(self) -> None:
+        exp = _simple_experiment(sampling_rate=100.0)
+        gaze = _make_gaze(
+            pl.DataFrame({'time': pl.Series([0, 10, 20], dtype=pl.Int64)}),
+            experiment=exp,
+            convert_time=False,
+        )
+        result = check_max_gap(gaze)
+        assert result.severity == 'error'
+        assert 'not a Duration' in result.message
+
     def test_error_no_sampling_rate(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'time': [0, 10, 20]}))
         result = check_max_gap(gaze)
@@ -468,6 +502,29 @@ class TestCheckSamplingRateConsistency:
         result = check_sampling_rate_consistency(gaze)
         assert result.severity == 'pass'
         assert 'skipped' in result.message
+
+    def test_error_time_not_duration(self) -> None:
+        exp = _simple_experiment(sampling_rate=100.0)
+        gaze = _make_gaze(
+            pl.DataFrame({'time': pl.Series([0, 10, 20], dtype=pl.Int64)}),
+            experiment=exp,
+            convert_time=False,
+        )
+        result = check_sampling_rate_consistency(gaze)
+        assert result.severity == 'error'
+        assert 'not a Duration' in result.message
+
+    def test_pass_subms_isi_2khz(self) -> None:
+        # 2 kHz recording: 0.5 ms ISI. Sub-millisecond diffs must be handled with fractional
+        # milliseconds; truncating to whole ms would break both checks.
+        exp = _simple_experiment(sampling_rate=2000.0)
+        gaze = _make_gaze(
+            pl.DataFrame({'time': [0.0, 0.5, 1.0, 1.5, 2.0]}),
+            experiment=exp,
+        )
+        assert check_sampling_rate_consistency(gaze).severity == 'pass'
+        assert check_time_monotone(gaze).severity == 'pass'
+        assert check_max_gap(gaze).severity == 'pass'
 
     def test_pass_consistent_rate(self) -> None:
         exp = _simple_experiment(sampling_rate=100.0)
@@ -840,6 +897,43 @@ class TestComputeMeasures:
         if 'dataset' in result:
             assert 'data_loss' in result['dataset'].columns
             assert 'std_rms' not in result['dataset'].columns
+
+    def test_data_loss_value_with_duration_time_and_gap(self) -> None:
+        # data_loss operates on a millisecond time base, so the canonical Duration('us') time
+        # column must be converted first. A gap (missing 3 and 4 ms) over a 1000 Hz base means
+        # 2 lost of 6 expected samples = 1/3. A missing or wrong conversion (operating on the
+        # raw microsecond integers) would instead report almost total loss, so the exact value
+        # validates the conversion for both the file-level and trial-level paths.
+        exp = _simple_experiment(sampling_rate=1000.0)
+        samples = pl.DataFrame({'time': [0, 1, 2, 5], 'position': [[0.0, 0.0]] * 4})
+
+        gaze = _make_gaze(samples, experiment=exp)
+        assert gaze.samples.schema['time'] == pl.Duration('us')
+        result = compute_measures([gaze], None, ['dataset'], measures=['data_loss'])
+        assert result['dataset']['data_loss'].to_list() == [pytest.approx(1 / 3)]
+
+        trial_gaze = _make_gaze(
+            samples.with_columns(pl.lit(1).alias('trial')),
+            experiment=exp,
+            trial_columns=['trial'],
+        )
+        trial_result = compute_measures([trial_gaze], None, ['trial'], measures=['data_loss'])
+        assert trial_result['trial']['data_loss'].to_list() == [pytest.approx(1 / 3)]
+
+    def test_trial_precision_measure_without_time_column(self) -> None:
+        # A trial gaze may carry only precision measures and no time column at all, so the
+        # per-trial data_loss time conversion must be skipped rather than assumed.
+        gaze = _make_gaze(
+            pl.DataFrame({
+                'position': [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0], [1.0, 1.0]],
+                'trial': [1, 1, 2, 2],
+            }),
+            trial_columns=['trial'],
+        )
+        assert 'time' not in gaze.samples.columns
+        result = compute_measures([gaze], None, ['trial'], measures=['std_rms'])
+        assert 'std_rms' in result['trial'].columns
+        assert len(result['trial']) == 2
 
     def test_no_coord_column_still_returns(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'time': [0, 1, 2], 'trial': [1, 1, 1]}))

@@ -64,8 +64,8 @@ def test_compute_reading_measures(dummy_dataset, make_example_file):
 
     expected_columns = [
         'word_index', 'word', 'subject_id', 'text_id', 'FFD', 'SFD', 'FD', 'FPRT', 'FPFC',
-        'FRT', 'TFT', 'RRT', 'RPD_inc', 'RPD_exc', 'RBRT', 'Fix', 'FPF', 'RR', 'FPReg',
-        'TRC_out', 'TRC_in', 'SL_in', 'SL_out', 'TFC',
+        'FRT', 'TFT', 'RRT', 'RPD_inc', 'RPD_exc', 'RBRT', 'Fix', 'skipped', 'FPF', 'RR',
+        'FPReg', 'TRC_out', 'TRC_in', 'SL_in', 'SL_out', 'LP', 'TFC',
     ]
     result_frame = reading_measures.frame
 
@@ -89,14 +89,50 @@ def test_compute_reading_measures_save(dummy_dataset, tmp_path, make_example_fil
 
     expected_columns = [
         'word_index', 'word', 'subject_id', 'text_id', 'FFD', 'SFD', 'FD', 'FPRT', 'FPFC',
-        'FRT', 'TFT', 'RRT', 'RPD_inc', 'RPD_exc', 'RBRT', 'Fix', 'FPF', 'RR', 'FPReg',
-        'TRC_out', 'TRC_in', 'SL_in', 'SL_out', 'TFC',
+        'FRT', 'TFT', 'RRT', 'RPD_inc', 'RPD_exc', 'RBRT', 'Fix', 'skipped', 'FPF', 'RR',
+        'FPReg', 'TRC_out', 'TRC_in', 'SL_in', 'SL_out', 'LP', 'TFC',
     ]
     expected_file = Path(tmp_path) / '5-b0-reading_measures.csv'
 
     assert expected_file.is_file()
     saved_df = pl.read_csv(expected_file)
     assert set(saved_df.columns) == set(expected_columns)
+
+
+def test_measure_reading_default_keeps_single_sequence(dummy_dataset, make_example_file):
+    """A varying ``trial`` column must not silently split a subject-text under the default."""
+    aoi_path = make_example_file('potec_word_aoi_b0.tsv')
+    aoi_dict = {'b0': aoi_path}
+
+    events = dummy_dataset.gaze[0].events
+    events.frame = events.frame.with_columns(pl.Series('trial', [1, 1, 2, 2]))
+
+    reading_measures = dummy_dataset.measure_reading(
+        aoi_dict,
+        word_index_column='aoi',
+        word_column='character',
+    )
+
+    assert 'trial' not in reading_measures.frame.columns
+
+
+def test_measure_reading_group_columns_partition_output(dummy_dataset, make_example_file):
+    """An explicit ``group_columns`` computes measures per group and keeps the column."""
+    aoi_path = make_example_file('potec_word_aoi_b0.tsv')
+    aoi_dict = {'b0': aoi_path}
+
+    events = dummy_dataset.gaze[0].events
+    events.frame = events.frame.with_columns(pl.Series('trial', [1, 1, 2, 2]))
+
+    with pytest.warns(UserWarning, match='broadcast'):
+        reading_measures = dummy_dataset.measure_reading(
+            aoi_dict,
+            group_columns=['trial'],
+            word_index_column='aoi',
+            word_column='character',
+        )
+
+    assert 'trial' in reading_measures.frame.columns
 
 
 def test_compute_reading_measures_empty_dataset(tmp_path):
