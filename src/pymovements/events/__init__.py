@@ -19,6 +19,7 @@
 # SOFTWARE.
 """Provides event related functionality."""
 from pymovements.events import correction
+from pymovements.events.correction import register_corrector
 from pymovements.events.detection import blink
 from pymovements.events.detection import fill
 from pymovements.events.detection import idt
@@ -34,6 +35,7 @@ from pymovements.events.precomputed import PrecomputedEventDataFrame
 
 __all__ = [
     'EventDetectionLibrary',
+    'register_corrector',
     'register_event_detection',
     'blink',
     'correction',
