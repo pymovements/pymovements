@@ -85,7 +85,7 @@ class Gaze:
     messages: polars.DataFrame | None
         DataFrame containing messages from the experiment.
         The required columns are 'time' and 'content'. The ``time`` column is converted to a
-        ``polars.Duration`` column with microsecond precision; numeric input is interpreted
+        ``polars.Duration`` column with microsecond precision. Numeric input is interpreted
         as milliseconds. (default: None)
     trial_columns: str | list[str] | None
         The name of the trial columns in the input data frame. If the list is empty or None,
@@ -95,12 +95,12 @@ class Gaze:
     calibrations: polars.DataFrame | None
         The calibrations from the data: timestamp, num_points, tracked eye, tracking_mode.
         A ``time`` column, if present, is converted to a ``polars.Duration`` column with
-        microsecond precision; numeric input is interpreted as milliseconds.
+        microsecond precision. Numeric input is interpreted as milliseconds.
         None by default, to be populated by I/O helpers (e.g. from_asc). (default: None)
     validations: polars.DataFrame | None
         The validations from the data: timestamp, num_points, tracked eye, accuracy_avg,
         accuracy_max. A ``time`` column, if present, is converted to a ``polars.Duration``
-        column with microsecond precision; numeric input is interpreted as milliseconds.
+        column with microsecond precision. Numeric input is interpreted as milliseconds.
         None by default, to be populated by I/O helpers (e.g. from_asc).
         (default: None)
     time_column: str | None

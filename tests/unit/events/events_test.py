@@ -521,7 +521,7 @@ def test_init_invalid_time_unit_raises_value_error(time_unit):
 
 
 def test_init_only_data_is_positional():
-    # All parameters except data are keyword-only; passing name positionally must fail.
+    # All parameters except data are keyword-only. Passing name positionally must fail.
     with pytest.raises(TypeError):
         Events(pl.DataFrame(), 'fixation')  # pylint: disable=too-many-function-args
 

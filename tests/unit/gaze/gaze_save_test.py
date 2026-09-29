@@ -301,8 +301,8 @@ def test_gaze_save_dataframes(tmp_path, gaze, save_func, expected_file):
     ],
 )
 def test_gaze_save_dataframes_csv_writes_time_as_milliseconds(tmp_path, save_method, data):
-    # Numeric time input is interpreted as milliseconds and stored as Duration('us');
-    # saving to csv must write 1.5 ms back as 1.5, not the raw microsecond int 1500.
+    # Numeric time input is interpreted as milliseconds and stored as Duration('us').
+    # Saving to csv must write 1.5 ms back as 1.5, not the raw microsecond int 1500.
     attribute = save_method.replace('save_', '')
     gaze = Gaze(
         pl.DataFrame({'x': [1, 2], 'y': [3, 4]}),
