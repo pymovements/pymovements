@@ -2889,7 +2889,7 @@ class Gaze:
         ... )
         >>> gaze.summary()
         total samples: 3 (0.0 MB in memory)
-        columns: time (Int64), pixel (List(Float64))
+        columns: time (Duration(time_unit='us')), pixel (List(Float64))
         total events: 2
           fixation: 1
           saccade: 1

@@ -35,7 +35,7 @@ def test_gaze_summary_without_events(capsys):
 
     expected = (
         'total samples: 2 (0.0 MB in memory)\n'
-        'columns: time (Int64), pixel (List(Float64))\n'
+        "columns: time (Duration(time_unit='us')), pixel (List(Float64))\n"
         'total events: 0\n'
     )
     assert capsys.readouterr().out == expected
@@ -71,7 +71,7 @@ def test_gaze_summary_counts_events_by_name(capsys):
 
     expected = (
         'total samples: 3 (0.0 MB in memory)\n'
-        'columns: time (Int64), pixel (List(Float64))\n'
+        "columns: time (Duration(time_unit='us')), pixel (List(Float64))\n"
         'total events: 3\n'
         '  fixation: 2\n'
         '  saccade: 1\n'
