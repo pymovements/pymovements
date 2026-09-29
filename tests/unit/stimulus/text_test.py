@@ -27,6 +27,7 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
+from pymovements.plotting import screen
 from pymovements.stimulus import text
 from pymovements.stimulus import TextStimulus
 from pymovements.stimulus import WritingSystem
@@ -1234,6 +1235,23 @@ def test_text_stimulus_plot_uses_provided_ax(sample_aoi_dataframe):
 
     assert returned_ax is existing_ax
     assert returned_fig is existing_fig
+
+
+def test_text_stimulus_plot_keeps_provided_ax_limits(sample_aoi_dataframe):
+    stimulus = TextStimulus(
+        aois=sample_aoi_dataframe,
+        aoi_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        **WIDTH_HEIGHT_COLUMNS,
+    )
+
+    _, ax = screen(1280, 1024)
+
+    stimulus.plot(ax=ax)
+
+    assert ax.get_xlim() == (0, 1280)
+    assert ax.get_ylim() == (1024, 0)
 
 
 def test_text_stimulus_plot_show_boxes_false_draws_labels_only(sample_aoi_dataframe):
