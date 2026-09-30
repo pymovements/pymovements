@@ -418,7 +418,11 @@ binding of #1690 is unchanged.
 - `compute_event_properties` will join on `['name', 'onset', 'duration']` with
   `nulls_equal=True`, so events with `null` duration keep their rows, and will select samples
   by the half-open interval.
-- `events2segmentation` and `segmentation2events` move to the half-open selection.
+- `events2segmentation` moves to the half-open selection. `segmentation2events` is a producer:
+  it builds events from sample runs and will compute `t_last - t_first + Δ` like the detectors,
+  so it needs a sampling rate.
+- The time series plot's event shading spans `[onset, onset + duration)` instead of
+  `[onset, offset]`.
 - `measure_events_ratio` and `events2timeratio` keep merging overlapping intervals (#1713) on
   the new schema and gain a `duration_column` parameter in place of `offset_column`. They stop
   adding one interval to event durations. `sampling_rate` stays, since the total time range
@@ -500,8 +504,9 @@ the offset measure, the column order changes once to trial columns, `onset`, `du
 defaults to `False`.
 
 The blast radius inside the repository: 258 test lines in 19 files, 15 detector call sites,
-three `gaze.py` doctest examples and zero tutorials or notebooks. The doctests are the
-build-breaking item. Every call that supplies offsets declares their convention:
+three `gaze.py` doctest examples and two tutorials, `blink-detection` and `blink-cleaning`,
+which read `offset` from detected and parsed blinks. The doctests and the two notebooks are
+the build-breaking items. Every call that supplies offsets declares their convention:
 
 ```python
 pm.Events(name='blink', onsets=[2], offsets=[3])                                              # v0.28
@@ -555,8 +560,9 @@ the replacement of `frame['offset']` by the offset measure, and the `parse_offse
       microsaccades and blink, `maximum_duration` in blink
 - [ ] null duration semantics
 - [ ] offset consumers reworked: `merge_subsequent_close_events` recomputes or drops offset
-      columns with their entries, `compute_event_properties` join,
-      `events2segmentation`/`segmentation2events`,
-      `measure_events_ratio`/`events2timeratio` with `duration_column`, `fill`
+      columns with their entries, `compute_event_properties` join, `events2segmentation`,
+      `segmentation2events` as a producer with a sampling rate,
+      `measure_events_ratio`/`events2timeratio` with `duration_column`, `fill`, the time
+      series plot's event shading
 - [ ] changelog entry and versioned migration note (value change, thresholds, legacy recipe in
       constructor and Dataset form, `frame['offset']` replacement, `parse_offset` default)
