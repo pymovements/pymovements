@@ -361,11 +361,12 @@ row, the residual-0-everywhere case. Read off the tables:
 |---|---|---|
 | no keywords | convention undeclared | raise |
 | `offsets_inclusive=True` | check, all rows contradict | raise |
-| `offsets_inclusive=True, durations_from_offsets=True` | replace, needs the rate | durations grow by `Δ` |
+| `offsets_inclusive=True, durations_from_offsets=True` | replace | durations grow by `Δ` |
 | `offsets_inclusive=False` | check, no row contradicts | durations kept as exact |
 | `offsets_inclusive=True, validate=False` | keep, no check | short durations kept, opted out |
 
-The raise messages list the recipes. The rule is permanent, since the files can always exist.
+The replace row needs a rate, which the Dataset form takes from the experiment. The raise
+messages list the recipes. The rule is permanent, since the files can always exist.
 
 **`durations_from_offsets`.** A permanent flag on the constructor, `Dataset.load_event_files`
 and `Dataset.load`, default `False`, with the behaviour of the outcome table.
@@ -405,10 +406,12 @@ One rate per frame also matches BIDS, which ties one events file to one recordin
   warning. This covers offset columns only, by design.
 - `compute_event_properties` keeps the rows of events with `null` duration and selects samples
   by the half-open interval.
-- `segmentation2events` is a producer: it builds events from sample runs and will compute
+- `events2segmentation` gains the same `duration` parameter in place of `offset_column`.
+  `segmentation2events` is a producer: it builds events from sample runs and will compute
   `t_last - t_first + Δ` like the detectors, so it gains a required `sampling_rate` keyword too.
 - `measure_events_ratio` and `events2timeratio` keep merging overlapping intervals (#1713) on
-  the new schema and gain a `duration_column` parameter in place of `offset_column`. They stop
+  the new schema and gain a `duration: str | pl.Expr` parameter in place of `offset_column`.
+  They stop
   adding one interval to event durations. `sampling_rate` stays, since the total time range
   still spans `t_last - t_first + Δ` over the samples. Events with `null` duration will
   contribute nothing.
@@ -504,8 +507,9 @@ replacement.
 **Offsets stay as input, with an explicit convention.** `offsets=` remains a permanent
 alternative to `durations=`, with the convention declared as in Specification.
 
-**Deprecated v0.29.0, removed v0.34.0.** `offset_column` on `Gaze.measure_events_ratio` and
-`events2timeratio` refers to a column that leaves the schema. `duration_column` replaces it.
+**Deprecated v0.29.0, removed v0.34.0.** `offset_column` on `Gaze.measure_events_ratio`,
+`events2timeratio` and `events2segmentation` refers to a column that leaves the schema.
+`duration: str | pl.Expr` replaces it.
 
 **Migration note (versioned).** Documents the value change, with the parsed EyeLink durations
 named separately from the detected ones since the same ASC file yields durations one `Δ`
