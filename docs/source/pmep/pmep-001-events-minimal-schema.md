@@ -71,10 +71,9 @@ events.frame
 # └───────┴──────────┴──────────┘
 ```
 
-Offsets stay an input alternative, with the convention stated. Supplied offsets are kept as a
-column, as supplied. The convention will land in the frame's metadata together with the
-sampling rate, so a later save can carry it. Both calls below describe the same four events and
-yield the same durations:
+Offsets stay an input alternative, with the convention stated. The convention lands in the
+frame's metadata together with the sampling rate. Both calls below describe the same four
+events and yield the same durations:
 
 ```python
 # inclusive last-sample offsets: duration = offset - onset + Δ, needs a sampling rate
@@ -159,12 +158,6 @@ Events(
 )
 ```
 
-`Events.metadata` will carry the two entries this PMEP names: the convention of each offset
-column and the sampling rate. The constructor will write them from `offsets_inclusive=` and
-`sampling_rate=`, `from_asc` both for a retained column, the offset measure the convention for
-the column it produces, and detectors and loaders the sampling rate. `Events.drop` will remove
-a convention entry together with its column.
-
 The `offset` measure joins the event-measure registry:
 
 ```python
@@ -203,9 +196,11 @@ Dataset.load(..., offsets_inclusive: bool | None = None, durations_from_offsets:
 # offsets_inclusive: None means undeclared, as on the constructor
 ```
 
-This PMEP defines no on-disk format. The constructor's contract is the metadata dict: a loader
-hands it in as `metadata=`, save does the reverse. How `name` and the trial columns map to BIDS
-files is defined in the BIDS events layout PMEP
+Detection algorithms and `segmentation2events` gain a required `sampling_rate` keyword.
+`Gaze.detect` fills it from the experiment.
+
+This PMEP defines no on-disk format. How `name` and the trial columns map to BIDS files is
+defined in the BIDS events layout PMEP
 ([#1563](https://github.com/pymovements/pymovements/issues/1563)).
 
 ## Motivation
@@ -251,9 +246,9 @@ whole codebase. BIDS mandates `onset` first and `duration` second. `name` is the
 event label and has no BIDS column of its own. `offset` leaves the minimal schema and is stored
 only where it was supplied explicitly. Trial columns stay first. Within the minimal schema the
 order changes from `name`, `onset`, `offset` to `onset`, `duration`, `name`, then extras follow,
-a supplied `offset` among them. The schema will cover
-all discrete-time events, including point events and events of unknown duration. Which event
-kinds belong in `Events` rather than `Gaze.messages` is out of scope.
+a supplied `offset` among them. The schema will cover all discrete-time events, including point
+events and events of unknown duration. Which event kinds belong in `Events` rather than
+`Gaze.messages` is out of scope.
 
 **Duration definition.** Duration becomes the time from the start of the event to its end:
 
@@ -273,21 +268,22 @@ durations since #1637, so what changes is their meaning and how consumers treat 
 Single-sample events will get `Δ`, never `0` (see the quantization note in Rationale).
 Duration aggregations will skip `null` rows. Frames with onsets only will be accepted on both
 input paths with all-null durations. Missing minimal-schema columns are added as nulls, as
-today, and no null `offset` column will appear any more.
+today.
 
 **Sample selection.** The half-open interval `[onset, onset + duration)` will select an
 event's samples. `onset + duration` equals the next event's onset wherever the next event
 starts on the immediately following sample, so adjacent events tile the timeline and share no
 boundary sample. A `null` or `0` duration will select no samples. Sample-level operations (AOI
-mapping, segmentation, `nullify_event_samples`, the `fill` detector's event mask) move to this
-selection and need no sampling interval. The selection assumes timestamps on the nominal
-sampling grid: a sample arriving earlier than `t_last + Δ` would fall into the preceding event.
-A tolerance for off-grid timestamps is future work.
+mapping, segmentation, `nullify_event_samples`, the `fill` detector's event mask, the time
+series plot's event shading) move to this selection and need no sampling interval. The
+selection assumes timestamps on the nominal sampling grid: a sample arriving earlier than
+`t_last + Δ` would fall into the preceding event. A tolerance for off-grid timestamps is future
+work.
 
 **Producers will compute duration at the source**, where the sampling information lives. The
 EyeLink parser will take the reported duration verbatim (the currently discarded
-`duration_ms` group). Detection algorithms gain a `sampling_rate` parameter, the source of
-`Δ` and of the sampling-rate entry they write. They will compute `t_last - t_first + Δ` from
+`duration_ms` group). Detection algorithms gain a required `sampling_rate` keyword, the source
+of `Δ` and of the sampling-rate entry they write. They will compute `t_last - t_first + Δ` from
 their `timesteps` and construct `Events(onsets=, durations=)` with no offset column from
 v0.29.0 on. `Gaze.detect` will fill `sampling_rate` from the experiment when the caller gives
 none and will raise on a gaze without one. Direct calls pass the rate explicitly. Estimating
@@ -317,45 +313,46 @@ its durations were built on. This PMEP persists nothing: a loader hands the dict
 `metadata=`, save does the reverse, and the BIDS events layout PMEP defines the file and the
 keys.
 
-**Offset convention declaration.** An `offset` column needs its convention declared, by
-`offsets_inclusive=` or by a metadata entry for the column. `None` on the keyword means
-undeclared and never selects a convention. Both forms may be given when they agree.
-
-**Construction rules.** The rate below is the sampling rate resolved from `sampling_rate=`,
-then from the metadata entry. The preconditions run unconditionally on public construction,
-`validate` never skips them, and each one raises:
+**Construction rules.** An `offset` column needs its convention declared, by
+`offsets_inclusive=` or by a metadata entry for the column, both when they agree. `None` on
+the keyword means undeclared and never selects a convention. The rate below is the sampling
+rate resolved from `sampling_rate=`, then from the metadata entry. The preconditions run
+unconditionally on public construction, `validate` never skips them, and each one raises:
 
 | condition | outcome |
 |---|---|
 | offset convention declared, no `offset` column | raise |
 | `offsets_inclusive=` and the metadata entry both given and different | raise |
 | `offset` column, convention undeclared | raise, the message lists the legacy recipes |
-| declared inclusive, no rate | raise |
 | `sampling_rate=` differs from an existing entry | raise |
-| `durations_from_offsets=True` without `offset` column or with the convention undeclared | raise |
+| `durations_from_offsets=True` without `offset` column | raise |
 
 Once the preconditions pass, the outcome depends on which columns are present and on the two
-flags:
+flags. A derivation under an inclusive declaration needs the rate and raises without one:
 
 | `offset` column | `duration` column | `durations_from_offsets` | `validate` | outcome |
 |---|---|---|---|---|
-| no | no | any | any | `duration` column of nulls, no `offset` column |
-| no | yes | any | any | keep the durations |
+| no | no | `False` | any | `duration` column of nulls, no `offset` column |
+| no | yes | `False` | any | keep the durations |
 | yes | no | any | any | derive the durations under the declared convention |
 | yes | yes | `True` | any | replace the durations by the derivation |
 | yes | yes | `False` | `False` | keep the durations, no check |
 | yes | yes | `False` | `True` | keep the durations, run the consistency check |
 
-**Consistency check.** Per non-null row, `residual = duration - (offset - onset)` must be `0`
-for an exclusive column or `Δ` for an inclusive one, with `Δ` from the rate. Severity follows
-the rows:
+**Consistency check.** Per non-null row, `residual = duration - (offset - onset)`. An exclusive
+column requires `0`. An inclusive column requires `Δ` when a rate resolves. Without a rate the
+residuals of an inclusive column must all be equal and greater than zero, and the constant is
+never written to the sampling-rate entry. The check therefore needs no rate. Severity follows
+the non-null rows:
 
 | rows contradicting the declaration | outcome |
 |---|---|
 | none | pass |
-| all | raise, the message names `durations_from_offsets=True` |
+| all | raise, the message lists the legacy recipes |
 | some | one warning per construction |
-| null `duration` beside a non-null `offset` | one warning, never filled |
+
+A null `duration` beside a non-null `offset` counts for neither row. It is warned about once
+and never filled.
 
 **Legacy files.** A pre-v0.29.0 file stores `offset` and `duration == offset - onset` on every
 row, the residual-0-everywhere case. Read off the tables:
@@ -364,31 +361,18 @@ row, the residual-0-everywhere case. Read off the tables:
 |---|---|---|
 | no keywords | convention undeclared | raise |
 | `offsets_inclusive=True` | check, all rows contradict | raise |
-| `offsets_inclusive=True, durations_from_offsets=True` | replace | durations grow by `Δ` |
+| `offsets_inclusive=True, durations_from_offsets=True` | replace, needs the rate | durations grow by `Δ` |
 | `offsets_inclusive=False` | check, no row contradicts | durations kept as exact |
 | `offsets_inclusive=True, validate=False` | keep, no check | short durations kept, opted out |
 
-The raise messages list the complete calls of the last three rows and the Dataset form. The
-rule is permanent, since the files can always exist.
+The raise messages list the recipes. The rule is permanent, since the files can always exist.
 
 **`durations_from_offsets`.** A permanent flag on the constructor, `Dataset.load_event_files`
-and `Dataset.load`, default `False`, with the behaviour of the outcome table. The flag is not a
-tri-state: the offset-without-duration case derives the durations regardless of the flag.
+and `Dataset.load`, default `False`, with the behaviour of the outcome table.
 
-**The `validate` flag.** Public, default `True`. `validate=False` will skip exactly the
-consistency check, nothing else. One constructor, one switch. Internal rebuilds pass it and
-carry the metadata, so a warning is emitted once, at entry.
-
-**Dataset loading.** `Dataset.load_event_files` and `Dataset.load` will forward the two
-keywords to the constructor per file, with the rate from `definition.experiment`. No resource
-definition changes.
-
-**Retaining parsed offsets.** `from_asc` alone gains `parse_offset: bool = False`, permanent.
-`True` will store the parsed end timestamps as an inclusive `offset` column with its convention
-entry and the sampling rate, and the consistency check will then compare the file's `DUR`
-against them. The parser will take `DUR` verbatim as the duration either way. In v0.29.0 this
-is the guard against a vendor end timestamp disagreeing with `DUR`. A future loader that
-reports end timestamps will follow the same pattern.
+**Retaining parsed offsets.** The EyeLink parser takes `DUR` verbatim as the duration whether
+or not `parse_offset` is set. In v0.29.0 `parse_offset=True` plus the consistency check is the
+guard against a vendor end timestamp disagreeing with `DUR`.
 
 **The offset measure.** `offset` becomes an on-demand event measure with an `inclusive`
 parameter (default `True`, reproducing today's stored offsets). `inclusive=True` will require
@@ -400,47 +384,34 @@ samples. For events with exact start and end times, `inclusive=False` will retur
 timestamp. `inclusive=True` would subtract `Δ` from a boundary that is not a sample position,
 so callers holding such events should use `inclusive=False`.
 
-**The duration measure.** `duration` stays in the registry with the signature from Resulting
-signatures. `offsets_inclusive` names the convention of the input offset column, matching the
-constructor. The default `True` is the convention pymovements produces, so `offset()` followed
-by `duration()` is the identity. `offsets_inclusive=None` reading the entry is future work.
-
 **Frame granularity.** An events frame is produced per recording and carries one sampling
 rate. Durations will be computed at the producer, where that rate is known, so they stay exact
-when frames are combined. Combining frames with differing sampling-rate entries will raise,
-with a message naming `detect(clear=True)`. Since `Gaze.resample` updates the entry, this
-fires only for frames from different recordings. Events built on a finer grid keep their exact
-durations after downsampling, but their inclusive offsets can land between samples until they
-are re-detected. Convention entries for the same column that disagree will raise. A column
-present on one side only will become null on the other and keep its entry. A per-event
-`sampling_rate` column for mixed rates is future work. One rate per frame also matches BIDS,
-which ties one events file to one recording.
+when frames are combined. `Gaze.detect` combines the detector's frame with the existing events
+and will raise on differing sampling-rate entries, with a message naming `detect(clear=True)`.
+Since `Gaze.resample` updates the entry, this fires only for frames from different recordings.
+Events built on a finer grid keep their exact durations after downsampling, but their inclusive
+offsets can land between samples until they are re-detected. Convention entries for the same
+column that disagree will raise. A column present on one side only will become null on the
+other and keep its entry. A per-event `sampling_rate` column for mixed rates is future work.
+One rate per frame also matches BIDS, which ties one events file to one recording.
 
 **Remaining offset consumers** move to onset/duration arithmetic:
 
-- `Events.merge_subsequent_close_events`: the gap becomes
-  `onset - (previous onset + previous duration)`, the merged duration
-  `last onset + last duration - first onset`. The gap of adjacent events becomes `0` instead
-  of `Δ`, so a `max_gap` that relied on adjacency showing as one interval shrinks by `Δ`. The
+- `Events.merge_subsequent_close_events`: the gap of adjacent events becomes `0` instead of
+  `Δ`, so a `max_gap` that relied on adjacency showing as one interval shrinks by `Δ`. The
   merge, `Gaze.resample` and any future boundary-changing operation will recompute each offset
   column via the offset measure in that column's convention when its entry exists and a rate
   resolves where needed. Otherwise the operation will drop the column and its entry with a
   warning. This covers offset columns only, by design.
-- `compute_event_properties` will join on the trial columns plus `['name', 'onset', 'duration']`
-  with `nulls_equal=True`, so events with `null` duration keep their rows, and will select
-  samples by the half-open interval.
-- `events2segmentation` moves to the half-open selection. `segmentation2events` is a producer:
-  it builds events from sample runs and will compute `t_last - t_first + Δ` like the detectors,
-  so it gains a `sampling_rate` parameter too.
-- The time series plot's event shading spans `[onset, onset + duration)` instead of
-  `[onset, offset]`.
+- `compute_event_properties` keeps the rows of events with `null` duration and selects samples
+  by the half-open interval.
+- `segmentation2events` is a producer: it builds events from sample runs and will compute
+  `t_last - t_first + Δ` like the detectors, so it gains a required `sampling_rate` keyword too.
 - `measure_events_ratio` and `events2timeratio` keep merging overlapping intervals (#1713) on
   the new schema and gain a `duration_column` parameter in place of `offset_column`. They stop
   adding one interval to event durations. `sampling_rate` stays, since the total time range
   still spans `t_last - t_first + Δ` over the samples. Events with `null` duration will
   contribute nothing.
-- The `fill` detector's event mask moves to the half-open selection, which fixes its
-  last-sample leak.
 
 **Duration thresholds.** `minimum_duration` will compare against the new duration values. The
 I-VT, I-HMM, fill, microsaccade and blink detectors currently compare `t_last - t_first`
@@ -497,9 +468,6 @@ raise is permanent.
   every consumer that compares against sample timestamps.
 - *Leave null durations undefined and let the BIDS events work add the semantics.* Breaks the
   same schema twice, and #1563 requires `null` durations for BIDS `n/a` round-trips.
-- *Infer the convention from the residual on undeclared columns.* A residual of `0` on every
-  row is either a legacy inclusive file or a correct exclusive one, and inference would pick
-  silently.
 - *Drop and warn when combined frames disagree on a convention.* A dropped column is a silent
   loss of data, failing is the only honest outcome.
 - *A tri-state `durations_from_offsets`.* The third value duplicates `False`.
@@ -512,11 +480,10 @@ raise is permanent.
 by one sampling interval, `offset` leaves detected frames and `frame['offset']` is replaced by
 the offset measure, the minimal-schema order changes once to `onset`, `duration`, `name` behind
 the trial columns, a convention declaration is required with supplied offsets, `parse_offset`
-defaults to `False`, and `Gaze.detect` raises on a gaze without an experiment sampling rate.
+defaults to `False`, direct detector calls need `sampling_rate=`, and `Gaze.detect` raises on a
+gaze without an experiment sampling rate.
 
-Inside the repository, the build-breaking items are three `gaze.py` doctest examples and the
-two tutorials `blink-detection` and `blink-cleaning`, which read `offset` from detected and
-parsed blinks. Every call that supplies offsets declares their convention:
+Every call that supplies offsets declares their convention:
 
 ```python
 pm.Events(name='blink', onsets=[2], offsets=[3])                                              # v0.28
@@ -529,55 +496,35 @@ pm.Events(name='blink', onsets=[2], durations=[2])                              
 
 **Own output with an offset column.** Nothing is persisted, so a saved frame that carries an
 `offset` column, from `parse_offset=True`, from the offset measure or from `offsets=`, reloads
-only with `offsets_inclusive` given, as the legacy table says. The BIDS events layout PMEP
-(#1563) closes this gap with the sidecar. Until then the migration note names it next to the
-`frame['offset']` replacement.
+only with `offsets_inclusive` given: `True` for the first two, the declared value for the
+third. The consistency check then passes. The BIDS events layout PMEP (#1563) closes this gap
+with the sidecar. Until then the migration note names it next to the `frame['offset']`
+replacement.
 
 **Offsets stay as input, with an explicit convention.** `offsets=` remains a permanent
-alternative to `durations=`. The supplied offsets stay stored as an `offset` column, and
-`offsets_inclusive` or a metadata entry states their convention. `True` means inclusive
-last-sample timestamps, `duration = offset - onset + Δ`, and requires a sampling rate. `False`
-means one past the end, `duration = offset - onset`, and needs no rate. A duration column next
-to them follows the construction rules in Specification.
+alternative to `durations=`, with the convention declared as in Specification.
 
 **Deprecated v0.29.0, removed v0.34.0.** `offset_column` on `Gaze.measure_events_ratio` and
 `events2timeratio` refers to a column that leaves the schema. `duration_column` replaces it.
 
 **Migration note (versioned).** Documents the value change, with the parsed EyeLink durations
 named separately from the detected ones since the same ASC file yields durations one `Δ`
-longer with no error, the `minimum_duration`,
-`maximum_duration` and merge gap threshold adjustments, the legacy recipe in constructor and
-Dataset form, the replacement of `frame['offset']` by the offset measure, the reload keyword
-for own output with an offset column, and the `parse_offset` default.
+longer with no error, the `minimum_duration`, `maximum_duration` and merge gap threshold
+adjustments, the legacy recipe in constructor and Dataset form, the replacement of
+`frame['offset']` by the offset measure, the reload keyword for own output with an offset
+column, and the `parse_offset` default.
 
 ## Implementation
 
-- [ ] `onset`/`duration`/`name` schema, `durations=` path, `offsets_inclusive` required,
-      supplied offsets stay stored, `data` accepted without `offset`, frame order flipped once
-- [ ] `metadata` entries: per-column convention and `sampling_rate`, the declaration and
-      sampling-rate raises unconditional, `Events.drop` removes the entry
-- [ ] `validate` flag, internal rebuild sites pass metadata and `validate=False`
-- [ ] `durations_from_offsets` on the constructor and both Dataset loaders, `offsets_inclusive`
-      on both Dataset loaders
-- [ ] consistency check with the severity rule and recipes, legacy-file message
-- [ ] `offset` measure with `inclusive` and `sampling_rate`, entry written on output
-- [ ] `duration` measure with `offsets_inclusive` and `sampling_rate`
-- [ ] `compute_event_properties` sampling-rate injection (entry, then experiment)
-- [ ] `Gaze.detect`: metadata merge at both sites, raises on disagreeing entries, `resample`
-      updates the sampling-rate entry
-- [ ] EyeLink durations equal the file's DUR, tested on the ASC fixtures, `parse_offset` on
-      `from_asc`, default False
-- [ ] BeGaze events built from `durations=`
-- [ ] detectors gain `sampling_rate`, filled from the experiment by `Gaze.detect`, raise
-      without one, detected durations equal `t_last - t_first + Δ`
-- [ ] `minimum_duration` compares against the new durations in I-VT, I-HMM, fill,
-      microsaccades and blink, `maximum_duration` in blink
-- [ ] null duration semantics
-- [ ] offset consumers reworked: `merge_subsequent_close_events` recomputes or drops offset
-      columns with their entries, `compute_event_properties` join, `events2segmentation`,
-      `segmentation2events` as a producer with a sampling rate,
-      `measure_events_ratio`/`events2timeratio` with `duration_column`, `fill`, the time
-      series plot's event shading
-- [ ] changelog entry and versioned migration note (value change with the ASC shift named
-      separately, thresholds, legacy recipe in constructor and Dataset form, `frame['offset']`
-      replacement, reload keyword for own output with an offset column, `parse_offset` default)
+One issue per line, drafted once the PMEP is accepted:
+
+- [ ] `Events` constructor: schema and order, `durations=`, the construction rules, the
+      consistency check, `durations_from_offsets`, `validate`, the legacy message
+- [ ] `Events.metadata` entries: per-column convention and sampling rate, `Events.drop`
+- [ ] offset and duration measures, `compute_event_properties` sampling-rate injection
+- [ ] `Gaze.detect` and `Gaze.resample`: detector `sampling_rate`, metadata merge, entry update,
+      offset columns on resample
+- [ ] Dataset loaders: the two keywords, rate from the experiment
+- [ ] EyeLink and BeGaze parsers: `DUR` verbatim, `parse_offset`, `durations=`
+- [ ] offset consumers, duration thresholds, null duration semantics
+- [ ] changelog entry and versioned migration note per Backwards compatibility
