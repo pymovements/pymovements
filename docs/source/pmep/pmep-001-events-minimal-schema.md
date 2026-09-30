@@ -15,25 +15,27 @@ save/load work ([#1563](https://github.com/pymovements/pymovements/issues/1563))
 
 ## TL;DR
 
-- The minimal `Events` schema becomes `onset`, `duration`, `name`, in BIDS order.
-- `offset` leaves the stored schema and becomes an on-demand measure with an `inclusive`
-  parameter.
+- The minimal `Events` schema becomes `onset`, `duration`, `name`. BIDS mandates the first two
+  positions, `name` has no BIDS column of its own.
+- `offset` leaves the minimal schema. It is stored only where it was supplied explicitly and is
+  otherwise available as an on-demand measure with an `inclusive` parameter.
 - Every duration pymovements produces today, detected or parsed, is one sampling interval
   short: `offset - onset` measures first sample to last. Durations become the time from event
   start to event end, `t_last - t_first + one sampling interval`, the duration EyeLink reports.
 - The value change ships as an immediate breaking change in v0.29.0: all durations grow by one
   sampling interval. No compatibility phase, only a changelog entry and a versioned
   migration note.
-- `offsets=` stays as an input alternative, but the convention must be stated via
-  `offsets_inclusive`. The implicit default will be removed in v0.34.0.
+- `offsets=` stays as an input alternative and the supplied offsets stay stored, but the
+  convention must be stated via `offsets_inclusive`. The implicit default will be removed in
+  v0.34.0.
 - `duration` gains null semantics: `0` means instantaneous, `null` means unavailable.
 
 ## What it looks like
 
 Constructing the same four events, before and after. Frames built from `durations=` will have
-the new shape from v0.29.0 on. Frames built from `offsets=` or loaded from a file will keep
-the legacy `offset` column and the old column order during the deprecation window and take
-the new shape from v0.34.0 on (see Backwards compatibility).
+the new shape from v0.29.0 on. Frames built from `offsets=` or loaded from a file keep the
+supplied offsets as a column permanently. During the deprecation window they also keep the old
+column order and take the new order from v0.34.0 on (see Backwards compatibility).
 
 ```python
 # before (v0.28): offsets are stored, duration is derived one sampling interval short
@@ -53,7 +55,7 @@ events.frame
 ```
 
 ```python
-# after (v0.29.0): durations are stored exactly, offset is on demand
+# after (v0.29.0): durations are stored exactly, no offset is derived, it is available on demand
 events = pymovements.Events(
     name=['fixation', 'saccade', 'fixation', 'blink'],
     onsets=[0, 121, 159, 301],
@@ -69,8 +71,9 @@ events.frame
 # └───────┴──────────┴──────────┘
 ```
 
-Offsets stay an input alternative, with the convention stated. Both calls below describe the
-same four events and yield the same durations:
+Offsets stay an input alternative, with the convention stated. Supplied offsets are kept as a
+column, as supplied. Both calls below describe the same four events and yield the same
+durations:
 
 ```python
 # inclusive last-sample offsets: duration = offset - onset + Δ, needs a sampling rate
@@ -82,7 +85,7 @@ events = pymovements.Events(
     sampling_rate=1000,
 )
 events.frame
-# v0.29.0 to v0.33.x: the legacy offset column and order stay, only the durations change
+# v0.29.0 to v0.33.x: the supplied offsets and the legacy order stay, only the durations change
 # ┌──────────┬───────┬────────┬──────────┐
 # │ name     ┆ onset ┆ offset ┆ duration │
 # │ fixation ┆ 0     ┆ 120    ┆ 121      │
@@ -90,14 +93,14 @@ events.frame
 # │ fixation ┆ 159   ┆ 300    ┆ 142      │
 # │ blink    ┆ 301   ┆ 380    ┆ 80       │
 # └──────────┴───────┴────────┴──────────┘
-# from v0.34.0 on: the offset is never stored, the frame equals the durations= frame above
-# ┌───────┬──────────┬──────────┐
-# │ onset ┆ duration ┆ name     │
-# │ 0     ┆ 121      ┆ fixation │
-# │ 121   ┆ 38       ┆ saccade  │
-# │ 159   ┆ 142      ┆ fixation │
-# │ 301   ┆ 80       ┆ blink    │
-# └───────┴──────────┴──────────┘
+# from v0.34.0 on: minimal schema first, the supplied offset as an additional column
+# ┌───────┬──────────┬──────────┬────────┐
+# │ onset ┆ duration ┆ name     ┆ offset │
+# │ 0     ┆ 121      ┆ fixation ┆ 120    │
+# │ 121   ┆ 38       ┆ saccade  ┆ 158    │
+# │ 159   ┆ 142      ┆ fixation ┆ 300    │
+# │ 301   ┆ 80       ┆ blink    ┆ 380    │
+# └───────┴──────────┴──────────┴────────┘
 
 # exclusive offsets, one past the end: duration = offset - onset, needs no sampling rate
 events = pymovements.Events(
@@ -107,14 +110,14 @@ events = pymovements.Events(
     offsets_inclusive=False,
 )
 events.frame
-# from v0.34.0 on
-# ┌───────┬──────────┬──────────┐
-# │ onset ┆ duration ┆ name     │
-# │ 0     ┆ 121      ┆ fixation │
-# │ 121   ┆ 38       ┆ saccade  │
-# │ 159   ┆ 142      ┆ fixation │
-# │ 301   ┆ 80       ┆ blink    │
-# └───────┴──────────┴──────────┘
+# from v0.34.0 on, the offsets stored as supplied
+# ┌───────┬──────────┬──────────┬────────┐
+# │ onset ┆ duration ┆ name     ┆ offset │
+# │ 0     ┆ 121      ┆ fixation ┆ 121    │
+# │ 121   ┆ 38       ┆ saccade  ┆ 159    │
+# │ 159   ┆ 142      ┆ fixation ┆ 301    │
+# │ 301   ┆ 80       ┆ blink    ┆ 381    │
+# └───────┴──────────┴──────────┴────────┘
 ```
 
 Loading an EyeLink file will give the same values, with durations equal to the file's reported
@@ -144,7 +147,7 @@ Events(
     name: str | list[str] | None = None,
     onsets: list[int | float] | np.ndarray | None = None,
     durations: list[int | float] | np.ndarray | None = None,   # new
-    offsets: list[int | float] | np.ndarray | None = None,     # permanent alternative to durations=
+    offsets: list[int | float] | np.ndarray | None = None,     # permanent alternative, stays stored
     offsets_inclusive: bool | None = None,                     # None deprecated, raises v0.34.0
     sampling_rate: float | None = None,                        # needed if no rate resolves
     trials: ... = None,
@@ -171,7 +174,10 @@ pymovements.gaze.from_asc(file, *, parse_offset: bool | None = None, ...)
 # explicit True/False are permanent
 ```
 
-This PMEP defines no on-disk format. Saved event files will mirror the frame schema.
+This PMEP defines no on-disk format. Saved event files will mirror the frame schema. How `name`
+maps to BIDS is defined in [#1563](https://github.com/pymovements/pymovements/issues/1563): the
+`desc` entity with one file per event name in derivatives, the `trial_type` column in unsplit
+raw-layout files. Trial columns are ordinary extra columns there, unrelated to BIDS `trial_type`.
 
 ## Motivation
 
@@ -211,10 +217,12 @@ The bias has practical consequences:
 
 ## Specification
 
-**Minimal schema.** The minimal `Events` schema becomes `onset`, `duration`, `name`, in BIDS
-order, across the whole codebase. `offset` leaves the stored schema. The schema will cover all
-discrete-time events, including point events and events of unknown duration. Which event kinds
-belong in `Events` rather than `Gaze.messages` is out of scope.
+**Minimal schema.** The minimal `Events` schema becomes `onset`, `duration`, `name` across the
+whole codebase. BIDS mandates `onset` first and `duration` second. `name` is the pymovements
+event label and has no BIDS column of its own. `offset` leaves the minimal schema and is stored
+only where it was supplied explicitly. The schema will cover all discrete-time events, including
+point events and events of unknown duration. Which event kinds belong in `Events` rather than
+`Gaze.messages` is out of scope.
 
 **Duration definition.** Duration becomes the time from the start of the event to its end:
 
@@ -247,16 +255,23 @@ EyeLink parser will take the reported duration verbatim (the currently discarded
 `timesteps` and construct events via `durations=`. Producers get no `offsets_inclusive`
 parameter of their own: the convention question only exists for externally supplied offsets.
 
+**Supplied offsets stay stored.** Offsets supplied via `offsets=` or as an `offset` column in
+`data` are kept as an additional column, as supplied. The duration is derived once at
+construction from the stated convention. What ends is the constructor expecting an `offset`
+column in `data` and materializing an `offset` column that nobody supplied: frames built from
+`durations=` or by detection algorithms carry none.
+
 **Retaining parsed offsets.** Loaders whose format reports offsets directly (EyeLink's end
-timestamps) gain `parse_offset` to keep them as an additional column. The offset measure will
-reconstruct the same value for sample-built events. Retaining the column guards against the
-case where a vendor's end timestamp and `DUR` disagree. The canonical schema stays
-`onset`/`duration`/`name`.
+timestamps) gain `parse_offset` to keep them as an additional column, as `offsets=` does. The
+offset measure will reconstruct the same value for sample-built events. Retaining the column
+guards against the case where a vendor's end timestamp and `DUR` disagree. The canonical schema
+stays `onset`/`duration`/`name`.
 
 **Persistence.** `offsets_inclusive` is consumed at construction and never persisted. The
-stored duration carries no convention, so a saved file needs no flag. Any `offset` column
-that reaches a file, the legacy column during the window or a column retained via
-`parse_offset`, holds inclusive last-sample timestamps. Recording this convention and the
+stored duration carries no convention, so a saved file needs no flag. An `offset` column that
+pymovements produces, the legacy column during the window or a column retained via
+`parse_offset`, holds inclusive last-sample timestamps. A column supplied via `offsets=` is
+stored as supplied and follows the caller's convention. Recording this convention and the
 sampling rate in file metadata is left to a later PMEP.
 
 **The offset measure.** `offset` becomes an on-demand event measure with an `inclusive`
@@ -320,10 +335,11 @@ Three criteria pick the center independently of bias: additivity (durations sum 
 length and adjacent events tile), the single-sample event (duration `Δ` instead of a degenerate
 `0`), and agreement with the vendor's reported values.
 
-**Why store duration and derive offset.** Duration is what analyses consume and what vendors
-report. Offset depends on a convention (inclusive last sample or one past the end). Storing the
-convention-free value and answering the convention question in one place, the measure, removes
-the ambiguity that already produced the disagreeing `fill` detector. EyeLink's reported `DUR`
+**Why store duration and derive offset only on demand.** Duration is what analyses consume and
+what vendors report. Offset depends on a convention (inclusive last sample or one past the end).
+Storing the convention-free value and answering the convention question where the offset enters
+or leaves, at construction for supplied offsets and in the measure otherwise, removes the
+ambiguity that already produced the disagreeing `fill` detector. EyeLink's reported `DUR`
 becomes the stored value, so file and frame can no longer contradict each other.
 
 **Why the value change is immediate.** A deprecation window keeps an old and a new API shape
@@ -335,8 +351,9 @@ carry the silent numeric shift.
 
 **Alternatives rejected.**
 
-- *Keep the offset stored and document the convention.* Keeps the bias patched per consumer
-  rather than fixed at the source, and carries the redundant column into every save file.
+- *Keep the offset in the minimal schema and document the convention.* Keeps the bias patched
+  per consumer rather than fixed at the source, and forces the redundant column into every
+  frame and save file, including those built from durations.
 - *Store exclusive offsets instead.* Makes `offset - onset` exact, but stores a value no
   vendor reports, breaks verbatim EyeLink round-trips, and leaves the inclusivity question in
   every consumer that compares against sample timestamps.
@@ -349,8 +366,9 @@ carry the silent numeric shift.
 interval. Signatures and, during the deprecation window, the frame shape stay unchanged.
 
 **Offsets stay as input, with an explicit convention.** `offsets=` remains a permanent
-alternative to `durations=`. The offset will be converted to a duration at construction and
-never stored. `offsets_inclusive` states the convention of the supplied offsets:
+alternative to `durations=`. The supplied offsets stay stored as an `offset` column and the
+duration is derived once at construction. `offsets_inclusive` states the convention of the
+supplied offsets:
 
 - `True`: inclusive last-sample timestamps, `duration = offset - onset + Δ`. Requires a
   sampling rate, resolved as for the offset measure.
@@ -366,13 +384,18 @@ never stored. `offsets_inclusive` states the convention of the supplied offsets:
   `duration == offset - onset` on all rows. With `None`, stored durations will load untouched
   and a one-time warning will point to the migration note. With `True` plus a sampling rate,
   durations will be recomputed. With `False`, they will be accepted as exact.
-- The legacy `offset` column: detection algorithms and the `offsets=`/legacy-file paths keep
-  materializing it, so `frame['offset']` and files saved during the window stay compatible.
-  Events constructed from `durations=` alone take the new shape from v0.29.0 on.
+- Deriving an `offset` column nobody supplied: detection algorithms keep materializing it
+  during the window, so `frame['offset']` and files saved during the window stay compatible,
+  and stop in v0.34.0. Events constructed from `durations=` alone take the new shape from
+  v0.29.0 on. Offsets supplied via `offsets=`, an `offset` column in `data` or `parse_offset`
+  are unaffected and stay.
+- Requiring an `offset` column in `data`: frames carrying `onset` and `duration` without
+  `offset` are accepted from v0.29.0 on, and `duration` replaces `offset` in the minimal
+  schema check in v0.34.0.
 - `parse_offset=None` on offset-reporting loaders, as in Resulting signatures.
 - Frame column order: unchanged during the window (`[grouping columns,] name, onset, offset,
   ..., duration`), then flipped once to `onset`, `duration`, `name`, grouping and additional
-  columns, the order #1563 needs.
+  columns, a supplied `offset` among them, the order #1563 needs.
 - `offset_column` on `Gaze.measure_events_ratio` and `events2timeratio`: refers to a column
   that leaves the schema. `duration_column` replaces it.
 
@@ -382,7 +405,8 @@ the v0.34.0 shape flip.
 
 ## Implementation
 
-- [ ] `onset`/`duration`/`name` schema, `durations=` constructor path and `offsets_inclusive`
+- [ ] `onset`/`duration`/`name` schema, `durations=` constructor path and `offsets_inclusive`,
+      supplied offsets stay stored, `data` accepted without `offset`
 - [ ] `offset` event measure with `inclusive` and sampling-rate resolution
 - [ ] concatenation lifts `sampling_rate` to a per-event column
 - [ ] `EventProcessor` passes measure kwargs through
@@ -396,5 +420,5 @@ the v0.34.0 shape flip.
       `events2segmentation`/`segmentation2events`, `measure_events_ratio`/`events2timeratio`
       with `duration_column`, `fill`
 - [ ] legacy-file loading with detection warning and opt-in correction
-- [ ] legacy `offset` column during the window, single shape flip at v0.34.0
+- [ ] derived `offset` column from detectors during the window, single shape flip at v0.34.0
 - [ ] changelog entry and versioned migration note
