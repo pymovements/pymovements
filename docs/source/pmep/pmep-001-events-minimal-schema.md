@@ -286,10 +286,11 @@ EyeLink parser will take the reported duration verbatim (the currently discarded
 of `Δ` and of the sampling-rate entry they write. They will compute `t_last - t_first + Δ` from
 their `timesteps` and construct `Events(onsets=, durations=)` with no offset column from
 v0.29.0 on. `Gaze.detect` will fill `sampling_rate` from the experiment when the caller gives
-none and will raise on a gaze without one. Direct calls pass the rate explicitly. Estimating
-the rate from `timesteps` is future work. `from_begaze` is a producer like the detectors and will
-build from `durations=`, with `Δ` from the file's rate. Producers get no `offsets_inclusive`
-parameter of their own: the convention question only exists for externally supplied offsets.
+none and will raise on a gaze without one. Direct calls pass `sampling_rate` explicitly.
+Estimating the sampling rate from `timesteps` is future work. `from_begaze` is a producer like
+the detectors and will build from `durations=`, with `Δ` from the file's sampling rate.
+Producers get no `offsets_inclusive` parameter of their own: the convention question only
+exists for externally supplied offsets.
 
 **Supplied offsets stay stored.** Offsets supplied via `offsets=` or as an `offset` column in
 `data` will be kept as an additional column, as supplied. The constructor will never remove a
@@ -306,17 +307,17 @@ column it writes. Several offset columns with different conventions may coexist.
 declaration rule, the consistency check and the legacy rule apply to the column literally named
 `offset`, the boundary-changing operations and the offset measure to any column with an entry.
 The sampling-rate entry will be written by the constructor's `sampling_rate=`, by detectors, by
-loaders and by `Gaze.resample`, which sets it to the new rate. The entry names the sampling grid
-the frame currently lives on, not the grid its durations were built on. Combining frames whose
-entries disagree, as `Gaze.detect` does with the existing events, will raise. This PMEP
-persists nothing: a loader hands the dict in as `metadata=`, save does the reverse, and the
-BIDS events layout PMEP defines the file and the keys.
+loaders and by `Gaze.resample`, which sets it to the new sampling rate. The entry names the
+sampling grid the frame currently lives on, not the grid its durations were built on.
+Combining frames whose entries disagree, as `Gaze.detect` does with the existing events, will
+raise. This PMEP persists nothing: a loader hands the dict in as `metadata=`, save does the
+reverse, and the BIDS events layout PMEP defines the file and the keys.
 
 **Construction rules.** An `offset` column needs its convention declared, by
 `offsets_inclusive=` or by a metadata entry for the column, both when they agree. `None` on
-the keyword means undeclared and never selects a convention. The rate below is the sampling
-rate resolved from `sampling_rate=`, then from the metadata entry. The preconditions run
-unconditionally on public construction, `validate` never skips them, and each one raises:
+the keyword means undeclared and never selects a convention. The sampling rate resolves from
+`sampling_rate=`, then from the metadata entry. The preconditions run unconditionally on
+public construction, `validate` never skips them, and each one raises:
 
 | condition | outcome |
 |---|---|
@@ -327,7 +328,8 @@ unconditionally on public construction, `validate` never skips them, and each on
 | `durations_from_offsets=True` without `offset` column | raise |
 
 Once the preconditions pass, the outcome depends on which columns are present and on the two
-flags. A derivation under an inclusive declaration needs the rate and raises without one:
+flags. A derivation under an inclusive declaration needs the sampling rate and raises without
+one:
 
 | `offset` column | `duration` column | `durations_from_offsets` | `validate` | outcome |
 |---|---|---|---|---|
@@ -339,10 +341,10 @@ flags. A derivation under an inclusive declaration needs the rate and raises wit
 | yes | yes | `False` | `True` | keep the durations, run the consistency check |
 
 **Consistency check.** Per non-null row, `residual = duration - (offset - onset)`. An exclusive
-column requires `0`. An inclusive column requires `Δ` when a rate resolves. Without a rate the
-residuals of an inclusive column must all be equal and greater than zero, and the constant is
-never written to the sampling-rate entry. The check therefore needs no rate. Severity follows
-the non-null rows:
+column requires `0`. An inclusive column requires `Δ` when a sampling rate resolves. Without
+one the residuals of an inclusive column must all be equal and greater than zero, and the
+constant is never written to the sampling-rate entry. The check therefore needs no sampling
+rate. Severity follows the non-null rows:
 
 | rows contradicting the declaration | outcome |
 |---|---|
@@ -364,8 +366,8 @@ row, the residual-0-everywhere case. Read off the tables:
 | `offsets_inclusive=False` | check, no row contradicts | durations kept as exact |
 | `offsets_inclusive=True, validate=False` | keep, no check | short durations kept, opted out |
 
-The replace row needs a rate, which the Dataset form takes from the experiment. The raise
-messages list the recipes. The rule is permanent, since the files can always exist.
+The replace row needs a sampling rate, which the Dataset form takes from the experiment. The
+raise messages list the recipes. The rule is permanent, since the files can always exist.
 
 **`durations_from_offsets`.** A permanent flag on the constructor, `Dataset.load_event_files`
 and `Dataset.load`, default `False`, with the behaviour of the outcome table.
@@ -377,7 +379,7 @@ guard against a vendor end timestamp disagreeing with `DUR`.
 **The offset measure.** `offset` becomes an on-demand event measure with an `inclusive`
 parameter (default `True`, reproducing today's stored offsets). `inclusive=True` will require
 a sampling rate, which `Gaze.compute_event_properties` will fill when the caller gives none:
-the events entry first, the experiment second. `inclusive=False` will need no rate.
+the events entry first, the experiment second. `inclusive=False` will need no sampling rate.
 `inclusive=None` meaning the stored convention is future work. The measure will compute
 uniformly over all rows, since the frame does not record whether an event was built from
 samples. For events with exact start and end times, `inclusive=False` will return the end
@@ -389,9 +391,9 @@ so callers holding such events should use `inclusive=False`.
 - `Events.merge_subsequent_close_events`: the gap of adjacent events becomes `0` instead of
   `Δ`, so a `max_gap` that relied on adjacency showing as one interval shrinks by `Δ`. The
   merge, `Gaze.resample` and any future boundary-changing operation will recompute each offset
-  column via the offset measure in that column's convention when its entry exists and a rate
-  resolves where needed. Otherwise the operation will drop the column and its entry with a
-  warning. This covers offset columns only, by design.
+  column via the offset measure in that column's convention when its entry exists and a
+  sampling rate resolves where needed. Otherwise the operation will drop the column and its
+  entry with a warning. This covers offset columns only, by design.
 - `compute_event_properties` keeps the rows of events with `null` duration and selects samples
   by the half-open interval.
 - `events2segmentation` gains the same `duration` parameter in place of `offset_column`.
