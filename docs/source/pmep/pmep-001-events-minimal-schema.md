@@ -163,7 +163,7 @@ Events(
 column and the sampling rate. The constructor will write them from `offsets_inclusive=` and
 `sampling_rate=`, `from_asc` both for a retained column, the offset measure the convention for
 the column it produces, and detectors and loaders the sampling rate. `Events.drop` will remove
-a convention entry together with its column. Metadata is excluded from `Events.__eq__`.
+a convention entry together with its column.
 
 The `offset` measure joins the event-measure registry:
 
@@ -315,9 +315,8 @@ the offset measure to any column with an entry. The sampling-rate entry is writt
 constructor's `sampling_rate=`, by detectors from the gaze experiment and by loaders. The rate
 resolves in this order: explicit argument, then entry. A constructor value that differs from an
 existing entry raises unconditionally. `Gaze.resample` leaves the entry untouched and warns
-once when non-empty events carry another rate. Metadata is excluded from `Events.__eq__`,
-roundtrip tests compare the two entries explicitly. This PMEP names the two entries and
-persists nothing. The BIDS events layout PMEP (#1563) defines the file and the keys.
+once when non-empty events carry another rate. This PMEP names the two entries and persists
+nothing. The BIDS events layout PMEP (#1563) defines the file and the keys.
 
 **Consistency check.** The check will run on public construction with `validate=True` whenever
 `offset` and `duration` are both present. Per non-null row, `residual = duration - (offset -
