@@ -253,6 +253,12 @@ reconstruct the same value for sample-built events. Retaining the column guards 
 case where a vendor's end timestamp and `DUR` disagree. The canonical schema stays
 `onset`/`duration`/`name`.
 
+**Persistence.** `offsets_inclusive` is consumed at construction and never persisted. The
+stored duration carries no convention, so a saved file needs no flag. Any `offset` column
+that reaches a file, the legacy column during the window or a column retained via
+`parse_offset`, holds inclusive last-sample timestamps. Recording this convention and the
+sampling rate in file metadata is left to a later PMEP.
+
 **The offset measure.** `offset` becomes an on-demand event measure with an `inclusive`
 parameter (default `True`, reproducing today's stored offsets). `inclusive=True` will require a
 sampling rate, resolved in this order: explicit argument, the frame's `sampling_rate` column
