@@ -39,7 +39,7 @@ built from `offsets=` will both have the new shape from v0.29.0 on. Frames built
 
 ```python
 # before (v0.28): offsets are stored, duration is derived one sampling interval short
-events = pymovements.Events(
+events = Events(
     name=['fixation', 'saccade', 'fixation', 'blink'],
     onsets=[0, 121, 159, 301],
     offsets=[120, 158, 300, 380],
@@ -56,7 +56,7 @@ events.frame
 
 ```python
 # after (v0.29.0): durations are stored exactly, no offset is derived, it is available on demand
-events = pymovements.Events(
+events = Events(
     name=['fixation', 'saccade', 'fixation', 'blink'],
     onsets=[0, 121, 159, 301],
     durations=[121, 38, 142, 80],
@@ -77,7 +77,7 @@ events and yield the same durations:
 
 ```python
 # inclusive last-sample offsets: duration = offset - onset + Δ, needs a sampling rate
-events = pymovements.Events(
+events = Events(
     name=['fixation', 'saccade', 'fixation', 'blink'],
     onsets=[0, 121, 159, 301],
     offsets=[120, 158, 300, 380],
@@ -97,7 +97,7 @@ events.frame
 # └───────┴───────┴──────────┴──────────┴────────┘
 
 # exclusive offsets, one past the end: duration = offset - onset, needs no sampling rate
-events = pymovements.Events(
+events = Events(
     name=['fixation', 'saccade', 'fixation', 'blink'],
     onsets=[0, 121, 159, 301],
     offsets=[121, 159, 301, 381],
@@ -477,9 +477,9 @@ gaze without an experiment sampling rate.
 Every call that supplies offsets declares their convention:
 
 ```python
-pm.Events(name='blink', onsets=[2], offsets=[3])                                              # v0.28
-pm.Events(name='blink', onsets=[2], offsets=[3], offsets_inclusive=True, sampling_rate=1000)  # v0.29.0
-pm.Events(name='blink', onsets=[2], durations=[2])                                            # or durations
+Events(name='blink', onsets=[2], offsets=[3])                                                 # v0.28
+Events(name='blink', onsets=[2], offsets=[3], offsets_inclusive=True, sampling_rate=1000)     # v0.29.0
+Events(name='blink', onsets=[2], durations=[2])                                               # or durations
 ```
 
 **Release gate.** v0.29.0 does not ship until the sequence `Dataset.detect`,
