@@ -204,9 +204,9 @@ Dataset.load(..., offsets_inclusive: bool | None = None, durations_from_offsets:
 ```
 
 This PMEP defines no on-disk format. The constructor's contract is the metadata dict: a loader
-hands it in as `metadata=`, save does the reverse. The BIDS events layout PMEP
-([#1563](https://github.com/pymovements/pymovements/issues/1563)) defines the file and the keys.
-How `name` and the trial columns map to BIDS files is defined there as well.
+hands it in as `metadata=`, save does the reverse. How `name` and the trial columns map to BIDS
+files is defined in the BIDS events layout PMEP
+([#1563](https://github.com/pymovements/pymovements/issues/1563)).
 
 ## Motivation
 
@@ -316,7 +316,7 @@ constructor's `sampling_rate=`, by detectors from the gaze experiment and by loa
 resolves in this order: explicit argument, then entry. A constructor value that differs from an
 existing entry raises unconditionally. `Gaze.resample` leaves the entry untouched and warns
 once when non-empty events carry another rate. This PMEP names the two entries and persists
-nothing. The BIDS events layout PMEP (#1563) defines the file and the keys.
+nothing.
 
 **Consistency check.** The check will run on public construction with `validate=True` whenever
 `offset` and `duration` are both present. Per non-null row, `residual = duration - (offset -
@@ -410,7 +410,9 @@ binding of #1690 is unchanged.
 
 - `Events.merge_subsequent_close_events`: the gap becomes
   `onset - (previous onset + previous duration)`, the merged duration
-  `last onset + last duration - first onset`. The merge and any future boundary-changing
+  `last onset + last duration - first onset`. The gap of adjacent events becomes `0` instead
+  of `Δ`, so a `max_gap` that relied on adjacency showing as one interval shrinks by `Δ`. The
+  merge and any future boundary-changing
   operation will recompute each offset column via the offset measure in that column's
   convention when its entry exists and a rate resolves where needed. The merge reads the entry
   itself and passes a concrete bool. Otherwise the operation drops the column and its entry,
@@ -531,9 +533,10 @@ convention of the supplied offsets, a metadata entry can state it instead:
 **Deprecated v0.29.0, removed v0.34.0.** `offset_column` on `Gaze.measure_events_ratio` and
 `events2timeratio` refers to a column that leaves the schema. `duration_column` replaces it.
 
-**Migration note (versioned).** Documents the value change, the `minimum_duration` and
-`maximum_duration` threshold adjustments, the legacy recipe in constructor and Dataset form,
-the replacement of `frame['offset']` by the offset measure, and the `parse_offset` default.
+**Migration note (versioned).** Documents the value change, the `minimum_duration`,
+`maximum_duration` and merge gap threshold adjustments, the legacy recipe in constructor and
+Dataset form, the replacement of `frame['offset']` by the offset measure, and the
+`parse_offset` default.
 
 ## Implementation
 
