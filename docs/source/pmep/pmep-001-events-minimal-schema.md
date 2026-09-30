@@ -302,17 +302,15 @@ the construction rules below.
 column, identified by the column's name as in a BIDS tabular sidecar, and one sampling-rate
 entry. Equality stays on frame and trial columns. The convention entry will be written by
 `offsets_inclusive=`, by `parse_offset` on `from_asc` and by the `offset` measure for the
-column it writes. `Events.drop` will remove the entry with the column, an instance of the
-column-entry lifecycle the BIDS events layout PMEP (#1563) will define. Several offset columns
-with different conventions may coexist. The declaration rule, the consistency check and the
-legacy rule apply to the column literally named `offset`, the boundary-changing operations and
-the offset measure to any column with an entry. The sampling-rate entry will be written by the
-constructor's `sampling_rate=`, by detectors, by loaders and by `Gaze.resample`, which sets it
-to the new rate. The entry names the sampling grid the frame currently lives on, not the grid
-its durations were built on. Combining frames whose entries disagree, as `Gaze.detect` does
-with the existing events, will raise. This PMEP persists nothing: a loader hands the dict in as
-`metadata=`, save does the reverse, and the BIDS events layout PMEP defines the file and the
-keys.
+column it writes. Several offset columns with different conventions may coexist. The
+declaration rule, the consistency check and the legacy rule apply to the column literally named
+`offset`, the boundary-changing operations and the offset measure to any column with an entry.
+The sampling-rate entry will be written by the constructor's `sampling_rate=`, by detectors, by
+loaders and by `Gaze.resample`, which sets it to the new rate. The entry names the sampling grid
+the frame currently lives on, not the grid its durations were built on. Combining frames whose
+entries disagree, as `Gaze.detect` does with the existing events, will raise. This PMEP
+persists nothing: a loader hands the dict in as `metadata=`, save does the reverse, and the
+BIDS events layout PMEP defines the file and the keys.
 
 **Construction rules.** An `offset` column needs its convention declared, by
 `offsets_inclusive=` or by a metadata entry for the column, both when they agree. `None` on
@@ -513,7 +511,7 @@ One issue per line, drafted once the PMEP is accepted:
 
 - [ ] `Events` constructor: schema and order, `durations=`, the construction rules, the
       consistency check, `durations_from_offsets`, `validate`, the legacy message
-- [ ] `Events.metadata` entries: per-column convention and sampling rate, `Events.drop`
+- [ ] `Events.metadata` entries: per-column convention and sampling rate
 - [ ] offset and duration measures, `compute_event_properties` sampling-rate injection
 - [ ] `Gaze.detect` and `Gaze.resample`: detector `sampling_rate`, metadata merge, entry update,
       offset columns on resample
