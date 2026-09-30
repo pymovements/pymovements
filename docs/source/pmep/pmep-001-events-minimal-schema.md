@@ -309,7 +309,8 @@ legacy rule apply to the column literally named `offset`, the boundary-changing 
 the offset measure to any column with an entry. The sampling-rate entry will be written by the
 constructor's `sampling_rate=`, by detectors, by loaders and by `Gaze.resample`, which sets it
 to the new rate. The entry names the sampling grid the frame currently lives on, not the grid
-its durations were built on. This PMEP persists nothing: a loader hands the dict in as
+its durations were built on. Combining frames whose entries disagree, as `Gaze.detect` does
+with the existing events, will raise. This PMEP persists nothing: a loader hands the dict in as
 `metadata=`, save does the reverse, and the BIDS events layout PMEP defines the file and the
 keys.
 
@@ -384,17 +385,6 @@ uniformly over all rows, since the frame does not record whether an event was bu
 samples. For events with exact start and end times, `inclusive=False` will return the end
 timestamp. `inclusive=True` would subtract `Δ` from a boundary that is not a sample position,
 so callers holding such events should use `inclusive=False`.
-
-**Frame granularity.** An events frame is produced per recording and carries one sampling
-rate. Durations will be computed at the producer, where that rate is known, so they stay exact
-when frames are combined. `Gaze.detect` combines the detector's frame with the existing events
-and will raise on differing sampling-rate entries, with a message naming `detect(clear=True)`.
-Since `Gaze.resample` updates the entry, this fires only for frames from different recordings.
-Events built on a finer grid keep their exact durations after downsampling, but their inclusive
-offsets can land between samples until they are re-detected. Convention entries for the same
-column that disagree will raise. A column present on one side only will become null on the
-other and keep its entry. A per-event `sampling_rate` column for mixed rates is future work.
-One rate per frame also matches BIDS, which ties one events file to one recording.
 
 **Remaining offset consumers** move to onset/duration arithmetic:
 
@@ -471,8 +461,6 @@ raise is permanent.
   every consumer that compares against sample timestamps.
 - *Leave null durations undefined and let the BIDS events work add the semantics.* Breaks the
   same schema twice, and #1563 requires `null` durations for BIDS `n/a` round-trips.
-- *Drop and warn when combined frames disagree on a convention.* A dropped column is a silent
-  loss of data, failing is the only honest outcome.
 - *A tri-state `durations_from_offsets`.* The third value duplicates `False`.
 - *Remove the `duration` measure from the registry.* It stays and gains the convention
   parameters, so an in-place recomputation remains available.
@@ -494,8 +482,9 @@ pm.Events(name='blink', onsets=[2], offsets=[3], offsets_inclusive=True, samplin
 pm.Events(name='blink', onsets=[2], durations=[2])                                            # or durations
 ```
 
-**Release gate.** v0.29.0 does not ship until the sequence `Gaze.detect`, `Dataset.save_events`,
-`Dataset.load_event_files` passes with no metadata file and no extra keyword.
+**Release gate.** v0.29.0 does not ship until the sequence `Dataset.detect`,
+`Dataset.save_events`, `Dataset.load_event_files` passes with no metadata file and no extra
+keyword.
 
 **Own output with an offset column.** Nothing is persisted, so a saved frame that carries an
 `offset` column, from `parse_offset=True`, from the offset measure or from `offsets=`, reloads
