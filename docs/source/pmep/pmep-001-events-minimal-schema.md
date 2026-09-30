@@ -515,7 +515,7 @@ One issue per line, drafted once the PMEP is accepted:
 - [ ] offset and duration measures, `compute_event_properties` sampling-rate injection
 - [ ] `Gaze.detect` and `Gaze.resample`: detector `sampling_rate`, metadata merge, entry update,
       offset columns on resample
-- [ ] Dataset loaders: the two keywords, rate from the experiment
+- [ ] Dataset loaders: the two keywords, `sampling_rate` from the experiment
 - [ ] EyeLink and BeGaze parsers: `DUR` verbatim, `parse_offset`, `durations=`
 - [ ] offset consumers, duration thresholds, null duration semantics
 - [ ] changelog entry and versioned migration note per Backwards compatibility
