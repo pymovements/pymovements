@@ -205,7 +205,7 @@ defined in the BIDS events layout PMEP
 
 ## Motivation
 
-`Events.duration` is derived as `offset - onset`. All producers store the offset as the
+`Events.duration` is currently derived as `offset - onset`. All producers store the offset as the
 timestamp of the event's last sample (inclusive): the detection algorithms take
 `timesteps[candidate_indices[-1]]`, and the EyeLink parser stores the `EFIX`/`ESACC`/`EBLINK`
 end timestamps verbatim. The derived duration is therefore one sampling interval short of the
@@ -237,7 +237,8 @@ The bias has practical consequences:
   back, estimated from the samples or taken from its `sampling_rate` parameter.
 - The `fill` detector already disagrees about the convention: it treats stored offsets as
   exclusive, so each event's last sample leaks into the unclassified events.
-- BIDS export (#1563) would publish the short durations into shared scientific data.
+- Saved events files publish the short durations, and every downstream analysis that reads them
+  inherits the bias.
 
 ## Specification
 
@@ -247,8 +248,7 @@ event label and has no BIDS column of its own. `offset` leaves the minimal schem
 only where it was supplied explicitly. Trial columns stay first. Within the minimal schema the
 order changes from `name`, `onset`, `offset` to `onset`, `duration`, `name`, then extras follow,
 a supplied `offset` among them. The schema will cover all discrete-time events, including point
-events and events of unknown duration. Which event kinds belong in `Events` rather than
-`Gaze.messages` is out of scope.
+events and events of unknown duration.
 
 **Duration definition.** Duration becomes the time from the start of the event to its end:
 
@@ -258,9 +258,9 @@ events and events of unknown duration. Which event kinds belong in `Events` rath
   a data-quality measure, not something duration encodes. This matches EyeLink's reported
   `DUR`.
 - Events with exact start and end times, not tied to samples (future producers such as
-  recording start/stop, calibrations or stimulus presentations): `end - start`, with no `+ Δ`.
-  Their timestamps are the event boundaries, not sample positions, so no quantization
-  correction applies.
+  recording start/stop, messages, calibrations or stimulus presentations): `end - start`, 
+  with no `+ Δ`. Their timestamps are the event boundaries, not sample positions, so no
+  quantization correction applies.
 
 **Nullability.** `duration` gains null semantics, following BIDS: `0` means an instantaneous
 point event, `null` means the duration is unavailable. The constructor already accepts `null`
@@ -427,15 +427,14 @@ differently in that window: `offset - onset` is its floor, biased by `-Δ`, whil
 the true duration lies in `[120, 122)` ms. The new `121` is the center of that window and
 EyeLink's reported `DUR`. Today's `120` is its edge, not a more precise value, only a biased one.
 Three criteria pick the center independently of bias: additivity (durations sum to recording
-length and adjacent events tile), the single-sample event (duration `Δ` instead of a degenerate
+length and adjacent events tile), the single-sample event (duration `Δ` instead of an ambiguous
 `0`), and agreement with the vendor's reported values.
 
 **Why store duration and derive offset only on demand.** Duration is what analyses consume and
 what vendors report. Offset depends on a convention (inclusive last sample or one past the end).
 Storing the convention-free value and answering the convention question where the offset enters
-or leaves, at construction for supplied offsets and in the measure otherwise, removes the
-ambiguity that already produced the disagreeing `fill` detector. EyeLink's reported `DUR`
-becomes the stored value, so file and frame can no longer contradict each other.
+or leaves, removes the ambiguity that already produced the disagreeing `fill` detector. EyeLink's
+reported `DUR` becomes the stored value, so file and frame can no longer contradict each other.
 
 **Why the value change is immediate.** A deprecation window keeps an old and a new API shape
 working side by side. A single `duration` column cannot hold both the old and the new number,
@@ -459,11 +458,6 @@ raise is permanent.
 - *Store exclusive offsets instead.* Makes `offset - onset` exact, but stores a value no
   vendor reports, breaks verbatim EyeLink round-trips, and leaves the inclusivity question in
   every consumer that compares against sample timestamps.
-- *Leave null durations undefined and let the BIDS events work add the semantics.* Breaks the
-  same schema twice, and #1563 requires `null` durations for BIDS `n/a` round-trips.
-- *A tri-state `durations_from_offsets`.* The third value duplicates `False`.
-- *Remove the `duration` measure from the registry.* It stays and gains the convention
-  parameters, so an in-place recomputation remains available.
 
 ## Backwards compatibility
 
