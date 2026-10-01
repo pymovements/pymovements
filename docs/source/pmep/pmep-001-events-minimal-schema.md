@@ -247,15 +247,19 @@ whole codebase. BIDS mandates `onset` first and `duration` second. `name` is the
 event label and has no BIDS column of its own. `offset` leaves the minimal schema and is stored
 only where it was supplied explicitly. Trial columns stay first. Within the minimal schema the
 order changes from `name`, `onset`, `offset` to `onset`, `duration`, `name`, then extras follow,
-a supplied `offset` among them. The schema will cover events built from samples, including
-point events and events of unknown duration. Events with exact boundaries not tied to samples
-is future work.
+a supplied `offset` among them. The schema will cover events built from samples and events
+with exact boundaries, including point events and events of unknown duration.
 
-**Duration definition.** Duration becomes the time from the start of the event to its end,
-`t_last - t_first + Δ`, where `Δ` is the nominal interval of the sampling rate in effect. This
-equals `n_samples * Δ` for gap-free events and holds also for events spanning data gaps: data
-loss inside an event is a data-quality measure, not something duration encodes. This matches
-EyeLink's reported `DUR`.
+**Duration definition.** Duration becomes the time from the start of the event to its end:
+
+- Events built from samples (detection algorithms, vendor parsers): `t_last - t_first + Δ`, where
+  `Δ` is the nominal interval of the sampling rate in effect. This equals `n_samples * Δ` for
+  gap-free events and holds also for events spanning data gaps: data loss inside an event is a
+  data-quality measure, not something duration encodes. This matches EyeLink's reported `DUR`.
+- Events with exact start and end times, not tied to samples (messages, and future producers
+  such as stimulus presentations): `end - start`, with no `+ Δ`. Their timestamps are the event
+  boundaries, not sample positions, so no quantization correction applies. They are supplied
+  via `durations=` or as offsets declared with `offsets_inclusive=False`.
 
 **Nullability.** `duration` gains null semantics, following BIDS: `0` means an event so short
 that it is modeled as an impulse, `null` means the duration is unavailable. The constructor
