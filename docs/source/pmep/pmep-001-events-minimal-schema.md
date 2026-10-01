@@ -300,10 +300,12 @@ entry. The convention entry will be written by `offsets_inclusive=`, by `parse_o
 `from_asc` and by the `offset` measure for the column it writes. Several offset columns with
 different conventions may coexist. The declaration rule, the consistency check and the legacy
 rule apply to the column literally named `offset`, the offset measure to any column with an
-entry. The sampling-rate entry will be written by the constructor's `sampling_rate=`. How the
-entries behave under operations that change the sampling grid or combine frames is future
-work. This PMEP persists nothing: a loader hands the dict in as `metadata=`, save does the
-reverse, and a later PMEP on metadata sidecars will define the file and the keys.
+entry. A convention entry for a column the frame does not have will be kept, and public
+construction will warn once, naming the column. The sampling-rate entry will be written by the
+constructor's `sampling_rate=`. How the entries behave under operations that change the
+sampling grid or combine frames is future work. This PMEP persists nothing: a loader hands the
+dict in as `metadata=`, save does the reverse, and a later PMEP on metadata sidecars will
+define the file and the keys.
 
 **Construction rules.** An `offset` column needs its convention declared, by
 `offsets_inclusive=` or by a metadata entry for the column, both when they agree. `None` on
@@ -313,7 +315,7 @@ which columns are present, on the declaration and on the two flags:
 
 | `offset` | offset convention | `duration` | `durations_from_offsets` | `validate` | outcome |
 |---|---|---|---|---|---|
-| no | declared | any | any | any | raise |
+| no | declared by `offsets_inclusive=` | any | any | any | raise |
 | no | undeclared | any | `True` | any | raise |
 | no | undeclared | no | `False` | any | `duration` column of nulls, no `offset` column |
 | no | undeclared | yes | `False` | any | keep the durations |
@@ -322,6 +324,10 @@ which columns are present, on the declaration and on the two flags:
 | yes | declared | yes | `True` | any | replace the durations by the derivation |
 | yes | declared | yes | `False` | `False` | keep the durations, no check |
 | yes | declared | yes | `False` | `True` | keep the durations, run the consistency check |
+
+Without an `offset` column only the keyword declares a convention. A metadata entry for
+`offset` alone leaves it undeclared: public construction will emit one warning that names the
+column, keep the entry and apply the undeclared rows.
 
 A `sampling_rate=` or an `offsets_inclusive=` that differs from its metadata entry raises
 regardless. A derivation under an inclusive declaration needs the sampling rate and raises
@@ -486,7 +492,8 @@ One issue per line, drafted once the PMEP is accepted:
 
 - [ ] `Events` constructor: schema and order, `durations=`, the construction rules, the
       consistency check, `durations_from_offsets`, `validate`, the legacy message
-- [ ] `Events.metadata` entries: per-column convention and sampling rate
+- [ ] `Events.metadata` entries: per-column convention and sampling rate, the warning for an
+      entry without its column
 - [ ] offset and duration measures, `compute_event_properties` sampling-rate injection
 - [ ] `Gaze.detect`: detector `sampling_rate` from the experiment, metadata carried over
 - [ ] Dataset loaders: the two keywords, `sampling_rate` from the experiment
