@@ -429,7 +429,7 @@ def test_validate_output_raises_error(kwargs, exception, msg_substrings):
 
 
 class VelocityMagnitudeGenerator(GazeGenerator):
-    """A generator emitting directionless velocities, as Fuhl et al.'s method does."""
+    """A generator emitting velocity magnitudes, which carry no direction."""
 
     name = 'test_velocity_magnitude'
 

@@ -30,3 +30,15 @@ Synthetic
     generate
     register_generator
     step_function
+
+.. rubric:: Generators
+
+.. currentmodule:: pymovements.synthetic.generators
+
+.. autosummary::
+    :toctree: api
+    :nosignatures:
+    :template: class.rst
+
+    StatisticalConfig
+    StatisticalGenerator

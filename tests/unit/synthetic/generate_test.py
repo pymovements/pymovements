@@ -43,6 +43,7 @@ from pymovements.synthetic import GeneratorLibrary
 from pymovements.synthetic import InputContractError
 from pymovements.synthetic import register_generator
 from pymovements.synthetic import SignalRepresentation
+from pymovements.synthetic.generators.statistical import StatisticalConfig
 from pymovements.warnings import ExperimentalWarning
 
 pytestmark = pytest.mark.filterwarnings(
@@ -109,6 +110,18 @@ CONTRACT_GENERATORS = [
         GeneratorConfig(sampling_rate=500.0, seed=42),
         {'events': _fixations()},
         id='contract_ramp',
+    ),
+    pytest.param(
+        'statistical',
+        StatisticalConfig(sampling_rate=1000.0, duration_s=0.5, seed=42),
+        {},
+        id='statistical',
+    ),
+    pytest.param(
+        'statistical',
+        StatisticalConfig(sampling_rate=1000.0, seed=42),
+        {'events': _fixations()},
+        id='statistical_event_conditioned',
     ),
 ]
 

@@ -31,12 +31,13 @@ from pymovements.synthetic.capabilities import GeneratorCapabilities
 from pymovements.synthetic.capabilities import SignalRepresentation
 from pymovements.synthetic.config import GeneratorConfig
 
-# Which column group carries which declared representation. VELOCITY_MAGNITUDE is absent on
-# purpose: a directionless velocity is not one of the Gaze component groups, so there is nothing
-# to check for it until a generator emitting one exists.
+# Which column group carries which declared representation. VELOCITY_MAGNITUDE is not a Gaze
+# component group -- a magnitude has no axes -- so it is carried in a plain column of its own,
+# which is what makes it checkable at all.
 _REPRESENTATION_COLUMNS = {
     SignalRepresentation.POSITION: ('position', 'pixel'),
     SignalRepresentation.VELOCITY_2D: ('velocity',),
+    SignalRepresentation.VELOCITY_MAGNITUDE: ('velocity_magnitude',),
 }
 
 _POSITION_COLUMNS = ('position', 'pixel')
@@ -297,11 +298,9 @@ def _validate_representations(
         return
 
     for representation in sorted(capabilities.signal_representations, key=_representation_value):
-        columns = _REPRESENTATION_COLUMNS.get(representation)
+        columns = _REPRESENTATION_COLUMNS[representation]
 
-        if columns is not None and not any(
-                column in gaze.samples.columns for column in columns
-        ):
+        if not any(column in gaze.samples.columns for column in columns):
             raise OutputContractError(
                 f'{prefix}the declared signal representation {representation.value} is not '
                 f'populated, expected one of the column groups {list(columns)} but the output '

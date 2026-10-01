@@ -23,5 +23,11 @@ Each generator encapsulates the synthesis logic of a single generation method an
 common generator abstraction, through which all generators are accessed. The shared framework
 infrastructure resides in :py:mod:`pymovements.synthetic` itself.
 """
+from pymovements.synthetic.generators.statistical import StatisticalConfig
+from pymovements.synthetic.generators.statistical import StatisticalGenerator
 
-__all__: list[str] = []
+
+__all__ = [
+    'StatisticalConfig',
+    'StatisticalGenerator',
+]
