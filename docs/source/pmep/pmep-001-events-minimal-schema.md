@@ -24,7 +24,7 @@ sidecars and closes [#1083](https://github.com/pymovements/pymovements/issues/10
   versioned migration note.
 - `offset` leaves the minimal schema. Supplied offsets stay stored, their convention declared
   via `offsets_inclusive` or a metadata entry, never guessed. Otherwise `offset` will be an
-  on-demand measure with an `inclusive` parameter.
+  on-demand measure with a required `inclusive` parameter.
 - The constructor will check stored durations against declared offsets. A legacy file,
   undeclared or declared inclusive, will raise, and `durations_from_offsets=True` will derive
   its durations instead.
@@ -159,20 +159,21 @@ Events(
 )
 ```
 
-The `offset` measure joins the event-measure registry:
+The `offset` measure joins the event-measure registry. `inclusive` is required:
 
 ```python
-offset(*, inclusive: bool = True, sampling_rate: float | None = None) -> polars.Expr
-# inclusive=True  (default): onset + duration - sampling_interval, the last-sample timestamp
-# inclusive=False:           onset + duration, one past the end, the next onset for adjacent events
+offset(*, inclusive: bool, sampling_rate: float | None = None) -> polars.Expr
+# inclusive=True:  onset + duration - sampling_interval, the last-sample timestamp
+# inclusive=False: onset + duration, one past the end, the next onset for adjacent events
 ```
 
-The `duration` measure stays in the registry and gains the matching parameters:
+The `duration` measure stays in the registry and gains the matching parameters.
+`offsets_inclusive` is required:
 
 ```python
-duration(*, offsets_inclusive: bool = True, sampling_rate: float | None = None) -> polars.Expr
+duration(*, offsets_inclusive: bool, sampling_rate: float | None = None) -> polars.Expr
 # offsets_inclusive names the convention of the input offset column, as on the constructor
-# True (default) is the convention pymovements produces, so offset() then duration() is the identity
+# with the same value on both, offset() then duration() is the identity
 # overwrites a stored duration column under the generic collision warning
 ```
 
@@ -373,11 +374,12 @@ and `Dataset.load`, default `False`, with the behavior of the construction rules
 or not `parse_offset` is set. In v0.29.0 `parse_offset=True` plus the consistency check is the
 guard against a vendor end timestamp disagreeing with `DUR`.
 
-**The offset measure.** `offset` becomes an on-demand event measure with an `inclusive`
-parameter (default `True`, reproducing today's stored offsets). `inclusive=True` will require
-a sampling rate, which `Gaze.compute_event_properties` will fill when the caller gives none:
-the events entry first, the experiment second. `inclusive=False` will need no sampling rate.
-`inclusive=None` meaning the stored convention is future work.
+**The offset measure.** `offset` becomes an on-demand event measure with a required `inclusive`
+parameter. `inclusive=True` reproduces today's stored offsets and will require a sampling rate,
+which `Gaze.compute_event_properties` will fill when the caller gives none: the events entry
+first, the experiment second. `inclusive=False` will need no sampling rate. `offsets_inclusive`
+on the `duration` measure is required in the same way. `inclusive=None` meaning the stored
+convention is future work.
 
 **Remaining offset consumers** move to onset/duration arithmetic:
 
@@ -436,7 +438,10 @@ residual of `0` on every row, and no stored convention will ever exist for the l
 the constructor refuses to guess. Default inference is dangerous. The governing rule:
 pymovements never changes a stored number silently, never keeps a number it knows is wrong, and
 never removes a guard while the files it guards can still exist. That rule is why the legacy
-raise is permanent.
+raise is permanent. The offset and duration measures have no default convention either. An
+event built from samples and an event with exact boundaries call for different conventions, and
+a measure cannot tell them apart. A default can be added later without a break, while a default
+cannot be changed without one.
 
 **Alternatives rejected.**
 
@@ -455,6 +460,7 @@ raise is permanent.
 - `offset` leaves detected and parsed frames, `parse_offset=True` keeps it on parsed ones
 - the minimal-schema order changes once to `onset`, `duration`, `name` behind the trial columns
 - a convention declaration is required with supplied offsets
+- the `duration` measure needs `offsets_inclusive=`
 - direct detector calls need `sampling_rate=`, and `Gaze.detect` raises on a gaze without an
   experiment sampling rate
 
@@ -488,8 +494,9 @@ alternative to `durations=`, with the convention declared as in Specification.
 named separately from the detected ones since the same ASC file yields durations one `Δ`
 longer with no error, the `minimum_duration`, `maximum_duration` and merge gap threshold
 adjustments, the legacy recipe in constructor and Dataset form, the replacement of
-`frame['offset']` by the offset measure, the reload keyword for own output with an offset
-column, and the `parse_offset` default.
+`frame['offset']` by the offset measure with `inclusive=True`, the required `offsets_inclusive`
+on the `duration` measure, the reload keyword for own output with an offset column, and the
+`parse_offset` default.
 
 ## Implementation
 
