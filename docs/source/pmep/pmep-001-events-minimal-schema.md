@@ -325,8 +325,7 @@ which columns are present, on the declaration and on the two flags:
 Without an `offset` column there is nothing to declare and nothing to derive from. An
 `offsets_inclusive=` or a `durations_from_offsets=True` on such a frame will be ignored with one
 warning that names the missing column. No entry will be written, and the keyword will not be
-compared with an existing entry. A metadata entry for `offset` on such a frame is kept as
-stated under Metadata.
+compared with an existing entry.
 
 A `sampling_rate=` or an `offsets_inclusive=` that differs from its metadata entry raises
 regardless. A derivation under an inclusive declaration needs the sampling rate and raises
