@@ -299,12 +299,11 @@ column, identified by the column's name as in a BIDS tabular sidecar, and one sa
 entry. The convention entry will be written by `offsets_inclusive=`, by `parse_offset` on
 `from_asc` and by the `offset` measure for the column it writes. Several offset columns with
 different conventions may coexist. The declaration rule, the consistency check and the legacy
-rule apply to the column literally named `offset`, the boundary-changing operations and the
-offset measure to any column with an entry. The sampling-rate entry will be written by the
-constructor's `sampling_rate=`. How the entries behave under operations that change the
-sampling grid or combine frames is future work. This PMEP persists nothing: a loader hands the
-dict in as `metadata=`, save does the reverse, and the BIDS events layout PMEP #1563 defines the
-file and the keys.
+rule apply to the column literally named `offset`, the offset measure to any column with an
+entry. The sampling-rate entry will be written by the constructor's `sampling_rate=`. How the
+entries behave under operations that change the sampling grid or combine frames is future
+work. This PMEP persists nothing: a loader hands the dict in as `metadata=`, save does the
+reverse, and the BIDS events layout PMEP #1563 defines the file and the keys.
 
 **Construction rules.** An `offset` column needs its convention declared, by
 `offsets_inclusive=` or by a metadata entry for the column, both when they agree. `None` on
@@ -373,11 +372,7 @@ the events entry first, the experiment second. `inclusive=False` will need no sa
 **Remaining offset consumers** move to onset/duration arithmetic:
 
 - `Events.merge_subsequent_close_events`: the gap of adjacent events becomes `0` instead of
-  `Δ`, so a `max_gap` that relied on adjacency showing as one interval shrinks by `Δ`. The
-  merge and any future boundary-changing operation will recompute each offset column via the
-  offset measure in that column's convention when its entry exists and a sampling rate
-  resolves where needed. Otherwise the operation will drop the column and its entry with a
-  warning. This covers offset columns only, by design.
+  `Δ`, so a `max_gap` that relied on adjacency showing as one interval shrinks by `Δ`.
 - `compute_event_properties` keeps the rows of events with `null` duration and selects samples
   by the half-open interval.
 - `events2segmentation` gains the same `duration` parameter in place of `offset_column`.
@@ -444,12 +439,15 @@ raise is permanent.
 
 ## Backwards compatibility
 
-**Immediate breaking change (v0.29.0).** A single break: all detected and parsed durations grow
-by one sampling interval, `offset` leaves detected frames and `frame['offset']` is replaced by
-the offset measure, the minimal-schema order changes once to `onset`, `duration`, `name` behind
-the trial columns, a convention declaration is required with supplied offsets, `parse_offset`
-defaults to `False`, direct detector calls need `sampling_rate=`, and `Gaze.detect` raises on a
-gaze without an experiment sampling rate.
+**Immediate breaking change (v0.29.0).** A single break:
+
+- all detected and parsed durations grow by one sampling interval
+- `offset` leaves detected and parsed frames
+- the minimal-schema order changes once to `onset`, `duration`, `name` behind the trial columns
+- a convention declaration is required with supplied offsets
+- `parse_offset` defaults to `False`
+- direct detector calls need `sampling_rate=`, and `Gaze.detect` raises on a gaze without an
+  experiment sampling rate
 
 Every call that supplies offsets declares their convention:
 
