@@ -301,12 +301,10 @@ entry. The convention entry will be written by `offsets_inclusive=`, by `parse_o
 different conventions may coexist. The declaration rule, the consistency check and the legacy
 rule apply to the column literally named `offset`, the boundary-changing operations and the
 offset measure to any column with an entry. The sampling-rate entry will be written by the
-constructor's `sampling_rate=`, by detectors, by loaders and by `Gaze.resample`, which sets it
-to the new sampling rate. The entry names the sampling grid the frame currently lives on, not
-the grid its durations were built on. Combining frames whose entries disagree, as `Gaze.detect`
-does with the existing events, will raise. This PMEP persists nothing: a loader hands the dict
-in as `metadata=`, save does the reverse, and the BIDS events layout PMEP defines the file and
-the keys.
+constructor's `sampling_rate=`. How the entries behave under operations that change the
+sampling grid or combine frames is future work. This PMEP persists nothing: a loader hands the
+dict in as `metadata=`, save does the reverse, and the BIDS events layout PMEP defines the file
+and the keys.
 
 **Construction rules.** An `offset` column needs its convention declared, by
 `offsets_inclusive=` or by a metadata entry for the column, both when they agree. `None` on
@@ -381,10 +379,10 @@ the events entry first, the experiment second. `inclusive=False` will need no sa
 
 - `Events.merge_subsequent_close_events`: the gap of adjacent events becomes `0` instead of
   `Δ`, so a `max_gap` that relied on adjacency showing as one interval shrinks by `Δ`. The
-  merge, `Gaze.resample` and any future boundary-changing operation will recompute each offset
-  column via the offset measure in that column's convention when its entry exists and a
-  sampling rate resolves where needed. Otherwise the operation will drop the column and its
-  entry with a warning. This covers offset columns only, by design.
+  merge and any future boundary-changing operation will recompute each offset column via the
+  offset measure in that column's convention when its entry exists and a sampling rate
+  resolves where needed. Otherwise the operation will drop the column and its entry with a
+  warning. This covers offset columns only, by design.
 - `compute_event_properties` keeps the rows of events with `null` duration and selects samples
   by the half-open interval.
 - `events2segmentation` gains the same `duration` parameter in place of `offset_column`.
@@ -499,8 +497,7 @@ One issue per line, drafted once the PMEP is accepted:
       consistency check, `durations_from_offsets`, `validate`, the legacy message
 - [ ] `Events.metadata` entries: per-column convention and sampling rate
 - [ ] offset and duration measures, `compute_event_properties` sampling-rate injection
-- [ ] `Gaze.detect` and `Gaze.resample`: detector `sampling_rate`, metadata merge, entry update,
-      offset columns on resample
+- [ ] `Gaze.detect`: detector `sampling_rate` from the experiment, metadata carried over
 - [ ] Dataset loaders: the two keywords, `sampling_rate` from the experiment
 - [ ] EyeLink and BeGaze parsers: `DUR` verbatim, `parse_offset`, `durations=`
 - [ ] offset consumers, duration thresholds, null duration semantics
