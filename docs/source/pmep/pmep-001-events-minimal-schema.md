@@ -312,7 +312,7 @@ the keyword means undeclared and never selects a convention. The sampling rate r
 `sampling_rate=`, then from the metadata entry. The outcome of public construction depends on
 which columns are present, on the declaration and on the two flags:
 
-| `offset` | convention | `duration` | `durations_from_offsets` | `validate` | outcome |
+| `offset` | offset convention | `duration` | `durations_from_offsets` | `validate` | outcome |
 |---|---|---|---|---|---|
 | no | declared | any | any | any | raise |
 | no | undeclared | any | `True` | any | raise |
