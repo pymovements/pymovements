@@ -9,9 +9,8 @@
 | **Supersedes** | none |
 
 Proposed in issue
-[#1677](https://github.com/pymovements/pymovements/issues/1677). Blocks the BIDS events
-save/load work ([#1563](https://github.com/pymovements/pymovements/issues/1563)) and closes
-[#1083](https://github.com/pymovements/pymovements/issues/1083).
+[#1677](https://github.com/pymovements/pymovements/issues/1677). Blocks PMEP 2 on metadata
+sidecars and closes [#1083](https://github.com/pymovements/pymovements/issues/1083).
 
 ## TL;DR
 
@@ -199,9 +198,8 @@ Dataset.load(..., offsets_inclusive: bool | None = None, durations_from_offsets:
 Detection algorithms and `segmentation2events` gain a required `sampling_rate` keyword.
 `Gaze.detect` fills it from the experiment.
 
-This PMEP defines no on-disk format. How `name` and the trial columns map to BIDS files is
-defined in the BIDS events layout PMEP
-([#1563](https://github.com/pymovements/pymovements/issues/1563)).
+This PMEP defines no on-disk format. PMEP 2 on metadata sidecars will add `Events.save` and
+`Events.load`.
 
 ## Motivation
 
@@ -304,8 +302,8 @@ entry. A convention entry for a column the frame does not have will be kept, and
 construction will warn once, naming the column. The sampling-rate entry will be written by the
 constructor's `sampling_rate=`. How the entries behave under operations that change the
 sampling grid or combine frames is future work. This PMEP persists nothing: a loader hands the
-dict in as `metadata=`, save does the reverse, and a later PMEP on metadata sidecars will
-define the file and the keys.
+dict in as `metadata=`, save does the reverse, and PMEP 2 on metadata sidecars will define the
+file and the keys.
 
 **Construction rules.** An `offset` column needs its convention declared, by
 `offsets_inclusive=` or by a metadata entry for the column, both when they agree. `None` on
@@ -424,7 +422,7 @@ reported `DUR` becomes the stored value, so file and frame can no longer contrad
 working side by side. A single `duration` column cannot hold both the old and the new number,
 so deferring only ships a known-wrong value for five more releases. Bundling it with the
 `polars.Duration` change in v0.29.0 breaks the events schema once instead of twice and keeps
-#1563 from publishing biased durations. The changelog entry and the migration note will carry
+PMEP 2 from publishing biased durations. The changelog entry and the migration note will carry
 the silent numeric shift.
 
 **Why no default convention.** A legacy inclusive file and a correct exclusive file both show a
@@ -469,8 +467,8 @@ keyword.
 **Own output with an offset column.** Nothing is persisted, so a saved frame that carries an
 `offset` column, from `parse_offset=True`, from the offset measure or from `offsets=`, reloads
 only with `offsets_inclusive` given: `True` for the first two, the declared value for the
-third. The consistency check then passes. A later PMEP on metadata sidecars will close this
-gap. Until then the migration note names it next to the `frame['offset']` replacement.
+third. The consistency check then passes. PMEP 2 on metadata sidecars will close this gap.
+Until then the migration note names it next to the `frame['offset']` replacement.
 
 **Offsets stay as input, with an explicit convention.** `offsets=` remains a permanent
 alternative to `durations=`, with the convention declared as in Specification.
