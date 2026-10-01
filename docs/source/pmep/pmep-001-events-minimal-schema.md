@@ -289,10 +289,10 @@ exists for externally supplied offsets.
 
 **Supplied offsets stay stored.** Offsets supplied via `offsets=` or as an `offset` column in
 `data` will be kept as an additional column, as supplied. The constructor will never remove a
-column from `data`. `durations=` and `offsets=` may both be given. What ends is materializing
-a null `offset` column if not supplied: frames built from `durations=` or by detection
-algorithms will carry none. What happens to durations next to a stored offset column follows
-the construction rules below.
+column from `data`. `durations=` and `offsets=` may both be given. An `offset` column exists
+only where it was supplied. Frames built from `durations=` or by detection algorithms won't
+create it. What happens to durations next to a stored offset column follows the construction
+rules below.
 
 **Metadata.** This PMEP adds two entries to `Events.metadata`: one convention entry per offset
 column, identified by the column's name as in a BIDS tabular sidecar, and one sampling-rate
