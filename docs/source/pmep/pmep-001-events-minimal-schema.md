@@ -271,14 +271,15 @@ input paths with all-null durations. Missing minimal-schema columns are added as
 today.
 
 **Sample selection.** The half-open interval `[onset, onset + duration)` will select the samples
-of an event. `onset + duration` equals the next event's onset wherever the next event
-starts on the immediately following sample, so adjacent events tile the timeline and share no
-boundary sample. A `null` or `0` duration will select no samples. Sample-level operations (AOI
-mapping, segmentation, `nullify_event_samples`, the `fill` detector's event mask, the time
-series plot's event shading) move to this selection and need no sampling interval. The
-selection assumes timestamps on the nominal sampling grid: a sample arriving earlier than
-`t_last + Δ` would fall into the preceding event. A tolerance for off-grid timestamps is future
-work.
+of an event. On the nominal sampling grid `onset + duration` equals the next event's onset
+wherever the next event starts on the immediately following sample, so adjacent events tile the
+timeline and share no boundary sample. A `null` or `0` duration will select no samples. Sample
+timestamps can deviate from the nominal grid, so the end of the interval gets a tolerance of
+half a sampling interval: with a sampling rate, the selection ends at `onset + duration - Δ/2`.
+A sample that arrives slightly early then stays out of the preceding event, and on the nominal
+grid the selected samples are the same. Without a sampling rate the interval applies as is.
+Sample-level operations (AOI mapping, segmentation, `nullify_event_samples`, the `fill`
+detector's event mask, the time series plot's event shading) move to this selection.
 
 **Producers will compute duration at the source**, where the sampling information lives. The
 EyeLink parser will take the reported duration verbatim (the currently discarded
@@ -386,7 +387,7 @@ convention is future work.
 - `Events.merge_subsequent_close_events`: the gap of adjacent events becomes `0` instead of
   `Δ`, so a `max_gap` that relied on adjacency showing as one interval shrinks by `Δ`.
 - `compute_event_properties` keeps the rows of events with `null` duration and selects samples
-  by the half-open interval.
+  as defined under Sample selection.
 - `events2segmentation` gains the same `duration` parameter in place of `offset_column`.
   `segmentation2events` is a producer: it builds events from sample runs and will compute
   `t_last - t_first + Δ` like the detectors, so it gains a required `sampling_rate` keyword too.
@@ -419,6 +420,16 @@ EyeLink's reported `DUR`. Today's `120` is its edge, not a more precise value, o
 Three criteria pick the center independently of bias: additivity (durations sum to recording
 length and adjacent events tile), the single-sample event (duration `Δ` instead of an ambiguous
 `0`), and agreement with the vendor's reported values.
+
+**Why the selection ends half an interval early.** Sample timestamps are not always on the
+nominal grid. Some trackers report timestamps that jitter around it, and the sample following
+an event then arrives before `t_last + Δ` about half of the time. The plain interval would
+select it into the preceding event. Such deviations are small against the sampling interval,
+so half an interval separates the samples with a wide margin. The onset is a sample timestamp
+and needs no tolerance. Measuring the duration up to the following sample instead would make
+the plain interval exact, but the duration would then depend on a sample outside the event:
+a missing sample after the event would lengthen it, and the last event of a recording has no
+following sample at all.
 
 **Why store duration and derive offset only on demand.** Duration is what analyses consume and
 what vendors report. Offset depends on a convention (inclusive last sample or one past the end).
