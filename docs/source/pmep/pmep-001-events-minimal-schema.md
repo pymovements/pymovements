@@ -18,7 +18,8 @@ sidecars and closes [#1083](https://github.com/pymovements/pymovements/issues/10
 - Every duration pymovements currently produces is one sampling interval short:
   `offset - onset` measures first sample to last. Durations will become `t_last - t_first + Δ`,
   the duration EyeLink reports.
-- `duration` gains null semantics: `0` means instantaneous, `null` means unavailable.
+- `duration` gains null semantics: `0` means short enough to be treated as an impulse, `null`
+  means unavailable.
 - The value change ships as an immediate break in v0.29.0, with a changelog entry and a
   versioned migration note.
 - `offset` leaves the minimal schema. Supplied offsets stay stored, their convention declared
@@ -256,9 +257,9 @@ equals `n_samples * Δ` for gap-free events and holds also for events spanning d
 loss inside an event is a data-quality measure, not something duration encodes. This matches
 EyeLink's reported `DUR`.
 
-**Nullability.** `duration` gains null semantics, following BIDS: `0` means an instantaneous
-point event, `null` means the duration is unavailable. The constructor already accepts `null`
-durations, so what changes is their meaning and how consumers treat them.
+**Nullability.** `duration` gains null semantics, following BIDS: `0` means an event so short
+that it is modeled as an impulse, `null` means the duration is unavailable. The constructor
+already accepts `null` durations, so what changes is their meaning and how consumers treat them.
 Single-sample events will get `Δ`, never `0` (see the quantization note in Rationale).
 Duration aggregations will skip `null` rows. Frames with onsets only will be accepted on both
 input paths with all-null durations. Missing minimal-schema columns are added as nulls, as
