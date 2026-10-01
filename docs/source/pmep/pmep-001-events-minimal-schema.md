@@ -303,7 +303,7 @@ rule apply to the column literally named `offset`, the offset measure to any col
 entry. The sampling-rate entry will be written by the constructor's `sampling_rate=`. How the
 entries behave under operations that change the sampling grid or combine frames is future
 work. This PMEP persists nothing: a loader hands the dict in as `metadata=`, save does the
-reverse, and the BIDS events layout PMEP #1563 defines the file and the keys.
+reverse, and a later PMEP on metadata sidecars will define the file and the keys.
 
 **Construction rules.** An `offset` column needs its convention declared, by
 `offsets_inclusive=` or by a metadata entry for the column, both when they agree. `None` on
@@ -463,9 +463,8 @@ keyword.
 **Own output with an offset column.** Nothing is persisted, so a saved frame that carries an
 `offset` column, from `parse_offset=True`, from the offset measure or from `offsets=`, reloads
 only with `offsets_inclusive` given: `True` for the first two, the declared value for the
-third. The consistency check then passes. The BIDS events layout PMEP (#1563) closes this gap
-with the sidecar. Until then the migration note names it next to the `frame['offset']`
-replacement.
+third. The consistency check then passes. A later PMEP on metadata sidecars will close this
+gap. Until then the migration note names it next to the `frame['offset']` replacement.
 
 **Offsets stay as input, with an explicit convention.** `offsets=` remains a permanent
 alternative to `durations=`, with the convention declared as in Specification.
