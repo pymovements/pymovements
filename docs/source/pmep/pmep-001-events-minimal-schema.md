@@ -442,10 +442,9 @@ raise is permanent.
 **Immediate breaking change (v0.29.0).** A single break:
 
 - all detected and parsed durations grow by one sampling interval
-- `offset` leaves detected and parsed frames
+- `offset` leaves detected and parsed frames, `parse_offset=True` keeps it on parsed ones
 - the minimal-schema order changes once to `onset`, `duration`, `name` behind the trial columns
 - a convention declaration is required with supplied offsets
-- `parse_offset` defaults to `False`
 - direct detector calls need `sampling_rate=`, and `Gaze.detect` raises on a gaze without an
   experiment sampling rate
 
