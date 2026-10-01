@@ -247,31 +247,26 @@ whole codebase. BIDS mandates `onset` first and `duration` second. `name` is the
 event label and has no BIDS column of its own. `offset` leaves the minimal schema and is stored
 only where it was supplied explicitly. Trial columns stay first. Within the minimal schema the
 order changes from `name`, `onset`, `offset` to `onset`, `duration`, `name`, then extras follow,
-a supplied `offset` among them. The schema will cover all discrete-time events, including point
-events and events of unknown duration.
+a supplied `offset` among them. The schema will cover events built from samples, including
+point events and events of unknown duration. Events with exact boundaries not tied to samples
+is future work.
 
-**Duration definition.** Duration becomes the time from the start of the event to its end:
-
-- Events built from samples (detection algorithms, vendor parsers): `t_last - t_first + Δ`, where
-  `Δ` is the nominal interval of the sampling rate in effect, equal to `n_samples * Δ` for
-  gap-free events. This holds also for events spanning data gaps: data loss inside an event is
-  a data-quality measure, not something duration encodes. This matches EyeLink's reported
-  `DUR`.
-- Events with exact start and end times, not tied to samples (future producers such as
-  recording start/stop, messages, calibrations or stimulus presentations): `end - start`, 
-  with no `+ Δ`. Their timestamps are the event boundaries, not sample positions, so no
-  quantization correction applies.
+**Duration definition.** Duration becomes the time from the start of the event to its end,
+`t_last - t_first + Δ`, where `Δ` is the nominal interval of the sampling rate in effect. This
+equals `n_samples * Δ` for gap-free events and holds also for events spanning data gaps: data
+loss inside an event is a data-quality measure, not something duration encodes. This matches
+EyeLink's reported `DUR`.
 
 **Nullability.** `duration` gains null semantics, following BIDS: `0` means an instantaneous
 point event, `null` means the duration is unavailable. The constructor already accepts `null`
-durations since #1637, so what changes is their meaning and how consumers treat them.
+durations, so what changes is their meaning and how consumers treat them.
 Single-sample events will get `Δ`, never `0` (see the quantization note in Rationale).
 Duration aggregations will skip `null` rows. Frames with onsets only will be accepted on both
 input paths with all-null durations. Missing minimal-schema columns are added as nulls, as
 today.
 
-**Sample selection.** The half-open interval `[onset, onset + duration)` will select an
-event's samples. `onset + duration` equals the next event's onset wherever the next event
+**Sample selection.** The half-open interval `[onset, onset + duration)` will select the samples
+of an event. `onset + duration` equals the next event's onset wherever the next event
 starts on the immediately following sample, so adjacent events tile the timeline and share no
 boundary sample. A `null` or `0` duration will select no samples. Sample-level operations (AOI
 mapping, segmentation, `nullify_event_samples`, the `fill` detector's event mask, the time
@@ -295,23 +290,23 @@ exists for externally supplied offsets.
 **Supplied offsets stay stored.** Offsets supplied via `offsets=` or as an `offset` column in
 `data` will be kept as an additional column, as supplied. The constructor will never remove a
 column from `data`. `durations=` and `offsets=` may both be given. What ends is materializing
-a null `offset` column nobody supplied: frames built from `durations=` or by detection
+a null `offset` column if not supplied: frames built from `durations=` or by detection
 algorithms will carry none. What happens to durations next to a stored offset column follows
 the construction rules below.
 
 **Metadata.** This PMEP adds two entries to `Events.metadata`: one convention entry per offset
 column, identified by the column's name as in a BIDS tabular sidecar, and one sampling-rate
-entry. Equality stays on frame and trial columns. The convention entry will be written by
-`offsets_inclusive=`, by `parse_offset` on `from_asc` and by the `offset` measure for the
-column it writes. Several offset columns with different conventions may coexist. The
-declaration rule, the consistency check and the legacy rule apply to the column literally named
-`offset`, the boundary-changing operations and the offset measure to any column with an entry.
-The sampling-rate entry will be written by the constructor's `sampling_rate=`, by detectors, by
-loaders and by `Gaze.resample`, which sets it to the new sampling rate. The entry names the
-sampling grid the frame currently lives on, not the grid its durations were built on.
-Combining frames whose entries disagree, as `Gaze.detect` does with the existing events, will
-raise. This PMEP persists nothing: a loader hands the dict in as `metadata=`, save does the
-reverse, and the BIDS events layout PMEP defines the file and the keys.
+entry. The convention entry will be written by `offsets_inclusive=`, by `parse_offset` on
+`from_asc` and by the `offset` measure for the column it writes. Several offset columns with
+different conventions may coexist. The declaration rule, the consistency check and the legacy
+rule apply to the column literally named `offset`, the boundary-changing operations and the
+offset measure to any column with an entry. The sampling-rate entry will be written by the
+constructor's `sampling_rate=`, by detectors, by loaders and by `Gaze.resample`, which sets it
+to the new sampling rate. The entry names the sampling grid the frame currently lives on, not
+the grid its durations were built on. Combining frames whose entries disagree, as `Gaze.detect`
+does with the existing events, will raise. This PMEP persists nothing: a loader hands the dict
+in as `metadata=`, save does the reverse, and the BIDS events layout PMEP defines the file and
+the keys.
 
 **Construction rules.** An `offset` column needs its convention declared, by
 `offsets_inclusive=` or by a metadata entry for the column, both when they agree. `None` on
@@ -380,11 +375,7 @@ guard against a vendor end timestamp disagreeing with `DUR`.
 parameter (default `True`, reproducing today's stored offsets). `inclusive=True` will require
 a sampling rate, which `Gaze.compute_event_properties` will fill when the caller gives none:
 the events entry first, the experiment second. `inclusive=False` will need no sampling rate.
-`inclusive=None` meaning the stored convention is future work. The measure will compute
-uniformly over all rows, since the frame does not record whether an event was built from
-samples. For events with exact start and end times, `inclusive=False` will return the end
-timestamp. `inclusive=True` would subtract `Δ` from a boundary that is not a sample position,
-so callers holding such events should use `inclusive=False`.
+`inclusive=None` meaning the stored convention is future work.
 
 **Remaining offset consumers** move to onset/duration arithmetic:
 
@@ -399,9 +390,8 @@ so callers holding such events should use `inclusive=False`.
 - `events2segmentation` gains the same `duration` parameter in place of `offset_column`.
   `segmentation2events` is a producer: it builds events from sample runs and will compute
   `t_last - t_first + Δ` like the detectors, so it gains a required `sampling_rate` keyword too.
-- `measure_events_ratio` and `events2timeratio` keep merging overlapping intervals (#1713) on
-  the new schema and gain a `duration: str | pl.Expr` parameter in place of `offset_column`.
-  They stop
+- `measure_events_ratio` and `events2timeratio` keep merging overlapping intervals on the new
+  schema and gain a `duration: str | pl.Expr` parameter in place of `offset_column`. They stop
   adding one interval to event durations. `sampling_rate` stays, since the total time range
   still spans `t_last - t_first + Δ` over the samples. Events with `null` duration will
   contribute nothing.
@@ -439,9 +429,9 @@ reported `DUR` becomes the stored value, so file and frame can no longer contrad
 **Why the value change is immediate.** A deprecation window keeps an old and a new API shape
 working side by side. A single `duration` column cannot hold both the old and the new number,
 so deferring only ships a known-wrong value for five more releases. Bundling it with the
-`polars.Duration` change (#1637) in v0.29.0 breaks the events schema once instead of twice and
-keeps #1563 from publishing biased durations. The changelog entry and the migration note will
-carry the silent numeric shift.
+`polars.Duration` change in v0.29.0 breaks the events schema once instead of twice and keeps
+#1563 from publishing biased durations. The changelog entry and the migration note will carry
+the silent numeric shift.
 
 **Why no default convention.** A legacy inclusive file and a correct exclusive file both show a
 residual of `0` on every row, and no stored convention will ever exist for the legacy file, so
