@@ -303,35 +303,30 @@ rule apply to the column literally named `offset`, the boundary-changing operati
 offset measure to any column with an entry. The sampling-rate entry will be written by the
 constructor's `sampling_rate=`. How the entries behave under operations that change the
 sampling grid or combine frames is future work. This PMEP persists nothing: a loader hands the
-dict in as `metadata=`, save does the reverse, and the BIDS events layout PMEP defines the file
-and the keys.
+dict in as `metadata=`, save does the reverse, and the BIDS events layout PMEP #1563 defines the
+file and the keys.
 
 **Construction rules.** An `offset` column needs its convention declared, by
 `offsets_inclusive=` or by a metadata entry for the column, both when they agree. `None` on
 the keyword means undeclared and never selects a convention. The sampling rate resolves from
-`sampling_rate=`, then from the metadata entry. The preconditions run unconditionally on
-public construction, `validate` never skips them, and each one raises:
+`sampling_rate=`, then from the metadata entry. The outcome of public construction depends on
+which columns are present, on the declaration and on the two flags:
 
-| condition | outcome |
-|---|---|
-| offset convention declared, no `offset` column | raise |
-| `offsets_inclusive=` and the metadata entry both given and different | raise |
-| `offset` column, convention undeclared | raise, the message lists the legacy recipes |
-| `sampling_rate=` differs from an existing entry | raise |
-| `durations_from_offsets=True` without `offset` column | raise |
+| `offset` | convention | `duration` | `durations_from_offsets` | `validate` | outcome |
+|---|---|---|---|---|---|
+| no | declared | any | any | any | raise |
+| no | undeclared | any | `True` | any | raise |
+| no | undeclared | no | `False` | any | `duration` column of nulls, no `offset` column |
+| no | undeclared | yes | `False` | any | keep the durations |
+| yes | undeclared | any | any | any | raise, the message lists the legacy recipes |
+| yes | declared | no | any | any | derive the durations under the declared convention |
+| yes | declared | yes | `True` | any | replace the durations by the derivation |
+| yes | declared | yes | `False` | `False` | keep the durations, no check |
+| yes | declared | yes | `False` | `True` | keep the durations, run the consistency check |
 
-Once the preconditions pass, the outcome depends on which columns are present and on the two
-flags. A derivation under an inclusive declaration needs the sampling rate and raises without
-one:
-
-| `offset` column | `duration` column | `durations_from_offsets` | `validate` | outcome |
-|---|---|---|---|---|
-| no | no | `False` | any | `duration` column of nulls, no `offset` column |
-| no | yes | `False` | any | keep the durations |
-| yes | no | any | any | derive the durations under the declared convention |
-| yes | yes | `True` | any | replace the durations by the derivation |
-| yes | yes | `False` | `False` | keep the durations, no check |
-| yes | yes | `False` | `True` | keep the durations, run the consistency check |
+A `sampling_rate=` or an `offsets_inclusive=` that differs from its metadata entry raises
+regardless. A derivation under an inclusive declaration needs the sampling rate and raises
+without one.
 
 **Consistency check.** Per non-null row, `residual = duration - (offset - onset)`. An exclusive
 column requires `0`. An inclusive column requires `Δ` when a sampling rate resolves. Without
@@ -349,7 +344,7 @@ A null `duration` beside a non-null `offset` counts for neither row. It is warne
 and never filled.
 
 **Legacy files.** A pre-v0.29.0 file stores `offset` and `duration == offset - onset` on every
-row, the residual-0-everywhere case. Read off the tables:
+row, the residual-0-everywhere case. Read off the construction rules and the check:
 
 | call | rule | outcome |
 |---|---|---|
@@ -363,7 +358,7 @@ The replace row needs a sampling rate, which the Dataset form takes from the exp
 raise messages list the recipes. The rule is permanent, since the files can always exist.
 
 **`durations_from_offsets`.** A permanent flag on the constructor, `Dataset.load_event_files`
-and `Dataset.load`, default `False`, with the behaviour of the outcome table.
+and `Dataset.load`, default `False`, with the behaviour of the construction rules.
 
 **Retaining parsed offsets.** The EyeLink parser takes `DUR` verbatim as the duration whether
 or not `parse_offset` is set. In v0.29.0 `parse_offset=True` plus the consistency check is the
