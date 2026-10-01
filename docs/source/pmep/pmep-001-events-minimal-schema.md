@@ -324,8 +324,8 @@ which columns are present, on the declaration and on the two flags:
 
 Without an `offset` column there is nothing to declare and nothing to derive from. An
 `offsets_inclusive=` or a `durations_from_offsets=True` on such a frame will be ignored with one
-warning that names the missing column. No entry will be written, and the keyword will not be
-compared with an existing entry.
+warning that names the missing column. No entry will be written. An `offsets_inclusive=` that
+differs from an existing entry will still raise, as stated below.
 
 A `sampling_rate=` or an `offsets_inclusive=` that differs from its metadata entry raises
 regardless. A derivation under an inclusive declaration needs the sampling rate and raises
@@ -333,14 +333,15 @@ without one.
 
 **Consistency check.** Per non-null row, `residual = duration - (offset - onset)`. An exclusive
 column requires `0`. An inclusive column requires `Δ` when a sampling rate resolves. Without
-one the residuals of an inclusive column must all be equal and greater than zero, and the
-constant is never written to the sampling-rate entry. The check therefore needs no sampling
+one a row contradicts when its residual is not greater than zero, and the positive residuals
+must all be equal. Unequal positive residuals count as some rows contradicting. The common
+residual is never written to the sampling-rate entry. The check therefore needs no sampling
 rate. Severity follows the non-null rows:
 
 | rows contradicting the declaration | outcome |
 |---|---|
 | none | pass |
-| all | raise, the message lists the legacy recipes |
+| all | raise, the message lists recipes for fixing |
 | some | one warning per construction |
 
 A null `duration` beside a non-null `offset` counts for neither row. It is warned about once
@@ -466,9 +467,10 @@ keyword.
 
 **Own output with an offset column.** Nothing is persisted, so a saved frame that carries an
 `offset` column, from `parse_offset=True`, from the offset measure or from `offsets=`, reloads
-only with `offsets_inclusive` given: `True` for the first two, the declared value for the
-third. The consistency check then passes. PMEP 2 on metadata sidecars will close this gap.
-Until then the migration note names it next to the `frame['offset']` replacement.
+only with `offsets_inclusive` given: `True` for the first, the `inclusive` value used for the
+second, the declared value for the third. The consistency check then passes. PMEP 2 on metadata
+sidecars will close this gap. Until then the migration note names it next to the
+`frame['offset']` replacement.
 
 **Offsets stay as input, with an explicit convention.** `offsets=` remains a permanent
 alternative to `durations=`, with the convention declared as in Specification.
