@@ -358,7 +358,7 @@ The replace row needs a sampling rate, which the Dataset form takes from the exp
 raise messages list the recipes. The rule is permanent, since the files can always exist.
 
 **`durations_from_offsets`.** A permanent flag on the constructor, `Dataset.load_event_files`
-and `Dataset.load`, default `False`, with the behaviour of the construction rules.
+and `Dataset.load`, default `False`, with the behavior of the construction rules.
 
 **Retaining parsed offsets.** The EyeLink parser takes `DUR` verbatim as the duration whether
 or not `parse_offset` is set. In v0.29.0 `parse_offset=True` plus the consistency check is the
