@@ -72,6 +72,9 @@ jobs:
           auto-push: false
           alert-threshold: '150%'
           comment-on-alert: true
-          fail-on-alert: true
+          # A slow run still comments and CCs the maintainers, but no longer
+          # fails the check. Shared runners vary enough that PRs which cannot
+          # affect the benchmarked code were being blocked by it; see #1758.
+          fail-on-alert: false
           summary-always: true
           alert-comment-cc-users: '@dkrako,@cbueth,@SiQube'
