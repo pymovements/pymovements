@@ -81,9 +81,11 @@ class StatisticalConfig(GeneratorConfig):
     deviation is used only when its distribution is normal.
 
     The sampling rate, sequence duration and seed are inherited from
-    :py:class:`~pymovements.synthetic.GeneratorConfig`. Defaults are plausible starting values
-    rather than measured ones, except the saccade peak velocity range and the fixation
-    consistency, which are the values the paper illustrates.
+    :py:class:`~pymovements.synthetic.GeneratorConfig`. **No default is a measured value.** Two
+    are taken from settings the source used to render its figures -- the saccade peak velocity
+    range, from a figure showing two deliberately large saccades, and the fixation consistency,
+    from a figure whose text calls that setting very high. Both are illustrations, not
+    recommendations, so expect to tune them against whatever you are modeling.
 
     Attributes
     ----------
@@ -110,7 +112,8 @@ class StatisticalConfig(GeneratorConfig):
     saccade_duration_std_ms: float
         Spread of the duration when drawn normally. (default: 10.0)
     saccade_peak_velocity_min_dps: float
-        Lowest peak velocity a saccade can reach. (default: 300.0)
+        Lowest peak velocity a saccade can reach. Suits large saccades; small ones peak far
+        lower. (default: 300.0)
     saccade_peak_velocity_max_dps: float
         Highest peak velocity a saccade can reach. (default: 500.0)
     saccade_skewness_min: float
