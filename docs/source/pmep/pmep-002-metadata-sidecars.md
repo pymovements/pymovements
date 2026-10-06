@@ -51,17 +51,17 @@ constructor inferred:
 }
 ```
 
-`participants.json` after (v0.30.0) carries the stamp beside them:
+`participants.json` after (v0.30.0) carries the stamp in front of them:
 
 ```json
 {
-    "participant_id": {"Format": "string"},
-    "age": {"Description": "age of the participant", "Units": "years", "Format": "integer"},
     "pymovements": {
         "schema": "participants",
         "schema_version": "0.1.0",
         "version": "0.30.0"
-    }
+    },
+    "participant_id": {"Format": "string"},
+    "age": {"Description": "age of the participant", "Units": "years", "Format": "integer"}
 }
 ```
 
@@ -164,8 +164,10 @@ change. The value is written now because a key can be added to the schema later 
 already on disk. In this PMEP no `load` reads `schema`, and what happens when a class is asked
 to load a file labeled for another class is left to the PMEP that brings the loader.
 `schema_version` is the version of the schema defined here, see below. `version` is the package
-version that wrote the file, provenance only, and no `load` reads it. Save generates the stamp.
-Load reads it for the version check and does not keep it in the dict.
+version that wrote the file, provenance only, and no `load` reads it. Save generates the stamp
+and writes it as the first key of the sidecar, so a reader sees it before the columns. The other
+keys keep the order of the dict. Load reads the stamp for the version check, at any position,
+and does not keep it in the dict.
 
 **The schema version** has three parts and is one version for the whole mechanism, initially
 `0.1.0`. Its breaking and its additive position follow the package's own rule: below `1.0.0`
@@ -353,6 +355,7 @@ Order and dates follow the
 - Inheritance, where one sidecar applies to several data files.
 
 **Out of scope** are `Gaze` and its two YAML files, which Recording and Session supersede,
-provenance chains and the BIDS `Sources` mapping, guards against direct changes to the dict, and
-the generic loader that dispatches on `schema` together with its rule for a file labeled for
-another class, which come with the PMEP that brings the loader.
+provenance chains and the BIDS `Sources` mapping, guards against direct changes to the dict,
+`BIDSVersion` and `dataset_description.json`, which belong to the PMEP that writes a BIDS
+dataset, and the generic loader that dispatches on `schema` together with its rule for a file
+labeled for another class, which come with the PMEP that brings the loader.
