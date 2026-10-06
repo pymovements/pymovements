@@ -8,17 +8,18 @@
 | **Created** | 2026-10-01 |
 | **Supersedes** | none |
 
-Requires [PMEP 1](https://github.com/pymovements/pymovements/pull/1730), which adds two entries
-to `Events.metadata` and persists nothing. The BIDS events layout
-([#1563](https://github.com/pymovements/pymovements/issues/1563)) will extend the methods
-defined here.
+Part of the [data model roadmap](https://github.com/pymovements/pymovements/discussions/1763).
+The sidecar mechanism is defined here once and adopted per class. The BIDS layout for events
+(expected PMEP 6, [#1563](https://github.com/pymovements/pymovements/issues/1563)) brings
+`Events.save` and `Events.load` and adopts the sidecar there.
 
 ## TL;DR
 
-- Saved `Events`, `Participants` and `Phenotype` files will share one metadata sidecar:
-  `<stem>.json` next to the data file, in the BIDS tabular shape, always written.
-- `Events` gains `save` and `load` for tsv, csv and feather. The two metadata entries of PMEP 1
-  get their keys, `SamplingFrequency` and per offset column `OffsetsInclusive`.
+- Saved tabular files will share one metadata sidecar: `<stem>.json` next to the data file, in
+  the BIDS tabular shape, always written.
+- The mechanism is defined once. Each class adopts it in its own PMEP or issue by naming its
+  `schema` value, its initial schema version and the keys it writes. `Participants` and
+  `Phenotype` adopt it here.
 - The dict is the file. Load puts the sidecar into `metadata` as it is, save writes it back as
   it is. Where an entry contradicts the frame, the frame wins at save, with a warning.
 - A `pymovements` object in the sidecar carries the schema version, initially `0.1.0`.
@@ -29,176 +30,83 @@ defined here.
 
 ## What it looks like
 
-Saving and reloading events on a dataset, before and after:
+Saving a participants table, before and after. The call does not change:
 
 ```python
-# before (v0.29.0): only the frame is written
-dataset.save_events(extension='csv')    # milliseconds, with no record of the unit
-dataset.load_event_files(extension='csv', offsets_inclusive=True)
-# a stored offset column needs its convention restated by hand, and trial_columns is None on
-# the loaded events
-```
-
-```python
-# after (v0.30.0): the metadata travels with the file
-dataset.save_events(extension='tsv')
-dataset.load_event_files(extension='tsv')
-```
-
-`Events` gains the two methods the dataset calls per file. The events are the running example
-of PMEP 1 with a source file added:
-
-```python
-events = Events(
-    name=['fixation', 'saccade', 'fixation', 'blink'],
-    onsets=[0, 121, 159, 301],
-    offsets=[120, 158, 300, 380],
-    offsets_inclusive=True,
-    sampling_rate=1000,
-    trials=[1, 1, 2, 2],
-    metadata={'sources': ['raw/subject.asc']},
+participants = Participants(
+    data=polars.DataFrame({'participant_id': ['sub-01', 'sub-02'], 'age': [23, 31]}),
+    metadata={'age': {'Description': 'age of the participant', 'Units': 'years'}},
 )
-events.save('events.tsv')             # writes events.tsv and events.json
-events = Events.load('events.tsv')    # reads both, no keyword needed
+participants.save('participants.tsv')    # writes participants.tsv and participants.json
 ```
 
-`events.tsv` holds the time columns as seconds (tab-separated, shown aligned):
-
-```text
-trial  onset  duration  name      offset
-1      0.0    0.121     fixation  0.12
-1      0.121  0.038     saccade   0.158
-2      0.159  0.142     fixation  0.3
-2      0.301  0.08      blink     0.38
-```
-
-`events.json` describes each column at the top level and the file beside them:
+`participants.json` before (v0.28.0) holds the column objects, with the `Format` that the
+constructor inferred:
 
 ```json
 {
-    "trial": {"Format": "integer"},
-    "onset": {"Format": "number", "Units": "s"},
-    "duration": {"Format": "number", "Units": "s"},
-    "name": {"Format": "string"},
-    "offset": {"Format": "number", "Units": "s", "OffsetsInclusive": true},
-    "SamplingFrequency": 1000,
-    "sources": ["raw/subject.asc"],
-    "trial_columns": ["trial"],
+    "participant_id": {"Format": "string"},
+    "age": {"Description": "age of the participant", "Units": "years", "Format": "integer"}
+}
+```
+
+`participants.json` after (v0.30.0) carries the stamp beside them:
+
+```json
+{
+    "participant_id": {"Format": "string"},
+    "age": {"Description": "age of the participant", "Units": "years", "Format": "integer"},
     "pymovements": {
-        "schema": "events",
+        "schema": "participants",
         "schema_version": "0.1.0",
         "version": "0.30.0",
-        "file": "events.tsv"
+        "file": "participants.tsv"
     }
 }
 ```
 
 **TODO (Daniel):** the decision record does not name the key that holds the data file name
-inside the `pymovements` object. `file` is a placeholder.
+inside the `pymovements` object. `file` is a placeholder. The `schema` value `participants` is a
+placeholder as well, see the TODO in the Specification.
 
-Saving the same events as `events.feather` instead writes no `Format` and no `Units`, because
-feather stores the dtypes itself:
-
-```json
-{
-    "offset": {"OffsetsInclusive": true},
-    "SamplingFrequency": 1000,
-    "sources": ["raw/subject.asc"],
-    "trial_columns": ["trial"],
-    "pymovements": {
-        "schema": "events",
-        "schema_version": "0.1.0",
-        "version": "0.30.0",
-        "file": "events.feather"
-    }
-}
-```
-
-After `Events.load('events.tsv')` the dict is the sidecar:
+After `Participants.load('participants.tsv')` the dict is the sidecar, stamp included:
 
 ```python
-events.metadata
+participants.metadata
 # {
-#     'trial': {'Format': 'integer'},
-#     'onset': {'Format': 'number', 'Units': 's'},
-#     'duration': {'Format': 'number', 'Units': 's'},
-#     'name': {'Format': 'string'},
-#     'offset': {'Format': 'number', 'Units': 's', 'OffsetsInclusive': True},
-#     'SamplingFrequency': 1000,
-#     'sources': ['raw/subject.asc'],
-#     'trial_columns': ['trial'],
-#     'pymovements': {'schema': 'events', 'schema_version': '0.1.0', 'version': '0.30.0',
-#                     'file': 'events.tsv'},
+#     'participant_id': {'Format': 'string'},
+#     'age': {'Description': 'age of the participant', 'Units': 'years', 'Format': 'integer'},
+#     'pymovements': {'schema': 'participants', 'schema_version': '0.1.0',
+#                     'version': '0.30.0', 'file': 'participants.tsv'},
 # }
-events.trial_columns           # ['trial'], a view on metadata['trial_columns']
-events.frame.schema['onset']   # Duration(time_unit='us'), built from Format and Units
+participants.data.schema['age']    # Int64, built from Format
 ```
 
-**TODO (Daniel):** which value does `sources` hold after load? "The dict is the file" gives the
-sidecar's value, as shown. The `add_source` docstring in
-[#1655](https://github.com/pymovements/pymovements/pull/1655) says a loaded sidecar's `sources`
-is not forwarded and the file that was read is recorded.
+Two rules show on the next save. A `Format` that no longer fits its column, because the column
+was cast in between, is replaced with a warning. An entry whose column was dropped from the frame
+is kept and warns.
 
 ## Resulting signatures
 
-`Events` gains `save` and `load`:
+`Participants` and `Phenotype` keep their signatures. The sidecar path is `metadata_path` on save
+and `metadata`, a path or a dict, on load:
 
 ```python
-Events.save(
-    path: str | Path,                          # the extension selects tsv, csv or feather
-    *,
-    time_unit: str | None = None,              # unit of all time columns in a text file,
-                                               # for this call only
-    verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = 'REQUIRED',
-    metadata_path: str | Path | None = None,   # None means <stem>.json next to the data file
-) -> None
+Participants.save(path, *, verify_bids='REQUIRED', metadata_path='participants.json',
+                  separator='\t', write_csv_kwargs=None, metadata_encoding='utf-8')
+Participants.load(path, metadata=None, *, verify_bids=False, separator='\t', rename=None,
+                  read_csv_kwargs=None, metadata_encoding='utf-8')
 
-Events.load(
-    path: str | Path,
-    metadata: str | Path | dict[str, Any] | None = None,   # a path or dict replaces <stem>.json
-    *,
-    trial_columns: list[str] | str | None = None,   # these four override their sidecar entry,
-    time_unit: str | None = None,                   # with a warning that names both values
-    offsets_inclusive: bool | None = None,
-    sampling_rate: float | None = None,
-    durations_from_offsets: bool = False,           # forwarded to the constructor, see PMEP 1
-) -> Events
+Phenotype.save(path, *, verify_bids='REQUIRED', metadata_path=None, separator='\t',
+               write_csv_kwargs=None, metadata_encoding='utf-8')
+Phenotype.load(path, metadata=None, *, separator='\t', rename=None, read_csv_kwargs=None,
+               metadata_encoding='utf-8', verify_bids=False)
 ```
 
-**TODO (Daniel):** the decision record gives `Events.load` a `metadata` parameter and "explicit
-keywords" without listing them. The four shown are the constructor keywords with a sidecar
-entry, and `durations_from_offsets` is what PMEP 1 gives the Dataset loaders. Open: `validate`,
-a `verify_bids` on load as `Phenotype.load` has it, and the pass-through parameters of
-`Phenotype` (`separator`, `read_csv_kwargs`, `write_csv_kwargs`, `metadata_encoding`).
+A class that adopts the sidecar later defines its own `save` and `load` with these two
+parameters in the same roles.
 
-The existing writers and the loader delegate to the two methods:
-
-```python
-Dataset.save_events(..., extension: str = 'feather', time_unit: str | None = None,
-                    verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = 'REQUIRED')
-Dataset.save(..., extension: str = 'feather', time_unit: str | None = None,
-             verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = 'REQUIRED')
-# extension gains 'tsv', the two keywords are new and go to Events.save per file
-
-Dataset.load_event_files(events_dirname: str | None = None, extension: str = 'feather', ...)
-# no new keyword beyond PMEP 1, delegates to Events.load per file
-
-Gaze.save_events(path: Path, *, verbose: int = 1) -> None
-# signature unchanged, delegates to Events.save, so tsv is accepted and the sidecar is written
-```
-
-The Dataset methods do not expose the sidecar path.
-
-**TODO (Daniel):** `Dataset.save` passes one `extension` to `save_events` and
-`save_preprocessed`, and `save_preprocessed` accepts only `feather` and `csv`. The decision
-record gives `Dataset.save` tsv without saying what happens to the samples. It is also silent on
-whether `Gaze.save_events` gains `time_unit` and `verify_bids`.
-
-`Participants` and `Phenotype` keep their signatures. Their sidecars gain the `pymovements`
-object, and both classes follow the rules for a contradicting `Format` and for an entry without
-a column.
-
-**File structure.** Schema `events`, initial schema version `0.1.0`, carried in the sidecar:
+**File structure.** The schema name and the schema version are carried in the sidecar:
 
 ```text
 <stem>.tsv | <stem>.csv | <stem>.feather    the data file
@@ -210,36 +118,42 @@ a column.
 | `<column name>` | top | object that describes the column |
 | `Format` | column | BIDS format: `string`, `number`, `integer`, `bool`, `index`, `label` |
 | `Units` | column | unit of the column, on a time column the unit it is written in |
-| `OffsetsInclusive` | column | boolean, marks an offset column and states its convention |
-| `SamplingFrequency` | top | sampling rate in Hz |
 | `sources` | top | list of source files |
 | `trial_columns` | top | list of trial column names |
 | `pymovements` | top | the stamp: `schema`, `schema_version`, `version`, data file name |
 
-Any other key is kept as it is, on load and on save.
+`sources` and `trial_columns` are reserved for the classes that carry them. `sources` is written
+as [#1655](https://github.com/pymovements/pymovements/pull/1655) defines it. Neither
+`Participants` nor `Phenotype` writes either key. Any other key is kept as it is, on load and on
+save.
+
+**TODO (Daniel):** which value does `sources` hold after load? "The dict is the file" gives the
+sidecar's value. The `add_source` docstring in
+[#1655](https://github.com/pymovements/pymovements/pull/1655) says a loaded sidecar's `sources`
+is not forwarded and the file that was read is recorded.
 
 ## Motivation
 
-PMEP 1 adds an offset convention and a sampling rate to `Events.metadata` and persists nothing.
-A saved frame with an `offset` column therefore reloads only when the caller restates the
-convention, and PMEP 1 names a later PMEP on metadata sidecars as the one that closes this gap.
+`Participants` and `Phenotype` already write a BIDS sidecar from their `metadata` dict, each on
+its own terms. Nothing in the file says which schema the dict follows or which pymovements
+version wrote it, so a reader cannot tell a file it can read from one it cannot. A `Format` that
+contradicts the frame is written as it is. An entry without a column is handled by each class on
+its own.
 
-The gap is wider than these two entries:
+More classes will save files. The roadmap brings `save` and `load` for `Recording` and for
+`Events`, and reading measures and precomputed events will follow. Without one definition each
+class would define its own sidecar, and the same rule would be stated several times and drift.
+Consistency across classes is preferred over a second format.
 
-- `Events` has no `save` and no `load`. Two writers exist, `Gaze.save_events` and
-  `Dataset.save_events`, and both accept only `feather` and `csv`.
-- The csv writers convert every Duration column to milliseconds and record the unit nowhere.
-- `Dataset.load_event_files` constructs `Events(frame)` without `trial_columns`, so a saved
-  and reloaded dataset loses them.
-- `Dataset.load_event_files` accepts `tsv` and reads it with the comma default of
-  `polars.read_csv`. No method writes tsv, so a tsv events file has never round-tripped.
-- `Participants` and `Phenotype` already write a BIDS sidecar from their `metadata` dict.
-  Consistency across classes is preferred over a second format for events.
+The text formats need the sidecar to round-trip. tsv and csv store no dtypes, so `Format` and
+`Units` are the only record of how a column is to be read.
 
 ## Specification
 
-The mechanism is generic. It is applied to `Events`, `Participants` and `Phenotype`, and the
-rules below hold for all three unless they name a class.
+**Adoption.** The mechanism is defined once, here. A class adopts it in its own PMEP or issue by
+naming its `schema` value, its initial schema version and the keys it writes beyond the ones
+defined here. `Participants` and `Phenotype` adopt it in this PMEP. A class that has adopted the
+sidecar follows every rule below. The rules name a class only where that class deviates.
 
 **The sidecar file.** Every save will write `<stem>.json` next to the data file. There is no
 switch to turn it off. `metadata_path` on save gives a custom path, and `metadata` on load takes
@@ -254,9 +168,9 @@ load for inspection and overwritten at every save. Two data files with the same 
 sidecar path, so load will warn when the stamp names a different data file than the one being
 read.
 
-**The schema version** has three parts. Below `1.0.0` the minor is the breaking position and the
-patch the additive one, as in the package. Schema `1.0.0` will be declared with pymovements
-`1.0.0`. Load compares the stamp with the version it implements:
+**The schema version** has three parts, and every schema has its own. Below `1.0.0` the minor is
+the breaking position and the patch the additive one, as in the package. Schema `1.0.0` will be
+declared with pymovements `1.0.0`. Load compares the stamp with the version it implements:
 
 | stamp found | load |
 |---|---|
@@ -280,22 +194,22 @@ cast today.
    the dict is carried.
 3. On contradiction the frame wins. A `Format` that does not fit the dtype of its column is
    replaced at save, with a warning.
-4. `events.trial_columns` is a view on `metadata['trial_columns']`. The constructor keyword
-   writes the entry. A keyword that differs from an entry in `metadata=` raises, as PMEP 1 has
-   it for its two entries.
+4. On a class that has `trial_columns`, the attribute is a view on `metadata['trial_columns']`.
+   The constructor keyword writes the entry. A keyword that differs from an entry in `metadata=`
+   raises.
 
 Assigning a whole new dict to `metadata` also drops the trial columns, and nothing raises
 afterwards.
 
 **TODO (Daniel):** does save write what it fills in, replaces and stamps back into the dict in
 memory, or only into the file? The decision record says the stamp is "overwritten at every
-save" and that `time_unit=` holds for "that call only".
+save".
 
 **Units.** `Units` on a time column states the unit the column is written in as a number. A
 column whose `Units` is a time unit loads as a Duration. On save to a text file the unit of a
-time column resolves in this order: `time_unit=`, which applies to all time columns and to that
-call only, then the `Units` entry of the column, then the default of the format. Columns with
-different entries are therefore written in different units.
+time column resolves in this order: a per-call keyword, where the adopting class defines one,
+then the `Units` entry of the column, then the default of the format. Columns with different
+entries are therefore written in different units.
 
 **Boundaries.**
 
@@ -305,12 +219,10 @@ different entries are therefore written in different units.
 | `metadata=` given on `load` | replaces the sidecar |
 | column entry without its column | kept, warning at construction, load and save |
 | top-level key equals a column name, value is not an object | save raises, load warns |
-| sidecar and dataset definition both give a sampling rate | sidecar wins, no warning |
 | direct change to the dict or the frame | not checked until the next save |
 
-The message of the raise names the fix. The definition's sampling rate is used only when the
-sidecar has none. The `trial_columns` setter validates its value as the constructor does, and
-save applies the same check.
+The message of the raise names the fix. The `trial_columns` setter validates its value as the
+constructor does, and save applies the same check.
 
 **TODO (Daniel):** how is a column entry without its column told apart from a file-level key
 whose value is an object, such as `MeasurementToolMetadata` in a `Phenotype` sidecar or a free
@@ -318,46 +230,28 @@ user key?
 
 **Formats.** The extension of the path selects the format:
 
-| | separator | time unit | verification |
-|---|---|---|---|
-| tsv | tab | seconds by default | findings and not-implemented notices |
-| csv | comma | must be specified | findings for separator and unit |
-| feather | none | native Duration | none |
+| | separator | time unit |
+|---|---|---|
+| tsv | tab | seconds by default |
+| csv | comma | must be specified |
+| feather | none | native Duration |
 
-tsv is new for saving and takes the BIDS defaults: tab, seconds and `n/a` for nulls. csv has no
-default unit. The unit comes from `time_unit=` or from `Units` entries, and `Events.save` raises
-without one. The message names `time_unit='ms'` as the value that reproduces today's files. A
-csv file without a sidecar is read as milliseconds.
+tsv takes the BIDS defaults: tab, seconds and `n/a` for nulls. csv has no default unit. The unit
+comes from the `Units` entries or from the per-call keyword of the adopting class, and save
+raises without one.
 
-**TODO (Daniel):** which unit does load assume for a tsv file without a sidecar? The decision
-record covers csv only. It is also silent on `extension='txt'`, which `Dataset.load_event_files`
-accepts today.
-
-**Nested columns** raise for text files, and the message names `events.unnest()`. Feather stores
-them natively. The text format is thereby specified on flat columns only, independent of how
-nested columns are stored.
+**Nested columns** raise for text files. Feather stores them natively. The text format is
+thereby specified on flat columns only, independent of how nested columns are stored.
 
 **Verification.** `verify_bids` works as in `Phenotype`: `'REQUIRED'`, the default on save,
-warns for each finding, `True` raises and `False` is silent. For events this PMEP defines five
-checks, all of them BIDS requirements:
+warns for each finding, `True` raises and `False` is silent. The mechanism defines the checks
+that every adoption runs:
 
-- `onset` and `duration` are present
-- numeric time columns are in seconds
+- a top-level key that matches a column name is an object
 - nulls are written as `n/a`
 - the separator is a tab
-- a top-level key that matches a column name is an object
 
-Three more requirements cannot be met before the BIDS layout PMEP: the onset reference, the file
-naming and the mapping of `name`. They are reported as not-implemented notices, which warn and
-never raise.
-
-**Events.** `Events.save` and `Events.load` are new, with the schema name `events`. The sidecar
-gives PMEP 1's two entries their keys: the sampling-rate entry is `SamplingFrequency` at the top
-level, and the convention entry is the boolean `OffsetsInclusive` in the object of its offset
-column. `sources` is written at the top level as
-[#1655](https://github.com/pymovements/pymovements/pull/1655) defines it, and `trial_columns`
-beside it. Only `Events.drop` removes a column's entry. `Events.unnest` moves it to the component
-columns, and methods that add or rename columns maintain the entry of the column.
+A class adds its own checks in its adoption.
 
 **Participants and Phenotype** already model the BIDS sidecar in `metadata`, and their
 signatures and released behavior stay. Three things are aligned: their sidecars gain the stamp,
@@ -384,12 +278,15 @@ and a derivative dataset with identical results, confirmed the shape:
 | top-level `pymovements` object | clean |
 | top-level lowercase `sources`, free user key | clean |
 | extra field inside a column object | clean |
-| `SamplingFrequency` in an events sidecar | clean |
 | description for a nonexistent column | clean |
 | `columns` wrapper around the column objects | warning `TSV_ADDITIONAL_COLUMNS_UNDEFINED` |
 | `Units: "ms"` on `onset` of a BIDS events file | warning `TSV_COLUMN_TYPE_REDEFINED` |
 
 The validator inspects only the keys it knows, so clean means not looked at.
+
+**Why one definition and adoption per class.** A rule stated in several PMEPs drifts. The
+mechanism is specified once, and a class that adopts it adds only what is its own: the schema
+value, the version and its keys. A later proposal cites this one instead of restating it.
 
 **Why the dict is the file.** Every variant in which load removed derived fields from the dict
 lost information and needed an exception to get it back: first `label`, which shares its dtype
@@ -397,54 +294,36 @@ with `string`, then the unit of a file that is loaded and saved again. Nothing i
 nothing needs restoring.
 
 **Why entries without a column are kept.** pymovements never removes a metadata entry on its
-own. PMEP 1 already keeps a convention entry without its column, and BIDS treats a description
-for a nonexistent column as other metadata.
+own, and BIDS treats a description for a nonexistent column as other metadata.
 
-**Why csv has no default unit.** Today's csv files hold milliseconds. A seconds default would
-change every number by a factor of 1000 for external readers of these files, without an error.
-tsv has no such history, and BIDS requires seconds there.
-
-**Why the onset reference is only a notice.** BIDS `onset` counts seconds from the start of the
-recording, and pymovements onsets are tracker timestamps. The mapping needs a reference
-timestamp, which belongs to the BIDS layout.
+**Why csv has no default unit.** Today's csv files written by pymovements hold milliseconds. A
+seconds default would change every number by a factor of 1000 for external readers of these
+files, without an error. tsv has no such history, and BIDS requires seconds there.
 
 **Alternatives rejected.**
 
 - *A `columns` wrapper for the column objects.* Not the BIDS shape, and the validator no longer
   finds the descriptions.
-- *The offset convention, `sources` or `trial_columns` inside the `pymovements` object.* The
-  convention reuses the per-column object, and the `pymovements` object holds only the stamp.
-- *`Inclusive` as the field name.* Too generic, it says nothing on a column that is not an
-  offset column.
+- *`sources` or `trial_columns` inside the `pymovements` object.* The `pymovements` object holds
+  only the stamp.
 - *Arrow schema metadata in feather, or `Units` written to every feather sidecar.* The same fact
   would be stated twice and could drift.
 - *Recomputing `Format` at every save.* Turns `label` into `string`.
 - *An off switch for the sidecar.* The design starts strict and can relax later.
 - *Schema version `1.0`.* pymovements itself is below `1.0.0`.
-- *A warning when the sidecar and the definition disagree on the sampling rate.* It would fire
-  per file on every dataset with mixed sampling rates.
 - *The BIDS `Delimiter` field for list columns.* Loses the component names.
 
 ## Backwards compatibility
 
-**csv needs a unit.** `Events.save` is new and raises on csv without a unit from its first
-release. The two existing methods get the five-release window: `Dataset.save_events` and
-`Gaze.save_events` will keep writing milliseconds to csv when no unit is specified, with a
-`DeprecationWarning` from v0.30.0, and will raise from v0.35.0. csv writing itself is not
-deprecated. Reading csv stays without an end date.
-
 **Participants and Phenotype.** A `Format` entry that contradicts the dtype of its column is
 written as it is today. From v0.30.0 save will replace it and warn. Their sidecars gain the
-`pymovements` object, which is an additional top-level key for readers of these files.
-
-**Provisional keys in v0.29.0.** The implementation of PMEP 1 writes its two entries as
-`metadata['SamplingFrequency']` and `metadata['offset']['OffsetsInclusive']` and documents both
-names as provisional. Accepting this PMEP makes them final. No file carries them before v0.30.0.
+`pymovements` object, which is an additional top-level key for readers of these files. Files
+written by earlier versions carry no stamp and load under the no-stamp rule.
 
 **What does not change.**
 
-- feather output: the data file is written as before, with the sidecar beside it
-- reading csv files written by earlier versions
+- the signatures and defaults of `Participants.save`, `Participants.load`, `Phenotype.save` and
+  `Phenotype.load`
 - `Gaze.save` and its two YAML files
 
 ## Implementation
@@ -453,31 +332,25 @@ Target release is v0.30.0. One issue per line, drafted once the PMEP is accepted
 
 - [ ] sidecar reader and writer: the stamp, the version rules, the dict rules, the boundary
       rules
-- [ ] `Events.save` and `Events.load`: the three formats, units, the raise on nested columns
-- [ ] `Events.trial_columns` as a view on its metadata entry
-- [ ] entry maintenance in `Events.drop`, `Events.unnest` and the methods that add or rename
-      columns
-- [ ] `verify_bids` for events: the five checks and the not-implemented notices
-- [ ] `Dataset.save_events`, `Dataset.save`, `Dataset.load_event_files` and `Gaze.save_events`:
-      delegation, `time_unit`, `verify_bids`, tsv, the csv deprecation
+- [ ] `verify_bids`: the checks every adoption runs
 - [ ] `Participants` and `Phenotype`: the stamp, the entry without a column, the replaced
       `Format`
 - [ ] changelog entry and documentation of the sidecar format
 
-**Later applications.** Samples will get the sidecar through Recording and Session. Reading
-measures and precomputed events will get it once they have save methods.
+**Later adoptions.** `Recording` adopts the sidecar for samples with the Recording and its files
+PMEP (expected PMEP 5). `Events` adopts it with the BIDS layout for events (expected PMEP 6,
+[#1563](https://github.com/pymovements/pymovements/issues/1563)), which brings `Events.save` and
+`Events.load`. Reading measures and precomputed events adopt it once they have save methods.
+Numbers and dates follow the
+[data model roadmap](https://github.com/pymovements/pymovements/discussions/1763).
 
 **Future work.**
 
-- The default extension will move from feather to tsv through `extension=None` with a
-  `DeprecationWarning`. This is blocked by automatic unnesting.
 - Automatic unnesting of nested columns for text files comes with the struct columns of
   [#453](https://github.com/pymovements/pymovements/issues/453). Feather files change dtype
   with that refactor, which is a breaking schema version.
 - Inheritance, where one sidecar applies to several data files.
-- The BIDS layout with file naming, the mapping of `name` and the reference timestamp
-  ([#1563](https://github.com/pymovements/pymovements/issues/1563)).
 
 **Out of scope** are `Gaze` and its two YAML files, which Recording and Session supersede,
-provenance chains and the BIDS `Sources` mapping, saved events as a resource definition, and
-guards against direct changes to the dict.
+provenance chains and the BIDS `Sources` mapping, and guards against direct changes to the
+dict.
