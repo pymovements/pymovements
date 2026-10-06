@@ -21,8 +21,9 @@
   class, `schema_version`, initially `0.1.0`, and `version`, the package version as provenance.
 - A time column is a Duration only with a time unit in `Units`. Nothing is guessed, on load or
   on save.
-- `verify_bids` reports nonconformities: `'REQUIRED'`, the default on save, warns, `True`
-  raises, `False` is silent.
+- `verify_bids` reports nonconformities at a BIDS level: `'REQUIRED'`, the default on save,
+  warns on required-level findings, `'RECOMMENDED'` on required and recommended ones, `True`
+  raises at the required level, `False` is silent.
 - `Participants` and `Phenotype` keep their released behavior and gain the stamp and `Sources`.
 
 ## What it looks like
@@ -240,14 +241,16 @@ default separator, and `separator=` overrides it on every class. Feather stores 
 and needs neither `Format` nor `Units` to round-trip. What else a data file format holds, nulls,
 nested columns, a default time unit, is the data file's concern and not the sidecar's.
 
-**Verification.** `verify_bids` works as in `Phenotype`: `'REQUIRED'`, the default on save,
-warns for each finding, `True` raises and `False` is silent. The mechanism defines the checks
-that every adoption runs:
+**Verification.** `verify_bids` works as in `Phenotype`, with the two BIDS conformance levels.
+`'REQUIRED'`, the default on save, warns for each required-level finding, `'RECOMMENDED'` warns
+for required-level and recommended-level findings, `True` raises on a required-level finding
+and `False` is silent. The mechanism defines the required-level checks that every adoption
+runs:
 
 - nulls are written as `n/a`
 - the separator is a tab
 
-A class adds its own checks in its adoption.
+A class adds its own checks in its adoption, at either level.
 
 **Participants and Phenotype** already model the BIDS sidecar in `metadata`, and their
 signatures and released behavior stay. Four things change. Their sidecars gain the stamp, with
