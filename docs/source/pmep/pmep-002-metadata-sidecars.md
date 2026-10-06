@@ -9,8 +9,8 @@
 | **Supersedes** | none |
 
 Part of the [data model roadmap](https://github.com/pymovements/pymovements/discussions/1763).
-The sidecar mechanism is defined here once and adopted per class. The BIDS layout for events
-(expected PMEP 6, [#1563](https://github.com/pymovements/pymovements/issues/1563)) brings
+The sidecar mechanism is defined here once and adopted per class. A later PMEP on the BIDS
+layout for events ([#1563](https://github.com/pymovements/pymovements/issues/1563)) brings
 `Events.save` and `Events.load` and adopts the sidecar there.
 
 ## TL;DR
@@ -344,11 +344,11 @@ Target release is v0.30.0. One issue per line, drafted once the PMEP is accepted
       replaced `Format`
 - [ ] changelog entry and documentation of the sidecar format
 
-**Later adoptions.** `Recording` adopts the sidecar for samples with the Recording and its files
-PMEP (expected PMEP 5). `Events` adopts it with the BIDS layout for events (expected PMEP 6,
-[#1563](https://github.com/pymovements/pymovements/issues/1563)), which brings `Events.save` and
-`Events.load`. Reading measures and precomputed events adopt it once they have save methods.
-Numbers and dates follow the
+**Later adoptions.** `Recording` adopts the sidecar for samples with a later PMEP on the
+Recording and its files. `Events` adopts it with a later PMEP on the BIDS layout for events
+([#1563](https://github.com/pymovements/pymovements/issues/1563)), which brings `Events.save`
+and `Events.load`. Reading measures and precomputed events adopt it once they have save methods.
+Order and dates follow the
 [data model roadmap](https://github.com/pymovements/pymovements/discussions/1763).
 
 **Future work.**
