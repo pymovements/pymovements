@@ -13,7 +13,7 @@
 - Saved tabular files will share one metadata sidecar: `<stem>.json` next to the data file, in
   the BIDS tabular shape.
 - Each class adopts the sidecar in its own PMEP or issue by naming its `schema` value and the
-  keys it writes. `Participants` and `Phenotype` adopt it here.
+  keys it writes.
 - The dict is the file. Load puts the sidecar into `metadata` as it is, save writes it back as
   it is. Save fills `Format` and `Units` into the dict where they are missing, and where an
   entry contradicts the frame, the frame wins at save, with a warning.
