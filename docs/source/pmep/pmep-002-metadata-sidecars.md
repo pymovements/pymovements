@@ -87,25 +87,8 @@ still carries its `Format`, so it is kept and warns.
 
 ## Resulting signatures
 
-`Participants` and `Phenotype` keep their signatures. The sidecar path is `metadata_path` on save
-and `metadata`, a path or a dict, on load:
-
-```python
-Participants.save(path, *, verify_bids='REQUIRED', metadata_path='participants.json',
-                  separator='\t', write_csv_kwargs=None, metadata_encoding='utf-8')
-Participants.load(path, metadata=None, *, verify_bids=False, separator='\t', rename=None,
-                  read_csv_kwargs=None, metadata_encoding='utf-8')
-
-Phenotype.save(path, *, verify_bids='REQUIRED', metadata_path=None, separator='\t',
-               write_csv_kwargs=None, metadata_encoding='utf-8')
-Phenotype.load(path, metadata=None, *, separator='\t', rename=None, read_csv_kwargs=None,
-               metadata_encoding='utf-8', verify_bids=False)
-```
-
-A class that adopts the sidecar later defines its own `save` and `load` with these two
-parameters in the same roles.
-
-**File structure.** The schema label and the schema version are carried in the sidecar:
+This PMEP produces a file format, no new Python signature. The schema label and the schema
+version are carried in the sidecar:
 
 ```text
 <stem>.tsv | <stem>.csv | <stem>.feather    the data file
@@ -125,6 +108,17 @@ parameters in the same roles.
 the file that was read, and save writes the entry when the dict holds it. A loaded sidecar's own
 `sources` entry is not carried into the dict, see The dict below. Any other key is kept as it is,
 on load and on save.
+
+**Adoption contract.** A class that adopts the sidecar carries two parameters in these roles,
+whatever else its signatures hold:
+
+```python
+save(path, *, metadata_path=None, verify_bids='REQUIRED', ...)
+load(path, metadata=None, *, verify_bids=False, ...)
+```
+
+`metadata_path` gives the sidecar a custom path on save, `metadata` takes a path or a dict on
+load. `Participants` and `Phenotype` already carry both, and their signatures stay as released.
 
 ## Motivation
 
