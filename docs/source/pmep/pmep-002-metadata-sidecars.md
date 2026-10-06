@@ -27,7 +27,7 @@ layout for events brings `Events.save` and `Events.load` and adopts the sidecar 
   on save.
 - `verify_bids` reports nonconformities, as in `Phenotype`.
 - Ships in v0.30.0. `Participants` and `Phenotype` keep their released behavior and gain the
-  stamp and `sources`.
+  stamp and `Sources`.
 
 ## What it looks like
 
@@ -65,7 +65,7 @@ constructor inferred:
 }
 ```
 
-The table was built from a frame, not read from a file, so there is no `sources` entry to write.
+The table was built from a frame, not read from a file, so there is no `Sources` entry to write.
 
 After `Participants.load('participants.tsv')` the dict is the sidecar, stamp included, and the
 file that was read is recorded as the source:
@@ -76,7 +76,7 @@ participants.metadata
 #     'pymovements': {'schema': 'participants', 'schema_version': '0.1.0', 'version': '0.30.0'},
 #     'participant_id': {'Format': 'string'},
 #     'age': {'Description': 'age of the participant', 'Units': 'years', 'Format': 'integer'},
-#     'sources': ['/data/participants.tsv'],
+#     'Sources': ['/data/participants.tsv'],
 # }
 participants.data.schema['age']    # Int64, built from Format
 ```
@@ -102,13 +102,15 @@ The sidecar owns the `json` extension next to the stem, so no data format may us
 | `<column name>` | top | object that describes the column |
 | `Format` | column | BIDS format: `string`, `number`, `integer`, `bool`, `index`, `label` |
 | `Units` | column | unit of the column, on a time column the unit it is written in |
-| `sources` | top | list of source files |
+| `Sources` | top | BIDS provenance: list of the files directly used, as paths |
 | `pymovements` | top | the stamp: `schema`, `schema_version`, `version` |
 
-`sources` is a key of the mechanism, carried by every class as
+`Sources` is the BIDS provenance key with the BIDS meaning: the files directly used in the
+creation of this file, one hop, not the chain. Every class carries it as
 [#1655](https://github.com/pymovements/pymovements/pull/1655) defines it: a loaded object records
-the file that was read, and save writes the entry when the dict holds it. A loaded sidecar's own
-`sources` entry is not carried into the dict, see The dict below. Any other key is kept as it is,
+the file that was read, as a POSIX path, relative to the dataset root under a `Dataset` and
+absolute otherwise, and save writes the entry when the dict holds it. A loaded sidecar's own
+`Sources` entry is not carried into the dict, see The dict below. Any other key is kept as it is,
 on load and on save.
 
 **Adoption contract.** A class that adopts the sidecar carries two parameters in these roles,
@@ -186,7 +188,7 @@ none.
 **The dict.** Three rules connect `metadata`, the sidecar and the frame:
 
 1. The dict is the file. Load puts the sidecar into the dict as it is, stamp included, and save
-   writes the dict as it is. The one exception is `sources`: a loaded sidecar's `sources` entry
+   writes the dict as it is. The one exception is `Sources`: a loaded sidecar's `Sources` entry
    is not carried into the dict, the file that was read becomes the source, as
    [#1655](https://github.com/pymovements/pymovements/pull/1655) defines it.
 2. For text files the loader builds the dtype of a column from `Format`, and the writer fills
@@ -243,7 +245,7 @@ A class adds its own checks in its adoption.
 
 **Participants and Phenotype** already model the BIDS sidecar in `metadata`, and their
 signatures and released behavior stay. Four things change. Their sidecars gain the stamp, with
-the `schema` values `participants` and `phenotype`. They carry `sources`. An object entry with a
+the `schema` values `participants` and `phenotype`. They carry `Sources`. An object entry with a
 `Format` key and no column warns and is kept, where today both classes keep it silently. And a
 `Format` that contradicts the frame is replaced at save with a warning.
 
@@ -262,13 +264,19 @@ and a derivative dataset with identical results, confirmed the shape:
 | sidecar content | validator |
 |---|---|
 | top-level `pymovements` object | clean |
-| top-level lowercase `sources`, free user key | clean |
+| free user key | clean |
+| `Sources` with a relative or absolute path, participants and events sidecars | clean |
+| `Sources` not a list of strings, derivative dataset | error `JSON_SCHEMA_VALIDATION_ERROR` |
 | extra field inside a column object | clean |
 | description for a nonexistent column | clean |
 | `columns` wrapper around the column objects | warning `TSV_ADDITIONAL_COLUMNS_UNDEFINED` |
 | `Units: "ms"` on `onset` of a BIDS events file | warning `TSV_COLUMN_TYPE_REDEFINED` |
 
-The validator inspects only the keys it knows, so clean means not looked at.
+The validator inspects only the keys it knows, so clean means not looked at for the free key and
+the `pymovements` object. `Sources` it knows in a derivative dataset: the two controls show that
+it checks the value to be a list of strings, and the clean rows show that it does not check the
+form of the string. BIDS deprecates plain relative paths in `Sources` in favour of BIDS URIs,
+which need a dataset root and `DatasetLinks`, see Future work.
 
 **Why one definition and adoption per class.** A rule stated in several PMEPs drifts. The
 mechanism is specified once, and a class that adopts it adds only what is its own: the schema
@@ -278,7 +286,7 @@ value and its keys. A later proposal cites this one instead of restating it.
 lost information and needed an exception to get it back: first `label`, which shares its dtype
 with `string`, then the unit of a file that is loaded and saved again, then the stamp, which
 would need an accessor of its own to stay inspectable. Nothing is removed, so nothing needs
-restoring. `sources` is the one exception on load, since the entry describes the saved file's
+restoring. `Sources` is the one exception on load, since the entry describes the saved file's
 provenance and not that of the object reading it.
 
 **Why entries without a column are kept.** pymovements never removes a metadata entry on its
@@ -296,7 +304,7 @@ takes is the events adoption's rule, not the mechanism's.
 
 - *A `columns` wrapper for the column objects.* Not the BIDS shape, and the validator no longer
   finds the descriptions.
-- *`sources` inside the `pymovements` object.* The `pymovements` object holds only the stamp.
+- *`Sources` inside the `pymovements` object.* The `pymovements` object holds only the stamp.
 - *A schema version per class.* One version for the mechanism, since a class adds keys and
   the mechanism defines what a key means. A class that needs its own break adds its own
   strictness in its adoption.
@@ -316,7 +324,7 @@ takes is the events adoption's rule, not the mechanism's.
 **Participants and Phenotype.** A `Format` entry that contradicts the dtype of its column is
 written as it is today. From v0.30.0 save will replace it and warn. An object entry with a
 `Format` key and no column is kept silently today and will warn. Their sidecars gain the
-`pymovements` object and `sources`, two additional top-level keys for readers of these files.
+`pymovements` object and `Sources`, two additional top-level keys for readers of these files.
 Files written by earlier versions carry no stamp and load as the oldest schema version, silently.
 A round trip through save and load adds the `pymovements` entry to the dict, where today it
 gives the dict back unchanged.
@@ -334,7 +342,7 @@ Target release is v0.30.0. One issue per line, drafted once the PMEP is accepted
 - [ ] sidecar reader and writer: the stamp, the version rules, the dict rules, the boundary
       rules
 - [ ] `verify_bids`: the checks every adoption runs
-- [ ] `Participants` and `Phenotype`: the stamp, `sources`, the entry without a column, the
+- [ ] `Participants` and `Phenotype`: the stamp, `Sources`, the entry without a column, the
       replaced `Format`
 - [ ] changelog entry and documentation of the sidecar format
 
@@ -351,9 +359,12 @@ Order and dates follow the
   [#453](https://github.com/pymovements/pymovements/issues/453), which is a breaking schema
   version.
 - Inheritance, where one sidecar applies to several data files.
+- BIDS URIs as the value form of `Sources`. They need a dataset root and, across datasets,
+  `DatasetLinks` in `dataset_description.json`, so they come with the PMEP that writes a BIDS
+  dataset. The paths written until then stay readable, a URI is a prefix on the same path.
 
 **Out of scope** are `Gaze` and its two YAML files, which Recording and Session supersede,
-provenance chains and the BIDS `Sources` mapping, guards against direct changes to the dict,
+provenance chains beyond the one hop `Sources` records, guards against direct changes to the dict,
 `BIDSVersion` and `dataset_description.json`, which belong to the PMEP that writes a BIDS
 dataset, and the generic loader that dispatches on `schema` together with its rule for a file
 labeled for another class, which come with the PMEP that brings the loader.
