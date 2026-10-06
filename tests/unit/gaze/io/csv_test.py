@@ -242,7 +242,7 @@ from pymovements.gaze import from_csv
             },
             (10, 5),
             {
-                'time': pl.Duration('us'), 'book_name': pl.String, 'screen_id': pl.Int64,
+                'book_name': pl.String, 'screen_id': pl.Int64, 'time': pl.Duration('us'),
                 'pupil_left': pl.Float32, 'pixel': pl.List(pl.Float32),
             },
             id='sbsat_example',
