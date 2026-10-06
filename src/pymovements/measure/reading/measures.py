@@ -565,12 +565,14 @@ def non_aoi_fixation_duration_ratio(
 def skipped(tfc: str | pl.Expr = 'TFC') -> pl.Expr:
     """Binary indicator for total word skipping (``skipped``).
 
-    A word is skipped when it received no fixation at all. The expression is row-wise and
-    expects the word-level table in which ``TFC`` is zero for every word without fixations, as
-    :func:`~pymovements.measure.reading.compute_reading_measures` produces it after
-    zero-filling the join misses. A null ``TFC``, for example from an unfilled left join of
-    per-word counts onto a word list, yields a null ``skipped`` rather than 1. Inside the
-    pipeline the ``LP`` post-processing reads this column, so it is derived before ``LP``.
+    A word is skipped when it received no fixation at all. The expression works row-wise on
+    the word-level table and expects ``TFC`` to be zero for every unfixated word, as
+    :func:`~pymovements.measure.reading.compute_reading_measures` produces it. A null ``TFC``,
+    for example from a left join of per-word counts onto a word list, yields a null
+    ``skipped`` instead of 1, so zero-fill such join misses first.
+
+    Within the pipeline, ``skipped`` is computed before the ``LP`` post-processing, which
+    depends on it.
 
     Parameters
     ----------
