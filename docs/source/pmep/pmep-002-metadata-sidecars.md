@@ -18,7 +18,7 @@ layout for events brings `Events.save` and `Events.load` and adopts the sidecar 
   the BIDS tabular shape, always written.
 - The mechanism is defined once. Each class adopts it in its own PMEP or issue by naming its
   `schema` value and the keys it writes. `Participants` and `Phenotype` adopt it here.
-- The dict is the file minus the stamp. Load puts the sidecar into `metadata` as it is, save
+- The dict is the file. Load puts the sidecar into `metadata` as it is, stamp included, save
   writes it back as it is. Save fills `Format` and `Units` into the dict where they are missing,
   and where an entry contradicts the frame, the frame wins at save, with a warning.
 - A `pymovements` object in the sidecar carries the stamp: `schema`, a label for the writing
@@ -67,12 +67,13 @@ constructor inferred:
 
 The table was built from a frame, not read from a file, so there is no `sources` entry to write.
 
-After `Participants.load('participants.tsv')` the dict is the sidecar minus the stamp, and the
+After `Participants.load('participants.tsv')` the dict is the sidecar, stamp included, and the
 file that was read is recorded as the source:
 
 ```python
 participants.metadata
 # {
+#     'pymovements': {'schema': 'participants', 'schema_version': '0.1.0', 'version': '0.30.0'},
 #     'participant_id': {'Format': 'string'},
 #     'age': {'Description': 'age of the participant', 'Units': 'years', 'Format': 'integer'},
 #     'sources': ['/data/participants.tsv'],
@@ -167,7 +168,8 @@ to load a file labeled for another class is left to the PMEP that brings the loa
 version that wrote the file, provenance only, and no `load` reads it. Save generates the stamp
 and writes it as the first key of the sidecar, so a reader sees it before the columns. The other
 keys keep the order of the dict. Load reads the stamp for the version check, at any position,
-and does not keep it in the dict.
+and keeps it in the dict, where it can be inspected. Save overwrites the entry at every save, so
+an edited stamp is never written.
 
 **The schema version** has three parts and is one version for the whole mechanism, initially
 `0.1.0`. Its breaking and its additive position follow the package's own rule: below `1.0.0`
@@ -187,7 +189,7 @@ none.
 
 **The dict.** Three rules connect `metadata`, the sidecar and the frame:
 
-1. The dict is the file minus the stamp. Load puts the sidecar into the dict as it is, and save
+1. The dict is the file. Load puts the sidecar into the dict as it is, stamp included, and save
    writes the dict as it is. The one exception is `sources`: a loaded sidecar's `sources` entry
    is not carried into the dict, the file that was read becomes the source, as
    [#1655](https://github.com/pymovements/pymovements/pull/1655) defines it.
@@ -197,8 +199,8 @@ none.
    column is written as `number`. Feather needs neither. The writer never adds `Units` to a
    feather sidecar, and an entry that is already in the dict is carried.
 3. On contradiction the frame wins. A `Format` that does not fit the dtype of its column is
-   replaced in the dict at save, with a warning. After save the dict equals the file minus the
-   stamp.
+   replaced in the dict at save, with a warning. Save writes the stamp into the dict as well.
+   After save the dict equals the file.
 
 **Units.** `Units` is descriptive, with one exception. A column loads as a Duration only when
 its `Format` is `number` or `integer` and its `Units` is one of `s`, `ms`, `us` and `ns`, and
@@ -276,13 +278,12 @@ The validator inspects only the keys it knows, so clean means not looked at.
 mechanism is specified once, and a class that adopts it adds only what is its own: the schema
 value and its keys. A later proposal cites this one instead of restating it.
 
-**Why the dict is the file minus the stamp.** Every variant in which load removed derived fields
-from the dict lost information and needed an exception to get it back: first `label`, which
-shares its dtype with `string`, then the unit of a file that is loaded and saved again. Nothing
-is removed, so nothing needs restoring. The stamp is the one part of the file that save
-generates rather than carries, so keeping it out of the dict loses nothing. `sources` is the one
-exception on load, since the entry describes the saved file's provenance and not that of the
-object reading it.
+**Why the dict is the file.** Every variant in which load removed derived fields from the dict
+lost information and needed an exception to get it back: first `label`, which shares its dtype
+with `string`, then the unit of a file that is loaded and saved again, then the stamp, which
+would need an accessor of its own to stay inspectable. Nothing is removed, so nothing needs
+restoring. `sources` is the one exception on load, since the entry describes the saved file's
+provenance and not that of the object reading it.
 
 **Why entries without a column are kept.** pymovements never removes a metadata entry on its
 own, and BIDS treats a description for a nonexistent column as other metadata. The `Format` key
@@ -305,8 +306,8 @@ takes is the events adoption's rule, not the mechanism's.
   strictness in its adoption.
 - *A `file` key in the stamp naming the data file.* The clash of two data files on one sidecar
   path is caught at save, where it arises, and the key would be stale after a rename.
-- *The stamp kept in the dict after load.* Save overwrites it anyway, and a stale copy in the
-  dict is a second claim about the file.
+- *The stamp dropped from the dict on load.* Inspection would need an accessor of its own, and
+  the dict would no longer be the file.
 - *Arrow schema metadata in feather, or `Units` written to every feather sidecar.* The same fact
   would be stated twice and could drift.
 - *Recomputing `Format` at every save.* Turns `label` into `string`.
@@ -321,7 +322,8 @@ written as it is today. From v0.30.0 save will replace it and warn. An object en
 `Format` key and no column is kept silently today and will warn. Their sidecars gain the
 `pymovements` object and `sources`, two additional top-level keys for readers of these files.
 Files written by earlier versions carry no stamp and load as the oldest schema version, silently.
-A round trip through save and load gives back the dict unchanged, as today.
+A round trip through save and load adds the `pymovements` entry to the dict, where today it
+gives the dict back unchanged.
 
 **What does not change.**
 
