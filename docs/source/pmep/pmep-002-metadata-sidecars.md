@@ -106,12 +106,12 @@ The sidecar owns the `json` extension next to the stem, so no data format may us
 | `pymovements` | top | the stamp: `schema`, `schema_version`, `version` |
 
 `Sources` is the BIDS provenance key with the BIDS meaning: the files directly used in the
-creation of this file, one hop, not the chain. Every class carries it as
-[#1655](https://github.com/pymovements/pymovements/pull/1655) defines it: a loaded object records
+creation of this file, one hop, not the chain. Every class carries it: a loaded object records
 the file that was read, as a POSIX path, relative to the dataset root under a `Dataset` and
-absolute otherwise, and save writes the entry when the dict holds it. A loaded sidecar's own
-`Sources` entry is not carried into the dict, see The dict below. Any other key is kept as it is,
-on load and on save.
+absolute otherwise, and save writes the entry when the dict holds it. A `Sources` entry given
+in `metadata=` is kept, it states the caller's intent. A loaded sidecar's own `Sources` entry is
+not carried into the dict, see The dict below. Any other key is kept as it is, on load and on
+save.
 
 **Adoption contract.** A class that adopts the sidecar carries two parameters in these roles,
 whatever else its signatures hold:
@@ -189,8 +189,8 @@ none.
 
 1. The dict is the file. Load puts the sidecar into the dict as it is, stamp included, and save
    writes the dict as it is. The one exception is `Sources`: a loaded sidecar's `Sources` entry
-   is not carried into the dict, the file that was read becomes the source, as
-   [#1655](https://github.com/pymovements/pymovements/pull/1655) defines it.
+   is not carried into the dict, since it describes that file's provenance and not the loaded
+   object's. The file that was read becomes the source.
 2. For text files the loader builds the dtype of a column from `Format`, and the writer fills
    `Format` and `Units` into the dict where they are missing. A column loads as a Duration only
    when `Format` is `number` or `integer` and `Units` is a time unit, see Units. A Duration
