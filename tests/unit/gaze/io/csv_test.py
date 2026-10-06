@@ -242,7 +242,7 @@ from pymovements.gaze import from_csv
             },
             (10, 5),
             {
-                'book_name': pl.String, 'screen_id': pl.Int64, 'time': pl.Duration('us'),
+                'time': pl.Duration('us'), 'book_name': pl.String, 'screen_id': pl.Int64,
                 'pupil_left': pl.Float32, 'pixel': pl.List(pl.Float32),
             },
             id='sbsat_example',
@@ -256,9 +256,7 @@ def test_from_csv_gaze_has_expected_shape_and_columns(
     gaze = from_csv(file=filepath, **kwargs)
 
     assert gaze.samples.shape == expected_shape
-    # Column order depends on the polars version: since polars 2.0, read_csv orders its
-    # output by the ``columns`` argument instead of the file order.
-    assert dict(gaze.samples.schema) == expected_schema
+    assert gaze.samples.schema == expected_schema
 
 
 @pytest.mark.parametrize(

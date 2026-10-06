@@ -115,7 +115,8 @@ def from_csv(
     read_csv_kwargs: dict[str, Any] | None
         Additional keyword arguments to be passed to :py:func:`polars.read_csv` to read in the csv.
         These can include custom separators, a subset of columns, or specific data types
-        for columns. (default: None)
+        for columns. If ``columns`` is given, the loaded columns keep the order of that list
+        rather than the order in the file. (default: None)
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. (default: None)
     **kwargs: Any
