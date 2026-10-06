@@ -112,8 +112,21 @@ not carried into the dict. Any other key is kept as it is, on load and on save.
 whatever else its signatures hold:
 
 ```python
-save(path, *, metadata_path=None, verify_bids='REQUIRED', ...)
-load(path, metadata=None, *, verify_bids=False, ...)
+save(
+    path: Path | str,
+    *,
+    metadata_path: Path | str | None = None,
+    verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = 'REQUIRED',
+    ...
+) -> None
+
+load(
+    path: Path | str,
+    metadata: Path | str | dict[str, Any] | None = None,
+    *,
+    verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
+    ...
+) -> Self
 ```
 
 `metadata_path` gives the sidecar a custom path on save, `metadata` takes a path or a dict on
