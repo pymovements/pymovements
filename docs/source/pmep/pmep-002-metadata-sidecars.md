@@ -95,11 +95,11 @@ The sidecar owns the `json` extension next to the stem, so no data format may us
 
 | key | level | value |
 |---|---|---|
+| `pymovements` | top | the stamp: `schema`, `schema_version`, `version` |
+| `Sources` | top | BIDS provenance: list of the files directly used, as paths |
 | `<column name>` | top | object that describes the column |
 | `Format` | column | BIDS format: `string`, `number`, `integer`, `bool`, `index`, `label` |
 | `Units` | column | unit of the column, on a time column the unit it is written in |
-| `Sources` | top | BIDS provenance: list of the files directly used, as paths |
-| `pymovements` | top | the stamp: `schema`, `schema_version`, `version` |
 
 `Sources` is the BIDS provenance key with the BIDS meaning: the files directly used in the
 creation of this file, one hop, not the chain. Every class carries it: a loaded object records
