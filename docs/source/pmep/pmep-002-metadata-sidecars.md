@@ -14,9 +14,9 @@
   the BIDS tabular shape.
 - Each class adopts the sidecar in its own PMEP or issue by naming its `schema` value and the
   keys it writes. `Participants` and `Phenotype` adopt it here.
-- The dict is the file. Load puts the sidecar into `metadata` as it is, stamp included, save
-  writes it back as it is. Save fills `Format` and `Units` into the dict where they are missing,
-  and where an entry contradicts the frame, the frame wins at save, with a warning.
+- The dict is the file. Load puts the sidecar into `metadata` as it is, save writes it back as
+  it is. Save fills `Format` and `Units` into the dict where they are missing, and where an
+  entry contradicts the frame, the frame wins at save, with a warning.
 - A `pymovements` object in the sidecar carries the stamp: `schema`, a label for the writing
   class, `schema_version`, initially `0.1.0`, and `version`, the package version as provenance.
 - A time column is a Duration only with a time unit in `Units`. Nothing is guessed, on load or
