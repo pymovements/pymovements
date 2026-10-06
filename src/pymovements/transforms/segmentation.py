@@ -612,7 +612,7 @@ def segmentation2events(
 
     if segmentation.dtype == pl.Boolean:
         pass
-    elif not segmentation.is_in([0, 1]).all():
+    elif not ((segmentation == 0) | (segmentation == 1)).all():
         raise ValueError('segmentation must only contain binary values (0, 1, True, or False)')
 
     df_dict = {'__segmentation__': segmentation}

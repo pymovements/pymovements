@@ -256,7 +256,9 @@ def test_from_csv_gaze_has_expected_shape_and_columns(
     gaze = from_csv(file=filepath, **kwargs)
 
     assert gaze.samples.shape == expected_shape
-    assert gaze.samples.schema == expected_schema
+    # Column order depends on the polars version: since polars 2.0, read_csv orders its
+    # output by the ``columns`` argument instead of the file order.
+    assert dict(gaze.samples.schema) == expected_schema
 
 
 @pytest.mark.parametrize(
