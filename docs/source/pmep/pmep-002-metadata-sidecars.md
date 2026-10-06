@@ -8,10 +8,6 @@
 | **Created** | 2026-10-01 |
 | **Supersedes** | none |
 
-Part of the [data model roadmap](https://github.com/pymovements/pymovements/discussions/1763).
-The sidecar mechanism is defined here once and adopted per class. A later PMEP on the BIDS
-layout for events brings `Events.save` and `Events.load` and adopts the sidecar there.
-
 ## TL;DR
 
 - Saved tabular files will share one metadata sidecar: `<stem>.json` next to the data file, in
