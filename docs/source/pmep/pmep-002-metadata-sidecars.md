@@ -141,9 +141,9 @@ version wrote it, so a reader cannot tell a file it can read from one it cannot.
 contradicts the frame is written as it is. An entry without a column is handled by each class on
 its own.
 
-More classes will save files as the data model grows. Without one definition each of them would
-define its own sidecar, and the same rule would be stated several times and drift. Consistency
-across classes is preferred over a second format.
+More classes will gain `save` and `load` methods as the data model grows. Without one definition
+each would define its own sidecar, and the same rule would be stated several times and drift.
+Consistency across classes is preferred over a second format.
 
 The text formats need the sidecar to round-trip. tsv and csv store no dtypes, so `Format` and
 `Units` are the only record of how a column is to be read.
