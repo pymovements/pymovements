@@ -106,8 +106,7 @@ creation of this file, one hop, not the chain. Every class carries it: a loaded 
 the file that was read, as a POSIX path, relative to the dataset root under a `Dataset` and
 absolute otherwise, and save writes the entry when the dict holds it. A `Sources` entry given
 in `metadata=` is kept, it states the caller's intent. A loaded sidecar's own `Sources` entry is
-not carried into the dict, see The dict below. Any other key is kept as it is, on load and on
-save.
+not carried into the dict. Any other key is kept as it is, on load and on save.
 
 **Adoption contract.** A class that adopts the sidecar carries two parameters in these roles,
 whatever else its signatures hold:
