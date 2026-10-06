@@ -15,7 +15,7 @@ layout for events brings `Events.save` and `Events.load` and adopts the sidecar 
 ## TL;DR
 
 - Saved tabular files will share one metadata sidecar: `<stem>.json` next to the data file, in
-  the BIDS tabular shape, always written.
+  the BIDS tabular shape.
 - The mechanism is defined once. Each class adopts it in its own PMEP or issue by naming its
   `schema` value and the keys it writes. `Participants` and `Phenotype` adopt it here.
 - The dict is the file. Load puts the sidecar into `metadata` as it is, stamp included, save
@@ -146,13 +146,12 @@ naming its `schema` value and the keys it writes beyond the ones defined here. `
 `Phenotype` adopt it in this PMEP. A class that has adopted the sidecar follows every rule below.
 The rules name a class only where that class deviates.
 
-**The sidecar file.** Every save will write `<stem>.json` next to the data file. There is no
-switch to turn it off. `metadata_path` on save gives a custom path, and `metadata` on load takes
-a path or a dict, as in `Phenotype` today. `Participants.save` keeps its released default
-`participants.json`. The sidecar has the BIDS tabular shape: one object per column at the top
-level, keyed by the column name, and the file-level keys beside them. There is no wrapper object
-around the columns. Two data files with the same stem share one sidecar path, which save warns
-about, see Boundaries.
+**The sidecar file.** A save writes `<stem>.json` next to the data file. `metadata_path` on
+save gives a custom path, and `metadata` on load takes a path or a dict, as in `Phenotype`
+today. `Participants.save` keeps its released default `participants.json`. The sidecar has the
+BIDS tabular shape: one object per column at the top level, keyed by the column name, and the
+file-level keys beside them. There is no wrapper object around the columns. Two data files with
+the same stem share one sidecar path, which save warns about, see Boundaries.
 
 **The stamp.** The top-level `pymovements` object holds only the stamp, three fields. `schema`
 is a stable identifier of the writing class. A future generic loader dispatches on it to find
@@ -314,7 +313,6 @@ takes is the events adoption's rule, not the mechanism's.
 - *Arrow schema metadata in feather, or `Units` written to every feather sidecar.* The same fact
   would be stated twice and could drift.
 - *Recomputing `Format` at every save.* Turns `label` into `string`.
-- *An off switch for the sidecar.* The design starts strict and can relax later.
 - *Schema version `1.0`.* pymovements itself is below `1.0.0`.
 - *The BIDS `Delimiter` field for list columns.* Loses the component names.
 
@@ -357,7 +355,8 @@ Order and dates follow the
 - Feather files change dtype with the struct columns of
   [#453](https://github.com/pymovements/pymovements/issues/453), which is a breaking schema
   version.
-- Inheritance, where one sidecar applies to several data files.
+- Inheritance, where one sidecar applies to several data files. It decides when a save writes
+  no sidecar of its own.
 - BIDS URIs as the value form of `Sources`. They need a dataset root and, across datasets,
   `DatasetLinks` in `dataset_description.json`, so they come with the PMEP that writes a BIDS
   dataset. The paths written until then stay readable, a URI is a prefix on the same path.
