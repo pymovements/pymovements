@@ -23,8 +23,8 @@ layout for events brings `Events.save` and `Events.load` and adopts the sidecar 
   and where an entry contradicts the frame, the frame wins at save, with a warning.
 - A `pymovements` object in the sidecar carries the stamp: `schema`, a label for the writing
   class, `schema_version`, initially `0.1.0`, and `version`, the package version as provenance.
-- tsv takes the BIDS defaults: tab, seconds, `n/a`. csv needs an explicit time unit. feather
-  stays native.
+- A time column is a Duration only with a time unit in `Units`. Nothing is guessed, on load or
+  on save.
 - `verify_bids` reports nonconformities, as in `Phenotype`.
 - Ships in v0.30.0. `Participants` and `Phenotype` keep their released behavior and gain the
   stamp and `sources`.
@@ -201,10 +201,14 @@ none.
 **Units.** `Units` is descriptive, with one exception. A column loads as a Duration only when
 its `Format` is `number` or `integer` and its `Units` is one of `s`, `ms`, `us` and `ns`, and
 `Units` then states the unit the column is written in as a number. Every other unit, such as
-`years`, `deg` or `px`, changes no dtype and round-trips untouched. On save to a text file the
-unit of a time column resolves in this order: a per-call keyword, where the adopting class
-defines one, then the `Units` entry of the column, then the default of the format. Columns with
-different entries are therefore written in different units.
+`years`, `deg` or `px`, changes no dtype and round-trips untouched. A number column without a
+time unit in `Units` is never read as a Duration, whatever its name, since a number without a
+unit is not a duration. On save to a text file the unit of a Duration column resolves in this
+order: a per-call keyword, where the adopting class defines one, then the `Units` entry of the
+column. Save raises when neither gives a unit, and the unit used is written to `Units`, so no
+file ever holds a duration without its unit. Columns with different entries are therefore
+written in different units. Which unit an adopting class defaults to for its own time columns is
+the adoption's choice. `Participants` and `Phenotype` have no time columns.
 
 **Boundaries.**
 
@@ -222,22 +226,11 @@ The `Format` key is what makes an entry a column entry. Every other top-level ob
 and stays silent. The raise on a key that equals a column name does not depend on `verify_bids`,
 and its message names the fix. The same-stem warning does not depend on `verify_bids` either.
 
-**Formats.** The extension of the path selects the format, the format gives the default
-separator, and `separator=` overrides it on every class:
-
-| | separator | time unit |
-|---|---|---|
-| tsv | tab | seconds by default |
-| csv | comma | must be specified |
-| feather | none | native Duration |
-
-tsv takes the BIDS defaults: tab, seconds and `n/a` for nulls. csv has no default unit. The unit
-comes from the `Units` entries or from the per-call keyword of the adopting class, and save
-raises without one. The rule applies only when the frame holds a Duration column, so it is
-vacuous for `Participants` and `Phenotype`.
-
-**Nested columns** raise for text files. Feather stores them natively. The text format is
-thereby specified on flat columns only, independent of how nested columns are stored.
+**Formats.** The extension of the path selects the format, tsv, csv or feather. The format gives
+the default separator, and `separator=` overrides it on every class. Feather stores dtypes
+natively and needs neither `Format` nor `Units` to round-trip. What else a data file format
+holds, nulls, nested columns, a default time unit, is the data file's concern and not the
+sidecar's.
 
 **Verification.** `verify_bids` works as in `Phenotype`: `'REQUIRED'`, the default on save,
 warns for each finding, `True` raises and `False` is silent. The mechanism defines the checks
@@ -294,9 +287,11 @@ own, and BIDS treats a description for a nonexistent column as other metadata. T
 is the line between the two: a column object always carries one, file-level metadata never
 does, so only an entry with `Format` can be a column that went missing.
 
-**Why csv has no default unit.** Today's csv files written by pymovements hold milliseconds. A
-seconds default would change every number by a factor of 1000 for external readers of these
-files, without an error. tsv has no such history, and BIDS requires seconds there.
+**Why no default time unit.** A number without a unit is not a duration. Reading a bare number
+column as seconds, or as any other unit, would be a silent factor on every value of a file that
+meant something else, and there is no error to catch it. Writing always records the unit, so
+the no-guess rule costs nothing on the files pymovements writes. What unit a BIDS events file
+takes is the events adoption's rule, not the mechanism's.
 
 **Alternatives rejected.**
 
@@ -352,9 +347,9 @@ Order and dates follow the
 
 **Future work.**
 
-- Automatic unnesting of nested columns for text files comes with the struct columns of
-  [#453](https://github.com/pymovements/pymovements/issues/453). Feather files change dtype
-  with that refactor, which is a breaking schema version.
+- Feather files change dtype with the struct columns of
+  [#453](https://github.com/pymovements/pymovements/issues/453), which is a breaking schema
+  version.
 - Inheritance, where one sidecar applies to several data files.
 
 **Out of scope** are `Gaze` and its two YAML files, which Recording and Session supersede,
