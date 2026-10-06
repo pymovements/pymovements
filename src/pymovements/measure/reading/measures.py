@@ -43,6 +43,9 @@ fixations on other words, so they aggregate over ``regression_path_word`` groups
 ``word_idx`` groups (see :func:`~pymovements.measure.reading.regression_path_word`). The
 sequence-level summary measures are the other exception: they describe a whole reading
 sequence, so they aggregate over reading-sequence groups (e.g. ``['trial', 'page']``).
+:func:`~pymovements.measure.reading.skipped` is the third exception: it is not an aggregation
+at all but a row-wise expression on the word-level table that the aggregation step produces, so
+it belongs in a ``with_columns(...)`` on that table rather than in an ``agg(...)``.
 """
 from __future__ import annotations
 
@@ -562,9 +565,12 @@ def non_aoi_fixation_duration_ratio(
 def skipped(tfc: str | pl.Expr = 'TFC') -> pl.Expr:
     """Binary indicator for total word skipping (``skipped``).
 
-    A word is skipped when it received no fixation at all. Must be evaluated
-    after join misses are zero-filled; the ``LP`` post-processing depends on
-    this column.
+    A word is skipped when it received no fixation at all. The expression is row-wise and
+    expects the word-level table in which ``TFC`` is zero for every word without fixations, as
+    :func:`~pymovements.measure.reading.compute_reading_measures` produces it after
+    zero-filling the join misses. A null ``TFC``, for example from an unfilled left join of
+    per-word counts onto a word list, yields a null ``skipped`` rather than 1. Inside the
+    pipeline the ``LP`` post-processing reads this column, so it is derived before ``LP``.
 
     Parameters
     ----------
@@ -575,7 +581,8 @@ def skipped(tfc: str | pl.Expr = 'TFC') -> pl.Expr:
     Returns
     -------
     pl.Expr
-        Expression producing the ``skipped`` column (1 if skipped, 0 otherwise).
+        Expression producing the ``skipped`` column (1 if skipped, 0 otherwise, null for a
+        null ``tfc``).
 
     Examples
     --------
