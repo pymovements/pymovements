@@ -91,9 +91,11 @@ This PMEP produces a file format, no new Python signature. The schema label and 
 version are carried in the sidecar:
 
 ```text
-<stem>.tsv | <stem>.csv | <stem>.feather    the data file
-<stem>.json                                 the sidecar, a JSON object
+<stem>.<extension>    the data file, any format the class writes
+<stem>.json           the sidecar, a JSON object
 ```
+
+The sidecar owns the `json` extension next to the stem, so no data format may use it.
 
 | key | level | value |
 |---|---|---|
@@ -224,11 +226,11 @@ The `Format` key is what makes an entry a column entry. Every other top-level ob
 and stays silent. The raise on a key that equals a column name does not depend on `verify_bids`,
 and its message names the fix. The same-stem warning does not depend on `verify_bids` either.
 
-**Formats.** The extension of the path selects the format, tsv, csv or feather. The format gives
-the default separator, and `separator=` overrides it on every class. Feather stores dtypes
-natively and needs neither `Format` nor `Units` to round-trip. What else a data file format
-holds, nulls, nested columns, a default time unit, is the data file's concern and not the
-sidecar's.
+**Formats.** The extension of the path selects the format. tsv, csv and feather are the formats
+the classes write today, and a format added later takes the same sidecar. The format gives the
+default separator, and `separator=` overrides it on every class. Feather stores dtypes natively
+and needs neither `Format` nor `Units` to round-trip. What else a data file format holds, nulls,
+nested columns, a default time unit, is the data file's concern and not the sidecar's.
 
 **Verification.** `verify_bids` works as in `Phenotype`: `'REQUIRED'`, the default on save,
 warns for each finding, `True` raises and `False` is silent. The mechanism defines the checks
