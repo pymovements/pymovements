@@ -9,8 +9,8 @@
 | **Supersedes** | none |
 
 Proposed in issue
-[#1677](https://github.com/pymovements/pymovements/issues/1677). Blocks PMEP 2 on metadata
-sidecars and closes [#1083](https://github.com/pymovements/pymovements/issues/1083).
+[#1677](https://github.com/pymovements/pymovements/issues/1677). Closes
+[#1083](https://github.com/pymovements/pymovements/issues/1083).
 
 ## TL;DR
 
@@ -201,8 +201,8 @@ Dataset.load(..., offsets_inclusive: bool | None = None, durations_from_offsets:
 Detection algorithms and `segmentation2events` gain a required `sampling_rate` keyword.
 `Gaze.detect` fills it from the experiment.
 
-This PMEP defines no on-disk format. PMEP 2 on metadata sidecars will add `Events.save` and
-`Events.load`.
+This PMEP defines no on-disk format. A later PMEP on the file layout for events will add
+`Events.save` and `Events.load`.
 
 ## Motivation
 
@@ -441,8 +441,8 @@ reported `DUR` becomes the stored value, so file and frame can no longer contrad
 working side by side. A single `duration` column cannot hold both the old and the new number,
 so deferring only ships a known-wrong value for five more releases. Bundling it with the
 `polars.Duration` change in v0.29.0 breaks the events schema once instead of twice and keeps
-PMEP 2 from publishing biased durations. The changelog entry and the migration note will carry
-the silent numeric shift.
+biased durations out of the on-disk format a later PMEP brings. The changelog entry and the
+migration note will carry the silent numeric shift.
 
 **Why no default convention.** A legacy inclusive file and a correct exclusive file both show a
 residual of `0` on every row, and no stored convention will ever exist for the legacy file, so
@@ -490,8 +490,8 @@ keyword.
 **Own output with an offset column.** Nothing is persisted, so a saved frame that carries an
 `offset` column, from `parse_offset=True`, from the offset measure or from `offsets=`, reloads
 only with `offsets_inclusive` given: `True` for the first, the `inclusive` value used for the
-second, the declared value for the third. The consistency check then passes. PMEP 2 on metadata
-sidecars will close this gap. Until then the migration note names it next to the
+second, the declared value for the third. The consistency check then passes. A later PMEP that
+persists the metadata will close this gap. Until then the migration note names it next to the
 `frame['offset']` replacement.
 
 **Offsets stay as input, with an explicit convention.** `offsets=` remains a permanent
