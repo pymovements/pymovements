@@ -23,8 +23,7 @@
   on save.
 - `verify_bids` reports nonconformities: `'REQUIRED'`, the default on save, warns, `True`
   raises, `False` is silent.
-- Ships in v0.30.0. `Participants` and `Phenotype` keep their released behavior and gain the
-  stamp and `Sources`.
+- `Participants` and `Phenotype` keep their released behavior and gain the stamp and `Sources`.
 
 ## What it looks like
 
