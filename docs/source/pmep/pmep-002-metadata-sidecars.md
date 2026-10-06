@@ -21,7 +21,8 @@
   class, `schema_version`, initially `0.1.0`, and `version`, the package version as provenance.
 - A time column is a Duration only with a time unit in `Units`. Nothing is guessed, on load or
   on save.
-- `verify_bids` reports nonconformities, as in `Phenotype`.
+- `verify_bids` reports nonconformities: `'REQUIRED'`, the default on save, warns, `True`
+  raises, `False` is silent.
 - Ships in v0.30.0. `Participants` and `Phenotype` keep their released behavior and gain the
   stamp and `Sources`.
 
