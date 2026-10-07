@@ -27,7 +27,6 @@ from pymovements import Dataset
 from pymovements import DatasetDefinition
 from pymovements import DatasetLibrary
 from pymovements import ResourceDefinition
-from pymovements.stimulus import text as text_stimulus
 from pymovements.stimulus import TextStimulus
 
 EXAMPLE_AOI_FILE = Path(__file__).parent.parent.parent / 'files' / 'potec_char_aoi_example.ias'
@@ -177,7 +176,7 @@ def test_potec_aoi_load_kwargs_read_the_published_file(potec):
     assert stimulus.aois['character'].to_list()[:3] == ['U', 'm', 'd']
 
 
-def test_potec_aoi_file_needs_a_disabled_quote_character(tmp_path):
+def test_potec_aoi_load_kwargs_read_a_quote_character(potec, tmp_path):
     """A double quote as the character of an AOI must not be read as a quoted field."""
     path = tmp_path / 'q0.ias'
     path.write_text(
@@ -185,20 +184,8 @@ def test_potec_aoi_file_needs_a_disabled_quote_character(tmp_path):
         '0 RECTANGLE\t1\t80\t21\t93\t99\t"\t1\n'
         '0 RECTANGLE\t2\t93\t21\t115\t99\tm\t1\n',
     )
+    resource_definition = resource(potec, 'textstimulus', '.ias')
 
-    stimulus = text_stimulus.from_file(
-        path, aoi_column='character',
-        start_x_column='start_x', start_y_column='start_y',
-        end_x_column='end_x', end_y_column='end_y',
-        custom_read_kwargs={'separator': '\t', 'quote_char': None},
-    )
+    stimulus = TextStimulus.from_csv(path, **resource_definition.load_kwargs)
 
     assert stimulus.aois['character'].to_list() == ['"', 'm']
-
-    with pytest.raises(ValueError, match='not a valid CSV file'):
-        text_stimulus.from_file(
-            path, aoi_column='character',
-            start_x_column='start_x', start_y_column='start_y',
-            end_x_column='end_x', end_y_column='end_y',
-            custom_read_kwargs={'separator': '\t'},
-        )
