@@ -252,6 +252,60 @@ def test_event_conditioned_generation_rejects_overlapping_events(onsets, offsets
     assert 'overlap' in msg
 
 
+@pytest.mark.parametrize(
+    ('trials', 'trial_columns'),
+    [
+        pytest.param({'trial': [1, 1, 2]}, ['trial'], id='one_trial_column'),
+        pytest.param(
+            {'subject': ['a', 'a', 'b'], 'trial': [1, 1, 1]},
+            ['subject', 'trial'],
+            id='two_trial_columns',
+        ),
+    ],
+)
+def test_event_conditioned_generation_generates_each_trial_separately(trials, trial_columns):
+    """Each trial restarts at zero, so bridging them would overlap; each is its own sequence."""
+    events = Events(
+        pl.DataFrame({
+            **trials,
+            'name': ['fixation'] * 3,
+            'onset': [0, 300, 0],
+            'offset': [250, 560, 200],
+        }),
+        trial_columns=trial_columns,
+    )
+    config = StatisticalConfig(sampling_rate=1000.0, seed=42)
+
+    gaze = StatisticalGenerator().generate(config, events=events)
+
+    assert gaze.trial_columns == trial_columns
+    assert gaze.events.trial_columns == trial_columns
+
+    first, second = gaze.samples.partition_by(trial_columns, maintain_order=True)
+    assert first.height == 560
+    assert second.height == 200
+    assert second['time'].dt.total_milliseconds().to_list()[0] == 0
+
+    first_events, second_events = gaze.events.split()
+    assert first_events.frame['name'].to_list() == ['fixation', 'saccade', 'fixation']
+    assert second_events.frame['name'].to_list() == ['fixation']
+
+
+def test_event_conditioned_generation_does_not_bridge_the_gap_between_trials():
+    """Trials on one clock: the time between them is not a saccade, however long it is."""
+    events = Events(
+        name=['fixation'] * 2, onsets=[0, 5000], offsets=[250, 5300], trials=[1, 2],
+        time_unit='ms',
+    )
+    config = StatisticalConfig(sampling_rate=1000.0, seed=42)
+
+    gaze = StatisticalGenerator().generate(config, events=events)
+
+    assert gaze.events.frame['name'].to_list() == ['fixation', 'fixation']
+    assert gaze.events.frame['onset'].to_list() == events.frame['onset'].to_list()
+    assert gaze.samples.height == 550
+
+
 def test_event_conditioned_generation_starts_at_the_first_onset():
     events = Events(name=['fixation'], onsets=[500], offsets=[700], time_unit='ms')
     config = StatisticalConfig(sampling_rate=1000.0, seed=42)

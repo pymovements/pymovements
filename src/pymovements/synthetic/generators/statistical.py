@@ -248,6 +248,7 @@ class StatisticalGenerator(GazeGenerator):
 
     Either a duration to fill or an event sequence to follow must be given, not both. Conditioned on
     events, the type and length of every segment comes from the input instead of being drawn.
+    Events with trial columns are generated trial by trial, so no saccade bridges two trials.
     """
 
     name = 'statistical'
@@ -298,16 +299,28 @@ class StatisticalGenerator(GazeGenerator):
                 f'{type(config).__name__}',
             )
 
-        segments, start_ms = _event_sequence(config, rng, events)
-        profile, profile_times_ms = _build_profiles(segments, config, rng, start_ms)
-        magnitudes = _resample(profile, profile_times_ms, segments, config)
+        # Each trial is its own continuous sequence, so the time between trials is never filled.
+        trial_columns = None
+        trials: list[tuple[pl.DataFrame | None, Events | None]] = [(None, events)]
 
-        if config.noise_std_dps:
-            magnitudes = np.abs(
-                magnitudes + rng.normal(0.0, config.noise_std_dps, magnitudes.size),
-            )
+        if events is not None and events.trial_columns:
+            trial_columns = events.trial_columns
+            trials = [
+                (trial.frame.select(trial_columns).head(1), trial)
+                for trial in events.split(as_dict=False)
+            ]
 
-        times_ms = start_ms + np.arange(magnitudes.size) * (1000.0 / config.sampling_rate)
+        samples = []
+        segment_events = []
+        for keys, trial in trials:
+            trial_samples, trial_events = _synthesize_trial(config, rng, trial)
+
+            if keys is not None:
+                trial_samples = keys.join(trial_samples, how='cross')
+                trial_events = keys.join(trial_events, how='cross')
+
+            samples.append(trial_samples)
+            segment_events.append(trial_events)
 
         # A magnitude is not one of the Gaze component groups, so Gaze warns that it could infer
         # none. Its advice, to declare position or velocity columns, cannot apply to a signal
@@ -315,11 +328,35 @@ class StatisticalGenerator(GazeGenerator):
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', message='Gaze contains samples but no components')
             return Gaze(
-                samples=pl.DataFrame({'time': times_ms, VELOCITY_MAGNITUDE_COLUMN: magnitudes}),
-                events=_segment_events(segments, start_ms),
+                samples=pl.concat(samples),
+                events=Events(pl.concat(segment_events), trial_columns=trial_columns),
+                trial_columns=trial_columns,
                 time_column='time',
                 time_unit='ms',
             )
+
+
+def _synthesize_trial(
+        config: StatisticalConfig,
+        rng: np.random.Generator,
+        events: Events | None,
+) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """Return one continuous sequence's samples and the events it was built from."""
+    segments, start_ms = _event_sequence(config, rng, events)
+    profile, profile_times_ms = _build_profiles(segments, config, rng, start_ms)
+    magnitudes = _resample(profile, profile_times_ms, segments, config)
+
+    if config.noise_std_dps:
+        magnitudes = np.abs(
+            magnitudes + rng.normal(0.0, config.noise_std_dps, magnitudes.size),
+        )
+
+    times_ms = start_ms + np.arange(magnitudes.size) * (1000.0 / config.sampling_rate)
+
+    return (
+        pl.DataFrame({'time': times_ms, VELOCITY_MAGNITUDE_COLUMN: magnitudes}),
+        _segment_events(segments, start_ms).frame,
+    )
 
 
 def _event_sequence(
