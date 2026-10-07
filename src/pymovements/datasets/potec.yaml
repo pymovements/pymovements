@@ -48,7 +48,8 @@ resources:
   # PoTeC publishes two fixation sets of the same trials, both loaded as precomputed_events.
   # The `variant` key captures the extracted folder: `fixations` is the manually corrected set,
   # `fixations_uncorrected` the raw detection output. The corrected files carry no fixation
-  # coordinates, only line, aoi and char_index_in_line. Five uncorrected trials have no corrected
+  # coordinates. They locate each fixation by line and char_index_in_line and add
+  # original_fixation_index and is_fixation_adjusted. Five uncorrected trials have no corrected
   # counterpart (905 vs 900 files). Capturing the folder name is a stopgap: a resource cannot yet
   # declare what it is, see issue 1434 (resource names).
   - content: precomputed_events
