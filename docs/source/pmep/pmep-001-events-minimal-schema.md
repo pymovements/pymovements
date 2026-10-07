@@ -163,8 +163,10 @@ The `offset` measure joins the event-measure registry. `inclusive` is required:
 
 ```python
 offset(*, inclusive: bool, sampling_rate: float | None = None) -> polars.Expr
-# inclusive=True:  onset + duration - sampling_interval, the last-sample timestamp
-# inclusive=False: onset + duration, one past the end, the next onset for adjacent events
+# inclusive=True:  onset + duration - sampling_interval, the last-sample timestamp,
+#                  null for a 0 or null duration: no sample belongs to the event
+# inclusive=False: onset + duration, one past the end, the next onset for adjacent events,
+#                  the onset itself for a 0 duration
 ```
 
 The `duration` measure stays in the registry and gains the matching parameters.
@@ -173,7 +175,8 @@ The `duration` measure stays in the registry and gains the matching parameters.
 ```python
 duration(*, offsets_inclusive: bool, sampling_rate: float | None = None) -> polars.Expr
 # offsets_inclusive names the convention of the input offset column, as on the constructor
-# with the same value on both, offset() then duration() is the identity
+# with the same value on both, offset() then duration() is the identity for durations of at
+# least one sampling interval, a null inclusive offset derives a null duration
 # overwrites a stored duration column under the generic collision warning
 ```
 
@@ -265,10 +268,11 @@ with exact boundaries, including point events and events of unknown duration.
 **Nullability.** `duration` gains null semantics, following BIDS: `0` means an event so short
 that it is modeled as an impulse, `null` means the duration is unavailable. The constructor
 already accepts `null` durations, so what changes is their meaning and how consumers treat them.
-Single-sample events will get `Δ`, never `0` (see the quantization note in Rationale).
-Duration aggregations will skip `null` rows. Frames with onsets only will be accepted on both
-input paths with all-null durations. Missing minimal-schema columns are added as nulls, as
-today.
+Single-sample events will get `Δ`, never `0` (see the quantization note in Rationale). An
+impulse selects no samples and has no inclusive offset, see the note on the impulse in
+Rationale. Duration aggregations will skip `null` rows. Frames with onsets only will be
+accepted on both input paths with all-null durations. Missing minimal-schema columns are added
+as nulls, as today.
 
 **Sample selection.** The half-open interval `[onset, onset + duration)` will select the samples
 of an event. On the nominal sampling grid `onset + duration` equals the next event's onset
@@ -304,8 +308,9 @@ rules below.
 column, identified by the column's name as in a BIDS tabular sidecar, and one sampling-rate
 entry. The convention entry will be written by `offsets_inclusive=`, by `parse_offset` on
 `from_asc` and by the `offset` measure for the column it writes. Several offset columns with
-different conventions may coexist. The declaration rule, the consistency check and the legacy
-rule apply to the column literally named `offset`, the offset measure to any column with an
+different conventions may coexist. A convention entry describes its whole column. The
+declaration rule, the consistency check and the legacy rule apply to the column literally
+named `offset`, the offset measure to any column with an
 entry. A convention entry for a column the frame does not have will be kept, and public
 construction with `validate=True` will warn once, naming the column. The sampling-rate entry
 will be written by the constructor's `sampling_rate=`. How the entries behave under operations
@@ -420,6 +425,14 @@ EyeLink's reported `DUR`. Today's `120` is its edge, not a more precise value, o
 Three criteria pick the center independently of bias: additivity (durations sum to recording
 length and adjacent events tile), the single-sample event (duration `Δ` instead of an ambiguous
 `0`), and agreement with the vendor's reported values.
+
+**Why the inclusive offset of an impulse is null.** Under the inclusive convention
+`duration = offset - onset + Δ`. For a duration of `0` the only offset that satisfies the
+formula is `onset - Δ`, a timestamp before the event starts. The next candidate, `onset`, is a
+valid timestamp but turns back into a duration of `Δ`, the single-sample event, not the
+impulse. No value is both a valid timestamp and consistent with the stored duration, so the
+offset is null. The exclusive offset has no such problem: `onset + duration` is the onset, and
+an impulse ends where it starts.
 
 **Why the selection ends half an interval early.** Sample timestamps are not always on the
 nominal grid. Some trackers report timestamps that jitter around it, and the sample following
