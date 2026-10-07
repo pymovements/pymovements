@@ -125,12 +125,12 @@ def test_potec_has_corrected_and_uncorrected_fixations(potec):
     [
         pytest.param(
             Path('fixations_uncorrected') / 'reader1_b0_uncorrected_fixations.tsv',
-            {'subject_id': 1, 'text_id': 'b0'},
+            {'variant': 'fixations_uncorrected', 'subject_id': 1, 'text_id': 'b0'},
             id='uncorrected',
         ),
         pytest.param(
             Path('fixations') / 'reader1_b0_fixations.tsv',
-            {'subject_id': 1, 'text_id': 'b0'},
+            {'variant': 'fixations', 'subject_id': 1, 'text_id': 'b0'},
             id='corrected',
         ),
     ],

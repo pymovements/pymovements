@@ -58,7 +58,7 @@ resources:
     url: https://osf.io/download/2hs8p/
     filename: fixations.csv
     md5: 5e05a364a1d8a044d8b36506aa91437e
-  filename_pattern: fixations.csv
+  filename_pattern: (?P<variant>fixations).csv
   load_kwargs:
     read_csv_kwargs:
       separator: "\t"
@@ -67,7 +67,7 @@ resources:
     url: https://osf.io/download/w3gan/
     filename: fixations_corrected.csv
     md5: 0eb2fd2bb32169eb7f828dadd6d70d3b
-  filename_pattern: fixations_corrected.csv
+  filename_pattern: (?P<variant>fixations_corrected).csv
   load_kwargs:
     read_csv_kwargs:
       separator: "\t"

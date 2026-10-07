@@ -58,6 +58,6 @@ def test_emtec_scan_matches_each_fixation_file_once(emtec_path):
     fileinfo = Dataset('EMTeC', path=emtec_path).scan().fileinfo['precomputed_events']
 
     assert fileinfo.to_dicts() == [
-        {'filepath': 'fixations.csv'},
-        {'filepath': 'fixations_corrected.csv'},
+        {'variant': 'fixations', 'filepath': 'fixations.csv'},
+        {'variant': 'fixations_corrected', 'filepath': 'fixations_corrected.csv'},
     ]
