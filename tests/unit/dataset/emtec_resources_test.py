@@ -18,51 +18,46 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test the resource definitions of the EMTeC dataset."""
+from pathlib import Path
+
 import pytest
 
-from pymovements import DatasetDefinition
-from pymovements import DatasetLibrary
-from pymovements._utils._strings import curly_to_regex
+from pymovements import Dataset
 
 
-@pytest.fixture(name='emtec')
-def fixture_emtec() -> DatasetDefinition:
-    """Return the EMTeC dataset definition.
+@pytest.fixture(name='emtec_path')
+def fixture_emtec_path(tmp_path: Path) -> Path:
+    """Return a dataset directory with empty files laid out like the extracted EMTeC archives.
+
+    Parameters
+    ----------
+    tmp_path: Path
+        Temporary directory provided by pytest.
 
     Returns
     -------
-    DatasetDefinition
-        The definition registered in the dataset library.
+    Path
+        The dataset directory.
 
     """
-    return DatasetLibrary.get('EMTeC')
+    relative_paths = [
+        'raw/ET_1.csv',
+        'precomputed_events/fixations.csv',
+        'precomputed_events/fixations_corrected.csv',
+        'precomputed_events/__MACOSX/._fixations_corrected.csv',
+        'precomputed_reading_measures/reading_measures.csv',
+    ]
+    for relative_path in relative_paths:
+        path = tmp_path / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+    return tmp_path
 
 
-def test_emtec_has_corrected_and_uncorrected_fixations(emtec):
-    patterns = sorted(
-        candidate.filename_pattern for candidate in emtec.resources
-        if candidate.content == 'precomputed_events'
-    )
+def test_emtec_scan_matches_each_fixation_file_once(emtec_path):
+    fileinfo = Dataset('EMTeC', path=emtec_path).scan().fileinfo['precomputed_events']
 
-    assert patterns == ['fixations.csv', 'fixations_corrected.csv']
-
-
-@pytest.mark.parametrize(
-    ('pattern', 'filename', 'matches'),
-    [
-        pytest.param('fixations.csv', 'fixations.csv', True, id='uncorrected_own'),
-        pytest.param('fixations.csv', 'fixations_corrected.csv', False, id='uncorrected_other'),
-        pytest.param(
-            'fixations_corrected.csv', 'fixations_corrected.csv', True, id='corrected_own',
-        ),
-        pytest.param('fixations_corrected.csv', 'fixations.csv', False, id='corrected_other'),
-    ],
-)
-def test_emtec_fixation_patterns_do_not_overlap(emtec, pattern, filename, matches):
-    """Both fixation resources land in the same directory, so their patterns must be disjoint."""
-    resource = next(
-        candidate for candidate in emtec.resources
-        if candidate.content == 'precomputed_events' and candidate.filename_pattern == pattern
-    )
-
-    assert bool(curly_to_regex(resource.filename_pattern).fullmatch(filename)) is matches
+    assert fileinfo.to_dicts() == [
+        {'filepath': 'fixations.csv'},
+        {'filepath': 'fixations_corrected.csv'},
+    ]
