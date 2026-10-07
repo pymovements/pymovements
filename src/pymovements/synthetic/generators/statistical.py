@@ -52,6 +52,7 @@ from pymovements.synthetic.capabilities import SignalRepresentation
 from pymovements.synthetic.config import GeneratorConfig
 from pymovements.synthetic.generator import GazeGenerator
 from pymovements.synthetic.library import register_generator
+from pymovements.synthetic.validation import InputContractError
 
 #: The column the velocity magnitude is written to. It is deliberately not one of the Gaze
 #: component groups, because a magnitude has no x and y.
@@ -288,6 +289,8 @@ class StatisticalGenerator(GazeGenerator):
         ValueError
             If the configuration is not a StatisticalConfig, or if neither events nor a duration
             were given.
+        InputContractError
+            If the events to condition on overlap.
         """
         if not isinstance(config, StatisticalConfig):
             raise ValueError(
@@ -356,17 +359,25 @@ def _conditioned_sequence(events: Events) -> tuple[list[tuple[str, float]], floa
 
     A fixation sequence has gaps, because the saccades between the fixations were never part of
     it. Dropping them would shorten the signal and move every later event, so the output would no
-    longer agree with the input it was conditioned on.
+    longer agree with the input it was conditioned on. Unsorted events are ordered by onset, and
+    overlapping ones are rejected, since one signal cannot follow two events at once.
     """
-    onsets = events.frame['onset'].dt.total_milliseconds().to_list()
-    offsets = events.frame['offset'].dt.total_milliseconds().to_list()
-    names = events.frame['name'].to_list()
+    frame = events.frame.sort('onset')
+    onsets = frame['onset'].dt.total_milliseconds().to_list()
+    offsets = frame['offset'].dt.total_milliseconds().to_list()
+    names = frame['name'].to_list()
 
     start_ms = float(onsets[0])
     segments: list[tuple[str, float]] = []
     previous_offset_ms = start_ms
 
     for name, onset, offset in zip(names, onsets, offsets):
+        if onset < previous_offset_ms:
+            raise InputContractError(
+                f"generator '{StatisticalGenerator.name}': events overlap, a {name} starts at "
+                f'{onset} ms before the previous event ends at {previous_offset_ms} ms',
+            )
+
         if onset > previous_offset_ms:
             segments.append(('saccade', onset - previous_offset_ms))
 

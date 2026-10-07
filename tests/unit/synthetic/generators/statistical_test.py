@@ -219,6 +219,39 @@ def test_event_conditioned_generation_keeps_the_input_timeline():
     assert fixations['offset'].to_list() == events.frame['offset'].to_list()
 
 
+def test_event_conditioned_generation_orders_unsorted_events():
+    """Unsorted events keep their supplied times rather than being laid end to end as given."""
+    events = Events(
+        name=['fixation'] * 2, onsets=[300, 0], offsets=[560, 250], time_unit='ms',
+    )
+    config = StatisticalConfig(sampling_rate=1000.0, seed=42)
+
+    unsorted = StatisticalGenerator().generate(config, events=events)
+    ordered = StatisticalGenerator().generate(config, events=_fixations())
+
+    assert unsorted.events.frame.equals(ordered.events.frame)
+    assert unsorted.samples.equals(ordered.samples)
+
+
+@pytest.mark.parametrize(
+    ('onsets', 'offsets'),
+    [
+        pytest.param([0, 200], [250, 500], id='partial_overlap'),
+        pytest.param([0, 50], [300, 100], id='nested'),
+        pytest.param([300, 0], [560, 400], id='overlap_when_unsorted'),
+    ],
+)
+def test_event_conditioned_generation_rejects_overlapping_events(onsets, offsets):
+    events = Events(name=['fixation'] * 2, onsets=onsets, offsets=offsets, time_unit='ms')
+    config = StatisticalConfig(sampling_rate=1000.0, seed=42)
+
+    with pytest.raises(InputContractError) as excinfo:
+        StatisticalGenerator().generate(config, events=events)
+
+    msg, = excinfo.value.args
+    assert 'overlap' in msg
+
+
 def test_event_conditioned_generation_starts_at_the_first_onset():
     events = Events(name=['fixation'], onsets=[500], offsets=[700], time_unit='ms')
     config = StatisticalConfig(sampling_rate=1000.0, seed=42)
