@@ -191,14 +191,25 @@ pymovements.gaze.from_asc(file, *, parse_offset: bool = False, ...)
 # parse_offset=False: nothing is stored
 ```
 
-`Dataset.load_event_files` and `Dataset.load` gain the two keywords and forward them to
+`Dataset.load_event_files` and `Dataset.load` gain the three keywords and forward them to
 `Events(frame, ...)` per file. The sampling rate comes from `definition.experiment`. No resource
 definition changes:
 
 ```python
-Dataset.load_event_files(..., offsets_inclusive: bool | None = None, durations_from_offsets: bool = False)
-Dataset.load(..., offsets_inclusive: bool | None = None, durations_from_offsets: bool = False)
+Dataset.load_event_files(
+    ...,
+    offsets_inclusive: bool | None = None,
+    durations_from_offsets: bool = False,
+    validate: bool = True,
+)
+Dataset.load(
+    ...,
+    offsets_inclusive: bool | None = None,
+    durations_from_offsets: bool = False,
+    validate: bool = True,
+)
 # offsets_inclusive: None means undeclared, as on the constructor
+# validate: the opt-out of the legacy table is reachable through the Dataset form as well
 ```
 
 Detection algorithms and `segmentation2events` gain a required `sampling_rate` keyword.
@@ -373,8 +384,10 @@ row, the residual-0-everywhere case. Read off the construction rules and the che
 The replace row needs a sampling rate, which the Dataset form takes from the experiment. The
 raise messages list the recipes. The rule is permanent, since the files can always exist.
 
-**`durations_from_offsets`.** A permanent flag on the constructor, `Dataset.load_event_files`
-and `Dataset.load`, default `False`, with the behavior of the construction rules.
+**`durations_from_offsets` and `validate`.** Permanent flags on the constructor,
+`Dataset.load_event_files` and `Dataset.load`, with the behavior of the construction rules:
+`durations_from_offsets` defaults to `False`, `validate` to `True`. Every row of the legacy
+table is reachable through the Dataset form.
 
 **Retaining parsed offsets.** The EyeLink parser takes `DUR` verbatim as the duration whether
 or not `parse_offset` is set. In v0.29.0 `parse_offset=True` plus the consistency check is the
@@ -532,7 +545,7 @@ One issue per line, drafted once the PMEP is accepted:
       entry without its column
 - [ ] offset and duration measures, `compute_event_properties` sampling-rate injection
 - [ ] `Gaze.detect`: detector `sampling_rate` from the experiment, metadata carried over
-- [ ] Dataset loaders: the two keywords, `sampling_rate` from the experiment
+- [ ] Dataset loaders: the three keywords, `sampling_rate` from the experiment
 - [ ] EyeLink and BeGaze parsers: `DUR` verbatim, `parse_offset`, `durations=`
 - [ ] offset consumers, duration thresholds, null duration semantics
 - [ ] changelog entry and versioned migration note per Backwards compatibility
