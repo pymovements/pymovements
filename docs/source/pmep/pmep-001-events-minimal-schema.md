@@ -398,7 +398,7 @@ which `Gaze.compute_event_properties` will fill when the caller gives none: the 
 first, the experiment second. `inclusive=False` will need no sampling rate. `offsets_inclusive`
 on the `duration` measure is required in the same way. `Gaze.compute_event_properties` writes
 the `duration` expression over a stored `duration` column, as `durations_from_offsets=True`
-does at construction. `inclusive=None` meaning the stored convention is future work.
+does at construction.
 
 **Remaining offset consumers** move to onset/duration arithmetic:
 
