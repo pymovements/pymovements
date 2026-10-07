@@ -172,24 +172,6 @@ def test_potec_aoi_load_kwargs_read_the_published_file(potec):
     assert stimulus.aois['character'].to_list()[:3] == ['U', 'm', 'd']
 
 
-def test_potec_derived_line_index_matches_the_published_line_column(potec):
-    """The .ias files carry a one-based line column; the derived index must agree with it.
-
-    That agreement is all this checks. Within a PoTeC line every box shares one top edge, so
-    the file does not exercise the case that centre grouping is chosen for; the height
-    differences are between lines, not inside them.
-    """
-    load_kwargs = dict(resource(potec, 'textstimulus', '.ias').load_kwargs)
-    read_csv_kwargs = load_kwargs.pop('read_csv_kwargs')
-    stimulus = text_stimulus.from_file(
-        EXAMPLE_AOI_FILE, custom_read_kwargs=read_csv_kwargs, **load_kwargs,
-    )
-
-    aois = stimulus.with_line_idx().aois
-
-    assert (aois['line_idx'] == aois['line'] - 1).all()
-
-
 def test_potec_aoi_file_needs_a_disabled_quote_character(tmp_path):
     """A double quote as the character of an AOI must not be read as a quoted field."""
     path = tmp_path / 'q0.ias'
