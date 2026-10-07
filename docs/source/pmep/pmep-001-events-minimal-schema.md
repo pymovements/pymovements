@@ -177,7 +177,6 @@ duration(*, offsets_inclusive: bool, sampling_rate: float | None = None) -> pola
 # offsets_inclusive names the convention of the input offset column, as on the constructor
 # with the same value on both, offset() then duration() is the identity for durations of at
 # least one sampling interval, a null inclusive offset derives a null duration
-# overwrites a stored duration column under the generic collision warning
 ```
 
 `from_asc` gains a retention parameter for the end timestamps it parses. A future loader that
@@ -397,8 +396,9 @@ guard against a vendor end timestamp disagreeing with `DUR`.
 parameter. `inclusive=True` reproduces today's stored offsets and will require a sampling rate,
 which `Gaze.compute_event_properties` will fill when the caller gives none: the events entry
 first, the experiment second. `inclusive=False` will need no sampling rate. `offsets_inclusive`
-on the `duration` measure is required in the same way. `inclusive=None` meaning the stored
-convention is future work.
+on the `duration` measure is required in the same way. `Gaze.compute_event_properties` writes
+the `duration` expression over a stored `duration` column, as `durations_from_offsets=True`
+does at construction. `inclusive=None` meaning the stored convention is future work.
 
 **Remaining offset consumers** move to onset/duration arithmetic:
 
