@@ -127,6 +127,9 @@ def from_csv(
         These can include custom separators, a subset of columns, or specific data types
         for columns.
 
+        .. versionchanged:: 0.29.0
+            The loaded columns follow the order of ``columns`` instead of the file order.
+
     Returns
     -------
     Gaze
