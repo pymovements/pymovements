@@ -610,9 +610,7 @@ def segmentation2events(
             f'segmentation must be a polars.Series or numpy.ndarray, but is {type(segmentation)}',
         )
 
-    if segmentation.dtype == pl.Boolean:
-        pass
-    elif not ((segmentation == 0) | (segmentation == 1)).all():
+    if not _has_binary_values(segmentation):
         raise ValueError('segmentation must only contain binary values (0, 1, True, or False)')
 
     df_dict = {'__segmentation__': segmentation}
@@ -746,3 +744,12 @@ def _has_overlap(onsets: np.ndarray, offsets: np.ndarray) -> bool:
     sorted_offsets = offsets[sorted_indices]
 
     return bool(np.any(sorted_onsets[1:] <= sorted_offsets[:-1]))
+
+
+def _has_binary_values(series: pl.Series) -> bool:
+    """Check if a series holds only 0, 1, True or False."""
+    if series.dtype == pl.Boolean:
+        return True
+    if not series.dtype.is_numeric():
+        return False
+    return bool(((series == 0) | (series == 1)).all())
