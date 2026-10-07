@@ -95,9 +95,10 @@ jobs:
 
       - name: Benchmark pull request head and compare
         if: github.event_name == 'pull_request'
-        # 50% slower means 1.5x the runtime, matching the old alert threshold.
+        # CPU frequency metadata can change between runs on the same runner.
         run: >-
           tox --skip-pkg-install -e benchmark --
+          -W "ignore:Benchmark machine_info is different:pytest_benchmark.logger.PytestBenchmarkWarning"
           --benchmark-compare=0001
           --benchmark-compare-fail=mean:50%
 
