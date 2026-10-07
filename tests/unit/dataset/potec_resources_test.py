@@ -28,6 +28,7 @@ from pymovements import DatasetDefinition
 from pymovements import DatasetLibrary
 from pymovements import ResourceDefinition
 from pymovements.stimulus import text as text_stimulus
+from pymovements.stimulus import TextStimulus
 
 EXAMPLE_AOI_FILE = Path(__file__).parent.parent.parent / 'files' / 'potec_char_aoi_example.ias'
 
@@ -159,7 +160,6 @@ def test_potec_has_a_character_aoi_resource(potec):
 
     assert len(stimuli) == 1
     assert stimuli[0].load_kwargs['aoi_column'] == 'character'
-    assert stimuli[0].load_kwargs['read_csv_kwargs']['quote_char'] is None
 
 
 def test_potec_scan_finds_the_published_text_ids(potec_path):
@@ -169,12 +169,9 @@ def test_potec_scan_finds_the_published_text_ids(potec_path):
 
 
 def test_potec_aoi_load_kwargs_read_the_published_file(potec):
-    load_kwargs = dict(resource(potec, 'textstimulus', '.ias').load_kwargs)
-    read_csv_kwargs = load_kwargs.pop('read_csv_kwargs')
+    resource_definition = resource(potec, 'textstimulus', '.ias')
 
-    stimulus = text_stimulus.from_file(
-        EXAMPLE_AOI_FILE, custom_read_kwargs=read_csv_kwargs, **load_kwargs,
-    )
+    stimulus = TextStimulus.from_csv(EXAMPLE_AOI_FILE, **resource_definition.load_kwargs)
 
     assert stimulus.aois.height == 185
     assert stimulus.aois['character'].to_list()[:3] == ['U', 'm', 'd']
