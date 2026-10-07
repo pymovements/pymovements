@@ -245,7 +245,7 @@ class StatisticalGenerator(GazeGenerator):
     whose skewness is a parameter, and smooth pursuits open with a sigmoid onset before a
     constant, growing or decreasing pursuit.
 
-    Either a duration to fill or an event sequence to follow must be given. Conditioned on
+    Either a duration to fill or an event sequence to follow must be given, not both. Conditioned on
     events, the type and length of every segment comes from the input instead of being drawn.
     """
 

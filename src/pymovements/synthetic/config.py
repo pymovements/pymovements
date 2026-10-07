@@ -39,7 +39,7 @@ class GeneratorConfig:
         The sampling rate of the generated signal in Hz. Must be greater than zero.
     duration_s: float | None
         The duration of the generated sequence in seconds, or ``None`` to let the conditioning
-        input determine it. Must be greater than zero.
+        input determine it. Must be greater than zero, and ``None`` when conditioning on events.
     seed: int | None
         The random seed, or ``None`` to draw one. A drawn seed is recorded in the generated
         :py:class:`~pymovements.Gaze` object's metadata, so a run is reproducible either way.

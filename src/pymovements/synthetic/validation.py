@@ -98,6 +98,7 @@ def validate_input(
 
     if events is not None:
         _validate_events(events, capabilities, prefix)
+        _validate_duration_source(config, prefix)
 
     if gaze is not None:
         _validate_conditioning_gaze(gaze, prefix)
@@ -219,6 +220,15 @@ def _validate_events(
         raise InputContractError(
             f'{prefix}event types {uncovered} are not covered by the generator, covered event '
             f'types are: {sorted(capabilities.event_types)}',
+        )
+
+
+def _validate_duration_source(config: GeneratorConfig | None, prefix: str) -> None:
+    """Reject a duration alongside events, which already determine how long the output is."""
+    if config is not None and config.duration_s is not None:
+        raise InputContractError(
+            f'{prefix}duration_s ({config.duration_s} s) was set although events were supplied, '
+            'which determine the duration, set duration_s to None when conditioning on events',
         )
 
 

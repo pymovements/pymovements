@@ -271,6 +271,28 @@ def test_validate_input_returns_none_on_valid(kwargs):
 
         pytest.param(
             {
+                'capabilities': EVENT_CAPABILITIES,
+                'config': GeneratorConfig(sampling_rate=1000.0, duration_s=2.0),
+                'events': make_events(),
+            },
+            InputContractError,
+            ('duration_s', '2.0', 'events'),
+            id='duration_alongside_events_raises',
+        ),
+
+        pytest.param(
+            {
+                'capabilities': None,
+                'config': GeneratorConfig(sampling_rate=1000.0, duration_s=2.0),
+                'events': make_events(),
+            },
+            InputContractError,
+            ('duration_s', 'events'),
+            id='duration_alongside_events_raises_without_declaration',
+        ),
+
+        pytest.param(
+            {
                 'capabilities': FIXED_RATE_CAPABILITIES,
                 'config': GeneratorConfig(sampling_rate=1000.0, duration_s=5.0),
             },

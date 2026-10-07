@@ -26,6 +26,7 @@ import pytest
 from pymovements import Events
 from pymovements.synthetic import ConditioningMode
 from pymovements.synthetic import GeneratorConfig
+from pymovements.synthetic import InputContractError
 from pymovements.synthetic import SignalRepresentation
 from pymovements.synthetic.generators.statistical import StatisticalConfig
 from pymovements.synthetic.generators.statistical import StatisticalGenerator
@@ -356,3 +357,13 @@ def test_statistical_raises_error_on_generate(config, msg_substrings):
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
         assert msg_substring in msg
+
+
+def test_duration_alongside_events_is_the_callers_error():
+    config = StatisticalConfig(sampling_rate=1000.0, duration_s=2.0, seed=42)
+
+    with pytest.raises(InputContractError) as excinfo:
+        StatisticalGenerator().generate(config, events=_fixations())
+
+    msg, = excinfo.value.args
+    assert 'duration_s' in msg
