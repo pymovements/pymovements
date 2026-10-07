@@ -48,6 +48,11 @@ resources:
           y: !polars.Float32
           pupil_right: !polars.Float32
 
+  # EMTeC publishes two fixation sets of the same trials, both loaded as precomputed_events.
+  # The `variant` key captures the file stem: `fixations` is the uncorrected set,
+  # `fixations_corrected` the manually corrected one. Note the reverse of PoTeC, where the plain
+  # `fixations` folder holds the corrected set. Capturing the stem is a stopgap: a resource cannot
+  # yet declare what it is, see issue 1434 (resource names).
   - content: precomputed_events
     source:
       url: "https://osf.io/download/2hs8p/"
@@ -58,9 +63,6 @@ resources:
       read_csv_kwargs:
         separator: "\t"
 
-  # Manually corrected fixations: the annotators reassigned a fixation to another word AOI,
-  # the coordinates stay the raw ones. Pattern-wise this cannot collide with fixations.csv
-  # above, whose pattern has no wildcard long enough to reach across "_corrected".
   - content: precomputed_events
     source:
       url: "https://osf.io/download/w3gan/"

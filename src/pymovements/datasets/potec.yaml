@@ -45,6 +45,12 @@ resources:
           pupil_diameter: !polars.Float32
         separator: "\t"
 
+  # PoTeC publishes two fixation sets of the same trials, both loaded as precomputed_events.
+  # The `variant` key captures the extracted folder: `fixations` is the manually corrected set,
+  # `fixations_uncorrected` the raw detection output. The corrected files carry no fixation
+  # coordinates, only line, aoi and char_index_in_line. Five uncorrected trials have no corrected
+  # counterpart (905 vs 900 files). Capturing the folder name is a stopgap: a resource cannot yet
+  # declare what it is, see issue 1434 (resource names).
   - content: precomputed_events
     source:
       url: "https://osf.io/download/d8pyg/"
@@ -59,9 +65,6 @@ resources:
         separator: "\t"
         null_values: '.'
 
-  # Manually corrected fixations. The text_id length is pinned to two characters on purpose:
-  # with a greedy '{text_id}' this pattern would also match the uncorrected files above, which
-  # land in the same directory, and every uncorrected trial would be scanned twice.
   - content: precomputed_events
     source:
       url: "https://osf.io/download/53zwb/"
@@ -93,9 +96,9 @@ resources:
       end_y_column: end_y
       read_csv_kwargs:
         separator: "\t"
-        # Character-level AOIs have one row per character, so a double quote appears as data.
-        # With the default quote character polars reads it as the start of a quoted field and
-        # the parse fails outright.
+        # None of the published .ias files contains a double quote. A quote is a valid
+        # character AOI, though, and with the default quote character polars would read it as
+        # the start of a quoted field. Quoting is disabled as a precaution.
         quote_char: null
 
   - content: precomputed_reading_measures
