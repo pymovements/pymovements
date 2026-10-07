@@ -86,6 +86,8 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+          # Keep the merge-base result in .benchmarks for the comparison step.
+          clean: false
 
       - name: Recreate pull request benchmark environment
         if: github.event_name == 'pull_request'
