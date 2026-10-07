@@ -19,6 +19,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Find merge-base
+        id: merge-base
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: echo "sha=$(git merge-base "$BASE_SHA" "$HEAD_SHA")" >> "$GITHUB_OUTPUT"
 
       - name: Restore cached environment
         id: cache-restore
@@ -39,6 +48,7 @@ jobs:
         run: python -m pip install tox
 
       - name: Setup benchmark environment
+        if: github.event_name != 'pull_request'
         run: tox -vv --notest -e benchmark
 
       - name: Cache environment
@@ -52,10 +62,46 @@ jobs:
             ~/.tox
 
       - name: Run benchmark
+        if: github.event_name != 'pull_request'
         run: tox --skip-pkg-install -e benchmark
+
+      - name: Checkout merge-base
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.merge-base.outputs.sha }}
+          fetch-depth: 0
+
+      - name: Setup merge-base benchmark environment
+        if: github.event_name == 'pull_request'
+        run: tox -vv --notest -e benchmark
+
+      - name: Benchmark merge-base
+        if: github.event_name == 'pull_request'
+        run: tox --skip-pkg-install -e benchmark -- --benchmark-save=merge-base
+
+      - name: Checkout pull request head
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Recreate pull request benchmark environment
+        if: github.event_name == 'pull_request'
+        run: tox -vv --notest --recreate -e benchmark
+
+      - name: Benchmark pull request head and compare
+        if: github.event_name == 'pull_request'
+        # 50% slower means 1.5x the runtime, matching the old alert threshold.
+        run: >-
+          tox --skip-pkg-install -e benchmark --
+          --benchmark-compare=0001
+          --benchmark-compare-fail=mean:50%
 
       - name: Download previous benchmark data
         uses: actions/cache@v4
+        if: github.ref == 'refs/heads/main'
         with:
           path: ./cache
           key: benchmark-${{ github.ref_name }}-${{ github.run_id }}
@@ -63,6 +109,7 @@ jobs:
 
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
+        if: github.ref == 'refs/heads/main'
         with:
           name: pytest-benchmark
           tool: 'pytest'
