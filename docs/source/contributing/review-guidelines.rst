@@ -17,7 +17,7 @@ credited in the next release.
 Before You Start
 ----------------
 
-- Review the current state of the pull request. Fetch the latest head before you begin.
+- Review the current state of the pull request.
 - Check CI first. Spend no findings on failures CI already reports, but
   explain the cause of a confusing failure if the diff shows it.
 - Read the existing review threads. Verify earlier findings instead of raising them again, and
