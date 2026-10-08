@@ -29,14 +29,15 @@ Maintainer Commits
 ------------------
 
 Maintainers often add commits on top of a contributor's work to make a pull request ready for
-merging. Check the commit authors first and review the two sets separately, so that no finding is
-attributed to the wrong author. Review the contributor's changes first, then the maintainer's
-changes, opened by a short summary of what they did. The summary lets the contributor see what was
-changed on top of their work.
+merging.
 
-A maintainer cannot approve their own commits. If these changes are substantial (rework, new
-helpers, behavior changes, as opposed to typo, lint or docs fixes), another maintainer reviews
-them.
+- Check the commit authors first and review the two sets separately, so that no finding is
+  attributed to the wrong author.
+- Review the contributor's changes first, then the maintainer's changes, opened by a short summary
+  of what they did. The summary lets the contributor see what was changed on top of their work.
+- A maintainer cannot approve their own commits. If these changes are substantial (rework, new
+  helpers, behavior changes, as opposed to typo, lint or docs fixes), another maintainer reviews
+  them.
 
 Numerical and Algorithmic Changes
 ---------------------------------
@@ -52,12 +53,19 @@ Numerical and Algorithmic Changes
 Edge Cases in Gaze and Event Code
 ---------------------------------
 
-Look for empty frames, all-NaN or partly NaN samples, a single row or fixation, monocular and
-binocular column layouts, several trials or stimuli in one frame, and missing optional columns.
-An unhandled case fails loudly with a clear error message instead of returning wrong values.
+- Look for these cases:
 
-Functions leave arrays, dictionaries and DataFrames passed in by the caller unchanged. They copy
-the input or build a new object, and they work regardless of the key order of a dictionary.
+  - empty frames
+  - all-NaN or partly NaN samples
+  - a single row or fixation
+  - monocular and binocular column layouts
+  - several trials or stimuli in one frame
+  - missing optional columns
+
+- An unhandled case fails loudly with a clear error message instead of returning wrong values.
+- Functions leave arrays, dictionaries and DataFrames passed in by the caller unchanged. They copy
+  the input or build a new object.
+- Functions work regardless of the key order of a dictionary.
 
 API Consistency
 ---------------
@@ -70,13 +78,17 @@ API Consistency
 - ``@overload`` signatures actually narrow the type under mypy.
 - A change in behavior of an existing signature needs a justification. Could an existing call
   behave differently?
-- Deprecations follow the project cycle: a warning in the next minor release, removal five minor
-  releases later (for example deprecated in v0.28.0, removed in v0.33.0). The warning names the
-  removal version, and a test using ``assert_deprecation_is_removed`` covers it. The pull request
-  description opens with a "⚠️ Deprecation" section, added on demand and not part of the template.
-  It has one paragraph per deprecated item, naming the item, the version that deprecates it, its
-  replacement and the removal version. The pull request carries the ``deprecation`` label, next
-  to ``enhancement`` when it also adds a feature.
+- Deprecations follow the project cycle:
+
+  - A warning in the next minor release, removal five minor releases later (for example
+    deprecated in v0.28.0, removed in v0.33.0).
+  - The warning names the removal version, and a test using ``assert_deprecation_is_removed``
+    covers it.
+  - The pull request description opens with a "⚠️ Deprecation" section, added on demand and not
+    part of the template. It has one paragraph per deprecated item, naming the item, the version
+    that deprecates it, its replacement and the removal version.
+  - The pull request carries the ``deprecation`` label, next to ``enhancement`` when it also adds
+    a feature.
 
 Tests
 -----
