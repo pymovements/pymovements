@@ -280,6 +280,9 @@ pull requests for open-source projects applies.
 Do not squash your commits after you have submitted a pull request, as this
 erases context during review. We will squash commits when the pull request is ready to be merged.
 
+Reviewers check pull requests against our
+[Review Guidelines](https://pymovements.readthedocs.io/en/latest/contributing/review-guidelines.html).
+
 ### Continuous Integration
 
 Tests, code style, and documentation are all additionally checked using a GitHub Actions
