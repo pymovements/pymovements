@@ -18,8 +18,8 @@ Before You Start
 ----------------
 
 - Review the current state of the pull request.
-- Check CI first. Spend no findings on failures CI already reports, but
-  explain the cause of a confusing failure if the diff shows it.
+- Check CI first. Spend no findings on failures CI already reports, but explain the cause of a
+  confusing failure if the diff shows it.
 - Read the existing review threads. Verify earlier findings instead of raising them again, and
   report a finding that came back as a regression.
 - Judgment calls that an earlier review round accepted (naming, structure, style) stay settled
@@ -90,9 +90,8 @@ Tests
   boundary (network, file system) rather than at the private helper. Existing tests of private
   functions are legacy, not a license to add more.
 - Test functions are free of ``if``/``else``, since a branching test hides which path ran. Each
-  branch becomes its own
-  ``pytest.mark.parametrize`` case with an explicit expected value, or its own test function.
-  Fixtures may contain logic, and complex fixture logic gets its own tests in
+  branch becomes its own ``pytest.mark.parametrize`` case with an explicit expected value, or its
+  own test function. Fixtures may contain logic, and complex fixture logic gets its own tests in
   ``tests/fixtures/<name>_fixtures_test.py``.
 - Error tests assert the error message, not only the exception type.
 - New lines are ideally covered without ``tests/unit/dataset/dataset_test.py``, which is slow. A
