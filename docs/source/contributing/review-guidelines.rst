@@ -2,9 +2,7 @@
  Review Guidelines
 ===================
 
-These guidelines describe what we check when reviewing a pull request to pymovements. They apply
-to reviews by maintainers and contributors alike, and they make a good checklist before you open a
-pull request yourself.
+These guidelines describe what we check when reviewing a pull request to pymovements.
 
 pymovements is scientific software used by research labs. Silently wrong numbers are the worst
 failure mode, worse than a crash. When a claim about correctness can be checked against the math,
@@ -20,7 +18,7 @@ Before You Start
 ----------------
 
 - Review the current state of the pull request. Fetch the latest head before you begin.
-- Check CI first (``gh pr checks <N>``). Spend no findings on failures CI already reports, but
+- Check CI first. Spend no findings on failures CI already reports, but
   explain the cause of a confusing failure if the diff shows it.
 - Read the existing review threads. Verify earlier findings instead of raising them again, and
   report a finding that came back as a regression.
@@ -31,9 +29,10 @@ Maintainer Commits
 ------------------
 
 Maintainers often add commits on top of a contributor's work to make a pull request ready for
-merging. Check the commit authors first and review the two sets separately: the contributor's
-changes first, then the maintainer's changes, opened by a short summary of what they did. The
-summary lets the contributor see what was changed on top of their work.
+merging. Check the commit authors first and review the two sets separately, so that no finding is
+attributed to the wrong author. Review the contributor's changes first, then the maintainer's
+changes, opened by a short summary of what they did. The summary lets the contributor see what was
+changed on top of their work.
 
 A maintainer cannot approve their own commits. If these changes are substantial (rework, new
 helpers, behavior changes, as opposed to typo, lint or docs fixes), another maintainer reviews
@@ -64,7 +63,7 @@ API Consistency
 ---------------
 
 - Naming, signature style, and whether a method modifies in place or returns a new object match
-  the neighbouring methods.
+  the neighboring methods.
 - New public API is exported in the relevant ``__init__.py``.
 - Conversion or validation logic used in several places lives in one shared helper, so the copies
   cannot drift apart.
@@ -74,18 +73,24 @@ API Consistency
 - Deprecations follow the project cycle: a warning in the next minor release, removal five minor
   releases later (for example deprecated in v0.28.0, removed in v0.33.0). The warning names the
   removal version, and a test using ``assert_deprecation_is_removed`` covers it. The pull request
-  description has a "Deprecation" section and carries the ``deprecation`` label.
+  description opens with a "⚠️ Deprecation" section, added on demand and not part of the template.
+  It has one paragraph per deprecated item, naming the item, the version that deprecates it, its
+  replacement and the removal version. The pull request carries the ``deprecation`` label, next
+  to ``enhancement`` when it also adds a feature.
 
 Tests
 -----
 
-- Patch coverage is 100 %. Maintainers do not merge below that. Codecov reports the coverage of
-  the pushed head, so for commits that are not pushed yet, map each changed line, error branches
-  included, to a test that runs it.
+- Patch coverage is 100%. Maintainers do not merge below that. When the reviewed state is the
+  pushed head, read the coverage from CI and the Codecov comment, and name the uncovered lines.
+  For commits that are not pushed yet the Codecov report is out of date, so map each changed
+  line, error branches included, to a test that runs it.
 - Tests go through the public API. A new test that calls an underscore-prefixed function is
   rewritten to reach the same code path through the public entry point, mocking at the external
-  boundary (network, file system) rather than at the private helper.
-- Test functions are free of ``if``/``else``. Each branch becomes its own
+  boundary (network, file system) rather than at the private helper. Existing tests of private
+  functions are legacy, not a license to add more.
+- Test functions are free of ``if``/``else``, since a branching test hides which path ran. Each
+  branch becomes its own
   ``pytest.mark.parametrize`` case with an explicit expected value, or its own test function.
   Fixtures may contain logic, and complex fixture logic gets its own tests in
   ``tests/fixtures/<name>_fixtures_test.py``.
@@ -93,8 +98,9 @@ Tests
 - New lines are ideally covered without ``tests/unit/dataset/dataset_test.py``, which is slow. A
   line that only this module covers wants a targeted test. When ``dataset_test.py`` catches a
   regression, add a fast unit test that pins it as well.
-- Integration tests in ``tests/integration/`` download real datasets. Run them only for a dataset
-  whose ``sources`` the pull request changes, and only for that dataset.
+- Integration tests in ``tests/integration/`` download real datasets and run in the release
+  workflow. Run them locally only for a dataset whose ``sources`` the pull request changes, and
+  only for that dataset.
 
 Documentation
 -------------
@@ -120,10 +126,10 @@ Severity
 --------
 
 - **Blocker**: wrong results, corrupted fixtures, a broken public API, a behavior change without
-  justification, a new algorithm without a hand-verifiable test, patch coverage below 100 %.
+  justification, a new algorithm without a hand-verifiable test, patch coverage below 100%.
 - **Should-fix**: missing edge-case tests, missing documentation, error messages that are not
   asserted, avoidable row-wise polars operations.
-- **Nit**: style points no linter enforces. What a linter enforces is not worth a comment.
+- **Nit**: what a linter enforces is not worth a comment.
 
 Mark uncertainty as uncertainty: a wrong confident comment costs more than an honest question. A
 review that finds nothing says so plainly.
