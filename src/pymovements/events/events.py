@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from copy import deepcopy
 from typing import Any
 from typing import Literal
 from typing import overload
@@ -33,6 +34,7 @@ from pymovements._utils import _checks
 from pymovements._utils._column_nesting import unnest_list_columns
 from pymovements._utils._html import repr_html
 from pymovements._utils._nulls import row_is_null
+from pymovements._utils._sources import merge_sources
 from pymovements._utils._time import normalize_duration_to_us
 from pymovements._utils._time import numeric_to_duration_us
 from pymovements.events.correction import fixation_correction
@@ -110,6 +112,9 @@ class Events:
         List of trial identifiers. (default: None)
     trial_columns: list[str] | str | None
         List of trial columns in the passed dataframe.
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. A ``sources`` entry lists the files the
+        event data was generated from. (default: None)
     time_unit: str | None
         The unit of the numeric ``onset``, ``offset`` and ``duration`` input: ``'s'`` for
         seconds, ``'ms'`` for milliseconds or ``'us'`` for microseconds. Ignored for
@@ -123,6 +128,9 @@ class Events:
     trial_columns: list[str] | None
         The name of the trial columns in the data frame. If not None, processing methods
         will be applied to each trial separately.
+    metadata: dict[str, Any]
+        Dictionary containing additional metadata. A ``sources`` entry lists the files the
+        event data was generated from.
     schema: polars.type_aliases.SchemaDict
         Schema of the event dataframe.
     columns: list[str]
@@ -173,6 +181,8 @@ class Events:
 
     trial_columns: list[str] | None
 
+    metadata: dict[str, Any]
+
     _minimal_schema: dict[str, Any] = {
         'name': polars.Utf8,
         'onset': polars.Duration('us'),
@@ -188,9 +198,11 @@ class Events:
             offsets: list[int | float] | np.ndarray | None = None,
             trials: list[int | float | str | None] | np.ndarray | None = None,
             trial_columns: list[str] | str | None = None,
+            metadata: dict[str, Any] | None = None,
             time_unit: str | None = None,
     ):
         self.trial_columns: list[str] | None  # otherwise mypy gets confused.
+        self.metadata = metadata if metadata is not None else {}
 
         # Numeric onset/offset/duration input is interpreted in this unit; None means
         # milliseconds. Duration input carries its own unit, so time_unit is ignored for it.
@@ -667,6 +679,7 @@ class Events:
         return Events(
             data=self.frame.clone(),
             trial_columns=self.trial_columns,
+            metadata=deepcopy(self.metadata),
         )
 
     @overload
@@ -717,12 +730,14 @@ class Events:
         if as_dict:
             # keys are tuples of the unique values of the columns specified in `by`.
             return {
-                key: Events(frame, trial_columns=self.trial_columns)
+                key: Events(
+                    frame, trial_columns=self.trial_columns, metadata=deepcopy(self.metadata),
+                )
                 for key, frame in event_dfs.items()
             }
 
         return [
-            Events(frame, trial_columns=self.trial_columns)
+            Events(frame, trial_columns=self.trial_columns, metadata=deepcopy(self.metadata))
             for frame in event_dfs
         ]
 
@@ -1020,6 +1035,9 @@ class Events:
         ):
             self.frame = self.frame.drop('location')
 
+        # The AOI-mapped events are derived from the stimulus file as well.
+        self.metadata = merge_sources(self.metadata, aoi_dataframe.metadata)
+
     def correct_fixations(
             self,
             aois: TextStimulus,
@@ -1179,10 +1197,16 @@ class Events:
             fixation_name=fixation_name,
             character_level=character_level,
         )
+        # The corrected fixations are derived from the stimulus file as well.
         if inplace:
             self.frame = corrected_frame
+            self.metadata = merge_sources(self.metadata, aois.metadata)
             return None
-        return Events(corrected_frame, trial_columns=self.trial_columns)
+        return Events(
+            corrected_frame,
+            trial_columns=self.trial_columns,
+            metadata=merge_sources(deepcopy(self.metadata), aois.metadata),
+        )
 
     def __eq__(self, other: Events) -> bool:
         """Check equality between this and another :py:class:`~pymovements.Events` object."""
