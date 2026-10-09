@@ -313,6 +313,16 @@ def test_from_csv_accepts_file_object(buffer_class, mode, encoding, make_example
 
 
 @pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
+def test_from_csv_columns_keep_order_of_read_csv_kwargs(make_example_file):
+    filepath = make_example_file('monocular_example.csv')
+    columns = ['y_left_pix', 'x_left_pix', 'time']
+
+    gaze = from_csv(file=filepath, read_csv_kwargs={'columns': columns})
+
+    assert gaze.samples.columns == columns
+
+
+@pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
 def test_from_csv_decimal_overrides_with_precision_and_scale(tmp_path):
     p = tmp_path / 'mini.csv'
     p.write_text('time,pupil\n0,1.23\n1,4.56\n')
