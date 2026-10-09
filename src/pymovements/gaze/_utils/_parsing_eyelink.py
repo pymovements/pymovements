@@ -85,7 +85,7 @@ VALIDATION_REGEX = (
     r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+!CAL\s+VALIDATION\s+HV'
     r'(?P<num_points>\d\d?).*'
     r'(?P<tracked_eye>LEFT|RIGHT)\s+'
-    r'(?P<error>\D*)\s+'
+    r'(?P<error>(?:(?P<quality>GOOD|FAIR|POOR|FAILED|ABORTED)\s+)?\D*)\s+'
     r'(?P<validation_score_avg>\d.\d\d)\s+avg\.\s+'
     r'(?P<validation_score_max>\d.\d\d)\s+max'
 )
@@ -117,6 +117,13 @@ CALIBRATION_REGEX = (
     r'>+\s+CALIBRATION\s+\(HV(?P<num_points>\d\d?),'
     r'(?P<type>.*)\).*'
     r'(?P<tracked_eye>RIGHT|LEFT):\s+<{9}'
+)
+
+CALIBRATION_QUALITY_REGEX = (
+    r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+!CAL\s+CALIBRATION\s+HV'
+    r'(?P<num_points>\d\d?).*'
+    r'(?P<tracked_eye>LEFT|RIGHT)\s+'
+    r'(?P<quality>GOOD|FAILED)\b'
 )
 
 RECORDING_CONFIG_REGEX = (
@@ -785,6 +792,24 @@ def parse_eyelink(
 
         elif match := _match_regex(VALIDATION_REGEX, line):
             validations.append(match.groupdict())
+
+        elif match := _match_regex(CALIBRATION_QUALITY_REGEX, line):
+            # The calibration quality flag is logged after the calibration points block,
+            # so attach it to the most recent calibration entry lacking a quality yet.
+            quality_match = match.groupdict()
+            candidates = [
+                calibration for calibration in calibrations
+                if 'quality' not in calibration
+            ]
+            matched_calibration = next(
+                (
+                    calibration for calibration in reversed(candidates)
+                    if calibration.get('tracked_eye') == quality_match['tracked_eye']
+                ),
+                candidates[-1] if candidates else None,
+            )
+            if matched_calibration is not None:
+                matched_calibration['quality'] = quality_match['quality']
 
         elif compiled_metadata_patterns:
             for pattern_dict in compiled_metadata_patterns.copy():
