@@ -27,6 +27,8 @@ from pymovements.measure.samples.measures import dispersion
 from pymovements.measure.samples.measures import disposition
 from pymovements.measure.samples.measures import duration
 from pymovements.measure.samples.measures import location
+from pymovements.measure.samples.measures import location_offset
+from pymovements.measure.samples.measures import location_onset
 from pymovements.measure.samples.measures import null_ratio
 from pymovements.measure.samples.measures import peak_velocity
 from pymovements.measure.samples.measures import rms_s2s
@@ -44,6 +46,8 @@ __all__ = [
     'disposition',
     'duration',
     'location',
+    'location_onset',
+    'location_offset',
     'null_ratio',
     'peak_velocity',
     'rms_s2s',
