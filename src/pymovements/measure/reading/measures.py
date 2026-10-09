@@ -43,6 +43,9 @@ fixations on other words, so they aggregate over ``regression_path_word`` groups
 ``word_idx`` groups (see :func:`~pymovements.measure.reading.regression_path_word`). The
 sequence-level summary measures are the other exception: they describe a whole reading
 sequence, so they aggregate over reading-sequence groups (e.g. ``['trial', 'page']``).
+:func:`~pymovements.measure.reading.skipped` is the third exception: it is not an aggregation
+at all but a row-wise expression on the word-level table that the aggregation step produces, so
+it belongs in a ``with_columns(...)`` on that table rather than in an ``agg(...)``.
 """
 from __future__ import annotations
 
@@ -552,3 +555,53 @@ def non_aoi_fixation_duration_ratio(
         .otherwise(None)
         .alias('NAFDR')
     )
+
+
+# ---------------------------
+# Word-level derived measures
+# ---------------------------
+
+
+def skipped(tfc: str | pl.Expr = 'TFC') -> pl.Expr:
+    """Binary indicator for total word skipping (``skipped``).
+
+    A word is skipped when it received no fixation at all. The expression works row-wise on
+    the word-level table and expects ``TFC`` to be zero for every unfixated word, as
+    :func:`~pymovements.measure.reading.compute_reading_measures` produces it. A null ``TFC``,
+    for example from a left join of per-word counts onto a word list, yields a null
+    ``skipped`` instead of 1, so zero-fill such join misses first.
+
+    Within the pipeline, ``skipped`` is computed before the ``LP`` post-processing, which
+    depends on it.
+
+    Parameters
+    ----------
+    tfc : str | pl.Expr
+        Column name or expression of the total fixation count.
+        (default: ``'TFC'``)
+
+    Returns
+    -------
+    pl.Expr
+        Expression producing the ``skipped`` column (1 if skipped, 0 otherwise, null for a
+        null ``tfc``).
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import skipped
+    >>> words = pl.DataFrame({'word': ['The', 'quick', 'brown'], 'TFC': [2, 0, 1]})
+    >>> words.with_columns(skipped())
+    shape: (3, 3)
+    ┌───────┬─────┬─────────┐
+    │ word  ┆ TFC ┆ skipped │
+    │ ---   ┆ --- ┆ ---     │
+    │ str   ┆ i64 ┆ i64     │
+    ╞═══════╪═════╪═════════╡
+    │ The   ┆ 2   ┆ 0       │
+    │ quick ┆ 0   ┆ 1       │
+    │ brown ┆ 1   ┆ 0       │
+    └───────┴─────┴─────────┘
+    """
+    tfc_expr = as_expr(tfc)
+    return (tfc_expr == 0).cast(pl.Int64).alias('skipped')
