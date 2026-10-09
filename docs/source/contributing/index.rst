@@ -22,6 +22,7 @@ to pymovements.
     contributing-code
     contributing-datasets
     contributing-documentation
+    review-guidelines
     maintainer-guidelines
 
 
