@@ -48,6 +48,10 @@ from pymovements.events.correction.compare import compare
 from pymovements.events.correction.fixation_correction import correct_fixation_locations
 from pymovements.events.correction.fixation_correction import correct_fixations
 from pymovements.events.correction.merge import merge
+from pymovements.events.correction.metrics import ensemble_agreement
+from pymovements.events.correction.metrics import imp_transitions
+from pymovements.events.correction.metrics import mean_vertical_distance
+from pymovements.events.correction.metrics import reassignment_rate
 from pymovements.events.correction.regress import regress
 from pymovements.events.correction.segment import segment
 from pymovements.events.correction.slice import slice  # pylint: disable=redefined-builtin
@@ -59,7 +63,10 @@ from pymovements.events.correction.wisdom_of_the_crowd import wisdom_of_the_crow
 __all__ = [
     'correct_fixations',
     'correct_fixation_locations',
-
+    'reassignment_rate',
+    'mean_vertical_distance',
+    'imp_transitions',
+    'ensemble_agreement',
     'attach',
     'chain',
     'cluster',
