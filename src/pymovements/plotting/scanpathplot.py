@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import datetime
 import math
+from typing import TYPE_CHECKING
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -30,13 +31,14 @@ import numpy as np
 import polars as pl
 from matplotlib.patches import Circle
 
-from pymovements.events import Events
-from pymovements.gaze import Gaze
 from pymovements.plotting._matplotlib import _draw_arrow_data
 from pymovements.plotting._matplotlib import _draw_line_data
 from pymovements.plotting._matplotlib import _set_screen_axes
 from pymovements.plotting._matplotlib import _setup_axes_and_colormap
 from pymovements.plotting._matplotlib import LinearSegmentedColormapType
+
+if TYPE_CHECKING:
+    from pymovements.gaze import Gaze
 
 
 def scanpathplot(
@@ -175,7 +177,6 @@ def scanpathplot(
     if gaze.events is None:
         raise TypeError("scanpathplot 'gaze.events' must not be None")
     events = gaze.events
-    assert isinstance(events, Events)  # otherwise mypy complains
 
     fixations = events.frame.filter(pl.col('name') == event_name)
 

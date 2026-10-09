@@ -20,17 +20,20 @@
 """Provides the traceplot plotting function."""
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from warnings import warn
 
 import matplotlib.pyplot as plt
 import matplotlib.scale
 import numpy as np
 
-from pymovements.gaze.gaze import Gaze
 from pymovements.plotting._matplotlib import _draw_line_data
 from pymovements.plotting._matplotlib import _set_screen_axes
 from pymovements.plotting._matplotlib import _setup_axes_and_colormap
 from pymovements.plotting._matplotlib import LinearSegmentedColormapType
+
+if TYPE_CHECKING:
+    from pymovements.gaze.gaze import Gaze
 
 
 def traceplot(
