@@ -46,6 +46,10 @@ def merge(
 ) -> pl.Expr:
     """Form progressive sequences and iteratively merge sequences belonging to the same line.
 
+    Merging relaxes its length and fit constraints phase by phase until one sequence
+    per text line remains. Sequences ordered by their mean y-coordinate map to the text
+    lines top to bottom.
+
     Reference: :cite:p:`Spakov2019,Carr2022`.
 
     Parameters

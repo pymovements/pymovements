@@ -29,8 +29,10 @@ import polars as pl
 def wisdom_of_the_crowd(assignment_columns: Sequence[str]) -> pl.Expr:
     """Ensemble correction choosing line assignment with most votes across algorithms.
 
-    In the event of a tie, the left-most column in ``assignment_columns`` is given
-    priority, following the reference implementation.
+    The predictions of multiple drift correction algorithms are combined via majority
+    voting per fixation. This is the default correction method of the fixation drift
+    correction routines. In the event of a tie, the left-most column in
+    ``assignment_columns`` is given priority, following the reference implementation.
 
     Reference: :cite:p:`Mercier2024b`.
 
