@@ -21,16 +21,19 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import colors
 
-from pymovements.gaze import Gaze
 from pymovements.plotting._matplotlib import _set_screen_axes
 from pymovements.plotting._matplotlib import prepare_figure
 from pymovements.stimulus.image import _draw_image_stimulus
+
+if TYPE_CHECKING:
+    from pymovements.gaze import Gaze
 
 
 def heatmap(
