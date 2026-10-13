@@ -35,7 +35,9 @@ _N_SAMPLES = 500_000
 
 def _synthetic_samples() -> pl.DataFrame:
     """Generate a 1 kHz position column with periodically missing samples."""
-    values = [[float(_RNG.normal()), float(_RNG.normal())] for _ in range(_N_SAMPLES)]
+    values: list[list[float] | None] = [
+        [float(_RNG.normal()), float(_RNG.normal())] for _ in range(_N_SAMPLES)
+    ]
     for index in range(0, _N_SAMPLES, 1000):
         values[index] = None
     return pl.DataFrame(
