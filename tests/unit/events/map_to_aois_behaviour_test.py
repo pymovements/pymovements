@@ -172,7 +172,7 @@ def test_map_to_aois_fixation_missing_coordinates(simple_stimulus: TextStimulus)
 
 
 def test_map_to_aois_get_aoi_exception_sets_none_without_crash(
-    simple_stimulus: TextStimulus, monkeypatch: pytest.MonkeyPatch,
+    stimulus_with_trial_page: TextStimulus, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Simulate a recoverable exception in get_aoi and assert mapping continues with None AOI.
 
@@ -184,7 +184,8 @@ def test_map_to_aois_get_aoi_exception_sets_none_without_crash(
     def _boom(*args, **kwargs):  # noqa: ANN001, ANN002 - test helper
         raise TypeError('simulated get_aoi type error')
 
-    # Patch TextStimulus.get_aoi to raise on call for a fixation row
+    # Patch TextStimulus.get_aoi to raise. It is only invoked for rows with a null
+    # trial/page key; the exception must be tolerated and the AOI values set to None.
     monkeypatch.setattr(TextStimulus, 'get_aoi', _boom, raising=True)
 
     df = pl.DataFrame(
@@ -193,12 +194,14 @@ def test_map_to_aois_get_aoi_exception_sets_none_without_crash(
             'onset': [0],
             'offset': [1],
             'location': [[5, 5]],
+            'trial': [1],
+            'page': [None],
         },
     )
-    events = Events(data=df)
+    events = Events(data=df, trial_columns=['trial', 'page'])
 
     # Should not raise - AOI columns get None
-    events.map_to_aois(simple_stimulus)
+    events.map_to_aois(stimulus_with_trial_page)
 
     assert events.frame.get_column('label').to_list() == [None]
 
