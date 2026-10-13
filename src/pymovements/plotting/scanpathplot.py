@@ -177,7 +177,10 @@ def scanpathplot(
     events = gaze.events
     assert isinstance(events, Events)  # otherwise mypy complains
 
+    # Drop events without a location (e.g. events that match no samples and thus have a null
+    # property). They cannot be plotted as a fixation.
     fixations = events.frame.filter(pl.col('name') == event_name)
+    fixations = fixations.filter(pl.col(position_column).is_not_null())
 
     x_signal = fixations[position_column].list.get(0)
     y_signal = fixations[position_column].list.get(1)
