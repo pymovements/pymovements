@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test null ratio measure."""
+from math import inf
+from math import nan
+
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
@@ -117,6 +120,20 @@ from pymovements.measure.samples import null_ratio
             {'column': 'A', 'column_dtype': pl.List(pl.Float64)},
             pl.from_dict(data={'null_ratio': [1.0]}),
             id='list_dtype_2_elem_2_rows_half_nulls_each_row',
+        ),
+
+        pytest.param(
+            pl.from_dict(data={'A': [[0.1, nan], [inf, 0.2]]}),
+            {'column': 'A', 'column_dtype': pl.List(pl.Float64)},
+            pl.from_dict(data={'null_ratio': [1.0]}),
+            id='list_dtype_2_elem_nan_and_inf',
+        ),
+
+        pytest.param(
+            pl.from_dict(data={'A': [['a', 'b'], ['a', None]]}),
+            {'column': 'A', 'column_dtype': pl.List(pl.Utf8)},
+            pl.from_dict(data={'null_ratio': [0.5]}),
+            id='list_dtype_utf8_half_nulls',
         ),
     ],
 )
