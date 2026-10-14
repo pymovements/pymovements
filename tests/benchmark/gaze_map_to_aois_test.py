@@ -53,22 +53,27 @@ def _build_stimulus() -> TextStimulus:
     )
 
 
-def _build_gaze() -> Gaze:
+def _build_samples() -> pl.DataFrame:
     xy = _RNG.uniform(0, 2000, size=(_N_SAMPLES, 2))
     positions = [[0.0, 0.0, float(x), float(y)] for x, y in xy]
-    samples = pl.DataFrame({'position': positions}).with_columns(
+    return pl.DataFrame({'position': positions}).with_columns(
         pl.col('position').cast(pl.List(pl.Float64)),
     )
-    return Gaze(samples=samples)
 
 
 def test_gaze_map_to_aois_benchmark(benchmark):
     """Benchmark mapping 1M samples against 200 AOIs via the list path."""
     stimulus = _build_stimulus()
+    samples = _build_samples()
+    gaze = Gaze(samples=samples.clone())
+
+    def _setup() -> None:
+        # map_to_aois appends the AOI columns, so reset the pristine samples before each round.
+        gaze.samples = samples.clone()
 
     def _run() -> None:
-        _build_gaze().map_to_aois(
+        gaze.map_to_aois(
             stimulus, eye='right', gaze_type='position', preserve_structure=False, verbose=False,
         )
 
-    benchmark.pedantic(_run, iterations=1, rounds=5)
+    benchmark.pedantic(_run, setup=_setup, iterations=1, rounds=5)
