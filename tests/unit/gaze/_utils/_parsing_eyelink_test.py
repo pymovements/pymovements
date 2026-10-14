@@ -20,6 +20,7 @@
 """Tests pymovements asc to csv processing - eyelink."""
 import datetime
 import importlib
+import io
 import re
 import warnings
 from typing import Any
@@ -291,6 +292,26 @@ def test_parse_eyelink(make_text_file):
     assert messages_df['time'].min() == 2095865
     assert messages_df[0, 1] == 'DISPLAY_COORDS 0 0 1279 1023'
     assert messages_df['time'].max() == 10000017
+
+
+def test_parse_eyelink_ignores_malformed_sample_line():
+    """A digit-first line that is not a valid sample is skipped instead of being parsed."""
+    content = (
+        '** DATE: Wed Mar  8 09:25:20 2023\n'
+        '** TYPE: EDF_FILE BINARY EVENT SAMPLE TAGGED\n'
+        '** RECORDED BY pymovements\n'
+        '**\n'
+        'MSG\t100 RECCFG CR 1000 2 1 L\n'
+        'MSG\t100 GAZE_COORDS 0.00 0.00 1279.00 1023.00\n'
+        'START\t200 \tLEFT\tSAMPLES\tEVENTS\n'
+        'SAMPLES\tGAZE\tLEFT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2\n'
+        '1000\t10.0\t20.0\t3.0\t0.0\t.....\n'
+        '1234567'  # no trailing newline: starts with a digit but is not a sample line
+    )
+
+    gaze_df, _, _, _ = _parsing_eyelink.parse_eyelink(io.StringIO(content))
+
+    assert gaze_df['time'].to_list() == [1000.0]
 
 
 def test_parse_eyelink_no_messages(make_text_file):
