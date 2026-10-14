@@ -125,31 +125,25 @@ def _match_points_to_aois(
     """
     aoi_columns = list(aoi_dataframe.aois.columns)
 
-    # Cast the geometry to Float64 in dedicated columns so the join predicates always compare
-    # matching dtypes without changing the dtypes of the appended AOI columns.
     aois = aoi_dataframe.aois.with_columns(
         polars.int_range(polars.len()).alias(_AOI_MATCH_ORDER),
-        polars.col(aoi_dataframe.start_x_column).cast(polars.Float64).alias('__aoi_start_x'),
-        polars.col(aoi_dataframe.start_y_column).cast(polars.Float64).alias('__aoi_start_y'),
     )
+    # join_where compares dtypes strictly, so cast the (possibly integer) AOI geometry to
+    # Float64 to match the sample coordinates.
+    start_x = polars.col(aoi_dataframe.start_x_column).cast(polars.Float64)
+    start_y = polars.col(aoi_dataframe.start_y_column).cast(polars.Float64)
     if aoi_dataframe.width_column is not None:
-        end_x = (
-            polars.col('__aoi_start_x')
-            + polars.col(aoi_dataframe.width_column).cast(polars.Float64)
-        )
-        end_y = (
-            polars.col('__aoi_start_y')
-            + polars.col(aoi_dataframe.height_column).cast(polars.Float64)
-        )
+        end_x = start_x + polars.col(aoi_dataframe.width_column).cast(polars.Float64)
+        end_y = start_y + polars.col(aoi_dataframe.height_column).cast(polars.Float64)
     else:
         end_x = polars.col(aoi_dataframe.end_x_column).cast(polars.Float64)
         end_y = polars.col(aoi_dataframe.end_y_column).cast(polars.Float64)
 
     matches = points.join_where(
         aois,
-        polars.col('__aoi_start_x') <= polars.col(_AOI_X),
+        start_x <= polars.col(_AOI_X),
         polars.col(_AOI_X) < end_x,
-        polars.col('__aoi_start_y') <= polars.col(_AOI_Y),
+        start_y <= polars.col(_AOI_Y),
         polars.col(_AOI_Y) < end_y,
     )
 
