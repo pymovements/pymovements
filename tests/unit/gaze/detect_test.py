@@ -1490,6 +1490,55 @@ def test_detect_after_clear_events_with_trial_columns():
     assert_frame_equal(gaze.events.frame, expected_events.frame, check_row_order=False)
 
 
+def test_detect_events_aware_detector_with_empty_events_shares_one_frame():
+    """An events-aware detector with empty events reuses a single empty events frame."""
+    gaze = pm.gaze.from_numpy(
+        time=np.arange(100),
+        position=np.zeros((2, 100)),
+        trial=np.array(['A'] * 50 + ['B'] * 50),
+        experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+    )
+
+    # `fill` fills each trial with an unclassified event when no events are given, which
+    # exercises the shared empty events frame path.
+    gaze.detect('fill')
+
+    assert gaze.events.frame['trial'].to_list() == ['A', 'B']
+    assert gaze.events.frame['name'].to_list() == ['unclassified', 'unclassified']
+
+
+def test_detect_selects_group_events_for_multiple_trial_columns():
+    """Detectors that accept events receive only the events of the current trial."""
+    gaze = pm.gaze.from_pandas(
+        samples=pl.DataFrame({
+            'trial': ['A'] * 50 + ['B'] * 50,
+            'screen': ['1'] * 25 + ['2'] * 25 + ['1'] * 25 + ['2'] * 25,
+            'position': [(0, 0)] * 100,
+        }).to_pandas(),
+        trial_columns=['trial', 'screen'],
+        experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+    )
+    gaze.events = pm.Events(
+        pl.DataFrame({
+            'trial': ['A', 'A', 'B', 'B'],
+            'screen': ['1', '2', '1', '2'],
+            'name': ['fixation', 'fixation', 'fixation', 'fixation'],
+            'onset': [0, 25, 50, 75],
+            'offset': [24, 49, 74, 99],
+        }),
+    )
+
+    group_sizes: list[int] = []
+
+    def detect_counting_events(events, **_kwargs):
+        group_sizes.append(events.frame.height)
+        return pm.Events(name='fixation', onsets=[0], offsets=[1])
+
+    gaze.detect(detect_counting_events)
+
+    assert group_sizes == [1, 1, 1, 1]
+
+
 def test_gaze_detect_with_numeric_time_column_passes_timesteps_unconverted():
     # A numeric time column (possible via direct samples mutation) must be passed
     # to the detection method as is, without any Duration conversion.
