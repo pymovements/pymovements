@@ -82,8 +82,8 @@ events = Events(
     trials=[1, 1, 2, 2],
 )
 events.frame
-# the durations change, the supplied offsets stay as an extra column, the convention is recorded
-# in metadata. Trial columns first, then the minimal schema, then extras
+# the durations are derived, the supplied offsets stay as an extra column, the convention is
+# recorded in metadata. Trial columns first, then the minimal schema, then extras
 # ┌───────┬───────┬──────────┬──────────┬────────┐
 # │ trial ┆ onset ┆ duration ┆ name     ┆ offset │
 # │ 1     ┆ 0     ┆ 121      ┆ fixation ┆ 120    │
@@ -145,9 +145,9 @@ Events(
     durations_from_offsets: bool = False,    # replace stored durations by the derivation under the
                                              # declared convention
     sampling_rate: float | None = None,      # written to metadata, must agree with an existing entry
-    validate: bool = True,                   # skips the offset/duration consistency check, legacy
-                                             # files included, and the warning for an entry
-                                             # without its column, nothing else
+    validate: bool = True,                   # False skips the offset/duration consistency check,
+                                             # legacy files included, and the warning for an
+                                             # entry without its column, nothing else
     metadata: dict[str, Any] | None = None,  # gains convention per offset column, sampling rate
     trials: ... = None,
     trial_columns: ... = None,
@@ -155,24 +155,23 @@ Events(
 )
 ```
 
-The `offset` measure joins the event-measure registry. `inclusive` is required:
+The `offset` measure joins the event-measure registry:
 
 ```python
 offset(*, inclusive: bool, sampling_rate: float | None = None) -> polars.Expr
 # inclusive=True:  onset + duration - sampling_interval, the last-sample timestamp,
-#                  null for a 0 or null duration: no sample belongs to the event
+#                  null for a 0 or null duration, see Rationale
 # inclusive=False: onset + duration, one past the end, the next onset for adjacent events,
 #                  the onset itself for a 0 duration
 ```
 
-The `duration` measure stays in the registry and gains the matching parameters.
-`offsets_inclusive` is required:
+The `duration` measure stays in the registry and gains the matching parameters:
 
 ```python
 duration(*, offsets_inclusive: bool, sampling_rate: float | None = None) -> polars.Expr
 # offsets_inclusive names the convention of the input offset column, as on the constructor
-# with the same value on both, offset() then duration() is the identity for durations of at
-# least one sampling interval, a null inclusive offset derives a null duration
+# with the same value on both, offset() then duration() is the identity, except under the
+# inclusive convention for a 0 duration, whose null offset derives a null duration
 ```
 
 `from_asc` gains a retention parameter for the end timestamps it parses. A future loader that
@@ -204,7 +203,6 @@ Dataset.load(
     validate: bool = True,
 )
 # offsets_inclusive: None means undeclared, as on the constructor
-# validate: the opt-out of the legacy table is reachable through the Dataset form as well
 ```
 
 Detection algorithms and `segmentation2events` gain a required `sampling_rate` keyword.
@@ -258,7 +256,7 @@ event label and has no BIDS column of its own. `offset` leaves the minimal schem
 only where it was supplied explicitly. Trial columns stay first. Within the minimal schema the
 order changes from `name`, `onset`, `offset` to `onset`, `duration`, `name`, then extras follow,
 a supplied `offset` among them. The schema will cover events built from samples and events
-with exact boundaries, including point events and events of unknown duration.
+with exact boundaries, including impulses and events of unknown duration.
 
 **Duration definition.** Duration becomes the time from the start of the event to its end:
 
@@ -287,9 +285,10 @@ timeline and share no boundary sample. A `null` or `0` duration will select no s
 timestamps can deviate from the nominal grid, so the end of the interval gets a tolerance of
 half a sampling interval: with a sampling rate, the selection ends at `onset + duration - Δ/2`.
 A sample that arrives slightly early then stays out of the preceding event, and on the nominal
-grid the selected samples are the same. Without a sampling rate the interval applies as is.
-Sample-level operations (AOI mapping, segmentation, `nullify_event_samples`, the `fill`
-detector's event mask, the time series plot's event shading) move to this selection.
+grid the selected samples are the same. Sample-level operations (AOI mapping, segmentation,
+`nullify_event_samples`, the `fill` detector's event mask, the time series plot's event
+shading) move to this selection. They take the sampling rate from the events entry first, the
+experiment second, and apply the interval as is without one.
 
 **Producers will compute duration at the source**, where the sampling information lives. The
 EyeLink parser will take the reported duration verbatim (the currently discarded
@@ -316,13 +315,12 @@ entry. The convention entry will be written by `offsets_inclusive=`, by `parse_o
 `from_asc` and by the `offset` measure for the column it writes. Several offset columns with
 different conventions may coexist. A convention entry describes its whole column. The
 declaration rule, the consistency check and the legacy rule apply to the column literally
-named `offset`, the offset measure to any column with an
-entry. A convention entry for a column the frame does not have will be kept, and public
+named `offset`. A convention entry for a column the frame does not have will be kept, and public
 construction with `validate=True` will warn once, naming the column. The sampling-rate entry
 will be written by the constructor's `sampling_rate=`. How the entries behave under operations
 that change the sampling grid or combine frames is future work. This PMEP persists nothing: a
-loader hands the dict in as `metadata=`, save does the reverse, and PMEP 2 on metadata sidecars
-will define the file and the keys.
+loader hands the dict in as `metadata=`, save does the reverse, and the later PMEP on the file
+layout for events will define the file and the keys.
 
 **Construction rules.** An `offset` column needs its convention declared, by
 `offsets_inclusive=` or by a metadata entry for the column, both when they agree. `None` on
@@ -349,9 +347,10 @@ A `sampling_rate=` or an `offsets_inclusive=` that differs from its metadata ent
 regardless. A derivation under an inclusive declaration needs the sampling rate and raises
 without one.
 
-**Consistency check.** Per non-null row, `residual = duration - (offset - onset)`. An exclusive
-column requires `0`. An inclusive column requires `Δ` when a sampling rate resolves. Without
-one a row contradicts when its residual is not greater than zero, and the positive residuals
+**Consistency check.** Per row with both values non-null,
+`residual = duration - (offset - onset)`. An exclusive column requires `0`. An inclusive column
+requires `Δ` when a sampling rate resolves. Without one a row contradicts when its residual is
+not greater than zero, and the positive residuals
 must all be equal. Unequal positive residuals count as some rows contradicting. The common
 residual is never written to the sampling-rate entry. The check therefore needs no sampling
 rate. Severity follows the non-null rows:
@@ -362,8 +361,8 @@ rate. Severity follows the non-null rows:
 | all | raise, the message lists recipes for fixing |
 | some | one warning per construction |
 
-A null `duration` beside a non-null `offset` counts for neither row. It is warned about once
-and never filled.
+A row with a null value in either column neither contradicts nor passes. A null `duration`
+beside a non-null `offset` is warned about once and never filled.
 
 **Legacy files.** A pre-v0.29.0 file stores `offset` and `duration == offset - onset` on every
 row, the residual-0-everywhere case. Read off the construction rules and the check:
@@ -379,14 +378,13 @@ row, the residual-0-everywhere case. Read off the construction rules and the che
 The replace row needs a sampling rate, which the Dataset form takes from the experiment. The
 raise messages list the recipes. The rule is permanent, since the files can always exist.
 
-**`durations_from_offsets` and `validate`.** Permanent flags on the constructor,
-`Dataset.load_event_files` and `Dataset.load`, with the behavior of the construction rules:
-`durations_from_offsets` defaults to `False`, `validate` to `True`. Every row of the legacy
-table is reachable through the Dataset form.
+**Derivation and validation flags.** `durations_from_offsets` and `validate` live on the
+constructor, `Dataset.load_event_files` and `Dataset.load`, with the behavior of the
+construction rules. Every row of the legacy table is reachable through the Dataset form.
 
 **Retaining parsed offsets.** The EyeLink parser takes `DUR` verbatim as the duration whether
-or not `parse_offset` is set. In v0.29.0 `parse_offset=True` plus the consistency check is the
-guard against a vendor end timestamp disagreeing with `DUR`.
+or not `parse_offset` is set. `parse_offset=True` plus the consistency check is the guard
+against a vendor end timestamp disagreeing with `DUR`.
 
 **The offset measure.** `offset` becomes an on-demand event measure with a required `inclusive`
 parameter. `inclusive=True` reproduces today's stored offsets and will require a sampling rate,
@@ -402,11 +400,12 @@ does at construction.
   `Δ`, so a `max_gap` that relied on adjacency showing as one interval shrinks by `Δ`.
 - `compute_event_properties` keeps the rows of events with `null` duration and selects samples
   as defined under Sample selection.
-- `events2segmentation` gains the same `duration` parameter in place of `offset_column`.
-  `segmentation2events` is a producer: it builds events from sample runs and will compute
-  `t_last - t_first + Δ` like the detectors, so it gains a required `sampling_rate` keyword too.
-- `measure_events_ratio` and `events2timeratio` keep merging overlapping intervals on the new
-  schema and gain a `duration: str | pl.Expr` parameter in place of `offset_column`. They stop
+- `events2segmentation` gains a `duration: str | pl.Expr` parameter in place of
+  `offset_column`. `segmentation2events` is a producer: it builds events from sample runs and
+  will compute `t_last - t_first + Δ` like the detectors, so it gains a required
+  `sampling_rate` keyword too.
+- `Gaze.measure_events_ratio` and `events2timeratio` keep merging overlapping intervals on the
+  new schema and gain the same `duration` parameter in place of `offset_column`. They stop
   adding one interval to event durations. `sampling_rate` stays, since the total time range
   still spans `t_last - t_first + Δ` over the samples. Events with `null` duration will
   contribute nothing.
@@ -456,7 +455,7 @@ following sample at all.
 **Why store duration and derive offset only on demand.** Duration is what analyses consume and
 what vendors report. Offset depends on a convention (inclusive last sample or one past the end).
 Storing the convention-free value and answering the convention question where the offset enters
-or leaves, removes the ambiguity that already produced the disagreeing `fill` detector. EyeLink's
+or leaves removes the ambiguity that already produced the disagreeing `fill` detector. EyeLink's
 reported `DUR` becomes the stored value, so file and frame can no longer contradict each other.
 
 **Why the value change is immediate.** A deprecation window keeps an old and a new API shape
@@ -500,9 +499,12 @@ cannot be changed without one.
 Every call that supplies offsets declares their convention:
 
 ```python
-Events(name='blink', onsets=[2], offsets=[3])                                                 # v0.28
-Events(name='blink', onsets=[2], offsets=[3], offsets_inclusive=True, sampling_rate=1000)     # v0.29.0
-Events(name='blink', onsets=[2], durations=[2])                                               # or durations
+# v0.28
+Events(name='blink', onsets=[2], offsets=[3])
+# v0.29.0, with the convention declared
+Events(name='blink', onsets=[2], offsets=[3], offsets_inclusive=True, sampling_rate=1000)
+# v0.29.0, with durations
+Events(name='blink', onsets=[2], durations=[2])
 ```
 
 **Release gate.** v0.29.0 does not ship until the sequence `Dataset.detect`,
@@ -527,9 +529,10 @@ alternative to `durations=`, with the convention declared as in Specification.
 named separately from the detected ones since the same ASC file yields durations one `Δ`
 longer with no error, the `minimum_duration`, `maximum_duration` and merge gap threshold
 adjustments, the legacy recipe in constructor and Dataset form, the replacement of
-`frame['offset']` by the offset measure with `inclusive=True`, the required `offsets_inclusive`
-on the `duration` measure, the reload keyword for own output with an offset column, and the
-`parse_offset` default.
+`frame['offset']` by the offset measure with `inclusive=True`, the two readings of
+`offsets_inclusive` with exact time points as the exclusive case, the required
+`offsets_inclusive` on the `duration` measure, the reload keyword for own output with an offset
+column, and the `parse_offset` default.
 
 ## Implementation
 
