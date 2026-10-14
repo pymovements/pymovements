@@ -8,10 +8,6 @@
 | **Created** | 2026-09-16 |
 | **Supersedes** | none |
 
-Proposed in issue
-[#1677](https://github.com/pymovements/pymovements/issues/1677). Closes
-[#1083](https://github.com/pymovements/pymovements/issues/1083).
-
 ## TL;DR
 
 - The minimal `Events` schema becomes `onset`, `duration`, `name`.
