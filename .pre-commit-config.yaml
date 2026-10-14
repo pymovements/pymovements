@@ -13,17 +13,17 @@ repos:
     hooks:
       - id: add-trailing-comma
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.21.2
+    rev: v3.22.0
     hooks:
       - id: pyupgrade
         args: [ --py310-plus ]
   - repo: https://github.com/asottile/reorder-python-imports
-    rev: v3.17.0
+    rev: v3.18.0
     hooks:
       - id: reorder-python-imports
         args: [ --application-directories=src, --py310-plus ]
   - repo: https://github.com/asottile/reorder-python-imports
-    rev: v3.17.0
+    rev: v3.18.0
     hooks:
       - id: reorder-python-imports
         files: ^src/
@@ -59,7 +59,7 @@ repos:
         args: [ --use-current-year ]
         types: [ python ]
   - repo: https://github.com/jsh9/pydoclint
-    rev: 0.11.0
+    rev: 0.11.1
     hooks:
       - id: pydoclint
         args: [ "--config=pyproject.toml" ]
@@ -130,7 +130,7 @@ repos:
             '--ignore=D101,D102,D103,D107,D203,D213',
           ]
   - repo: https://github.com/PyCQA/pylint
-    rev: v4.1.2
+    rev: v4.1.3
     hooks:
       - id: pylint
         name: pylint
