@@ -65,6 +65,10 @@ _AOI_ROW_ID = '__pymovements_aoi_row_id'
 _AOI_MATCH_ORDER = '__pymovements_aoi_match_order'
 _AOI_X = '__pymovements_aoi_x'
 _AOI_Y = '__pymovements_aoi_y'
+_AOI_START_X = '__pymovements_aoi_start_x'
+_AOI_START_Y = '__pymovements_aoi_start_y'
+_AOI_END_X = '__pymovements_aoi_end_x'
+_AOI_END_Y = '__pymovements_aoi_end_y'
 
 
 def _list_xy_exprs(column: str, eye: str) -> tuple[polars.Expr, polars.Expr]:
@@ -125,26 +129,31 @@ def _match_points_to_aois(
     """
     aoi_columns = list(aoi_dataframe.aois.columns)
 
+    # Materialize the AOI geometry under reserved names (casting to Float64, as join_where
+    # compares dtypes strictly). The join then only references reserved names, so it can never
+    # pick up a same-named column from the points frame.
     aois = aoi_dataframe.aois.with_columns(
         polars.int_range(polars.len()).alias(_AOI_MATCH_ORDER),
+        polars.col(aoi_dataframe.start_x_column).cast(polars.Float64).alias(_AOI_START_X),
+        polars.col(aoi_dataframe.start_y_column).cast(polars.Float64).alias(_AOI_START_Y),
     )
-    # join_where compares dtypes strictly, so cast the (possibly integer) AOI geometry to
-    # Float64 to match the sample coordinates.
-    start_x = polars.col(aoi_dataframe.start_x_column).cast(polars.Float64)
-    start_y = polars.col(aoi_dataframe.start_y_column).cast(polars.Float64)
     if aoi_dataframe.width_column is not None:
-        end_x = start_x + polars.col(aoi_dataframe.width_column).cast(polars.Float64)
-        end_y = start_y + polars.col(aoi_dataframe.height_column).cast(polars.Float64)
+        aois = aois.with_columns(
+            (polars.col(_AOI_START_X) + polars.col(aoi_dataframe.width_column)).alias(_AOI_END_X),
+            (polars.col(_AOI_START_Y) + polars.col(aoi_dataframe.height_column)).alias(_AOI_END_Y),
+        )
     else:
-        end_x = polars.col(aoi_dataframe.end_x_column).cast(polars.Float64)
-        end_y = polars.col(aoi_dataframe.end_y_column).cast(polars.Float64)
+        aois = aois.with_columns(
+            polars.col(aoi_dataframe.end_x_column).cast(polars.Float64).alias(_AOI_END_X),
+            polars.col(aoi_dataframe.end_y_column).cast(polars.Float64).alias(_AOI_END_Y),
+        )
 
     matches = points.join_where(
         aois,
-        start_x <= polars.col(_AOI_X),
-        polars.col(_AOI_X) < end_x,
-        start_y <= polars.col(_AOI_Y),
-        polars.col(_AOI_Y) < end_y,
+        polars.col(_AOI_START_X) <= polars.col(_AOI_X),
+        polars.col(_AOI_X) < polars.col(_AOI_END_X),
+        polars.col(_AOI_START_Y) <= polars.col(_AOI_Y),
+        polars.col(_AOI_Y) < polars.col(_AOI_END_Y),
     )
 
     multiple = (
