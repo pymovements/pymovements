@@ -94,13 +94,12 @@ _AOI_Y = '__pymovements_aoi_y'
 def _event_coordinate_expr(frame: polars.DataFrame, component: Literal['x', 'y']) -> polars.Expr:
     """Resolve one fixation coordinate from component columns or the ``location`` list column."""
     index = 0 if component == 'x' else 1
-    expressions: list[polars.Expr] = []
+    # The leading null keeps the expression valid for frames without any coordinate column.
+    expressions: list[polars.Expr] = [polars.lit(None, dtype=polars.Float64)]
     if f'location_{component}' in frame.columns:
         expressions.append(polars.col(f'location_{component}'))
     if 'location' in frame.columns:
         expressions.append(polars.col('location').list.get(index))
-    if not expressions:
-        return polars.lit(None, dtype=polars.Float64)
     return polars.coalesce(expressions).cast(polars.Float64, strict=False)
 
 

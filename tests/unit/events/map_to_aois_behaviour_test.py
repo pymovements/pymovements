@@ -120,6 +120,24 @@ def test_map_to_aois_with_trial_page(
     assert labels == expected_labels
 
 
+def test_map_to_aois_null_key_uses_per_row_lookup(stimulus_with_trials: TextStimulus) -> None:
+    """A null key routes the row through the per-row lookup and still matches by the other key."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+            'location': [[5.0, 5.0]],
+            'trial': [None],
+        },
+    )
+    events = Events(data=df, trial_columns=['trial'])
+
+    events.map_to_aois(stimulus_with_trials)
+
+    assert events.frame.get_column('label').to_list() == ['A']
+
+
 def test_map_to_aois_uses_first_overlapping_aoi_without_misalignment() -> None:
     """Map only the first overlapping AOI row and keep event/AOI rows aligned."""
     stimulus = TextStimulus(
