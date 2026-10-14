@@ -22,7 +22,9 @@ from __future__ import annotations
 
 import polars as pl
 import pytest
+from polars.testing import assert_frame_equal
 
+from pymovements import Experiment
 from pymovements import Gaze
 
 
@@ -93,6 +95,57 @@ def test_transform_grouped_path_non_empty_samples(trials):
     # Verify that the transform was applied through the grouped path
     assert 'dummy' in gaze.samples.columns
     assert gaze.samples['dummy'].to_list() == [7] * len(trials)
+
+
+def test_pix2deg_ignores_trial_columns():
+    """pix2deg is element-wise, so grouping by trials must not change its result."""
+    samples = pl.DataFrame(
+        {
+            'trial': [1, 1, 2, 2],
+            'x': [0.0, 100.0, 200.0, 300.0],
+            'y': [0.0, 50.0, 100.0, 150.0],
+        },
+    )
+    experiment = Experiment(1024, 768, 38, 30, 60, 'center', 1000)
+
+    ungrouped = Gaze(
+        samples=samples.select('x', 'y'), experiment=experiment, pixel_columns=['x', 'y'],
+    )
+    grouped = Gaze(
+        samples=samples, experiment=experiment, pixel_columns=['x', 'y'], trial_columns='trial',
+    )
+
+    ungrouped.pix2deg()
+    grouped.pix2deg()
+
+    assert_frame_equal(grouped.samples.drop('trial'), ungrouped.samples, check_row_order=True)
+    assert grouped.samples['trial'].to_list() == [1, 1, 2, 2]
+
+
+def test_deg2pix_ignores_trial_columns():
+    """deg2pix is element-wise, so grouping by trials must not change its result."""
+    samples = pl.DataFrame(
+        {
+            'trial': [1, 1, 2, 2],
+            'x': [0.0, 1.0, 2.0, 3.0],
+            'y': [0.0, 1.0, 2.0, 3.0],
+        },
+    )
+    experiment = Experiment(1024, 768, 38, 30, 60, 'center', 1000)
+
+    ungrouped = Gaze(
+        samples=samples.select('x', 'y'), experiment=experiment, position_columns=['x', 'y'],
+    )
+    grouped = Gaze(
+        samples=samples, experiment=experiment, position_columns=['x', 'y'],
+        trial_columns='trial',
+    )
+
+    ungrouped.deg2pix()
+    grouped.deg2pix()
+
+    assert_frame_equal(grouped.samples.drop('trial'), ungrouped.samples, check_row_order=True)
+    assert grouped.samples['trial'].to_list() == [1, 1, 2, 2]
 
 
 def test_transform_grouped_path_empty_samples_early_return():
