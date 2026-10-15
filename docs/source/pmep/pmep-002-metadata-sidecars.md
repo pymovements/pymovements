@@ -96,7 +96,7 @@ participants.save('participants.tsv')
 
 ## Resulting signatures
 
-This PMEP produces a file format, no new Python signature. The schema label and the schema
+This PMEP produces a file format, no new Python method. The schema label and the schema
 version are carried in the sidecar:
 
 ```text
