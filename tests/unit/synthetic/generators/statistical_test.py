@@ -69,7 +69,8 @@ def _mixed_events():
         ),
         pytest.param(
             StatisticalConfig(
-                sampling_rate=1000.0, duration_s=0.5, seed=7, noise_std_dps=2.0,
+                sampling_rate=1000.0, duration_s=0.5, seed=7, noise_percentage=10.0,
+                noise_velocity_min_dps=5.0, noise_velocity_max_dps=20.0,
             ),
             500,
             id='with_measurement_noise',
@@ -189,6 +190,46 @@ def test_resample_averages_between_sampling_positions(profile_times_ms, expected
     resampled = _resample(profile, profile_times_ms, [('fixation', 12.0)], config)
 
     np.testing.assert_allclose(resampled, expected)
+
+
+def _still_fixations(**noise):
+    """Generate a sequence that is exactly zero before noise, so every non-zero sample is noise."""
+    config = StatisticalConfig(
+        sampling_rate=1000.0,
+        duration_s=1.0,
+        seed=42,
+        event_sequence=('fixation',),
+        fixation_consistency_max_dps=0.0,
+        **noise,
+    )
+    return StatisticalGenerator().generate(config).samples[VELOCITY_MAGNITUDE_COLUMN]
+
+
+def test_noise_is_off_by_default():
+    assert (_still_fixations() == 0.0).all()
+
+
+@pytest.mark.parametrize(
+    'distribution',
+    [
+        pytest.param('uniform', id='uniform'),
+        pytest.param('normal', id='normal'),
+    ],
+)
+def test_noise_changes_the_requested_share_of_samples_within_its_range(distribution):
+    """Fuhl et al. §3.6: a percentage of the samples, each changed within a minimum and maximum."""
+    magnitudes = _still_fixations(
+        noise_percentage=10.0,
+        noise_velocity_min_dps=50.0,
+        noise_velocity_max_dps=60.0,
+        noise_velocity_distribution=distribution,
+        noise_velocity_std_dps=5.0,
+    )
+
+    noisy = magnitudes.filter(magnitudes > 0.0)
+    assert noisy.len() == 100
+    assert noisy.min() >= 50.0
+    assert noisy.max() <= 60.0
 
 
 def test_reproducible_under_seed():
@@ -368,7 +409,10 @@ def test_plain_generator_config_is_rejected():
 
 
 def test_config_round_trips_through_dict():
-    config = StatisticalConfig(sampling_rate=1000.0, duration_s=1.0, seed=42, noise_std_dps=1.5)
+    config = StatisticalConfig(
+        sampling_rate=1000.0, duration_s=1.0, seed=42, noise_percentage=10.0,
+        noise_velocity_max_dps=20.0,
+    )
 
     restored = StatisticalConfig.from_dict(config.to_dict())
 
@@ -399,9 +443,29 @@ def test_config_round_trips_through_dict():
             id='negative_standard_deviation',
         ),
         pytest.param(
-            {'noise_std_dps': -0.5},
-            ('noise_std_dps', 'negative'),
-            id='negative_noise',
+            {'noise_velocity_std_dps': -0.5},
+            ('noise_velocity_std_dps', 'negative'),
+            id='negative_noise_standard_deviation',
+        ),
+        pytest.param(
+            {'noise_velocity_min_dps': 60.0, 'noise_velocity_max_dps': 50.0},
+            ('noise_velocity_min_dps', 'noise_velocity_max_dps'),
+            id='inverted_noise_velocity_range',
+        ),
+        pytest.param(
+            {'noise_velocity_distribution': 'poisson'},
+            ('noise_velocity_distribution', 'normal', 'uniform'),
+            id='unknown_noise_velocity_distribution',
+        ),
+        pytest.param(
+            {'noise_percentage': -1.0},
+            ('noise_percentage', '0', '100'),
+            id='negative_noise_percentage',
+        ),
+        pytest.param(
+            {'noise_percentage': 100.5},
+            ('noise_percentage', '0', '100'),
+            id='noise_percentage_above_100',
         ),
         pytest.param(
             {'fixation_duration_min_ms': 500.0, 'fixation_duration_max_ms': 100.0},

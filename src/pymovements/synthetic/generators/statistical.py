@@ -155,8 +155,16 @@ class StatisticalConfig(GeneratorConfig):
     profile_sampling_rate: float
         The rate the profiles are built at before being averaged down to ``sampling_rate``. Must
         not be below it. (default: 10000.0)
-    noise_std_dps: float
-        Spread of the measurement noise added last. (default: 0.0)
+    noise_percentage: float
+        Share of the samples that receive measurement noise, from 0 to 100. (default: 0.0)
+    noise_velocity_min_dps: float
+        Smallest velocity change a noisy sample receives. (default: 0.0)
+    noise_velocity_max_dps: float
+        Largest velocity change a noisy sample receives. (default: 0.0)
+    noise_velocity_distribution: str
+        How each velocity change is drawn. (default: 'uniform')
+    noise_velocity_std_dps: float
+        Spread of the velocity change when drawn normally. (default: 0.0)
     event_sequence: tuple[str, ...] | None
         The event types to generate in order, repeated until the duration is filled, or ``None``
         to draw each one uniformly. Ignored when conditioning on events. (default: None)
@@ -209,7 +217,12 @@ class StatisticalConfig(GeneratorConfig):
     smooth_pursuit_consistency_distribution: str = 'uniform'
 
     profile_sampling_rate: float = 10_000.0
-    noise_std_dps: float = 0.0
+    noise_percentage: float = 0.0
+    noise_velocity_min_dps: float = 0.0
+    noise_velocity_max_dps: float = 0.0
+    noise_velocity_distribution: str = 'uniform'
+    noise_velocity_std_dps: float = 0.0
+
     event_sequence: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
@@ -226,6 +239,11 @@ class StatisticalConfig(GeneratorConfig):
 
         _check_name(self, 'smooth_pursuit_profile', PURSUIT_PROFILES)
         _check_skewness(self)
+
+        if not 0.0 <= self.noise_percentage <= 100.0:
+            raise ValueError(
+                f'noise_percentage must be between 0 and 100 but is: {self.noise_percentage}',
+            )
 
         if self.profile_sampling_rate < self.sampling_rate:
             raise ValueError(
@@ -346,10 +364,7 @@ def _synthesize_trial(
     profile, profile_times_ms = _build_profiles(segments, config, rng, start_ms)
     magnitudes = _resample(profile, profile_times_ms, segments, config)
 
-    if config.noise_std_dps:
-        magnitudes = np.abs(
-            magnitudes + rng.normal(0.0, config.noise_std_dps, magnitudes.size),
-        )
+    magnitudes = _add_noise(magnitudes, config, rng)
 
     times_ms = start_ms + np.arange(magnitudes.size) * (1000.0 / config.sampling_rate)
 
@@ -357,6 +372,28 @@ def _synthesize_trial(
         pl.DataFrame({'time': times_ms, VELOCITY_MAGNITUDE_COLUMN: magnitudes}),
         _segment_events(segments, start_ms).frame,
     )
+
+
+def _add_noise(
+        magnitudes: np.ndarray,
+        config: StatisticalConfig,
+        rng: np.random.Generator,
+) -> np.ndarray:
+    """Change a share of the samples by a drawn velocity, as measurement noise.
+
+    The noisy samples are picked uniformly. The source also allows a normal distribution for
+    where noise is placed but does not say what it is centred on, so that choice is left out.
+    """
+    n_noisy = round(magnitudes.size * config.noise_percentage / 100.0)
+    if not n_noisy:
+        return magnitudes
+
+    noisy = rng.choice(magnitudes.size, size=n_noisy, replace=False)
+    changes = [_draw('noise', 'velocity', '_dps', config, rng) for _ in range(n_noisy)]
+
+    noisy_magnitudes = magnitudes.copy()
+    noisy_magnitudes[noisy] = np.abs(noisy_magnitudes[noisy] + changes)
+    return noisy_magnitudes
 
 
 def _event_sequence(
