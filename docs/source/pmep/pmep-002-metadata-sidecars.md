@@ -184,7 +184,9 @@ when given, and a load reads it from the same place. The sidecar holds one dict 
 the top level, keyed by the column name, and the file-level keys beside them, with no wrapper
 key around the columns. In memory the file is `sidecar`, as read by load or written by save, and
 `metadata` is what describes the data object, see The metadata dict. Two data files with the
-same stem share one sidecar path, which save warns about, see Conflicts.
+same stem share one sidecar path, which save warns about, see Conflicts. Save writes the sidecar
+as indented JSON that a person can read without a tool, one key per line at every depth. The
+style is not part of the schema, a change of it never moves the schema version.
 
 **The pymovements stamp.** The top-level `pymovements` entry holds exactly three keys. `schema`
 is a stable identifier of the writing class, the lowercase class name, written from the first
@@ -437,7 +439,7 @@ keyword `metadata_path` is renamed to `sidecar_path`, and on load the sidecar pa
 Target release is v0.30.0. One issue per line, drafted once the PMEP is accepted. The module is
 private, so every issue is tested through the public methods of the class that has adopted:
 
-- [ ] the shared private module, adopted by `Participants`: the sidecar file shape, the
+- [ ] the shared private module, adopted by `Participants`: the sidecar file shape and style, the
       pymovements stamp and the version rules, the read-only `sidecar` attribute, whose mechanism
       is that issue's, `schema` `participants`, `Sources`, the `<stem>.json` save default.
       Acceptance: a BIDS participants file loads with `Participants.load(path)` alone, with and
