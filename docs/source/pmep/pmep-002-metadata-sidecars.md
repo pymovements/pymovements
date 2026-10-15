@@ -434,11 +434,14 @@ keyword `metadata_path` is renamed to `sidecar_path`, and on load the sidecar pa
 
 ## Implementation
 
-Target release is v0.30.0. One issue per line, drafted once the PMEP is accepted:
+Target release is v0.30.0. One issue per line, drafted once the PMEP is accepted. The module is
+private, so every issue is tested through the public methods of the class that has adopted:
 
-- [ ] the shared private module: the sidecar file shape, the pymovements stamp and the version
-      rules, the read-only `sidecar` attribute, whose mechanism is that issue's. Acceptance: a
-      BIDS example file loads with `load(path)` alone, with and without its sidecar
+- [ ] the shared private module, adopted by `Participants`: the sidecar file shape, the
+      pymovements stamp and the version rules, the read-only `sidecar` attribute, whose mechanism
+      is that issue's, `schema` `participants`, `Sources`, the `<stem>.json` save default.
+      Acceptance: a BIDS participants file loads with `Participants.load(path)` alone, with and
+      without its sidecar
 - [ ] the metadata dict rules and the correction rule: what load builds from `sidecar`, the load
       keyword over an entry, what save corrects, writes and sets
 - [ ] `Format` and `Units`: the six values and their dtypes, `boolean` for `bool`, unmapped
@@ -449,8 +452,6 @@ Target release is v0.30.0. One issue per line, drafted once the PMEP is accepted
       declares its own
 - [ ] `sidecar_path` on save and load, `metadata` on load as a dict only, `metadata_path` and a
       path in `metadata=` deprecated in v0.30.0 and removed in v0.35.0
-- [ ] `Participants` adopts: `schema` `participants`, the pymovements stamp from construction,
-      `Sources`, `sidecar`, the `<stem>.json` save default
 - [ ] `Phenotype` adopts: `schema` `phenotype`, the pymovements stamp from construction,
       `Sources`, `sidecar`, `MeasurementToolMetadata` stays file-level
 - [ ] changelog entry and documentation of the sidecar format
