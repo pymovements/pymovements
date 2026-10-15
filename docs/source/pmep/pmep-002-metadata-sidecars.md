@@ -238,10 +238,11 @@ adoption declares such columns, and they load as a Duration in that unit when `U
 number column without a time unit in `Units` is otherwise never a Duration. `step`, a sample index,
 carries no dtype here, the adoption that holds the sampling rate converts it. On save to a text file
 the unit of a Duration column resolves in this order: a save keyword of the adopting class, if it
-has one, then the `Units` entry of the column. Save raises when neither gives a unit, and the unit
-used is written to `Units`, so no file ever holds a duration without its unit. Columns with
-different `Units` entries are therefore written in different units. Which unit an adopting class
-defaults to for its own time columns is the adoption's choice.
+has one, then the `Units` entry of the column, then the unit BIDS fixes for a column the adoption
+declares. Save raises when none gives a unit, and the unit used is written to `Units`, so no file
+ever holds a duration without its unit. Columns with different `Units` entries are therefore
+written in different units. Which unit an adopting class defaults to for its own time columns is
+the adoption's choice.
 
 **Conflicts.**
 
