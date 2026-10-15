@@ -436,18 +436,23 @@ keyword `metadata_path` is renamed to `sidecar_path`, and on load the sidecar pa
 
 Target release is v0.30.0. One issue per line, drafted once the PMEP is accepted:
 
-- [ ] sidecar reader and writer, one shared private module for every adoption: the pymovements
-      stamp, the version rules, the metadata dict rules and the correction rule, the Duration
-      columns rule, the conflict rules, and the read-only `sidecar` attribute, whose mechanism
-      is that issue's. Acceptance: a BIDS example file loads with `load(path)` alone, with and
-      without its sidecar
+- [ ] the shared private module: the sidecar file shape, the pymovements stamp and the version
+      rules, the read-only `sidecar` attribute, whose mechanism is that issue's. Acceptance: a
+      BIDS example file loads with `load(path)` alone, with and without its sidecar
+- [ ] the metadata dict rules and the correction rule: what load builds from `sidecar`, the load
+      keyword over an entry, what save corrects, writes and sets
+- [ ] `Format` and `Units`: the six values and their dtypes, `boolean` for `bool`, unmapped
+      values, the Duration columns rule with the save-time unit order
+- [ ] the conflict rules: the entry without a column, a column name whose value is not a dict,
+      the same-stem data file
 - [ ] `verify_bids`: the two required-level checks the mechanism runs, and how an adoption
       declares its own
 - [ ] `sidecar_path` on save and load, `metadata` on load as a dict only, `metadata_path` and a
       path in `metadata=` deprecated in v0.30.0 and removed in v0.35.0
-- [ ] `Participants` and `Phenotype`: the pymovements stamp from construction, `Sources`,
-      `sidecar`, the entry without a column, the replaced `Format`, `boolean`, unmapped `Format`
-      values, the `Participants.save` default
+- [ ] `Participants` adopts: `schema` `participants`, the pymovements stamp from construction,
+      `Sources`, `sidecar`, the `<stem>.json` save default
+- [ ] `Phenotype` adopts: `schema` `phenotype`, the pymovements stamp from construction,
+      `Sources`, `sidecar`, `MeasurementToolMetadata` stays file-level
 - [ ] changelog entry and documentation of the sidecar format
 
 ## References
