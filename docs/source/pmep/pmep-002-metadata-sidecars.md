@@ -231,14 +231,21 @@ Three rules connect them to each other and to the frame:
 
 One rule covers every correction pymovements makes to the metadata dict: it fills a missing
 entry silently and replaces an entry that contradicts the frame or the file with a warning that
-names both values. It runs at construction and at save. Construction fills a missing `Format`
-from the dtype of its column and writes the running pymovements stamp. Save fills a missing
-`Format` from the dtype and a missing `Units` on a Duration column from the unit it writes. Both
-replace a `Format` that does not fit the dtype of its column, and a pymovements stamp that
-differs from the running one, an equal one is silent. The load keyword in rule 1 is the same
-rule on the file side: the keyword states what the file contains and the entry contradicts it.
-The save keyword of an adopting class for the time unit is no correction but a conversion the
-caller chose, it wins silently and the unit written goes into `Units`, see Duration columns.
+names both values. It runs at construction and at save:
+
+| when | what | outcome |
+|---|---|---|
+| construction | `Format` missing | filled from the dtype of its column, silently |
+| construction | pymovements stamp missing | the running one written, silently |
+| save | `Format` missing | filled from the dtype of its column, silently |
+| save | `Units` missing on a Duration column | filled from the unit save writes, silently |
+| construction and save | `Format` does not fit the dtype of its column | replaced, the warning names both values |
+| construction and save | pymovements stamp differs from the running one | replaced, the warning names both values, an equal one is silent |
+
+The load keyword in rule 1 is the same rule on the file side: the keyword states what the file
+contains and the entry contradicts it. The save keyword of an adopting class for the time unit is
+no correction but a conversion the caller chose. It wins silently and the unit written goes into
+`Units`, see Duration columns.
 
 **Sources.** `Sources` is the BIDS provenance key with the BIDS meaning [1]: the files directly used
 in the creation of this file, one hop, not the chain. Every adopting class carries it. A loaded
