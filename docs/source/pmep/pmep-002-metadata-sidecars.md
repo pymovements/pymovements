@@ -112,10 +112,10 @@ The sidecar owns the `json` extension next to the stem, so no data format may us
 | `schema` | stamp | label of the writing class, the lowercase class name |
 | `schema_version` | stamp | version of the schema defined here, initially `0.1.0` |
 | `version` | stamp | package version that wrote the file, provenance |
-| `Sources` | top | BIDS provenance: list of the files directly used, as paths |
+| `Sources` | top | BIDS provenance: list of the files directly used, as paths [1] |
 | `<column name>` | top | a dict that describes the column |
-| `Format` | column | BIDS format: `string`, `number`, `integer`, `boolean`, `index`, `label` |
-| `Units` | column | unit of the column, on a time column the unit it is written in |
+| `Format` | column | BIDS format: `string`, `number`, `integer`, `boolean`, `index`, `label` [2] |
+| `Units` | column | unit of the column, on a time column the unit it is written in [2] |
 
 **Adoption contract.** A class that adopts the sidecar carries two parameters in these roles,
 whatever else its signatures hold:
@@ -209,19 +209,18 @@ BIDS sidecar: a breaking schema version never changes how a BIDS-defined key is 
    dtype of its column, with a warning, and it writes the pymovements stamp. A Duration column
    is written as `number`. After save the metadata dict equals the file.
 
-**Sources.** `Sources` is the BIDS provenance key with the BIDS meaning (BIDS derivatives,
-file-level metadata): the files directly used in the creation of this file, one hop, not the
-chain. Every adopting class carries it. A loaded object records the file that was read, as a
-POSIX path, relative to the dataset root under a `Dataset` and absolute otherwise. A loaded
-sidecar's own `Sources` entry is not carried into the metadata dict, since it describes that
-file's provenance and not the loaded object's. A `Sources` entry given in `metadata=` is kept,
-it states the caller's intent. Save writes the entry when the metadata dict holds it. BIDS
-URIs as the value form come with the PMEP that writes a BIDS dataset, and the paths written
-until then stay readable, a URI is a prefix on the same path.
+**Sources.** `Sources` is the BIDS provenance key with the BIDS meaning [1]: the files directly used
+in the creation of this file, one hop, not the chain. Every adopting class carries it. A loaded
+object records the file that was read, as a POSIX path, relative to the dataset root under a
+`Dataset` and absolute otherwise. A loaded sidecar's own `Sources` entry is not carried into the
+metadata dict, since it describes that file's provenance and not the loaded object's. A `Sources`
+entry given in `metadata=` is kept, it states the caller's intent. Save writes the entry when the
+metadata dict holds it. BIDS URIs as the value form come with the PMEP that writes a BIDS dataset,
+and the paths written until then stay readable, a URI is a prefix on the same path.
 
 **Format and Units.** `Format` says how the values of a column are read, `Units` states the
 unit they are written in. Text files store no dtypes, so for them the loader builds the dtype
-of a column from `Format`. pymovements writes six of the BIDS values, `integer`, `number`,
+of a column from `Format`. pymovements writes six of the BIDS values [2], `integer`, `number`,
 `index`, `boolean`, `string` and `label`, and reads each as one dtype, `label` as the same
 dtype as `string`. Any other BIDS value, such as `date` or `uri`, sets no dtype: the column
 keeps the dtype inferred from the data and the entry is kept. Save fills a missing `Format`
@@ -231,18 +230,18 @@ Duration alone, see Duration columns. Any other unit, such as `years`, `deg` or 
 and written as it is. A dtype for another unit extends this rule in its own proposal, the
 sidecar shape stays.
 
-**Duration columns.** A column loads as a Duration only when its `Format` is `number` or
-`integer` and its `Units` is one of the symbols `s`, `ms`, `us` and `ns`, which BIDS
-recommends over spelled-out names, written as a number. The one exception is a column whose
-unit BIDS fixes: an adoption declares such columns, and they load as a Duration in that unit
-when `Units` is absent. The unit used is written to `Units` at save as for every other Duration
-column. A number column without a time unit in `Units` is otherwise never a Duration. `step`, a
-sample index, carries no dtype here, the adoption that holds the sampling rate converts it. On
-save to a text file the unit of a Duration column resolves in this order: a save keyword of the
-adopting class, if it has one, then the `Units` entry of the column. Save raises when neither
-gives a unit, and the unit used is written to `Units`, so no file ever holds a duration without
-its unit. Columns with different `Units` entries are therefore written in different units.
-Which unit an adopting class defaults to for its own time columns is the adoption's choice.
+**Duration columns.** A column loads as a Duration only when its `Format` is `number` or `integer`
+and its `Units` is one of the symbols `s`, `ms`, `us` and `ns`, which BIDS recommends over
+spelled-out names [3], written as a number. The one exception is a column whose unit BIDS fixes: an
+adoption declares such columns, and they load as a Duration in that unit when `Units` is absent. The
+unit used is written to `Units` at save as for every other Duration column. A number column without
+a time unit in `Units` is otherwise never a Duration. `step`, a sample index, carries no dtype here,
+the adoption that holds the sampling rate converts it. On save to a text file the unit of a Duration
+column resolves in this order: a save keyword of the adopting class, if it has one, then the `Units`
+entry of the column. Save raises when neither gives a unit, and the unit used is written to `Units`,
+so no file ever holds a duration without its unit. Columns with different `Units` entries are
+therefore written in different units. Which unit an adopting class defaults to for its own time
+columns is the adoption's choice.
 
 **Conflicts.**
 
@@ -264,12 +263,12 @@ calls the constructor, so the warning for an entry without a column fires once p
 default on save, warns for each required-level finding. `'RECOMMENDED'` warns for
 required-level and recommended-level findings. `True` raises on a required-level finding.
 `False`, the default on load, is silent. The mechanism runs two required-level checks: the
-data file is a tsv file with tab separators, and nulls are written as `n/a`. A csv file
+data file is a tsv file with tab separators, and nulls are written as `n/a` [2]. A csv file
 therefore warns under the default, and the message names `verify_bids=False`. An adoption
 declares its own checks, at either level, and the same `verify_bids` runs them.
 
 **Loading BIDS files.** A BIDS-conformant data file loads with `load(path)` alone, whether or
-not a sidecar exists next to it, since BIDS recommends the sidecar and does not require it.
+not a sidecar exists next to it, since BIDS recommends the sidecar and does not require it [4].
 The defaults on load are the BIDS conventions: a tsv file is read tab-separated, `n/a` is
 read as null, a column takes its dtype from `Format` where pymovements maps it and from the
 data otherwise, a column whose unit BIDS fixes loads as a Duration in that unit, see Duration
@@ -280,7 +279,7 @@ columns, and `verify_bids` is `False`. Without a sidecar the metadata dict holds
 signatures. They adopt with the `schema` values `participants` and `phenotype`, and every
 rule above applies to them, what changes for their files is listed under Backwards
 compatibility. Neither has a time column, `age` carries `years` and stays an integer column.
-`MeasurementToolMetadata` in a `Phenotype` sidecar is file-level metadata and stays silent.
+`MeasurementToolMetadata` in a `Phenotype` sidecar is file-level metadata [5] and stays silent.
 
 **Scope.** Outside this proposal: `Gaze` and its two YAML files, which Recording and Session
 supersede. `BIDSVersion` and `dataset_description.json`, which belong to the proposal that
@@ -293,10 +292,9 @@ proposal.
 ## Rationale
 
 **Why the BIDS shape.** BIDS conformity is the target, so the defaults conform and a deviation shows
-through verification. The BIDS data dictionary allows file-level keys beside the column entries
-(BIDS common principles, tabular files), which is where `Sources` and the `pymovements` entry sit. A
-probe with bids-validator 3.0.2 and 2.4.1, on a raw and a derivative dataset with identical results,
-confirmed it:
+through verification. The BIDS data dictionary allows file-level keys beside the column entries [2],
+which is where `Sources` and the `pymovements` entry sit. A probe with bids-validator 3.0.2 and
+2.4.1 [6], on a raw and a derivative dataset with identical results, confirmed it:
 
 | sidecar content | validator |
 |---|---|
@@ -331,35 +329,36 @@ warning instead of raising, so a cast stays a one-step change and the warning sa
 followed.
 
 **Why an entry without a column is kept and warns on `Format`.** BIDS treats a description for a
-nonexistent column as other metadata, the BIDS validator is clean on it, and dropping it would
+nonexistent column as other metadata [2], the BIDS validator is clean on it, and dropping it would
 discard something the user wrote. Kept and warned, the user decides. BIDS identifies a column entry
-by its name matching a column, and that match is gone with the column, so pymovements needs its own
-criterion: save fills `Format` into every column entry and file-level entries never carry one, so an
-entry with `Format` was a column entry. A column name whose value is not a dict is different: the
-loader looks the dtype up there and finds none, so the column keeps the dtype inferred from the
+by its name matching a column [2], and that match is gone with the column, so pymovements needs its
+own criterion: save fills `Format` into every column entry and file-level entries never carry one,
+so an entry with `Format` was a column entry. A column name whose value is not a dict is different:
+the loader looks the dtype up there and finds none, so the column keeps the dtype inferred from the
 data, and load and save warn, whatever `verify_bids` says.
 
 **Why no default time unit.** A time unit is a factor on every value of a column, so a wrong one
 shows nowhere. pymovements therefore applies a unit only where something fixes it: the `Units`
 entry, a save keyword of the adopting class, or the BIDS definition of a column, which the adoption
-declares. `age` in years is such a BIDS-fixed unit already, verification reads it as years when it
-caps the value. Where nothing fixes a unit, a number column has none, and save raises for a Duration
-column rather than falling back to one. A dataset-wide unit is the dataset's to state, BIDS does it
-with an inherited sidecar, and it reaches the file loader through `metadata=` or the load keyword.
+declares. `age` in years is such a BIDS-fixed unit already [4], verification reads it as years when
+it caps the value. Where nothing fixes a unit, a number column has none, and save raises for a
+Duration column rather than falling back to one. A dataset-wide unit is the dataset's to state, BIDS
+does it with an inherited sidecar [7], and it reaches the file loader through `metadata=` or the
+load keyword.
 
 **Why the pymovements stamp.** `schema_version` guards the reading pymovements gives a sidecar
 beyond BIDS: the Duration columns rule and the keys adoptions add. Every file pymovements writes
-carries that reading, conformant or not, since BIDS allows the extra keys. A third-party sidecar
+carries that reading, conformant or not, since BIDS allows the extra keys [2]. A third-party sidecar
 carries none of it, which is why a file without a pymovements stamp reads silently. `schema` serves
 a file outside a BIDS layout, where no file name says which class wrote it. `version` is provenance,
 BIDS has no per-sidecar field for it.
 
 **Alternatives rejected.**
 
-- *A `columns` wrapper for the column dicts.* Not the BIDS shape, and the validator no longer finds
-  the descriptions.
+- *A `columns` wrapper for the column dicts.* Not the BIDS shape [2], and the validator no longer
+  finds the descriptions.
 - *`Sources` inside the `pymovements` entry.* The validator checks `Sources` at the top level of a
-  derivative sidecar.
+  derivative sidecar [1].
 - *A schema version per class.* One version for the mechanism, since a class adds keys and the
   mechanism defines what a key means.
 - *A `file` key in the pymovements stamp naming the data file.* The clash of two data files on one
@@ -396,3 +395,30 @@ Target release is v0.30.0. One issue per line, drafted once the PMEP is accepted
       column, the replaced `Format`, `boolean`, unmapped `Format` values, the
       `Participants.save` default
 - [ ] changelog entry and documentation of the sidecar format
+
+## References
+
+[1] Brain Imaging Data Structure (BIDS) specification v1.11.1, Derivatives, Common data types and
+metadata, Common file level metadata fields.
+<https://bids-specification.readthedocs.io/en/v1.11.1/derivatives/common-data-types.html#common-file-level-metadata-fields>
+
+[2] Brain Imaging Data Structure (BIDS) specification v1.11.1, Common principles, Tabular files.
+<https://bids-specification.readthedocs.io/en/v1.11.1/common-principles.html#tabular-files>
+
+[3] Brain Imaging Data Structure (BIDS) specification v1.11.1, Common principles, Units.
+<https://bids-specification.readthedocs.io/en/v1.11.1/common-principles.html#units>
+
+[4] Brain Imaging Data Structure (BIDS) specification v1.11.1, Modality agnostic files, Data summary
+files, Participants file.
+<https://bids-specification.readthedocs.io/en/v1.11.1/modality-agnostic-files/data-summary-files.html#participants-file>
+
+[5] Brain Imaging Data Structure (BIDS) specification v1.11.1, Modality agnostic files, Phenotypic
+and assessment data.
+<https://bids-specification.readthedocs.io/en/v1.11.1/modality-agnostic-files/phenotypic-and-assessment-data.html>
+
+[6] bids-validator, the BIDS validator.
+<https://github.com/bids-standard/bids-validator>
+
+[7] Brain Imaging Data Structure (BIDS) specification v1.11.1, Common principles, The Inheritance
+Principle.
+<https://bids-specification.readthedocs.io/en/v1.11.1/common-principles.html#the-inheritance-principle>
