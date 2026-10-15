@@ -377,8 +377,8 @@ layout the stem is `participants` and nothing changes. Their sidecars gain the `
 entry and `Sources`, two additional top-level keys for readers of these files. Files written
 before v0.30.0 carry no pymovements stamp and load as the oldest schema version, silently. A
 round trip through save and load adds the `pymovements` entry and `Sources` to the metadata
-dict, where it gave the metadata dict back unchanged. No signature changes and nothing is
-removed, so no deprecation is needed.
+dict, where it gave the metadata dict back unchanged. The `metadata_path` default is the one
+signature change and nothing is removed, so no deprecation is needed.
 
 ## Implementation
 
