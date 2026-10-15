@@ -357,7 +357,7 @@ BIDS has no per-sidecar field for it.
 - *A `columns` wrapper for the column dicts.* Not the BIDS shape [2], and the validator no longer
   finds the descriptions.
 - *`Sources` inside the `pymovements` entry.* The validator checks `Sources` at the top level of a
-  derivative sidecar [1].
+  derivative sidecar [6].
 - *A schema version per class.* One version for the mechanism, since a class adds keys and the
   mechanism defines what a key means.
 - *A `file` key in the pymovements stamp naming the data file.* The clash of two data files on one
