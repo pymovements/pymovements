@@ -251,8 +251,8 @@ The bias has practical consequences:
 ## Specification
 
 **Minimal schema.** The minimal `Events` schema becomes `onset`, `duration`, `name` across the
-whole codebase. BIDS mandates `onset` first and `duration` second. `name` is the pymovements
-event label and has no BIDS column of its own. `offset` leaves the minimal schema and is stored
+whole codebase. BIDS mandates `onset` first and `duration` second [1]. `name` is the pymovements
+event label and has no BIDS column of its own [1]. `offset` leaves the minimal schema and is stored
 only where it was supplied explicitly. Trial columns stay first. Within the minimal schema the
 order changes from `name`, `onset`, `offset` to `onset`, `duration`, `name`, then extras follow,
 a supplied `offset` among them. The schema will cover events built from samples and events
@@ -269,7 +269,7 @@ with exact boundaries, including impulses and events of unknown duration.
   boundaries, not sample positions, so no quantization correction applies. They are supplied
   via `durations=` or as offsets declared with `offsets_inclusive=False`.
 
-**Nullability.** `duration` gains null semantics, following BIDS: `0` means an event so short
+**Nullability.** `duration` gains null semantics, following BIDS [1]: `0` means an event so short
 that it is modeled as an impulse, `null` means the duration is unavailable. The constructor
 already accepts `null` durations, so what changes is their meaning and how consumers treat them.
 Single-sample events will get `Δ`, never `0` (see the quantization note in Rationale). An
@@ -310,7 +310,7 @@ create it. What happens to durations next to a stored offset column follows the 
 rules below.
 
 **Metadata.** This PMEP adds two entries to `Events.metadata`: one convention entry per offset
-column, identified by the column's name as in a BIDS tabular sidecar, and one sampling-rate
+column, identified by the column's name as in a BIDS tabular sidecar [2], and one sampling-rate
 entry. The convention entry will be written by `offsets_inclusive=`, by `parse_offset` on
 `from_asc` and by the `offset` measure for the column it writes. Several offset columns with
 different conventions may coexist. A convention entry describes its whole column. The
@@ -548,3 +548,11 @@ One issue per line, drafted once the PMEP is accepted:
 - [ ] EyeLink and BeGaze parsers: `DUR` verbatim, `parse_offset`, `durations=`
 - [ ] offset consumers, duration thresholds, null duration semantics
 - [ ] changelog entry and versioned migration note per Backwards compatibility
+
+## References
+
+[1] Brain Imaging Data Structure (BIDS) specification, Events.
+<https://bids-specification.readthedocs.io/en/stable/modality-agnostic-files/events.html>
+
+[2] Brain Imaging Data Structure (BIDS) specification, Common principles, Tabular files.
+<https://bids-specification.readthedocs.io/en/stable/common-principles.html#tabular-files>
