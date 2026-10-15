@@ -10,23 +10,21 @@
 
 ## TL;DR
 
-- Saved tabular files will share one metadata sidecar: `<stem>.json` next to the data file, in
-  the BIDS tabular shape.
-- Each class adopts the sidecar in its own PMEP or issue by naming its `schema` value and the
-  keys it writes.
-- The metadata dict is the file. Load puts the sidecar into `metadata` as it is, save writes it back
-  as it is. Save fills `Format` and `Units` into the metadata dict where they are missing, and where
-  an entry contradicts the frame, the frame wins at save, with a warning.
-- A `pymovements` entry in the sidecar carries the pymovements stamp: `schema`, a label for the
-  writing class, `schema_version`, initially `0.1.0`, and `version`, the package version as
-  provenance.
-- A time column is a Duration only with a time unit in `Units`. Nothing is guessed, on load or
-  on save.
-- `verify_bids` reports nonconformities at a BIDS level: `'REQUIRED'`, the default on save,
-  warns on required-level findings, `'RECOMMENDED'` on required and recommended ones, `True`
-  raises at the required level, `False` is silent.
-- `Participants` and `Phenotype` keep their released behavior and gain the pymovements stamp and
-  `Sources`.
+- Saved tabular files share one metadata sidecar, `<stem>.json` beside the data file: one dict
+  per column, keyed by name, and file-level keys beside them.
+- Each class adopts it in its own PMEP or issue, naming its `schema` value and the keys it
+  writes.
+- The metadata dict mirrors the sidecar. Load reads it as it is, save writes it back after
+  filling missing `Format` and `Units`, replacing a `Format` that contradicts the frame with a
+  warning.
+- A top-level `pymovements` entry carries the pymovements stamp: `schema`, a label for the
+  writing class, `schema_version`, initially `0.1.0`, and `version`, the writing package
+  version.
+- A BIDS-conformant file loads with `load(path)` alone, sidecar or not.
+- `verify_bids` reports BIDS nonconformities: `'REQUIRED'` (the save default) and
+  `'RECOMMENDED'` warn, `True` raises, `False` (the load default) is silent.
+- `Participants` and `Phenotype` keep their released behavior and gain the pymovements stamp
+  and `Sources`.
 
 ## What it looks like
 
