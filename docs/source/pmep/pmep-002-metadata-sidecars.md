@@ -161,8 +161,9 @@ terms. Nothing in the file says which schema it follows or which pymovements ver
 `Format` that contradicts the frame is written as it is, and an entry without a column is handled
 by each class on its own.
 
-More classes gain `save` and `load` methods as the data model grows. Without one definition each
-would define its own sidecar, and the same rule would be stated several times and drift.
+`Events` and more classes gain `save` and `load` methods as the data model grows. Without one
+definition each would define its own sidecar, and the same rule would be stated several times and
+drift.
 
 tsv and csv files store no dtypes. Today the caller of `load` has to pass the right parameters to
 read such a file back as it was written. The sidecar is where that record belongs: `Format` and
