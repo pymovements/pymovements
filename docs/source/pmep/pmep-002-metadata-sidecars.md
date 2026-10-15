@@ -62,7 +62,8 @@ constructor inferred:
 }
 ```
 
-The table was built from a frame, not read from a file, so there is no `Sources` entry to write.
+The table in the code above was built from a frame, not read from a file, so there is no
+`Sources` entry to write.
 
 After `Participants.load('participants.tsv')` the metadata dict is the sidecar, pymovements stamp
 included, and the file that was read is recorded as the source:
@@ -78,9 +79,20 @@ participants.metadata
 participants.data.schema['age']    # Int64, built from Format
 ```
 
-Two rules show on the next save. A `Format` that no longer fits its column, because the column
-was cast in between, is replaced with a warning. An entry whose column was dropped from the frame
-still carries its `Format`, so it is kept and warns.
+`age` round-trips as an integer column because `Format` says `integer`, `Units` plays no part in
+it.
+
+Two rules show on the next save:
+
+```python
+participants.data = participants.data.cast({'age': polars.Float64})
+participants.save('participants.tsv')
+# UserWarning: Format 'integer' of column 'age' does not fit Float64, replaced by 'number'
+
+participants.data = participants.data.drop('age')
+participants.save('participants.tsv')
+# UserWarning: metadata entry 'age' has a Format but the frame has no column 'age', kept
+```
 
 ## Resulting signatures
 
