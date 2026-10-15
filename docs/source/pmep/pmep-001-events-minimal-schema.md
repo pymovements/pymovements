@@ -441,12 +441,19 @@ center  = t_last - t_first + Δ
 Each boundary is uncertain by one interval, and both uncertainties carry over into the duration:
 the window has width `2Δ`, half the precision of onset and offset, under any convention. The
 two candidates sit differently in it: `offset - onset` is the floor of the window, biased by
-`-Δ`, while `t_last - t_first + Δ` is its center, unbiased. For the first fixation of the
-running example the true duration lies in `[120, 122)` ms. The new `121` is the center of that
-window and EyeLink's reported `DUR`. Today's `120` is its edge, not a more precise value, only a
-biased one. Three criteria pick the center independently of bias: additivity (durations sum to
-recording length and adjacent events tile), the single-sample event (duration `Δ` instead of an
-ambiguous `0`), and agreement with the vendor's reported values.
+`-Δ`, while `t_last - t_first + Δ` is its center, unbiased. The first fixation of the running
+example, at 1000 Hz:
+
+```text
+window  = [120, 122) ms
+floor   = 120 ms    offset - onset, today's duration
+center  = 121 ms    t_last - t_first + Δ, EyeLink's reported DUR
+```
+
+Today's `120` is the edge of the window, not a more precise value, only a biased one. Three
+criteria pick the center independently of bias: additivity (durations sum to recording length
+and adjacent events tile), the single-sample event (duration `Δ` instead of an ambiguous `0`),
+and agreement with the vendor's reported values.
 
 **Why the inclusive offset of an impulse is null.** Under the inclusive convention
 `duration = offset - onset + Δ`. For a duration of `0` the only offset that satisfies the
