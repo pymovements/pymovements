@@ -387,12 +387,12 @@ or not `parse_offset` is set. `parse_offset=True` plus the consistency check is 
 against a vendor end timestamp disagreeing with `DUR`.
 
 **The offset measure.** `offset` becomes an on-demand event measure with a required `inclusive`
-parameter. `inclusive=True` reproduces today's stored offsets and will require a sampling rate,
-which `Gaze.compute_event_properties` will fill when the caller gives none: the events entry
-first, the experiment second. `inclusive=False` will need no sampling rate. `offsets_inclusive`
-on the `duration` measure is required in the same way. `Gaze.compute_event_properties` writes
-the `duration` expression over a stored `duration` column, as `durations_from_offsets=True`
-does at construction.
+parameter. `inclusive=True` reproduces the offsets v0.28.0 stores and will require a sampling
+rate, which `Gaze.compute_event_properties` will fill when the caller gives none: the events
+entry first, the experiment second. `inclusive=False` will need no sampling rate.
+`offsets_inclusive` on the `duration` measure is required in the same way.
+`Gaze.compute_event_properties` writes the `duration` expression over a stored `duration`
+column, as `durations_from_offsets=True` does at construction.
 
 **Remaining offset consumers** move to onset/duration arithmetic:
 
@@ -450,14 +450,14 @@ t_last  = 120 ms
 Δ       = 1 ms
 
 window  = [120, 122) ms
-floor   = 120 ms    offset - onset, today's duration
+floor   = 120 ms    offset - onset, v0.28.0 duration
 center  = 121 ms    t_last - t_first + Δ, EyeLink's reported DUR
 ```
 
-Today's `120` is the edge of the window, not a more precise value, only a biased one. Three
-criteria pick the center independently of bias: additivity (durations sum to recording length
-and adjacent events tile), the single-sample event (duration `Δ` instead of an ambiguous `0`),
-and agreement with the vendor's reported values.
+The v0.28.0 duration `120` is the edge of the window, not a more precise value, only a biased
+one. Three criteria pick the center independently of bias: additivity (durations sum to
+recording length and adjacent events tile), the single-sample event (duration `Δ` instead of an
+ambiguous `0`), and agreement with the vendor's reported values.
 
 **Why the center is unbiased.** Assuming a true event boundary is uniformly distributed
 between its two neighbouring samples `t` and `t + Δ`, the expected start is `t_first - Δ/2` and
