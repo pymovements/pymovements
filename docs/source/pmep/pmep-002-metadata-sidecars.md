@@ -278,7 +278,7 @@ sample index, carries no dtype here, the adoption that holds the sampling rate c
 to a text file the unit of a Duration column resolves in this order:
 
 1. a save keyword of the adopting class, if it has one
-2. the `Units` entry of the column
+2. the `Units` entry of the column in the metadata dict
 3. the unit BIDS fixes for a column the adoption declares
 
 Save raises when none gives a unit. The unit used is written to `Units`, so no file ever holds a
