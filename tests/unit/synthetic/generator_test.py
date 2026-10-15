@@ -75,7 +75,7 @@ def test_generator_is_abstract():
 
 
 def test_subclass_without_generate_is_abstract():
-    class IncompleteGenerator(GazeGenerator):
+    class IncompleteGenerator(GazeGenerator):  # pylint: disable=abstract-method
         name = 'incomplete'
 
     with pytest.raises(TypeError) as excinfo:
