@@ -455,6 +455,14 @@ criteria pick the center independently of bias: additivity (durations sum to rec
 and adjacent events tile), the single-sample event (duration `Δ` instead of an ambiguous `0`),
 and agreement with the vendor's reported values.
 
+**Why the center is unbiased.** Assuming a true event boundary is uniformly distributed
+between its two neighbouring samples `t` and `t + Δ`, the expected start is `t_first - Δ/2` and
+the expected end `t_last + Δ/2`, so the expected duration is `t_last - t_first + Δ`, the center
+of the window. Sampled eye movements meet that condition: their timing is not locked to the
+sample clock and varies by far more than one interval, so the position of a boundary within its
+interval is as good as random. The floor has no such reading. It is the duration only when both
+boundaries sit exactly on their samples.
+
 **Why the inclusive offset of an impulse is null.** Under the inclusive convention
 `duration = offset - onset + Δ`. For a duration of `0` the only offset that satisfies the
 formula is `onset - Δ`, a timestamp before the event starts. The next candidate, `onset`, is a
