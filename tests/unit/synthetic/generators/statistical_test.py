@@ -20,6 +20,7 @@
 """Test the statistical gaze generator."""
 import dataclasses
 
+import numpy as np
 import polars as pl
 import pytest
 
@@ -28,6 +29,7 @@ from pymovements.synthetic import ConditioningMode
 from pymovements.synthetic import GeneratorConfig
 from pymovements.synthetic import InputContractError
 from pymovements.synthetic import SignalRepresentation
+from pymovements.synthetic.generators.statistical import _resample
 from pymovements.synthetic.generators.statistical import StatisticalConfig
 from pymovements.synthetic.generators.statistical import StatisticalGenerator
 from pymovements.synthetic.generators.statistical import VELOCITY_MAGNITUDE_COLUMN
@@ -162,6 +164,31 @@ def test_arbitrary_sampling_rate(sampling_rate):
     gaze = StatisticalGenerator().generate(config)
 
     assert gaze.samples.height == round(sampling_rate * 2.0)
+
+
+@pytest.mark.parametrize(
+    ('profile_times_ms', 'expected'),
+    [
+        pytest.param(
+            np.arange(12.0),
+            [0.0, 2.5, 6.5],
+            id='mean_of_values_since_the_last_sampling_position',
+        ),
+        pytest.param(
+            np.array([0.0, 12.0]),
+            [0.0, 4.0, 8.0],
+            id='window_without_values_falls_back_to_interpolation',
+        ),
+    ],
+)
+def test_resample_averages_between_sampling_positions(profile_times_ms, expected):
+    """Each sample is the mean of the profile since the previous one, as in Fuhl et al. §3.5."""
+    config = StatisticalConfig(sampling_rate=250.0, profile_sampling_rate=1000.0)
+    profile = profile_times_ms.copy()
+
+    resampled = _resample(profile, profile_times_ms, [('fixation', 12.0)], config)
+
+    np.testing.assert_allclose(resampled, expected)
 
 
 def test_reproducible_under_seed():

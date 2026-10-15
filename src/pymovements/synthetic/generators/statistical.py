@@ -26,7 +26,7 @@ The generator implements the eye movement simulator described in section 3 of:
     arXiv:1804.00970.
 
 Generation runs in four steps. A sequence of event types is chosen, each event is given a
-velocity profile drawn from its own parameters, the profiles are laid end to end and interpolated
+velocity profile drawn from its own parameters, the profiles are laid end to end and averaged
 down to the requested sampling rate, and measurement noise is added last.
 
 What comes out is a velocity magnitude without direction. The simulated velocity profiles carry
@@ -153,7 +153,7 @@ class StatisticalConfig(GeneratorConfig):
     smooth_pursuit_consistency_distribution: str
         How the consistency is drawn. (default: 'uniform')
     profile_sampling_rate: float
-        The rate the profiles are built at before being interpolated to ``sampling_rate``. Must
+        The rate the profiles are built at before being averaged down to ``sampling_rate``. Must
         not be below it. (default: 10000.0)
     noise_std_dps: float
         Spread of the measurement noise added last. (default: 0.0)
@@ -231,7 +231,7 @@ class StatisticalConfig(GeneratorConfig):
             raise ValueError(
                 f'profile_sampling_rate ({self.profile_sampling_rate}) must not be below '
                 f'sampling_rate ({self.sampling_rate}), otherwise the profiles are built more '
-                f'coarsely than the signal interpolated from them',
+                f'coarsely than the signal resampled from them',
             )
 
         if self.event_sequence is not None:
@@ -554,17 +554,30 @@ def _resample(
         segments: list[tuple[str, float]],
         config: StatisticalConfig,
 ) -> np.ndarray:
-    """Interpolate the internal profile down to the requested sampling rate.
+    """Bring the internal profile down to the requested sampling rate.
 
-    This is what lets any sampling rate be served: the profiles are built at a rate far above the
-    target, and the target is obtained by interpolating them.
+    Each sample is the mean of the profile values since the previous sampling position, which is
+    what lets any sampling rate be served from the dense profile. The first sample has no previous
+    position and takes the profile value at its own time; a window holding no profile value falls
+    back to interpolating at the sampling position.
     """
     duration_ms = sum(duration_ms for _, duration_ms in segments)
     n_samples = max(round(duration_ms / 1000.0 * config.sampling_rate), 1)
     step_ms = 1000.0 / config.sampling_rate
     target_times_ms = profile_times_ms[0] + np.arange(n_samples) * step_ms
 
-    return np.interp(target_times_ms, profile_times_ms, profile)
+    resampled = np.interp(target_times_ms, profile_times_ms, profile)
+
+    # Window k holds the profile values in (t[k-1], t[k]], so it spans ends[k-1]:ends[k].
+    ends = np.searchsorted(profile_times_ms, target_times_ms, side='right')
+    cumulative = np.concatenate(([0.0], np.cumsum(profile)))
+    counts = np.diff(ends)
+    sums = cumulative[ends[1:]] - cumulative[ends[:-1]]
+
+    # Writes the means into resampled itself; empty windows keep their interpolated value.
+    np.divide(sums, counts, out=resampled[1:], where=counts > 0)
+
+    return resampled
 
 
 def _segment_events(segments: list[tuple[str, float]], start_ms: float) -> Events:
