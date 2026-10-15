@@ -108,18 +108,14 @@ The sidecar owns the `json` extension next to the stem, so no data format may us
 
 | key | level | value |
 |---|---|---|
-| `pymovements` | top | the pymovements stamp: `schema`, `schema_version`, `version` |
+| `pymovements` | top | the pymovements stamp, three keys |
+| `schema` | stamp | label of the writing class, the lowercase class name |
+| `schema_version` | stamp | version of the schema defined here, initially `0.1.0` |
+| `version` | stamp | package version that wrote the file, provenance |
 | `Sources` | top | BIDS provenance: list of the files directly used, as paths |
 | `<column name>` | top | a dict that describes the column |
 | `Format` | column | BIDS format: `string`, `number`, `integer`, `bool`, `index`, `label` |
 | `Units` | column | unit of the column, on a time column the unit it is written in |
-
-`Sources` is the BIDS provenance key with the BIDS meaning: the files directly used in the creation
-of this file, one hop, not the chain. Every class carries it: a loaded object records the file that
-was read, as a POSIX path, relative to the dataset root under a `Dataset` and absolute otherwise,
-and save writes the entry when the metadata dict holds it. A `Sources` entry given in `metadata=` is
-kept, it states the caller's intent. A loaded sidecar's own `Sources` entry is not carried into the
-metadata dict. Any other key is kept as it is, on load and on save.
 
 **Adoption contract.** A class that adopts the sidecar carries two parameters in these roles,
 whatever else its signatures hold:
@@ -142,8 +138,8 @@ load(
 ) -> Self
 ```
 
-`metadata_path` gives the sidecar a custom path on save, `metadata` takes a path or a dict on
-load.
+`metadata_path` on save is the sidecar path, `<stem>.json` when None. `metadata` on load takes a
+path or a dict.
 
 ## Motivation
 
@@ -215,6 +211,16 @@ BIDS sidecar. An adopting class may add its own strictness in its adoption, this
 3. On contradiction the frame wins. A `Format` that does not fit the dtype of its column is replaced
    in the metadata dict at save, with a warning. Save writes the pymovements stamp into the metadata
    dict as well. After save the metadata dict equals the file.
+
+**Sources.** `Sources` is the BIDS provenance key with the BIDS meaning (BIDS derivatives,
+file-level metadata): the files directly used in the creation of this file, one hop, not the
+chain. Every adopting class carries it. A loaded object records the file that was read, as a
+POSIX path, relative to the dataset root under a `Dataset` and absolute otherwise. A loaded
+sidecar's own `Sources` entry is not carried into the metadata dict, since it describes that
+file's provenance and not the loaded object's. A `Sources` entry given in `metadata=` is kept,
+it states the caller's intent. Save writes the entry when the metadata dict holds it. BIDS
+URIs as the value form come with the PMEP that writes a BIDS dataset, and the paths written
+until then stay readable, a URI is a prefix on the same path.
 
 **Units.** `Units` is descriptive, with one exception. A column loads as a Duration only when
 its `Format` is `number` or `integer` and its `Units` is one of `s`, `ms`, `us` and `ns`, and
