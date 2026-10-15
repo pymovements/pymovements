@@ -267,7 +267,7 @@ def test_text_stimulus_from_file_has_correct_metadata_default(make_example_file)
         height_column='height',
         page_column='page',
     )
-    assert stimulus.metadata == {'sources': [aoi_path.resolve().as_posix()]}
+    assert stimulus.metadata == {'Sources': [aoi_path.resolve().as_posix()]}
 
 
 @pytest.mark.parametrize(
@@ -292,7 +292,7 @@ def test_text_stimulus_has_correct_metadata(metadata, make_example_file):
     )
 
     expected_sources = [aoi_path.resolve().as_posix()]
-    assert stimulus.metadata == {**metadata, 'sources': expected_sources}
+    assert stimulus.metadata == {**metadata, 'Sources': expected_sources}
 
 
 def test_text_stimulus_from_file_does_not_mutate_passed_metadata(make_example_file):
@@ -313,7 +313,7 @@ def test_text_stimulus_from_file_does_not_mutate_passed_metadata(make_example_fi
     assert metadata == {'key': 'value'}
     assert stimulus.metadata == {
         'key': 'value',
-        'sources': [aoi_path.resolve().as_posix()],
+        'Sources': [aoi_path.resolve().as_posix()],
     }
 
 
@@ -587,18 +587,18 @@ def test_text_stimulus_split_propagates_metadata(sample_aoi_dataframe):
         width_column='width',
         height_column='height',
         page_column='page',
-        metadata={'sources': ['stimuli/text_1_aoi.csv']},
+        metadata={'Sources': ['stimuli/text_1_aoi.csv']},
     )
 
     splits = stimulus.split(by='page')
 
     assert len(splits) == 2
     for split_stimulus in splits:
-        assert split_stimulus.metadata == {'sources': ['stimuli/text_1_aoi.csv']}
+        assert split_stimulus.metadata == {'Sources': ['stimuli/text_1_aoi.csv']}
 
     # The metadata is deep-copied, mutating a split does not affect the original.
-    splits[0].metadata['sources'].append('other.csv')
-    assert stimulus.metadata['sources'] == ['stimuli/text_1_aoi.csv']
+    splits[0].metadata['Sources'].append('other.csv')
+    assert stimulus.metadata['Sources'] == ['stimuli/text_1_aoi.csv']
 
 
 @pytest.mark.parametrize(

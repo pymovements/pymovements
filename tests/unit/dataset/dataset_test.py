@@ -836,10 +836,10 @@ def test_load_gaze_has_correct_metadata(gaze_dataset_configuration):
 
     expected_fileinfo = gaze_dataset_configuration['fileinfo']['gaze']
     for gaze, gaze_fileinfo in zip(dataset.gaze, expected_fileinfo.iter_rows(named=True)):
-        # The loaded file is recorded in the sources entry, relative to the dataset root.
+        # The loaded file is recorded in the Sources entry, relative to the dataset root.
         raw_filepath = dataset.paths.raw / gaze_fileinfo.pop('filepath')
         expected_sources = [raw_filepath.relative_to(dataset.paths.dataset).as_posix()]
-        assert gaze.metadata == {**gaze_fileinfo, 'sources': expected_sources}
+        assert gaze.metadata == {**gaze_fileinfo, 'Sources': expected_sources}
 
 
 def test_stimuli_list_exists(gaze_dataset_configuration):
@@ -2522,9 +2522,9 @@ def test_load_split_precomputed_events(precomputed_dataset_configuration, by, ex
     # Loaded precomputed events list their source file relative to the dataset root.
     metadata_pre = [dict(precomputed.metadata) for precomputed in dataset.precomputed_events]
     for metadata in metadata_pre:
-        assert len(metadata['sources']) == 1
-        assert not Path(metadata['sources'][0]).is_absolute()
-        assert (dataset.paths.dataset / metadata['sources'][0]).is_file()
+        assert len(metadata['Sources']) == 1
+        assert not Path(metadata['Sources'][0]).is_absolute()
+        assert (dataset.paths.dataset / metadata['Sources'][0]).is_file()
 
     dataset.split_precomputed_events(by)
     assert len(dataset.precomputed_events) == expected_len

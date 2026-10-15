@@ -1864,9 +1864,9 @@ def test_gaze_init_propagates_sources_to_events():
         samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
         time_column='time',
         pixel_columns=['x', 'y'],
-        metadata={'sources': ['raw/sub_1.csv']},
+        metadata={'Sources': ['raw/sub_1.csv']},
     )
-    assert gaze.events.metadata['sources'] == ['raw/sub_1.csv']
+    assert gaze.events.metadata['Sources'] == ['raw/sub_1.csv']
 
 
 def test_gaze_init_without_sources_leaves_events_metadata_empty():
@@ -1881,16 +1881,16 @@ def test_gaze_init_without_sources_leaves_events_metadata_empty():
 def test_gaze_init_merges_sources_into_passed_events():
     events = Events(
         name='fixation', onsets=[0], offsets=[1],
-        metadata={'sources': ['events/sub_1.feather']},
+        metadata={'Sources': ['events/sub_1.feather']},
     )
     gaze = Gaze(
         samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
         time_column='time',
         pixel_columns=['x', 'y'],
         events=events,
-        metadata={'sources': ['raw/sub_1.csv']},
+        metadata={'Sources': ['raw/sub_1.csv']},
     )
-    assert gaze.events.metadata['sources'] == ['events/sub_1.feather', 'raw/sub_1.csv']
+    assert gaze.events.metadata['Sources'] == ['events/sub_1.feather', 'raw/sub_1.csv']
 
 
 def test_gaze_init_raises_on_non_list_sources():
@@ -1899,10 +1899,10 @@ def test_gaze_init_raises_on_non_list_sources():
             samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
             time_column='time',
             pixel_columns=['x', 'y'],
-            metadata={'sources': 'raw/sub_1.csv'},
+            metadata={'Sources': 'raw/sub_1.csv'},
         )
     assert str(excinfo.value) == (
-        "metadata['sources'] must be a list of path strings "
+        "metadata['Sources'] must be a list of path strings "
         "but is of type str: 'raw/sub_1.csv'"
     )
 
@@ -1913,10 +1913,10 @@ def test_gaze_init_raises_on_non_path_sources_entry():
             samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
             time_column='time',
             pixel_columns=['x', 'y'],
-            metadata={'sources': ['raw/sub_1.csv', 123]},
+            metadata={'Sources': ['raw/sub_1.csv', 123]},
         )
     assert str(excinfo.value) == (
-        "metadata['sources'] entries must be path strings "
+        "metadata['Sources'] entries must be path strings "
         'but found entry of type int: 123'
     )
 

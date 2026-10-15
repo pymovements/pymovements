@@ -82,7 +82,7 @@ class Gaze:
     events: Events | None
         A dataframe of events in the gaze signal. (default: None)
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. A ``sources`` entry lists the files the
+        Dictionary containing additional metadata. A ``Sources`` entry lists the files the
         gaze data was loaded from and is propagated to the events. (default: None)
     messages: polars.DataFrame | None
         DataFrame containing messages from the experiment.
@@ -142,7 +142,7 @@ class Gaze:
     experiment : Experiment | None
         The experiment definition.
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. A ``sources`` entry lists the files the
+        Dictionary containing additional metadata. A ``Sources`` entry lists the files the
         gaze data was loaded from.
     messages: polars.DataFrame | None
         DataFrame containing messages from the experiment session.
@@ -1678,7 +1678,7 @@ class Gaze:
 
         This maps each gaze point to an AOI label based on the configured stimulus rectangles.
         The mapping uses half-open intervals [start, end) for spatial bounds.
-        The source files of the stimulus are merged into the ``sources`` entry of
+        The source files of the stimulus are merged into the ``Sources`` entry of
         :py:attr:`~.Gaze.metadata`.
 
         Parameters

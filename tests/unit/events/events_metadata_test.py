@@ -30,47 +30,47 @@ def test_events_metadata_defaults_to_empty_dict():
 
 
 def test_events_metadata_is_stored():
-    events = Events(metadata={'sources': ['raw/sub_1.csv'], 'subject_id': 1})
-    assert events.metadata == {'sources': ['raw/sub_1.csv'], 'subject_id': 1}
+    events = Events(metadata={'Sources': ['raw/sub_1.csv'], 'subject_id': 1})
+    assert events.metadata == {'Sources': ['raw/sub_1.csv'], 'subject_id': 1}
 
 
 def test_events_clone_deepcopies_metadata():
     events = Events(
         name=['fixation'], onsets=[0], offsets=[1],
-        metadata={'sources': ['raw/sub_1.csv']},
+        metadata={'Sources': ['raw/sub_1.csv']},
     )
 
     events_clone = events.clone()
 
     assert events_clone.metadata == events.metadata
-    events_clone.metadata['sources'].append('other.csv')
-    assert events.metadata['sources'] == ['raw/sub_1.csv']
+    events_clone.metadata['Sources'].append('other.csv')
+    assert events.metadata['Sources'] == ['raw/sub_1.csv']
 
 
 def test_events_split_list_propagates_metadata():
     events = Events(
         name=['fixation', 'fixation'], onsets=[0, 2], offsets=[1, 3], trials=[1, 2],
-        metadata={'sources': ['raw/sub_1.csv']},
+        metadata={'Sources': ['raw/sub_1.csv']},
     )
 
     splits = events.split(by='trial')
 
     assert len(splits) == 2
     for events_split in splits:
-        assert events_split.metadata == {'sources': ['raw/sub_1.csv']}
+        assert events_split.metadata == {'Sources': ['raw/sub_1.csv']}
 
 
 def test_events_split_dict_propagates_metadata():
     events = Events(
         name=['fixation', 'fixation'], onsets=[0, 2], offsets=[1, 3], trials=[1, 2],
-        metadata={'sources': ['raw/sub_1.csv']},
+        metadata={'Sources': ['raw/sub_1.csv']},
     )
 
     splits = events.split(by='trial', as_dict=True)
 
     assert len(splits) == 2
     for events_split in splits.values():
-        assert events_split.metadata == {'sources': ['raw/sub_1.csv']}
+        assert events_split.metadata == {'Sources': ['raw/sub_1.csv']}
 
 
 def make_correction_events():
@@ -81,7 +81,7 @@ def make_correction_events():
             'offset': [100],
             'location': [[100.0, 105.0]],
         }),
-        metadata={'sources': ['raw/sub_1.csv']},
+        metadata={'Sources': ['raw/sub_1.csv']},
     )
 
 
@@ -99,7 +99,7 @@ def make_correction_stimulus():
         start_y_column='start_y',
         end_x_column='end_x',
         end_y_column='end_y',
-        metadata={'sources': ['stimuli/text_1.csv']},
+        metadata={'Sources': ['stimuli/text_1.csv']},
     )
 
 
@@ -109,7 +109,7 @@ def test_events_correct_fixations_inplace_merges_stimulus_sources():
 
     events.correct_fixations(stimulus, algorithm='attach')
 
-    assert events.metadata['sources'] == ['raw/sub_1.csv', 'stimuli/text_1.csv']
+    assert events.metadata['Sources'] == ['raw/sub_1.csv', 'stimuli/text_1.csv']
 
 
 def test_events_correct_fixations_not_inplace_propagates_metadata():
@@ -119,14 +119,14 @@ def test_events_correct_fixations_not_inplace_propagates_metadata():
     corrected = events.correct_fixations(stimulus, algorithm='attach', inplace=False)
 
     # The new object unions the event sources with the stimulus sources.
-    assert corrected.metadata == {'sources': ['raw/sub_1.csv', 'stimuli/text_1.csv']}
+    assert corrected.metadata == {'Sources': ['raw/sub_1.csv', 'stimuli/text_1.csv']}
     # The original events and their metadata stay untouched and unshared.
-    corrected.metadata['sources'].append('other.csv')
-    assert events.metadata == {'sources': ['raw/sub_1.csv']}
+    corrected.metadata['Sources'].append('other.csv')
+    assert events.metadata == {'Sources': ['raw/sub_1.csv']}
 
 
 def test_events_map_to_aois_merges_stimulus_sources(simple_stimulus: TextStimulus) -> None:
-    simple_stimulus.metadata['sources'] = ['stimuli/text_1_aoi.csv']
+    simple_stimulus.metadata['Sources'] = ['stimuli/text_1_aoi.csv']
 
     events = Events(
         data=pl.DataFrame({
@@ -135,9 +135,9 @@ def test_events_map_to_aois_merges_stimulus_sources(simple_stimulus: TextStimulu
             'offset': [1],
             'location': [[5, 5]],
         }),
-        metadata={'sources': ['raw/sub_1.csv']},
+        metadata={'Sources': ['raw/sub_1.csv']},
     )
 
     events.map_to_aois(simple_stimulus, verbose=False)
 
-    assert events.metadata['sources'] == ['raw/sub_1.csv', 'stimuli/text_1_aoi.csv']
+    assert events.metadata['Sources'] == ['raw/sub_1.csv', 'stimuli/text_1_aoi.csv']

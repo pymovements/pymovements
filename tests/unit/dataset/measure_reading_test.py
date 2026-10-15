@@ -49,7 +49,7 @@ def fixture_dummy_dataset(tmp_path):
     events = Events(
         fixation_data,
         trial_columns=['subject_id', 'text_id'],
-        metadata={'sources': ['raw/sub_5.csv']},
+        metadata={'Sources': ['raw/sub_5.csv']},
     )
     dataset.gaze = [Gaze(events=events)]
 
@@ -81,11 +81,11 @@ def test_compute_reading_measures(dummy_dataset, make_example_file):
 
     # The sources union the event sources with the AOI stimulus file. The AOI file lies
     # below the dataset root and is therefore recorded relative to it.
-    assert reading_measures.metadata['sources'] == ['raw/sub_5.csv', aoi_path.name]
+    assert reading_measures.metadata['Sources'] == ['raw/sub_5.csv', aoi_path.name]
 
     # The relativization happens on a copy. The dataset's events keep their own metadata,
     # extended by map_to_aois with the absolute AOI path, but never relativized.
-    events_sources = dummy_dataset.gaze[0].events.metadata['sources']
+    events_sources = dummy_dataset.gaze[0].events.metadata['Sources']
     assert events_sources == ['raw/sub_5.csv', aoi_path.resolve().as_posix()]
 
 

@@ -118,7 +118,7 @@ def from_csv(
         These can include custom separators, a subset of columns, or specific data types
         for columns. (default: None)
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. When ``file`` is a path, a ``sources``
+        Dictionary containing additional metadata. When ``file`` is a path, a ``Sources``
         entry holding its resolved path is added unless already present. When reloading a
         file previously saved with :py:meth:`~pymovements.Gaze.save`, the reloaded file
         itself is recorded, not the sources of the original data. (default: None)
@@ -465,7 +465,7 @@ def from_asc(
         implicitly parsing the `MSG <timestamp>` prefix.
         (default: False)
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. When ``file`` is a path, a ``sources``
+        Dictionary containing additional metadata. When ``file`` is a path, a ``Sources``
         entry holding its resolved path is added unless already present. (default: None)
     extend_resolution: bool | None
         Extend the parsed screen resolution by 1 pixel if ``True``.
@@ -678,7 +678,7 @@ def from_ipc(
     read_ipc_kwargs: dict[str, Any] | None
             Additional keyword arguments to be passed to :py:func:`polars.read_ipc`. (default: None)
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. When ``file`` is a path, a ``sources``
+        Dictionary containing additional metadata. When ``file`` is a path, a ``Sources``
         entry holding its resolved path is added unless already present. When reloading a
         file previously saved with :py:meth:`~pymovements.Gaze.save`, the reloaded file
         itself is recorded, not the sources of the original data. (default: None)
@@ -981,7 +981,7 @@ def from_begaze(
     prefer_eye: str
         Preferred eye to parse when both eyes are present ("L" or "R"). Defaults to "L".
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. Unless already present, a ``sources``
+        Dictionary containing additional metadata. Unless already present, a ``Sources``
         entry holding the resolved path of ``file`` is added. (default: None)
 
     Returns

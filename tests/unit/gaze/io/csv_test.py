@@ -354,8 +354,8 @@ def test_from_csv_adds_no_source_for_file_object(make_example_file):
 
     gaze = from_csv(buffer, pixel_columns=['x_left_pix', 'y_left_pix'])
 
-    assert 'sources' not in gaze.metadata
-    assert 'sources' not in gaze.events.metadata
+    assert 'Sources' not in gaze.metadata
+    assert 'Sources' not in gaze.events.metadata
 
 
 def test_from_csv_respects_user_provided_sources(make_example_file):
@@ -363,11 +363,11 @@ def test_from_csv_respects_user_provided_sources(make_example_file):
 
     gaze = from_csv(
         filepath,
-        metadata={'sources': ['my/custom/source.csv']},
+        metadata={'Sources': ['my/custom/source.csv']},
         pixel_columns=['x_left_pix', 'y_left_pix'],
     )
 
-    assert gaze.metadata['sources'] == ['my/custom/source.csv']
+    assert gaze.metadata['Sources'] == ['my/custom/source.csv']
 
 
 def test_from_csv_does_not_mutate_passed_metadata(make_example_file):
@@ -383,5 +383,5 @@ def test_from_csv_does_not_mutate_passed_metadata(make_example_file):
     assert metadata == {'subject_id': 42}
     assert gaze.metadata == {
         'subject_id': 42,
-        'sources': [filepath.resolve().as_posix()],
+        'Sources': [filepath.resolve().as_posix()],
     }

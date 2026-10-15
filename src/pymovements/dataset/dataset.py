@@ -1161,7 +1161,7 @@ class Dataset:
         -------
         ReadingMeasures
             Returns a ReadingMeasures object containing the computed reading measures.
-            Its ``metadata['sources']`` entry lists the event source files and AOI files
+            Its ``metadata['Sources']`` entry lists the event source files and AOI files
             the measures were derived from, with paths below the dataset root recorded
             relative to it.
         """

@@ -133,9 +133,9 @@ def test_reading_measures_metadata_defaults_to_empty_dict():
 
 def test_reading_measures_metadata_is_stored():
     reading_measures = ReadingMeasures(
-        metadata={'sources': ['raw/sub_1.csv', 'stimuli/text_1_aoi.csv']},
+        metadata={'Sources': ['raw/sub_1.csv', 'stimuli/text_1_aoi.csv']},
     )
-    assert reading_measures.metadata == {'sources': ['raw/sub_1.csv', 'stimuli/text_1_aoi.csv']}
+    assert reading_measures.metadata == {'Sources': ['raw/sub_1.csv', 'stimuli/text_1_aoi.csv']}
 
 
 def test_compute_reading_measures_preserves_zero_based_word_indices():

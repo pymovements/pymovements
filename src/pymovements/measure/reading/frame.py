@@ -36,7 +36,7 @@ class ReadingMeasures:
     reading_measure_df: pl.DataFrame | None
         A reading measure dataframe. (default: None)
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. A ``sources`` entry lists the files the
+        Dictionary containing additional metadata. A ``Sources`` entry lists the files the
         reading measures were generated from. (default: None)
 
     Attributes

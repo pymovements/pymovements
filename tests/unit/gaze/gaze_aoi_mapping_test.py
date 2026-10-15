@@ -1375,7 +1375,7 @@ def fixture_gaze_with_sources():
         samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
         time_column='time',
         pixel_columns=['x', 'y'],
-        metadata={'sources': ['raw/sub_1.csv']},
+        metadata={'Sources': ['raw/sub_1.csv']},
     )
 
 
@@ -1394,14 +1394,14 @@ def fixture_text_stimulus_with_sources():
         start_y_column='sy',
         end_x_column='ex',
         end_y_column='ey',
-        metadata={'sources': ['stimuli/text_1_aoi.csv']},
+        metadata={'Sources': ['stimuli/text_1_aoi.csv']},
     )
 
 
 def test_gaze_map_to_aois_merges_stimulus_sources(gaze_with_sources, text_stimulus_with_sources):
     gaze_with_sources.map_to_aois(text_stimulus_with_sources, verbose=False)
 
-    assert gaze_with_sources.metadata['sources'] == ['raw/sub_1.csv', 'stimuli/text_1_aoi.csv']
+    assert gaze_with_sources.metadata['Sources'] == ['raw/sub_1.csv', 'stimuli/text_1_aoi.csv']
 
 
 def test_gaze_map_to_aois_with_none_metadata_adopts_stimulus_sources(
@@ -1411,4 +1411,4 @@ def test_gaze_map_to_aois_with_none_metadata_adopts_stimulus_sources(
 
     gaze_with_sources.map_to_aois(text_stimulus_with_sources, verbose=False)
 
-    assert gaze_with_sources.metadata == {'sources': ['stimuli/text_1_aoi.csv']}
+    assert gaze_with_sources.metadata == {'Sources': ['stimuli/text_1_aoi.csv']}

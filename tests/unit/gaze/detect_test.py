@@ -1514,7 +1514,7 @@ def fixture_gaze_with_sources():
         samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
         time_column='time',
         pixel_columns=['x', 'y'],
-        metadata={'sources': ['raw/sub_1.csv']},
+        metadata={'Sources': ['raw/sub_1.csv']},
     )
 
 
@@ -1525,19 +1525,19 @@ def fixture_detect_fixation():
 
 def test_gaze_detect_keeps_sources_on_events(gaze_with_sources, detect_fixation):
     gaze_with_sources.detect(detect_fixation)
-    assert gaze_with_sources.events.metadata['sources'] == ['raw/sub_1.csv']
+    assert gaze_with_sources.events.metadata['Sources'] == ['raw/sub_1.csv']
 
 
 def test_gaze_detect_clear_repropagates_sources(gaze_with_sources, detect_fixation):
     gaze_with_sources.detect(detect_fixation, clear=True)
-    assert gaze_with_sources.events.metadata['sources'] == ['raw/sub_1.csv']
+    assert gaze_with_sources.events.metadata['Sources'] == ['raw/sub_1.csv']
 
 
 def test_gaze_detect_after_events_reset_repropagates_sources(gaze_with_sources, detect_fixation):
     # Simulates Dataset.clear_events(), which replaces the events container.
     gaze_with_sources.events = pm.Events()
     gaze_with_sources.detect(detect_fixation)
-    assert gaze_with_sources.events.metadata['sources'] == ['raw/sub_1.csv']
+    assert gaze_with_sources.events.metadata['Sources'] == ['raw/sub_1.csv']
 
 
 def test_gaze_detect_unknown_method_leaves_events_metadata_unchanged(gaze_with_sources):

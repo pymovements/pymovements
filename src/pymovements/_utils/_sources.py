@@ -19,9 +19,9 @@
 # SOFTWARE.
 """Provides utilities for recording source files in metadata dictionaries.
 
-The ``sources`` metadata entry lists the files an object was directly read or
-generated from, analogous to the BIDS ``Sources`` sidecar field. Like BIDS
-``Sources``, it records proximate provenance only: reloading a previously
+The ``Sources`` metadata entry lists the files an object was directly read or
+generated from, following the BIDS ``Sources`` sidecar field of the same name.
+Like in BIDS, it records proximate provenance only: reloading a previously
 saved file records the file that was actually read, not the sources of the
 original data. Full provenance chains are recovered hop by hop through the
 metadata saved alongside each file. Entries are POSIX-style path strings:
@@ -35,12 +35,12 @@ from typing import Any
 
 
 def add_source(metadata: dict[str, Any] | None, file: Any) -> dict[str, Any]:
-    """Return a metadata dictionary with the loaded file recorded in ``sources``.
+    """Return a metadata dictionary with the loaded file recorded in ``Sources``.
 
-    The passed metadata dictionary is copied, not mutated. A ``sources`` entry
+    The passed metadata dictionary is copied, not mutated. A ``Sources`` entry
     already present in the passed metadata is respected and left unchanged, as
     it expresses explicit user intent. Loaders reading metadata from a file
-    saved alongside the data must not forward that file's ``sources`` entry
+    saved alongside the data must not forward that file's ``Sources`` entry
     here: it describes the saved file's own provenance, while the proximate
     source of the loaded object is the file that was actually read.
 
@@ -55,36 +55,36 @@ def add_source(metadata: dict[str, Any] | None, file: Any) -> dict[str, Any]:
     Returns
     -------
     dict[str, Any]
-        Copy of the metadata dictionary with a ``sources`` entry.
+        Copy of the metadata dictionary with a ``Sources`` entry.
 
     Raises
     ------
     TypeError
-        If a ``sources`` entry already present is not a list of path strings.
+        If a ``Sources`` entry already present is not a list of path strings.
     """
     _check_sources(metadata)
 
     metadata = dict(metadata) if metadata else {}
-    if 'sources' not in metadata and isinstance(file, (str, Path)):
-        metadata['sources'] = [Path(file).resolve().as_posix()]
+    if 'Sources' not in metadata and isinstance(file, (str, Path)):
+        metadata['Sources'] = [Path(file).resolve().as_posix()]
     return metadata
 
 
 def _check_sources(metadata: dict[str, Any] | None) -> None:
-    """Raise if a present ``sources`` entry is not a list of path strings."""
-    if not metadata or not metadata.get('sources'):
+    """Raise if a present ``Sources`` entry is not a list of path strings."""
+    if not metadata or not metadata.get('Sources'):
         return
 
-    if not isinstance(metadata['sources'], list):
+    if not isinstance(metadata['Sources'], list):
         raise TypeError(
-            "metadata['sources'] must be a list of path strings "
-            f'but is of type {type(metadata["sources"]).__name__}: {metadata["sources"]!r}',
+            "metadata['Sources'] must be a list of path strings "
+            f'but is of type {type(metadata["Sources"]).__name__}: {metadata["Sources"]!r}',
         )
 
-    for source in metadata['sources']:
+    for source in metadata['Sources']:
         if not isinstance(source, (str, Path)):
             raise TypeError(
-                "metadata['sources'] entries must be path strings "
+                "metadata['Sources'] entries must be path strings "
                 f'but found entry of type {type(source).__name__}: {source!r}',
             )
 
@@ -103,7 +103,7 @@ def _relativize_source(source: str | Path, resolved_root: Path) -> str:
 
 
 def relativize_sources(metadata: dict[str, Any] | None, root: Path) -> dict[str, Any]:
-    """Return a metadata dictionary with ``sources`` entries below ``root`` made root-relative.
+    """Return a metadata dictionary with ``Sources`` entries below ``root`` made root-relative.
 
     The passed metadata dictionary is copied, not mutated. Entries outside of
     ``root`` are kept as they are.
@@ -111,27 +111,27 @@ def relativize_sources(metadata: dict[str, Any] | None, root: Path) -> dict[str,
     Parameters
     ----------
     metadata: dict[str, Any] | None
-        Metadata dictionary holding a ``sources`` entry. May be ``None``.
+        Metadata dictionary holding a ``Sources`` entry. May be ``None``.
     root: Path
-        Directory to relativize the ``sources`` entries against.
+        Directory to relativize the ``Sources`` entries against.
 
     Returns
     -------
     dict[str, Any]
-        Copy of the metadata dictionary with relativized ``sources`` entries.
+        Copy of the metadata dictionary with relativized ``Sources`` entries.
 
     Raises
     ------
     TypeError
-        If the ``sources`` entry is not a list of path strings.
+        If the ``Sources`` entry is not a list of path strings.
     """
     _check_sources(metadata)
 
     metadata = dict(metadata) if metadata else {}
-    if metadata.get('sources'):
+    if metadata.get('Sources'):
         resolved_root = root.resolve()
-        metadata['sources'] = [
-            _relativize_source(source, resolved_root) for source in metadata['sources']
+        metadata['Sources'] = [
+            _relativize_source(source, resolved_root) for source in metadata['Sources']
         ]
     return metadata
 
@@ -140,7 +140,7 @@ def merge_sources(
         metadata: dict[str, Any] | None,
         other: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    """Return a metadata dictionary with the ``sources`` entries of another appended.
+    """Return a metadata dictionary with the ``Sources`` entries of another appended.
 
     Duplicate entries are dropped while the original order is preserved.
     Entries are compared as POSIX-style path strings, so equal :py:class:`str`
@@ -153,32 +153,32 @@ def merge_sources(
     metadata: dict[str, Any] | None
         Metadata dictionary to extend. May be ``None``.
     other: dict[str, Any] | None
-        Metadata dictionary to merge the ``sources`` entries from. May be ``None``.
+        Metadata dictionary to merge the ``Sources`` entries from. May be ``None``.
 
     Returns
     -------
     dict[str, Any]
-        Copy of the metadata dictionary with the ``sources`` entries of both.
+        Copy of the metadata dictionary with the ``Sources`` entries of both.
 
     Raises
     ------
     TypeError
-        If a ``sources`` entry of either dictionary is not a list of path strings.
+        If a ``Sources`` entry of either dictionary is not a list of path strings.
     """
     _check_sources(metadata)
     _check_sources(other)
 
     metadata = dict(metadata) if metadata else {}
-    other_sources = (other or {}).get('sources') or []
+    other_sources = (other or {}).get('Sources') or []
     if not other_sources:
         return metadata
 
-    sources = list(metadata.get('sources') or [])
+    sources = list(metadata.get('Sources') or [])
     seen = {_as_posix_string(source) for source in sources}
     for source in other_sources:
         key = _as_posix_string(source)
         if key not in seen:
             sources.append(key)
             seen.add(key)
-    metadata['sources'] = sources
+    metadata['Sources'] = sources
     return metadata

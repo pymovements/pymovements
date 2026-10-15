@@ -113,7 +113,7 @@ class Events:
     trial_columns: list[str] | str | None
         List of trial columns in the passed dataframe.
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. A ``sources`` entry lists the files the
+        Dictionary containing additional metadata. A ``Sources`` entry lists the files the
         event data was generated from. (default: None)
     time_unit: str | None
         The unit of the numeric ``onset``, ``offset`` and ``duration`` input: ``'s'`` for
@@ -129,7 +129,7 @@ class Events:
         The name of the trial columns in the data frame. If not None, processing methods
         will be applied to each trial separately.
     metadata: dict[str, Any]
-        Dictionary containing additional metadata. A ``sources`` entry lists the files the
+        Dictionary containing additional metadata. A ``Sources`` entry lists the files the
         event data was generated from.
     schema: polars.type_aliases.SchemaDict
         Schema of the event dataframe.

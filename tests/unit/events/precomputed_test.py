@@ -31,9 +31,9 @@ def test_precomputed_event_dataframe_metadata_defaults_to_empty_dict():
 def test_precomputed_event_dataframe_metadata_is_stored():
     precomputed = PrecomputedEventDataFrame(
         data=pl.DataFrame(),
-        metadata={'sources': ['precomputed_events/events.csv'], 'subject_id': 1},
+        metadata={'Sources': ['precomputed_events/events.csv'], 'subject_id': 1},
     )
     assert precomputed.metadata == {
-        'sources': ['precomputed_events/events.csv'],
+        'Sources': ['precomputed_events/events.csv'],
         'subject_id': 1,
     }

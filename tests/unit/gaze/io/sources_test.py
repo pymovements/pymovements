@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test sources metadata population in gaze I/O functions."""
+"""Test Sources metadata population in gaze I/O functions."""
 import pytest
 
 from pymovements.gaze.io import from_asc
@@ -48,9 +48,9 @@ class TestLoadFunctionSources:
         gaze = load_function(filepath, **load_kwargs)
 
         expected_sources = [filepath.resolve().as_posix()]
-        assert gaze.metadata['sources'] == expected_sources
+        assert gaze.metadata['Sources'] == expected_sources
         # The source files are propagated to the events container.
-        assert gaze.events.metadata['sources'] == expected_sources
+        assert gaze.events.metadata['Sources'] == expected_sources
 
     def test_accepts_str_filepath(
             self, load_function, example_filename, load_kwargs, make_example_file,
@@ -59,7 +59,7 @@ class TestLoadFunctionSources:
 
         gaze = load_function(str(filepath), **load_kwargs)
 
-        assert gaze.metadata['sources'] == [filepath.resolve().as_posix()]
+        assert gaze.metadata['Sources'] == [filepath.resolve().as_posix()]
 
     @pytest.mark.parametrize(
         ('malformed_sources', 'message'),
@@ -81,4 +81,4 @@ class TestLoadFunctionSources:
         filepath = make_example_file(example_filename)
 
         with pytest.raises(TypeError, match=message):
-            load_function(filepath, metadata={'sources': malformed_sources}, **load_kwargs)
+            load_function(filepath, metadata={'Sources': malformed_sources}, **load_kwargs)

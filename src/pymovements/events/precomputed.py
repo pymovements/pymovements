@@ -36,7 +36,7 @@ class PrecomputedEventDataFrame:
     data: pl.DataFrame
         A precomputed event dataframe.
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. A ``sources`` entry lists the files the
+        Dictionary containing additional metadata. A ``Sources`` entry lists the files the
         event data was loaded from. (default: None)
 
     Attributes

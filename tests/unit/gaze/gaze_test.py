@@ -458,15 +458,15 @@ def test_gaze_copy_metadata_sources_deepcopied():
         pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
         experiment=None,
         position_columns=['x', 'y'],
-        metadata={'sources': ['raw/sub_1.csv']},
+        metadata={'Sources': ['raw/sub_1.csv']},
     )
     gaze_copy = gaze_obj.clone()
 
-    assert gaze_copy.metadata['sources'] == ['raw/sub_1.csv']
-    assert gaze_copy.events.metadata['sources'] == ['raw/sub_1.csv']
+    assert gaze_copy.metadata['Sources'] == ['raw/sub_1.csv']
+    assert gaze_copy.events.metadata['Sources'] == ['raw/sub_1.csv']
 
-    gaze_copy.metadata['sources'].append('other.csv')
-    assert gaze_obj.metadata['sources'] == ['raw/sub_1.csv']
+    gaze_copy.metadata['Sources'].append('other.csv')
+    assert gaze_obj.metadata['Sources'] == ['raw/sub_1.csv']
 
 
 def test_gaze_copy_messages():
@@ -1601,15 +1601,15 @@ def test_gaze_split_propagates_sources():
         time_column='time',
         pixel_columns=['x', 'y'],
         trial_columns='trial',
-        metadata={'sources': ['raw/sub_1.csv']},
+        metadata={'Sources': ['raw/sub_1.csv']},
     )
 
     splits = gaze.split(by='trial')
 
     assert len(splits) == 2
     for gaze_split in splits:
-        assert gaze_split.metadata['sources'] == ['raw/sub_1.csv']
-        assert gaze_split.events.metadata['sources'] == ['raw/sub_1.csv']
+        assert gaze_split.metadata['Sources'] == ['raw/sub_1.csv']
+        assert gaze_split.events.metadata['Sources'] == ['raw/sub_1.csv']
 
 
 def test_gaze_dataframe_split_default():

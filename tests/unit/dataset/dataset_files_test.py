@@ -520,9 +520,9 @@ def test_load_gaze_file_has_correct_metadata(
     )
 
     expected_sources = [filepath.resolve().as_posix()]
-    assert gaze.metadata == {**metadata, 'sources': expected_sources}
+    assert gaze.metadata == {**metadata, 'Sources': expected_sources}
     # The DatasetFile metadata dictionary is copied, not mutated.
-    assert 'sources' not in file.metadata
+    assert 'Sources' not in file.metadata
 
 
 @pytest.mark.parametrize(
@@ -563,9 +563,9 @@ def test_load_stimulus_file_has_correct_metadata(
     )
 
     expected_sources = [filepath.resolve().as_posix()]
-    assert stimulus.metadata == {**metadata, 'sources': expected_sources}
+    assert stimulus.metadata == {**metadata, 'Sources': expected_sources}
     # The DatasetFile metadata dictionary is copied, not mutated.
-    assert 'sources' not in file.metadata
+    assert 'Sources' not in file.metadata
 
 
 @pytest.mark.parametrize(
@@ -964,7 +964,7 @@ def test_load_precomputed_rm_files_rda(make_example_file, tmp_path):
         )
 
         # Source filepaths are relativized to the dataset root.
-        expected_metadata = {**file.metadata, 'sources': [file.path.name]}
+        expected_metadata = {**file.metadata, 'Sources': [file.path.name]}
         assert measures.metadata == expected_metadata
 
 
@@ -1113,7 +1113,7 @@ def test_load_precomputed_files_rda(make_example_file, tmp_path):
         )
 
         # Source filepaths are relativized to the dataset root.
-        expected_metadata = {**file.metadata, 'sources': [file.path.name]}
+        expected_metadata = {**file.metadata, 'Sources': [file.path.name]}
         assert events.metadata == expected_metadata
 
 
@@ -1422,7 +1422,7 @@ def test_load_stimuli_files_returns_text_stimulus_list(make_example_file, tmp_pa
 
     # Source filepaths are relativized to the dataset root.
     for example_filename, stimulus in zip(example_filenames, stimuli):
-        assert stimulus.metadata['sources'] == ['stimuli/' + example_filename]
+        assert stimulus.metadata['Sources'] == ['stimuli/' + example_filename]
 
 
 @pytest.mark.parametrize(
@@ -1538,9 +1538,9 @@ def test_load_gaze_files_relativizes_sources(tmp_path, testfiles_dirpath):
 
     assert gazes[0].metadata == {
         'subject_id': 1,
-        'sources': ['raw/monocular_example.csv'],
+        'Sources': ['raw/monocular_example.csv'],
     }
-    assert gazes[0].events.metadata['sources'] == ['raw/monocular_example.csv']
+    assert gazes[0].events.metadata['Sources'] == ['raw/monocular_example.csv']
 
 
 def test_load_gaze_files_preprocessed_sources_point_to_preprocessed_file(
@@ -1563,7 +1563,7 @@ def test_load_gaze_files_preprocessed_sources_point_to_preprocessed_file(
     gazes = load_gaze_files(DatasetDefinition(), files, paths, preprocessed=True)
 
     # The sources list the file that was actually loaded, not the original raw file.
-    assert gazes[0].metadata['sources'] == ['preprocessed/monocular_example.feather']
+    assert gazes[0].metadata['Sources'] == ['preprocessed/monocular_example.feather']
 
 
 def test_load_event_files_adds_relative_sources(tmp_path):
@@ -1586,7 +1586,7 @@ def test_load_event_files_adds_relative_sources(tmp_path):
 
     assert events_list[0].metadata == {
         'subject_id': 1,
-        'sources': ['events/sub_1.feather'],
+        'Sources': ['events/sub_1.feather'],
     }
     # The DatasetFile metadata dictionary is copied, not mutated.
     assert files[0].metadata == {'subject_id': 1}
@@ -1599,7 +1599,7 @@ def test_load_event_files_keeps_user_sources_list_unmutated(tmp_path):
     events_df.write_ipc(events_dirpath / 'sub_1.feather')
 
     absolute_source = (events_dirpath / 'sub_1.feather').resolve().as_posix()
-    metadata = {'sources': [absolute_source]}
+    metadata = {'Sources': [absolute_source]}
     resource_definition = ResourceDefinition(content='gaze')
     files = [
         DatasetFile(
@@ -1613,9 +1613,9 @@ def test_load_event_files_keeps_user_sources_list_unmutated(tmp_path):
     events_list = load_event_files(files, paths, verbose=False)
 
     # The user-supplied entry is respected and recorded relative to the dataset root.
-    assert events_list[0].metadata == {'sources': ['events/sub_1.feather']}
+    assert events_list[0].metadata == {'Sources': ['events/sub_1.feather']}
     # The user's own sources list is not rewritten during relativization.
-    assert metadata == {'sources': [absolute_source]}
+    assert metadata == {'Sources': [absolute_source]}
 
 
 def test_load_event_files_respects_empty_user_sources(tmp_path):
@@ -1629,16 +1629,16 @@ def test_load_event_files_respects_empty_user_sources(tmp_path):
         DatasetFile(
             path=tmp_path / 'raw' / 'sub_1.csv',
             definition=resource_definition,
-            metadata={'sources': []},
+            metadata={'Sources': []},
         ),
     ]
     paths = DatasetPaths(root=tmp_path, dataset='.')
 
     events_list = load_event_files(files, paths, verbose=False)
 
-    # An explicitly empty user-provided sources entry expresses that no source shall be
+    # An explicitly empty user-provided Sources entry expresses that no source shall be
     # recorded. Neither source recording nor relativization touches it.
-    assert events_list[0].metadata == {'sources': []}
+    assert events_list[0].metadata == {'Sources': []}
 
 
 @pytest.mark.parametrize(
