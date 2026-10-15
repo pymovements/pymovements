@@ -114,7 +114,7 @@ The sidecar owns the `json` extension next to the stem, so no data format may us
 | `version` | stamp | package version that wrote the file, provenance |
 | `Sources` | top | BIDS provenance: list of the files directly used, as paths |
 | `<column name>` | top | a dict that describes the column |
-| `Format` | column | BIDS format: `string`, `number`, `integer`, `bool`, `index`, `label` |
+| `Format` | column | BIDS format: `string`, `number`, `integer`, `boolean`, `index`, `label` |
 | `Units` | column | unit of the column, on a time column the unit it is written in |
 
 **Adoption contract.** A class that adopts the sidecar carries two parameters in these roles,
@@ -196,20 +196,18 @@ A newer additive part does not warn. A sidecar without a pymovements stamp reads
 version, silently. This covers files written by pymovements before v0.30.0 and every third-party
 BIDS sidecar: a breaking schema version never changes how a BIDS-defined key is read.
 
-**The metadata dict.** Three rules connect `metadata`, the sidecar and the frame:
+**The metadata dict** mirrors the sidecar. Three rules connect it to the file and the frame:
 
-1. The metadata dict is the file. Load puts the sidecar into the metadata dict as it is, pymovements
-   stamp included, and save writes the metadata dict as it is. The one exception is `Sources`: a
-   loaded sidecar's `Sources` entry is not carried into the metadata dict, since it describes that
-   file's provenance and not the loaded object's. The file that was read becomes the source.
-2. For text files the loader builds the dtype of a column from `Format`, and the writer fills
-   `Format` and `Units` into the metadata dict where they are missing. A column loads as a Duration
-   only when `Format` is `number` or `integer` and `Units` is a time unit, see Units. A Duration
-   column is written as `number`. Feather needs neither. The writer never adds `Units` to a feather
-   sidecar, and an entry that is already in the metadata dict is carried.
-3. On contradiction the frame wins. A `Format` that does not fit the dtype of its column is replaced
-   in the metadata dict at save, with a warning. Save writes the pymovements stamp into the metadata
-   dict as well. After save the metadata dict equals the file.
+1. Load reads the sidecar into the metadata dict as it is, pymovements stamp included, and
+   changes nothing in it. `Sources` is the one entry load does not take from the sidecar, see
+   Sources.
+2. For text files the loader builds the dtype of a column from `Format`. A column loads as a
+   Duration only when `Format` is `number` or `integer` and `Units` is a time unit, see Duration
+   columns.
+3. Save writes the metadata dict as it is, after three changes: it fills `Format` and `Units`
+   into column entries where they are missing, it replaces a `Format` that does not fit the
+   dtype of its column, with a warning, and it writes the pymovements stamp. A Duration column
+   is written as `number`. After save the metadata dict equals the file.
 
 **Sources.** `Sources` is the BIDS provenance key with the BIDS meaning (BIDS derivatives,
 file-level metadata): the files directly used in the creation of this file, one hop, not the
@@ -221,33 +219,46 @@ it states the caller's intent. Save writes the entry when the metadata dict hold
 URIs as the value form come with the PMEP that writes a BIDS dataset, and the paths written
 until then stay readable, a URI is a prefix on the same path.
 
-**Units.** `Units` is descriptive, with one exception. A column loads as a Duration only when
-its `Format` is `number` or `integer` and its `Units` is one of `s`, `ms`, `us` and `ns`, and
-`Units` then states the unit the column is written in as a number. Every other unit, such as
-`years`, `deg` or `px`, changes no dtype and round-trips untouched. A number column without a
-time unit in `Units` is never read as a Duration, whatever its name, since a number without a
-unit is not a duration. On save to a text file the unit of a Duration column resolves in this
-order: a per-call keyword, where the adopting class defines one, then the `Units` entry of the
-column. Save raises when neither gives a unit, and the unit used is written to `Units`, so no
-file ever holds a duration without its unit. Columns with different entries are therefore
-written in different units. Which unit an adopting class defaults to for its own time columns is
-the adoption's choice.
+**Format and Units.** `Format` says how the values of a column are read, `Units` states the
+unit they are written in. Text files store no dtypes, so for them the loader builds the dtype
+of a column from `Format`. pymovements writes six of the BIDS values, `integer`, `number`,
+`index`, `boolean`, `string` and `label`, and reads each as one dtype, `label` as the same
+dtype as `string`. Any other BIDS value, such as `date` or `uri`, sets no dtype: the column
+keeps the dtype inferred from the data and the entry is kept. Save fills a missing `Format`
+from the dtype and replaces one that contradicts it, see the metadata dict rules. `Units` sets
+no dtype on its own. It refines the dtype where pymovements defines one for the unit, today
+Duration alone, see Duration columns. Any other unit, such as `years`, `deg` or `px`, is read
+and written as it is. A dtype for another unit extends this rule in its own proposal, the
+sidecar shape stays.
+
+**Duration columns.** A column loads as a Duration only when its `Format` is `number` or
+`integer` and its `Units` is one of the symbols `s`, `ms`, `us` and `ns`, which BIDS
+recommends over spelled-out names, written as a number. The one exception is a column whose
+unit BIDS fixes: an adoption declares such columns, and they load as a Duration in that unit
+when `Units` is absent. The unit used is written to `Units` at save as for every other Duration
+column. A number column without a time unit in `Units` is otherwise never a Duration. `step`, a
+sample index, carries no dtype here, the adoption that holds the sampling rate converts it. On
+save to a text file the unit of a Duration column resolves in this order: a save keyword of the
+adopting class, if it has one, then the `Units` entry of the column. Save raises when neither
+gives a unit, and the unit used is written to `Units`, so no file ever holds a duration without
+its unit. Columns with different `Units` entries are therefore written in different units.
+Which unit an adopting class defaults to for its own time columns is the adoption's choice.
 
 **Conflicts.**
 
 | situation | outcome |
 |---|---|
-| keyword on `load` differs from its sidecar entry | keyword wins, warning names both values |
+| keyword on `load` differs from its sidecar entry | keyword wins for the frame, the entry stays as read, warning names both values |
 | `metadata=` given on `load` | replaces the sidecar |
-| entry with a `Format` key and no such column | kept, warns at construction, load and save |
-| top-level key equals a column name, value is not a dict | save raises, load warns |
+| entry with a `Format` key and no such column | kept, warns at construction and at save |
+| top-level key equals a column name, value is not a dict | load and save warn, kept as read, the column keeps its inferred dtype |
 | data file with the same stem and another extension beside the target | save warns |
 | direct change to the metadata dict or the frame | not checked until the next save |
 
 The `Format` key is what makes an entry a column entry. Every other top-level dict, such as a free
-user key, is file-level metadata and stays silent. The raise on a key that equals a column name does
-not depend on `verify_bids`, and its message names the fix. The same-stem warning does not depend on
-`verify_bids` either.
+user key, is file-level metadata and stays silent. The warnings for a column name that is not a
+dict and for a same-stem data file do not depend on `verify_bids`, the message names the fix. Load
+calls the constructor, so the warning for an entry without a column fires once per load.
 
 **Formats.** The extension of the path selects the format. tsv, csv and feather are the formats
 the classes write today, and a format added later takes the same sidecar. The format gives the
