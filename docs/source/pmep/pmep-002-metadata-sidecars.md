@@ -233,15 +233,14 @@ sidecar shape stays.
 **Duration columns.** A column loads as a Duration only when its `Format` is `number` or `integer`
 and its `Units` is one of the symbols `s`, `ms`, `us` and `ns`, which BIDS recommends over
 spelled-out names [3], written as a number. The one exception is a column whose unit BIDS fixes: an
-adoption declares such columns, and they load as a Duration in that unit when `Units` is absent. The
-unit used is written to `Units` at save as for every other Duration column. A number column without
-a time unit in `Units` is otherwise never a Duration. `step`, a sample index, carries no dtype here,
-the adoption that holds the sampling rate converts it. On save to a text file the unit of a Duration
-column resolves in this order: a save keyword of the adopting class, if it has one, then the `Units`
-entry of the column. Save raises when neither gives a unit, and the unit used is written to `Units`,
-so no file ever holds a duration without its unit. Columns with different `Units` entries are
-therefore written in different units. Which unit an adopting class defaults to for its own time
-columns is the adoption's choice.
+adoption declares such columns, and they load as a Duration in that unit when `Units` is absent. A
+number column without a time unit in `Units` is otherwise never a Duration. `step`, a sample index,
+carries no dtype here, the adoption that holds the sampling rate converts it. On save to a text file
+the unit of a Duration column resolves in this order: a save keyword of the adopting class, if it
+has one, then the `Units` entry of the column. Save raises when neither gives a unit, and the unit
+used is written to `Units`, so no file ever holds a duration without its unit. Columns with
+different `Units` entries are therefore written in different units. Which unit an adopting class
+defaults to for its own time columns is the adoption's choice.
 
 **Conflicts.**
 
