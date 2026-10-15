@@ -204,11 +204,10 @@ BIDS sidecar: a breaking schema version never changes how a BIDS-defined key is 
 2. For text files the loader builds the dtype of a column from `Format`. A column loads as a
    Duration when `Format` is `number` or `integer` and `Units` is a time unit, or when BIDS
    fixes its unit, see Duration columns.
-3. Save writes the metadata dict as it is, after three changes: it fills a missing `Format`
-   from the dtype and a missing `Units` on a Duration column from the unit it writes, it
-   replaces a `Format` that does not fit the dtype of its column, with a warning, and it writes
-   the pymovements stamp. A Duration column is written as `number`. After save the metadata dict
-   equals the file.
+3. Save writes the metadata dict as it is, after three changes: it fills `Format` and `Units`
+   into column entries where they are missing, it replaces a `Format` that does not fit the
+   dtype of its column, with a warning, and it writes the pymovements stamp. A Duration column
+   is written as `number`. After save the metadata dict equals the file.
 
 **Sources.** `Sources` is the BIDS provenance key with the BIDS meaning [1]: the files directly used
 in the creation of this file, one hop, not the chain. Every adopting class carries it. A loaded
