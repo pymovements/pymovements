@@ -224,7 +224,7 @@ of a column from `Format`. pymovements writes six of the BIDS values [2], `integ
 `index`, `boolean`, `string` and `label`, and reads each as one dtype, `label` as the same
 dtype as `string`. Any other BIDS value, such as `date` or `uri`, sets no dtype: the column
 keeps the dtype inferred from the data and the entry is kept. Save fills a missing `Format`
-from the dtype and replaces one that contradicts it, see the metadata dict rules. `Units` sets
+from the dtype and replaces one that contradicts it, see The metadata dict. `Units` sets
 no dtype on its own. It refines the dtype where pymovements defines one for the unit, today
 Duration alone, see Duration columns. Any other unit, such as `years`, `deg` or `px`, is read
 and written as it is. A dtype for another unit extends this rule in its own proposal, the
