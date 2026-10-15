@@ -174,9 +174,9 @@ warns about, see Conflicts.
 **The pymovements stamp.** The top-level `pymovements` entry holds exactly three keys. `schema`
 is a stable identifier of the writing class, the lowercase class name, written from the first
 version so that every file carries it once a generic loader dispatches on it. `schema_version`
-is the version of the schema defined here, see below. `version` is the package version that
-wrote the file, as provenance. Save generates the pymovements stamp and writes it as the first
-key of the sidecar, the other keys keep the order of the metadata dict. Load reads
+is the version of the schema defined here, see The schema version. `version` is the package
+version that wrote the file, as provenance. Save generates the pymovements stamp and writes it
+as the first key of the sidecar, the other keys keep the order of the metadata dict. Load reads
 `schema_version` for the version check, at any position, and keeps the whole pymovements stamp
 in the metadata dict. Save overwrites the entry at every save, so an edited pymovements stamp is
 never written.
