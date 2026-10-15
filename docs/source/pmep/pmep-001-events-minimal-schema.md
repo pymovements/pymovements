@@ -422,17 +422,31 @@ sets will not change.
 ## Rationale
 
 **Why add one sampling interval (quantization note).** No convention recovers the true
-continuous-time duration of an individual event: the true start lies in `(t_first - Δ, t_first]`,
-the true end in `[t_last, t_last + Δ)`. Start and end are each known to within one interval, and
-duration is their difference, so both errors accumulate: the true duration lies in a window of
-width `2Δ`, half the precision of onset and offset, under any convention. The two candidates sit
-differently in that window: `offset - onset` is its floor, biased by `-Δ`, while
-`t_last - t_first + Δ` is its center, unbiased. For the first fixation of the running example
-the true duration lies in `[120, 122)` ms. The new `121` is the center of that window and
-EyeLink's reported `DUR`. Today's `120` is its edge, not a more precise value, only a biased one.
-Three criteria pick the center independently of bias: additivity (durations sum to recording
-length and adjacent events tile), the single-sample event (duration `Δ` instead of an ambiguous
-`0`), and agreement with the vendor's reported values.
+continuous-time duration of an individual event. The first and the last sample both belong to
+the event, so the true start lies at or before `t_first` and the true end at or after `t_last`,
+each within one interval:
+
+```text
+true start    ∈ (t_first - Δ, t_first]
+true end      ∈ [t_last, t_last + Δ)
+true duration = true end - true start
+
+minimum = t_last - t_first         end at t_last, start at t_first
+maximum = t_last - t_first + 2Δ    end just before t_last + Δ, start just after t_first - Δ
+
+window  = [t_last - t_first, t_last - t_first + 2Δ)
+center  = t_last - t_first + Δ
+```
+
+Each boundary is uncertain by one interval, and both uncertainties carry over into the duration:
+the window has width `2Δ`, half the precision of onset and offset, under any convention. The
+two candidates sit differently in it: `offset - onset` is the floor of the window, biased by
+`-Δ`, while `t_last - t_first + Δ` is its center, unbiased. For the first fixation of the
+running example the true duration lies in `[120, 122)` ms. The new `121` is the center of that
+window and EyeLink's reported `DUR`. Today's `120` is its edge, not a more precise value, only a
+biased one. Three criteria pick the center independently of bias: additivity (durations sum to
+recording length and adjacent events tile), the single-sample event (duration `Δ` instead of an
+ambiguous `0`), and agreement with the vendor's reported values.
 
 **Why the inclusive offset of an impulse is null.** Under the inclusive convention
 `duration = offset - onset + Δ`. For a duration of `0` the only offset that satisfies the
