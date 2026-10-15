@@ -442,9 +442,13 @@ Each boundary is uncertain by one interval, and both uncertainties carry over in
 the window has width `2Δ`, half the precision of onset and offset, under any convention. The
 two candidates sit differently in it: `offset - onset` is the floor of the window, biased by
 `-Δ`, while `t_last - t_first + Δ` is its center, unbiased. The first fixation of the running
-example, at 1000 Hz:
+example:
 
 ```text
+t_first = 0 ms
+t_last  = 120 ms
+Δ       = 1 ms
+
 window  = [120, 122) ms
 floor   = 120 ms    offset - onset, today's duration
 center  = 121 ms    t_last - t_first + Δ, EyeLink's reported DUR
