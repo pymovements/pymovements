@@ -292,15 +292,11 @@ proposal.
 
 ## Rationale
 
-**Why the BIDS tabular shape.** BIDS conformity is the target of the design, and defaults should
-conform. A user may deviate and gets a warning or a raise through verification. The BIDS common
-principles (v1.11.1) let a data dictionary hold column fields "in addition to any other metadata
-one wishes to include that describe the file as a whole", and they require: "If a field name
-included in the data dictionary matches a column name in the TSV file, then that field MUST
-contain a description of the corresponding column". The first sentence allows the file-level
-keys and the `pymovements` entry. The second is the reason save raises on a key that equals a
-column name without being a dict. A probe with bids-validator-deno 3.0.2 and 2.4.1, on a raw
-and a derivative dataset with identical results, confirmed the shape:
+**Why the BIDS shape.** BIDS conformity is the target, so the defaults conform and a deviation shows
+through verification. The BIDS data dictionary allows file-level keys beside the column entries
+(BIDS common principles, tabular files), which is where `Sources` and the `pymovements` entry sit. A
+probe with bids-validator 3.0.2 and 2.4.1, on a raw and a derivative dataset with identical results,
+confirmed it:
 
 | sidecar content | validator |
 |---|---|
@@ -313,52 +309,62 @@ and a derivative dataset with identical results, confirmed the shape:
 | `columns` wrapper around the column dicts | warning `TSV_ADDITIONAL_COLUMNS_UNDEFINED` |
 | `Units: "ms"` on `onset` of a BIDS events file | warning `TSV_COLUMN_TYPE_REDEFINED` |
 
-The validator inspects only the keys it knows, so clean means not looked at for the free key and
-the `pymovements` entry. `Sources` it knows in a derivative dataset: the two controls show that
-it checks the value to be a list of strings, and the clean rows show that it does not check the
-form of the string. BIDS deprecates plain relative paths in `Sources` in favour of BIDS URIs,
-which need a dataset root and `DatasetLinks`, see Sources.
+The validator inspects only the keys it knows, so clean means not looked at for the free key and the
+`pymovements` entry. `Sources` it checks in a derivative dataset, as a list of strings, not the form
+of the string.
 
-**Why one definition and adoption per class.** A rule stated in several PMEPs drifts. The
-mechanism is specified once, and a class that adopts it adds only what is its own: the schema
-value and its keys. A later proposal cites this one instead of restating it.
+**Why one definition.** A rule stated in several places drifts, and two classes already write their
+sidecars each on their own terms. The mechanism is defined once, here, and an adoption cites it
+instead of restating it.
 
-**Why the metadata dict is the file.** Every variant in which load removed derived fields from the
-metadata dict lost information and needed an exception to get it back: first `label`, which shares
-its dtype with `string`, then the unit of a file that is loaded and saved again, then the
-pymovements stamp, which would need an accessor of its own to stay inspectable. Nothing is removed,
-so nothing needs restoring. `Sources` is the one exception on load, since the entry describes the
-saved file's provenance and not that of the object reading it.
+**Why the metadata dict mirrors the sidecar.** Nothing is removed on load, so nothing needs
+restoring. `Format` cannot be recomputed from the frame, since `label` and `string` share a dtype.
+The unit a file was written in exists only in `Units`. The pymovements stamp is inspected in the
+metadata dict. `Sources` is the one entry load does not take from the sidecar, since it describes
+the saved file's provenance and not the loaded object's. `Format`, `Units` and the pymovements stamp
+are read as they are and change only at save, where the pymovements stamp is overwritten in full.
 
-**Why entries without a column are kept.** pymovements never removes a metadata entry on its
-own, and BIDS treats a description for a nonexistent column as other metadata. The `Format` key
-is the line between the two: a column dict always carries one, file-level metadata never
-does, so only an entry with `Format` can be a column that went missing.
+**Why the frame wins at save.** The data file is written from the frame, and for a text file
+`Format` is the only record of how a column reads back. A `Format` that contradicts the frame would
+make the next load build a column that does not match the saved frame. Save replaces it with a
+warning instead of raising, so a cast stays a one-step change and the warning says the sidecar
+followed.
 
-**Why no default time unit.** A number without a unit is not a duration. Reading a bare number
-column as seconds, or as any other unit, would be a silent factor on every value of a file that
-meant something else, and there is no error to catch it. Writing always records the unit, so
-the no-guess rule costs nothing on the files pymovements writes. What unit a BIDS events file
-takes is the events adoption's rule, not the mechanism's.
+**Why an entry without a column is kept and warns on `Format`.** BIDS treats a description for a
+nonexistent column as other metadata, the BIDS validator is clean on it, and dropping it would
+discard something the user wrote. Kept and warned, the user decides. BIDS identifies a column entry
+by its name matching a column, and that match is gone with the column, so pymovements needs its own
+criterion: save fills `Format` into every column entry and file-level entries never carry one, so an
+entry with `Format` was a column entry. A column name whose value is not a dict is different: the
+loader looks the dtype up there and finds none, so the column keeps the dtype inferred from the
+data, and load and save warn, whatever `verify_bids` says.
+
+**Why no default time unit.** A time unit is a factor on every value of a column, so a wrong one
+shows nowhere. pymovements therefore applies a unit only where something fixes it: the `Units`
+entry, a save keyword of the adopting class, or the BIDS definition of a column, which the adoption
+declares. `age` in years is such a BIDS-fixed unit already, verification reads it as years when it
+caps the value. Where nothing fixes a unit, a number column has none, and save raises for a Duration
+column rather than falling back to one. A dataset-wide unit is the dataset's to state, BIDS does it
+with an inherited sidecar, and it reaches the file loader through `metadata=` or the load keyword.
+
+**Why the pymovements stamp.** `schema_version` guards the reading pymovements gives a sidecar
+beyond BIDS: the Duration columns rule and the keys adoptions add. Every file pymovements writes
+carries that reading, conformant or not, since BIDS allows the extra keys. A third-party sidecar
+carries none of it, which is why a file without a pymovements stamp reads silently. `schema` serves
+a file outside a BIDS layout, where no file name says which class wrote it. `version` is provenance,
+BIDS has no per-sidecar field for it.
 
 **Alternatives rejected.**
 
-- *A `columns` wrapper for the column dicts.* Not the BIDS shape, and the validator no longer
-  finds the descriptions.
-- *`Sources` inside the `pymovements` entry.* The `pymovements` entry holds only the pymovements
-  stamp.
-- *A schema version per class.* One version for the mechanism, since a class adds keys and
-  the mechanism defines what a key means. A class that needs its own break adds its own
-  strictness in its adoption.
+- *A `columns` wrapper for the column dicts.* Not the BIDS shape, and the validator no longer finds
+  the descriptions.
+- *`Sources` inside the `pymovements` entry.* The validator checks `Sources` at the top level of a
+  derivative sidecar.
+- *A schema version per class.* One version for the mechanism, since a class adds keys and the
+  mechanism defines what a key means.
 - *A `file` key in the pymovements stamp naming the data file.* The clash of two data files on one
   sidecar path is caught at save, where it arises, and the key would be stale after a rename.
-- *The pymovements stamp dropped from the metadata dict on load.* Inspection would need an accessor
-  of its own, and the metadata dict would no longer be the file.
-- *Arrow schema metadata in feather, or `Units` written to every feather sidecar.* The same fact
-  would be stated twice and could drift.
 - *Recomputing `Format` at every save.* Turns `label` into `string`.
-- *Schema version `1.0`.* pymovements itself is below `1.0.0`.
-- *The BIDS `Delimiter` field for list columns.* Loses the component names.
 
 ## Backwards compatibility
 
