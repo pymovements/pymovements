@@ -157,29 +157,29 @@ read such a file back as it was written. The sidecar is where that record belong
 
 ## Specification
 
-**Adoption.** The mechanism is defined once, here. A class adopts it in its own PMEP or issue by
-naming its `schema` value and the keys it writes beyond the ones defined here. A class that has
-adopted the sidecar follows every rule below. The rules name a class only where that class deviates.
+**Adoption.** The mechanism is what every sidecar shares: the shape, the pymovements stamp and
+its version rules, the metadata dict rules, the Duration columns rule, the conflict rules and the
+two required-level checks. It is defined once, here. A class adopts it in its own proposal or
+issue by naming what belongs to that class: its `schema` value, the keys it writes beyond the
+ones defined here, its own checks and its save keyword for the time unit. A class that has
+adopted follows every rule below. Which class adopts next, and when, follows the
+[data model roadmap](https://github.com/pymovements/pymovements/discussions/1763).
 
-**The sidecar file.** A save writes `<stem>.json` next to the data file. `metadata_path` on
-save gives a custom path, and `metadata` on load takes a path or a dict. The sidecar has the
-BIDS tabular shape: one dict per column at the top level, keyed by the column name, and the
-file-level keys beside them. There is no wrapper key around the columns. Two data files with
-the same stem share one sidecar path, which save warns about, see Conflicts.
+**The sidecar file.** A save writes `<stem>.json` next to the data file, or to `metadata_path`
+when given. `metadata` on load takes a path or a dict. The sidecar holds one dict per column at
+the top level, keyed by the column name, and the file-level keys beside them, with no wrapper
+key around the columns. Two data files with the same stem share one sidecar path, which save
+warns about, see Conflicts.
 
-**The pymovements stamp.** The top-level `pymovements` entry holds only the pymovements stamp, three
-fields. `schema` is a stable identifier of the writing class. A future generic loader dispatches on
-it to find the class that reads the file, and the mapping from the value to the class is that
-loader's. The value is the lowercase class name today, so a class rename is a mapping entry and not
-a schema change. The value is written now because a key can be added to the schema later but not to
-files already on disk. In this PMEP no `load` reads `schema`, and what happens when a class is asked
-to load a file labeled for another class is left to the PMEP that brings the loader.
-`schema_version` is the version of the schema defined here, see below. `version` is the package
-version that wrote the file, provenance only, and no `load` reads it. Save generates the pymovements
-stamp and writes it as the first key of the sidecar, so a reader sees it before the columns. The
-other keys keep the order of the metadata dict. Load reads the pymovements stamp for the version
-check, at any position, and keeps it in the metadata dict, where it can be inspected. Save
-overwrites the entry at every save, so an edited pymovements stamp is never written.
+**The pymovements stamp.** The top-level `pymovements` entry holds exactly three keys. `schema`
+is a stable identifier of the writing class, the lowercase class name, written from the first
+version so that every file carries it once a generic loader dispatches on it. `schema_version`
+is the version of the schema defined here, see below. `version` is the package version that
+wrote the file, as provenance. Save generates the pymovements stamp and writes it as the first
+key of the sidecar, the other keys keep the order of the metadata dict. Load reads
+`schema_version` for the version check, at any position, and keeps the whole pymovements stamp
+in the metadata dict. Save overwrites the entry at every save, so an edited pymovements stamp is
+never written.
 
 **The schema version** has three parts and is one version for the whole mechanism, initially
 `0.1.0`. Its breaking and its additive part follow the package's own rule: below `1.0.0`
@@ -194,7 +194,7 @@ pymovements `1.0.0`. Load compares the pymovements stamp with the version it imp
 
 A newer additive part does not warn. A sidecar without a pymovements stamp reads as the oldest
 version, silently. This covers files written by pymovements before v0.30.0 and every third-party
-BIDS sidecar. An adopting class may add its own strictness in its adoption, this PMEP adds none.
+BIDS sidecar: a breaking schema version never changes how a BIDS-defined key is read.
 
 **The metadata dict.** Three rules connect `metadata`, the sidecar and the frame:
 
