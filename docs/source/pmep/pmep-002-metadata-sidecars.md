@@ -276,15 +276,19 @@ data otherwise, a column whose unit BIDS fixes loads as a Duration in that unit,
 columns, and `verify_bids` is `False`. Without a sidecar the metadata dict holds only
 `Sources`.
 
-**Participants and Phenotype** already model the BIDS sidecar in `metadata`, and their
-signatures and released behavior stay. They adopt the sidecar in this PMEP. `metadata` on load
-takes a path or a dict, as today. `Participants.save` keeps its released default
-`participants.json`. Four things change. Their
-sidecars gain the pymovements stamp, with the `schema` values `participants` and `phenotype`.
-They carry `Sources`. An entry with a `Format` key and no column warns and is kept, where today
-both classes keep it silently. And a `Format` that contradicts the frame is replaced at save with
-a warning. Neither class has a time column. `MeasurementToolMetadata` in a `Phenotype` sidecar is
-file-level metadata and stays silent.
+**Participants and Phenotype** already model the BIDS sidecar in `metadata` and keep their
+signatures. They adopt with the `schema` values `participants` and `phenotype`, and every
+rule above applies to them, what changes for their files is listed under Backwards
+compatibility. Neither has a time column, `age` carries `years` and stays an integer column.
+`MeasurementToolMetadata` in a `Phenotype` sidecar is file-level metadata and stays silent.
+
+**Scope.** Outside this proposal: `Gaze` and its two YAML files, which Recording and Session
+supersede. `BIDSVersion` and `dataset_description.json`, which belong to the proposal that
+writes a BIDS dataset. The generic loader that dispatches on `schema`, with its rule for a
+file labeled for another class. Reading a sidecar without its data file, which comes with
+the Dataset-level query over a layout. The data file contract, format selection, separators,
+nested columns and a default time unit, a mechanism of its own defined once in its own
+proposal.
 
 ## Rationale
 
@@ -313,7 +317,7 @@ The validator inspects only the keys it knows, so clean means not looked at for 
 the `pymovements` entry. `Sources` it knows in a derivative dataset: the two controls show that
 it checks the value to be a list of strings, and the clean rows show that it does not check the
 form of the string. BIDS deprecates plain relative paths in `Sources` in favour of BIDS URIs,
-which need a dataset root and `DatasetLinks`, see Future work.
+which need a dataset root and `DatasetLinks`, see Sources.
 
 **Why one definition and adoption per class.** A rule stated in several PMEPs drifts. The
 mechanism is specified once, and a class that adopts it adds only what is its own: the schema
@@ -376,33 +380,13 @@ metadata dict back unchanged.
 
 Target release is v0.30.0. One issue per line, drafted once the PMEP is accepted:
 
-- [ ] sidecar reader and writer: the pymovements stamp, the version rules, the metadata dict rules,
-      the conflict rules
-- [ ] `verify_bids`: the checks every adoption runs
-- [ ] `Participants` and `Phenotype`: the pymovements stamp, `Sources`, the entry without a column,
-      the replaced `Format`
+- [ ] sidecar reader and writer, one shared private module for every adoption: the pymovements
+      stamp, the version rules, the metadata dict rules, the Duration columns rule, the conflict
+      rules. Acceptance: a BIDS example file loads with `load(path)` alone, with and without
+      its sidecar
+- [ ] `verify_bids`: the two required-level checks the mechanism runs, and how an adoption
+      declares its own
+- [ ] `Participants` and `Phenotype`: the pymovements stamp, `Sources`, the entry without a
+      column, the replaced `Format`, `boolean`, unmapped `Format` values, the
+      `Participants.save` default
 - [ ] changelog entry and documentation of the sidecar format
-
-**Later adoptions.** `Recording` adopts the sidecar for samples with a later PMEP on the
-Recording and its files. `Events` adopts it with a later PMEP on the BIDS layout for events,
-which brings `Events.save` and `Events.load`. Reading measures and precomputed events adopt it
-once they have save methods.
-Order and dates follow the
-[data model roadmap](https://github.com/pymovements/pymovements/discussions/1763).
-
-**Future work.**
-
-- Feather files change dtype with the struct columns of
-  [#453](https://github.com/pymovements/pymovements/issues/453), which is a breaking schema
-  version.
-- Inheritance, where one sidecar applies to several data files. It decides when a save writes
-  no sidecar of its own.
-- BIDS URIs as the value form of `Sources`. They need a dataset root and, across datasets,
-  `DatasetLinks` in `dataset_description.json`, so they come with the PMEP that writes a BIDS
-  dataset. The paths written until then stay readable, a URI is a prefix on the same path.
-
-**Out of scope** are `Gaze` and its two YAML files, which Recording and Session supersede,
-provenance chains beyond the one hop `Sources` records, guards against direct changes to the
-metadata dict, `BIDSVersion` and `dataset_description.json`, which belong to the PMEP that writes a
-BIDS dataset, and the generic loader that dispatches on `schema` together with its rule for a file
-labeled for another class, which come with the PMEP that brings the loader.
