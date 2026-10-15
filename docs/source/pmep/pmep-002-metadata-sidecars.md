@@ -202,8 +202,8 @@ BIDS sidecar: a breaking schema version never changes how a BIDS-defined key is 
    changes nothing in it. `Sources` is the one entry load does not take from the sidecar, see
    Sources.
 2. For text files the loader builds the dtype of a column from `Format`. A column loads as a
-   Duration only when `Format` is `number` or `integer` and `Units` is a time unit, see Duration
-   columns.
+   Duration when `Format` is `number` or `integer` and `Units` is a time unit, or when BIDS
+   fixes its unit, see Duration columns.
 3. Save writes the metadata dict as it is, after three changes: it fills `Format` and `Units`
    into column entries where they are missing, it replaces a `Format` that does not fit the
    dtype of its column, with a warning, and it writes the pymovements stamp. A Duration column
