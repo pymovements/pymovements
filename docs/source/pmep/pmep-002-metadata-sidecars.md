@@ -260,27 +260,26 @@ user key, is file-level metadata and stays silent. The warnings for a column nam
 dict and for a same-stem data file do not depend on `verify_bids`, the message names the fix. Load
 calls the constructor, so the warning for an entry without a column fires once per load.
 
-**Formats.** The extension of the path selects the format. tsv, csv and feather are the formats
-the classes write today, and a format added later takes the same sidecar. The format gives the
-default separator, and `separator=` overrides it on every class. Feather stores dtypes natively
-and needs neither `Format` nor `Units` to round-trip. What else a data file format holds, nulls,
-nested columns, a default time unit, is the data file's concern and not the sidecar's.
+**Verification.** `verify_bids` reports nonconformities at a BIDS level. `'REQUIRED'`, the
+default on save, warns for each required-level finding. `'RECOMMENDED'` warns for
+required-level and recommended-level findings. `True` raises on a required-level finding.
+`False`, the default on load, is silent. The mechanism runs two required-level checks: the
+data file is a tsv file with tab separators, and nulls are written as `n/a`. A csv file
+therefore warns under the default, and the message names `verify_bids=False`. An adoption
+declares its own checks, at either level, and the same `verify_bids` runs them.
 
-**Verification.** `verify_bids` reports nonconformities at the two BIDS conformance levels.
-`'REQUIRED'`, the default on save, warns for each required-level finding, `'RECOMMENDED'` warns
-for required-level and recommended-level findings, `True` raises on a required-level finding
-and `False` is silent. The mechanism defines the required-level checks that every adoption
-runs:
-
-- nulls are written as `n/a`
-- the separator is a tab
-
-A class adds its own checks in its adoption, at either level.
+**Loading BIDS files.** A BIDS-conformant data file loads with `load(path)` alone, whether or
+not a sidecar exists next to it, since BIDS recommends the sidecar and does not require it.
+The defaults on load are the BIDS conventions: a tsv file is read tab-separated, `n/a` is
+read as null, a column takes its dtype from `Format` where pymovements maps it and from the
+data otherwise, a column whose unit BIDS fixes loads as a Duration in that unit, see Duration
+columns, and `verify_bids` is `False`. Without a sidecar the metadata dict holds only
+`Sources`.
 
 **Participants and Phenotype** already model the BIDS sidecar in `metadata`, and their
 signatures and released behavior stay. They adopt the sidecar in this PMEP. `metadata` on load
 takes a path or a dict, as today. `Participants.save` keeps its released default
-`participants.json`. `verify_bids` works as in `Phenotype` today. Four things change. Their
+`participants.json`. Four things change. Their
 sidecars gain the pymovements stamp, with the `schema` values `participants` and `phenotype`.
 They carry `Sources`. An entry with a `Format` key and no column warns and is kept, where today
 both classes keep it silently. And a `Format` that contradicts the frame is replaced at save with
