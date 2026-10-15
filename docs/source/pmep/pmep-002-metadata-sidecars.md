@@ -368,19 +368,19 @@ BIDS has no per-sidecar field for it.
 
 ## Backwards compatibility
 
-**Participants and Phenotype.** A `Format` entry that contradicts the dtype of its column is written
-as it is today. From v0.30.0 save will replace it and warn. An entry with a `Format` key and no
-column is kept silently today and will warn. Their sidecars gain the `pymovements` entry and
-`Sources`, two additional top-level keys for readers of these files. Files written by earlier
-versions carry no pymovements stamp and load as the oldest schema version, silently. A round trip
-through save and load adds the `pymovements` entry to the metadata dict, where today it gives the
-metadata dict back unchanged.
-
-**What does not change.**
-
-- the signatures and defaults of `Participants.save`, `Participants.load`, `Phenotype.save` and
-  `Phenotype.load`
-- `Gaze.save` and its two YAML files
+**Participants and Phenotype.** From v0.30.0 save replaces a `Format` entry that contradicts
+the dtype of its column and warns, where it was written as it is. An entry with a `Format`
+key and no column warns and is kept, where it was kept silently. Save writes `boolean` where
+it wrote `bool`, which BIDS does not define, and load reads both. A `Format` value
+pymovements does not map, such as `date` or `uri`, sets no dtype and the column keeps the
+dtype inferred from the data, where it raised on load. `Participants.save` writes
+`<stem>.json` instead of `participants.json` when `metadata_path` is not given, under a BIDS
+layout the stem is `participants` and nothing changes. Their sidecars gain the `pymovements`
+entry and `Sources`, two additional top-level keys for readers of these files. Files written
+before v0.30.0 carry no pymovements stamp and load as the oldest schema version, silently. A
+round trip through save and load adds the `pymovements` entry and `Sources` to the metadata
+dict, where it gave the metadata dict back unchanged. No signature changes and nothing is
+removed, so no deprecation is needed.
 
 ## Implementation
 
