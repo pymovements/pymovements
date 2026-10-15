@@ -339,11 +339,11 @@ data, and load and save warn, whatever `verify_bids` says.
 **Why no default time unit.** A time unit is a factor on every value of a column, so a wrong one
 shows nowhere. pymovements therefore applies a unit only where something fixes it: the `Units`
 entry, a save keyword of the adopting class, or the BIDS definition of a column, which the adoption
-declares. `age` in years is such a BIDS-fixed unit already [4], verification reads it as years when
-it caps the value. Where nothing fixes a unit, a number column has none, and save raises for a
-Duration column rather than falling back to one. A dataset-wide unit is the dataset's to state, BIDS
-does it with an inherited sidecar [7], and it reaches the file loader through `metadata=` or the
-load keyword.
+declares. `age` in years is such a BIDS-fixed unit already [4], the released age cap in
+`Participants.verify_bids` reads it as years. Where nothing fixes a unit, a number column has none,
+and save raises for a Duration column rather than falling back to one. A dataset-wide unit is the
+dataset's to state, BIDS does it with an inherited sidecar [7], and it reaches the file loader
+through `metadata=` or the load keyword.
 
 **Why the pymovements stamp.** `schema_version` guards the reading pymovements gives a sidecar
 beyond BIDS: the Duration columns rule and the keys adoptions add. Every file pymovements writes
