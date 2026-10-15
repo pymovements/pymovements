@@ -38,13 +38,13 @@ resources:
     read_csv_kwargs:
       separator: ','
       columns:
-      - time
       - x_pix
       - y_pix
+      - time
       schema_overrides:
-        time: '!polars.datatypes.classes.Int64'
         x_pix: '!polars.datatypes.classes.Float32'
         y_pix: '!polars.datatypes.classes.Float32'
+        time: '!polars.datatypes.classes.Int64'
 experiment:
   eyetracker:
     sampling_rate: 120
