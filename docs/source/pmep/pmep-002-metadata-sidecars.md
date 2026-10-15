@@ -16,9 +16,9 @@
   writes.
 - `metadata` is the memory, `sidecar` the file as read or written, equal after save.
   pymovements fills a missing entry silently and replaces a contradicting one with a warning.
-- A top-level `pymovements` entry, written at construction, carries the pymovements stamp:
-  `schema`, a label for the writing class, `schema_version`, initially `0.1.0`, and `version`,
-  the writing package version.
+- A top-level `pymovements` entry, written at construction, carries the pymovements stamp.
+  `schema` labels the writing class, `schema_version` starts at `0.1.0` and `version` names the
+  writing package version.
 - A BIDS-conformant file loads with `load(path)` alone, sidecar or not.
 - `verify_bids` reports BIDS nonconformities: `'REQUIRED'` (the save default) and
   `'RECOMMENDED'` warn, `True` raises, `False` (the load default) is silent.
@@ -61,12 +61,12 @@ constructor inferred:
 }
 ```
 
-The table in the code above was built from a frame, not read from a file, so there is no
+The data object in the code above was built from a frame, not read from a file, so there is no
 `Sources` entry to write.
 
 After `Participants.load('participants.tsv')` under a later pymovements, say v0.31.0, `sidecar`
-holds the file as read and `metadata` holds what describes the loaded table: the file's column
-entries, the running pymovements stamp, and the file that was read as the source:
+holds the file as read. `metadata` holds what describes the loaded data object: the file's
+column entries, the running pymovements stamp, and the file that was read as the source:
 
 ```python
 participants.sidecar
@@ -87,7 +87,7 @@ participants.data.schema['age']    # Int64, built from Format
 
 The two pymovements stamps differ in `version`: `sidecar` carries the one that wrote the file,
 `metadata` the running one. `age` round-trips as an integer column because `Format` says
-`integer`, `Units` plays no part in it.
+`integer`. `Units` plays no part in it.
 
 Two rules show on the next save, and after each save `sidecar` equals `metadata` again:
 
@@ -150,7 +150,7 @@ load(
 ```
 
 `sidecar_path` is the sidecar path on save and on load, `<stem>.json` when None. `metadata` on
-load takes a dict. `sidecar` is set by load, save and `clone`, and is `None` on a data object
+load takes a dict. `sidecar` is set by load, save and `clone`. It is `None` on a data object
 that never had a file, after `split`, concat or a constructor call. Changes to what it returns
 do not reach it.
 
@@ -158,8 +158,8 @@ do not reach it.
 
 `Participants` and `Phenotype` write a BIDS sidecar from their `metadata` dict, each on its own
 terms. Nothing in the file says which schema it follows or which pymovements version wrote it. A
-`Format` that contradicts the frame is written as it is, and an entry without a column is handled
-by each class on its own.
+`Format` that contradicts the frame is written as it is. An entry without a column is handled by
+each class on its own.
 
 `Events` and more classes gain `save` and `load` methods as the data model grows. Without one
 definition each would define its own sidecar, and the same rule would be stated several times and
