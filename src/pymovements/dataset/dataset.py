@@ -1877,6 +1877,10 @@ class Dataset:
 
         return '\n'.join(lines)
 
+    def __repr__(self) -> str:
+        """Return string representation of Dataset."""
+        return self.__str__()
+
     def _disclaimer(self) -> str:
         """Return string for dataset download disclaimer."""
         if self.definition.long_name is not None:
