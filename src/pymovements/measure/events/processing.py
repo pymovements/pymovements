@@ -20,7 +20,6 @@
 """Module for event processing."""
 from __future__ import annotations
 
-from datetime import timedelta
 from typing import Any
 from warnings import warn
 
@@ -30,6 +29,14 @@ from pymovements._utils._time import duration_to_ms
 from pymovements.exceptions import UnknownMeasure
 from pymovements.measure.events.measures import EVENT_MEASURES
 from pymovements.measure.samples.library import SampleMeasureLibrary
+
+# Internal column names used to vectorize the event-to-sample assignment.
+_EVENT_ID = '__pymovements_event_id'
+_ROW_ID = '__pymovements_row_id'
+_TRIAL_KEY = '__pymovements_trial_key'
+_TIME_MS = '__pymovements_time_ms'
+_ONSET_MS = '__pymovements_onset_ms'
+_OFFSET_MS = '__pymovements_offset_ms'
 
 
 class EventProcessor:
@@ -172,86 +179,113 @@ class EventSamplesProcessor:
         # Each event is uniquely defined by a list of trial identifiers,
         # a name and its on- and offset.
         event_identifiers = [*_identifiers, 'name', 'onset', 'offset']
+        measure_columns = [measure.meta.output_name() for measure in self.measures]
 
         if name is not None:
             events = events.filter(pl.col('name').str.contains(f'^{name}$'))
             if len(events) == 0:
                 warn(f"No events found with name '{name}'.")
 
-        results = []
-
-        # Sample measures expect the time column in numeric milliseconds. The samples handed
-        # to the measures are converted below. The event time filter also compares in
-        # milliseconds so it stays correct whether or not the events and samples time dtypes
-        # match (e.g. Duration events against a numeric sample time column, or vice versa).
-        # Duration values are converted by their physical unit; a numeric time column follows
-        # the codebase convention of already being in milliseconds.
+        # Sample measures expect the time column in numeric milliseconds. The samples handed to
+        # the measures are converted below. Event bounds and sample times are additionally put
+        # on a common millisecond scale for the vectorized event membership assignment, so it
+        # stays correct whether or not the events and samples time dtypes match (e.g. Duration
+        # events against a numeric sample time column, or vice versa). Duration values are
+        # converted by their physical unit; a numeric time column follows the codebase
+        # convention of already being in milliseconds.
         time_is_duration = (
             'time' in samples.columns and isinstance(samples.schema['time'], pl.Duration)
         )
-        samples_schema = dict(samples.schema)
+        samples_work = samples
         if time_is_duration:
-            samples_schema['time'] = pl.Float64
-
-        # Time expression in milliseconds used for the event membership filter.
-        time_filter_expr = (
-            duration_to_ms('time') if time_is_duration else pl.col('time')
-        )
+            samples_work = samples_work.with_columns(duration_to_ms('time').alias('time'))
 
         if len(events) == 0:
-            measure_columns = [measure.meta.output_name() for measure in self.measures]
             warn(
                 f'No events available for processing. Creating empty columns for {measure_columns}',
             )
 
             # run measures on empty samples data frame.
-            result = pl.LazyFrame(schema=samples_schema).select(
+            return pl.LazyFrame(schema=dict(samples_work.schema)).select(
                 *[pl.repeat(None, 0).alias(column_name) for column_name in event_identifiers],
                 *self.measures,
+            ).collect()
+
+        # Give each event a stable id that preserves the original row order and bring the event
+        # bounds onto the common millisecond scale used for the sample assignment.
+        events_work = events.with_columns(
+            pl.int_range(pl.len()).alias(_EVENT_ID),
+            (
+                duration_to_ms('onset')
+                if isinstance(events.schema['onset'], pl.Duration)
+                else pl.col('onset').cast(pl.Float64)
+            ).alias(_ONSET_MS),
+            (
+                duration_to_ms('offset')
+                if isinstance(events.schema['offset'], pl.Duration)
+                else pl.col('offset').cast(pl.Float64)
+            ).alias(_OFFSET_MS),
+        )
+        samples_work = samples_work.with_columns(
+            pl.int_range(pl.len()).alias(_ROW_ID),
+            pl.col('time').cast(pl.Float64).alias(_TIME_MS),
+        )
+
+        # Assign each sample to the event it belongs to. Grouping by a hashed trial key makes the
+        # asof join operate per trial and treats null identifiers as matching values. Assumes
+        # non-overlapping events, which holds for the standard detectors.
+        if _identifiers:
+            events_work = events_work.with_columns(
+                pl.struct(_identifiers).hash().alias(_TRIAL_KEY),
             )
-            results.append(result)
-
-        for event in events.iter_rows(named=True):
-            event_keys = {column: event[column] for column in event_identifiers}
-
-            # Convert the event bounds to milliseconds so they match the millisecond time
-            # filter expression regardless of the events' own time dtype.
-            onset_ms = event['onset']
-            offset_ms = event['offset']
-            if isinstance(onset_ms, timedelta):
-                onset_ms = onset_ms / timedelta(milliseconds=1)
-            if isinstance(offset_ms, timedelta):
-                offset_ms = offset_ms / timedelta(milliseconds=1)
-
-            # Find samples that belong to the current event (lazy evaluation).
-            event_samples = samples.lazy().filter(
-                time_filter_expr.is_between(onset_ms, offset_ms),
-                *[
-                    pl.col(column).is_null() if event_keys[column] is None
-                    else pl.col(column) == event_keys[column]
-                    for column in _identifiers
-                ],
+            samples_work = samples_work.with_columns(
+                pl.struct(_identifiers).hash().alias(_TRIAL_KEY),
             )
+            by_columns: list[str] | None = [_TRIAL_KEY]
+            events_work = events_work.sort([_TRIAL_KEY, _ONSET_MS])
+            samples_work = samples_work.sort([_TRIAL_KEY, _TIME_MS, _ROW_ID])
+        else:
+            by_columns = None
+            events_work = events_work.sort(_ONSET_MS)
+            samples_work = samples_work.sort([_TIME_MS, _ROW_ID])
 
-            if time_is_duration:
-                event_samples = event_samples.with_columns(
-                    duration_to_ms('time').alias('time'),
-                )
+        right_columns = [_EVENT_ID, _ONSET_MS, _OFFSET_MS]
+        if by_columns is not None:
+            right_columns.append(_TRIAL_KEY)
 
-            # Compute event measure values and include identifier columns.
-            # Cast literals to the schema type from the events dataframe to ensure
-            # consistent schemas across all events when concatenating results.
-            result = event_samples.select(
-                *[
-                    pl.lit(event_keys[column]).cast(events.schema[column]).alias(column)
-                    for column in event_identifiers
-                ],
-                *self.measures,
-            )
-            results.append(result)
+        assigned = samples_work.join_asof(
+            events_work.select(right_columns),
+            left_on=_TIME_MS,
+            right_on=_ONSET_MS,
+            by=by_columns,
+            strategy='backward',
+            check_sortedness=False,
+        )
+        # Drop samples before the first event and samples past the event offset.
+        assigned = assigned.filter(
+            pl.col(_EVENT_ID).is_not_null() & (pl.col(_TIME_MS) <= pl.col(_OFFSET_MS)),
+        )
 
-        # Collect results from lazy frame.
-        return pl.concat(results).collect()
+        # Restore the original sample order within each event so order-dependent measures
+        # (e.g. disposition) keep observing the samples in their source order, then aggregate
+        # all measures in a single pass.
+        aggregated = (
+            assigned
+            .sort(_ROW_ID)
+            .group_by(_EVENT_ID)
+            .agg(*self.measures)
+        )
+
+        # Left-join back onto the events so events without samples get null properties and the
+        # original event order is preserved. Only the identifier columns are carried over to
+        # avoid clashing with measure columns that already exist in the events dataframe.
+        return (
+            events_work
+            .select(*event_identifiers, _EVENT_ID)
+            .join(aggregated, on=_EVENT_ID, how='left')
+            .sort(_EVENT_ID)
+            .select(*event_identifiers, *measure_columns)
+        )
 
 
 def _check_measures(
