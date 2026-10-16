@@ -93,12 +93,12 @@ class Gaze:
         the input data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
     calibrations: polars.DataFrame | None
-        The calibrations from the data: timestamp, num_points, tracked eye, tracking_mode.
+        The calibrations from the data: time, num_points, eye, tracking_mode.
         A ``time`` column, if present, is converted to a ``polars.Duration`` column with
         microsecond precision. Numeric input is interpreted as milliseconds.
         None by default, to be populated by I/O helpers (e.g. from_asc). (default: None)
     validations: polars.DataFrame | None
-        The validations from the data: timestamp, num_points, tracked eye, accuracy_avg,
+        The validations from the data: time, num_points, eye, accuracy_avg,
         accuracy_max. A ``time`` column, if present, is converted to a ``polars.Duration``
         column with microsecond precision. Numeric input is interpreted as milliseconds.
         None by default, to be populated by I/O helpers (e.g. from_asc).
@@ -156,12 +156,12 @@ class Gaze:
     n_components: int | None
         The number of components in the pixel, position, velocity and acceleration columns.
     calibrations: polars.DataFrame | None
-        The calibrations from the data: timestamp, num_points, tracked eye, tracking_mode.
+        The calibrations from the data: time, num_points, eye, tracking_mode.
         A ``time`` column, if present, is stored as a ``polars.Duration`` column with
         microsecond precision.
         None by default, to be populated by I/O helpers (e.g. from_asc).
     validations: polars.DataFrame | None
-        The validations from the data: timestamp, num_points, tracked eye, accuracy_avg,
+        The validations from the data: time, num_points, eye, accuracy_avg,
         accuracy_max. A ``time`` column, if present, is stored as a ``polars.Duration``
         column with microsecond precision.
         None by default, to be populated by I/O helpers (e.g. from_asc).
