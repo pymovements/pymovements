@@ -34,7 +34,6 @@ from warnings import warn
 
 import polars
 import yaml
-from tqdm import tqdm
 
 from pymovements import transforms
 from pymovements._utils._column_nesting import get_nested_columns
@@ -61,6 +60,125 @@ from pymovements.gaze.validation import CheckResult
 from pymovements.measure.events.processing import EventSamplesProcessor
 from pymovements.measure.samples.library import SampleMeasureLibrary
 from pymovements.stimulus import TextStimulus
+
+_AOI_ROW_ID = '__pymovements_aoi_row_id'
+_AOI_MATCH_ORDER = '__pymovements_aoi_match_order'
+_AOI_X = '__pymovements_aoi_x'
+_AOI_Y = '__pymovements_aoi_y'
+_AOI_START_X = '__pymovements_aoi_start_x'
+_AOI_START_Y = '__pymovements_aoi_start_y'
+_AOI_END_X = '__pymovements_aoi_end_x'
+_AOI_END_Y = '__pymovements_aoi_end_y'
+
+
+def _list_xy_exprs(column: str, eye: str) -> tuple[polars.Expr, polars.Expr]:
+    """Build expressions selecting one eye's x/y from a list column of components.
+
+    The list is interpreted as ``[x, y]`` for two components and as
+    ``[xl, yl, xr, yr, (xa, ya)?]`` for four or more components, mirroring the eye selection of
+    the previous per-row implementation.
+    """
+    n_components = polars.col(column).list.len()
+
+    def value(index: int) -> polars.Expr:
+        return polars.col(column).list.get(index, null_on_oob=True)
+
+    xl, yl, xr, yr, xa, ya = (value(index) for index in range(6))
+    has_cyclops = xa.is_not_null() & ya.is_not_null()
+    has_right = xr.is_not_null() & yr.is_not_null()
+    has_four = xl.is_not_null() & yl.is_not_null() & has_right
+    mean_x = (xl + xr) / 2.0
+    mean_y = (yl + yr) / 2.0
+
+    req_eye = eye if eye in {'left', 'right', 'mono', 'auto', 'cyclops'} else 'right'
+    if req_eye == 'left':
+        general_x, general_y = xl, yl
+    elif req_eye == 'right':
+        general_x, general_y = xr, yr
+    elif req_eye == 'mono':
+        general_x = polars.when(has_cyclops).then(xa).when(has_right).then(xr).otherwise(xl)
+        general_y = polars.when(has_cyclops).then(ya).when(has_right).then(yr).otherwise(yl)
+    else:  # 'auto' and 'cyclops' share the same preference order
+        general_x = (
+            polars.when(has_cyclops).then(xa)
+            .when(has_four).then(mean_x)
+            .when(has_right).then(xr)
+            .otherwise(xl)
+        )
+        general_y = (
+            polars.when(has_cyclops).then(ya)
+            .when(has_four).then(mean_y)
+            .when(has_right).then(yr)
+            .otherwise(yl)
+        )
+
+    # A two-component list is always treated as mono, regardless of the requested eye.
+    x_expr = polars.when(n_components == 2).then(value(0)).otherwise(general_x)
+    y_expr = polars.when(n_components == 2).then(value(1)).otherwise(general_y)
+    return x_expr.cast(polars.Float64, strict=False), y_expr.cast(polars.Float64, strict=False)
+
+
+def _match_points_to_aois(
+        aoi_dataframe: TextStimulus,
+        points: polars.DataFrame,
+) -> polars.DataFrame:
+    """Return the AOI columns for gaze points, aligned to ``points`` row order.
+
+    Points with null/NaN coordinates and points without a matching AOI receive null values.
+    Matching is done with a single vectorized spatial join.
+    """
+    aoi_columns = list(aoi_dataframe.aois.columns)
+
+    # Materialize the AOI geometry under reserved names (casting to Float64, as join_where
+    # compares dtypes strictly). The join then only references reserved names, so it can never
+    # pick up a same-named column from the points frame.
+    aois = aoi_dataframe.aois.with_columns(
+        polars.int_range(polars.len()).alias(_AOI_MATCH_ORDER),
+        polars.col(aoi_dataframe.start_x_column).cast(polars.Float64).alias(_AOI_START_X),
+        polars.col(aoi_dataframe.start_y_column).cast(polars.Float64).alias(_AOI_START_Y),
+    )
+    if aoi_dataframe.width_column is not None:
+        aois = aois.with_columns(
+            (polars.col(_AOI_START_X) + polars.col(aoi_dataframe.width_column)).alias(_AOI_END_X),
+            (polars.col(_AOI_START_Y) + polars.col(aoi_dataframe.height_column)).alias(_AOI_END_Y),
+        )
+    else:
+        aois = aois.with_columns(
+            polars.col(aoi_dataframe.end_x_column).cast(polars.Float64).alias(_AOI_END_X),
+            polars.col(aoi_dataframe.end_y_column).cast(polars.Float64).alias(_AOI_END_Y),
+        )
+
+    matches = points.join_where(
+        aois,
+        polars.col(_AOI_START_X) <= polars.col(_AOI_X),
+        polars.col(_AOI_X) < polars.col(_AOI_END_X),
+        polars.col(_AOI_START_Y) <= polars.col(_AOI_Y),
+        polars.col(_AOI_Y) < polars.col(_AOI_END_Y),
+    )
+
+    multiple = (
+        matches.group_by(_AOI_ROW_ID).len().filter(polars.col('len') > 1)
+        .join(points.select(_AOI_ROW_ID, _AOI_X, _AOI_Y), on=_AOI_ROW_ID, how='left')
+        .sort(_AOI_ROW_ID)
+    )
+    for candidate in multiple.iter_rows(named=True):
+        warn(
+            f'Multiple AOIs matched this point (x={candidate[_AOI_X]}, y={candidate[_AOI_Y]}).',
+            UserWarning,
+        )
+
+    matched = (
+        matches.sort([_AOI_ROW_ID, _AOI_MATCH_ORDER])
+        .group_by(_AOI_ROW_ID)
+        .agg([polars.col(column).first() for column in aoi_columns])
+    )
+
+    return (
+        points.select(_AOI_ROW_ID)
+        .join(matched, on=_AOI_ROW_ID, how='left')
+        .sort(_AOI_ROW_ID)
+        .select(aoi_columns)
+    )
 
 
 @repr_html(['samples', 'events', 'metadata', 'messages', 'trial_columns', 'experiment'])
@@ -1688,7 +1806,7 @@ class Gaze:
         verbose : bool
             If ``True``, show a progress bar. (default: True)
         """
-        # pylint: disable=too-many-statements
+        # pylint: disable=unused-argument
         component_suffixes = ['x', 'y', 'xl', 'yl', 'xr', 'yr', 'xa', 'ya']
         # Schema handling: preserve_structure controls whether we alter the samples schema
         # (by unnesting) or keep list columns intact and extract per-row. By default,
@@ -1848,44 +1966,16 @@ class Gaze:
             mode, payload, warn_msg = flat
             if warn_msg:
                 warn(warn_msg, UserWarning)
-            aois: list[polars.DataFrame] = []
             if mode == 'direct':
                 x_eye, y_eye = payload
-                aois = [
-                    aoi_dataframe.get_aoi(row=row, x_eye=x_eye, y_eye=y_eye, max_matches=1)
-                    for row in tqdm(self.samples.iter_rows(named=True))
-                ]
-            elif mode == 'average_lr':
+                x_expr = polars.col(x_eye)
+                y_expr = polars.col(y_eye)
+            else:  # mode == 'average_lr'
                 lx, ly, rx, ry = payload
-                for row in tqdm(self.samples.iter_rows(named=True)):
-                    xl = row.get(lx)
-                    yl = row.get(ly)
-                    xr = row.get(rx)
-                    yr = row.get(ry)
-                    # Prefer arithmetic mean if both present. Otherwise fall back to whichever
-                    # is present
-                    xs = [v for v in (xl, xr) if isinstance(v, (int, float))]
-                    ys = [v for v in (yl, yr) if isinstance(v, (int, float))]
-                    x_val = sum(xs) / len(xs) if xs else None
-                    y_val = sum(ys) / len(ys) if ys else None
-                    tmp = dict(row)
-                    tmp['__x'] = x_val
-                    tmp['__y'] = y_val
-                    aois.append(
-                        aoi_dataframe.get_aoi(row=tmp, x_eye='__x', y_eye='__y', max_matches=1),
-                    )
-            else:
-                # This branch is unreachable with the current selector:
-                # the flat-components selector only yields 'direct', 'average_lr' or None
-                # (which takes the list path above).
-                # If this ever triggers, the selector returned an unknown mode and we want
-                # to surface it during development rather than silently append None AOIs.
-                raise AssertionError(  # pragma: no cover
-                    'Internal error: '
-                    "unexpected flat selection mode. Expected 'direct' or 'average_lr'.",
-                )
+                x_expr = polars.mean_horizontal(polars.col(lx), polars.col(rx))
+                y_expr = polars.mean_horizontal(polars.col(ly), polars.col(ry))
         else:
-            # Fallback: extract coordinates from list columns per-row without unnesting
+            # Extract coordinates from a list column, without altering the samples schema.
             source_col = 'pixel' if (
                 gaze_type == 'pixel' and 'pixel' in self.samples.columns
             ) else None
@@ -1899,89 +1989,18 @@ class Gaze:
                     'neither position nor pixel column in samples dataframe, '
                     'at least one needed for mapping',
                 )
+            if isinstance(self.samples.schema[source_col], polars.List):
+                x_expr, y_expr = _list_xy_exprs(source_col, eye)
+            else:
+                x_expr = polars.lit(None, dtype=polars.Float64)
+                y_expr = polars.lit(None, dtype=polars.Float64)
 
-            def _xy_from_list(
-                values: list[float] | tuple[float, ...],
-            ) -> tuple[float | None, float | None]:
-                # pylint: disable=too-many-return-statements
-                n = len(values) if isinstance(values, (list, tuple)) else 0
-                if n == 0:
-                    return None, None
-                # interpret 2 as mono [x, y]
-                if n == 2:
-                    x_m, y_m = values[0], values[1]
-                    if eye in {'left', 'right', 'cyclops'}:
-                        # fall back from requested L/R/cyclops to mono if only mono available
-                        return x_m, y_m
-                    # auto or mono
-                    return x_m, y_m
-                # interpret >=4 as [xl, yl, xr, yr, (xa, ya)?]
-                xl = values[0] if n >= 1 else None
-                yl = values[1] if n >= 2 else None
-                xr = values[2] if n >= 3 else None
-                yr = values[3] if n >= 4 else None
-                xa = values[4] if n >= 5 else None
-                ya = values[5] if n >= 6 else None
-
-                req_eye = eye if eye in {'left', 'right', 'mono', 'auto', 'cyclops'} else 'right'
-                if req_eye == 'left':
-                    return xl, yl
-                if req_eye == 'right':
-                    return xr, yr
-                if req_eye == 'mono':
-                    # Prefer mono aggregate if provided at positions 4/5, else fall back to
-                    # right then left
-                    if xa is not None and ya is not None:
-                        return xa, ya
-                    return (xr, yr) if (xr is not None and yr is not None) else (xl, yl)
-                if req_eye == 'cyclops':
-                    # Prefer explicit cyclops at positions 4/5.
-                    if xa is not None and ya is not None:
-                        return xa, ya
-                    # Else average L/R if both available
-                    if isinstance(xl, (int, float)) and isinstance(xr, (int, float)) and \
-                       isinstance(yl, (int, float)) and isinstance(yr, (int, float)):
-                        return (xl + xr) / 2.0, (yl + yr) / 2.0
-                    # Else fall back to whichever is available (R preferred)
-                    return (xr, yr) if (xr is not None and yr is not None) else (xl, yl)
-                # auto preference: cyclops -> mono -> right -> left
-                if xa is not None and ya is not None:
-                    return xa, ya
-                if isinstance(xl, (int, float)) and isinstance(xr, (int, float)) and \
-                   isinstance(yl, (int, float)) and isinstance(yr, (int, float)):
-                    return (xl + xr) / 2.0, (yl + yr) / 2.0
-                if xr is not None and yr is not None:
-                    return xr, yr
-                return xl, yl
-
-            aois = []
-            for row in tqdm(
-                self.samples.iter_rows(named=True),
-                total=len(self.samples),
-                desc='Mapping gaze to AOIs',
-                unit='sample',
-                ncols=80,
-                disable=not verbose,
-            ):
-                vals = row.get(source_col)
-                if not isinstance(vals, (list, tuple)):
-                    # create empty AOI row (all None)
-                    aois.append(polars.from_dict({col: None for col in aoi_dataframe.aois.columns}))
-                    continue
-                # Delegate handling of n==0 / insufficient length to _xy_from_list to
-                # exercise all paths
-                x, y = _xy_from_list(vals)
-                if x is None or y is None:
-                    aois.append(polars.from_dict({col: None for col in aoi_dataframe.aois.columns}))
-                    continue
-                tmp_row = dict(row)
-                tmp_row['__x'] = x
-                tmp_row['__y'] = y
-                aois.append(
-                    aoi_dataframe.get_aoi(row=tmp_row, x_eye='__x', y_eye='__y', max_matches=1),
-                )
-
-        aoi_df = polars.concat(aois)
+        points = self.samples.select(
+            polars.int_range(polars.len()).alias(_AOI_ROW_ID),
+            x_expr.cast(polars.Float64).alias(_AOI_X),
+            y_expr.cast(polars.Float64).alias(_AOI_Y),
+        )
+        aoi_df = _match_points_to_aois(aoi_dataframe, points)
         self.samples = polars.concat([self.samples, aoi_df], how='horizontal_extend')
 
     def nest(
