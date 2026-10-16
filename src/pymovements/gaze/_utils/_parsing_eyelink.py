@@ -637,6 +637,62 @@ def parse_eyelink(
 
     # Single pass: collect events, patterns, samples, samples config, and metadata
     for line in lines:
+        # Gaze sample lines start with a digit (their timestamp); every other line is an event,
+        # config or metadata line. Dispatch on the first character so the many non-sample regexes
+        # are not evaluated for every sample line.
+        if line[:1].isdigit():
+            eye_tracking_sample_match = (
+                _match_regex(EYE_TRACKING_SAMPLE_BINOCULAR, line)
+                if is_binocular else
+                _match_regex(EYE_TRACKING_SAMPLE_MONOCULAR, line)
+            )
+
+            if eye_tracking_sample_match:
+                timestamp_s = eye_tracking_sample_match.group('time')
+
+                for additional_column in additional_columns:
+                    samples[additional_column].append(current_additional[additional_column])
+
+                if is_binocular:
+                    x_left_pix_s = eye_tracking_sample_match.group('x_pix_left')
+                    y_left_pix_s = eye_tracking_sample_match.group('y_pix_left')
+                    pupil_left_s = eye_tracking_sample_match.group('pupil_left')
+                    x_right_pix_s = eye_tracking_sample_match.group('x_pix_right')
+                    y_right_pix_s = eye_tracking_sample_match.group('y_pix_right')
+                    pupil_right_s = eye_tracking_sample_match.group('pupil_right')
+
+                    x_left_pix = check_nan(x_left_pix_s)
+                    y_left_pix = check_nan(y_left_pix_s)
+                    pupil_left = check_nan(pupil_left_s)
+                    x_right_pix = check_nan(x_right_pix_s)
+                    y_right_pix = check_nan(y_right_pix_s)
+                    pupil_right = check_nan(pupil_right_s)
+
+                    samples['x_left_pix'].append(x_left_pix)
+                    samples['y_left_pix'].append(y_left_pix)
+                    samples['pupil_left'].append(pupil_left)
+                    samples['x_right_pix'].append(x_right_pix)
+                    samples['y_right_pix'].append(y_right_pix)
+                    samples['pupil_right'].append(pupil_right)
+
+                else:
+                    x_pix_s = eye_tracking_sample_match.group('x_pix')
+                    y_pix_s = eye_tracking_sample_match.group('y_pix')
+                    pupil_s = eye_tracking_sample_match.group('pupil')
+
+                    x_pix = check_nan(x_pix_s)
+                    y_pix = check_nan(y_pix_s)
+                    pupil = check_nan(pupil_s)
+
+                    samples['x_pix'].append(x_pix)
+                    samples['y_pix'].append(y_pix)
+                    samples['pupil'].append(pupil)
+
+                timestamp = float(timestamp_s)
+                samples['time'].append(timestamp)
+
+            continue
+
         # Collect event starts/ends for deterministic matching
         # Store context BEFORE processing this line's patterns (context is from previous lines)
         if start_event := parse_eyelink_event_start(line):
@@ -729,58 +785,7 @@ def parse_eyelink(
         if messages and (match := _match_regex(MSG_REGEX, line)):
             messages_list.append([match.groupdict()['timestamp'], match.groupdict()['content']])
 
-        # Use the appropriate regex based on the file type
-        eye_tracking_sample_match = (
-            _match_regex(EYE_TRACKING_SAMPLE_BINOCULAR, line)
-            if is_binocular else
-            _match_regex(EYE_TRACKING_SAMPLE_MONOCULAR, line)
-        )
-
-        if eye_tracking_sample_match:
-            timestamp_s = eye_tracking_sample_match.group('time')
-
-            for additional_column in additional_columns:
-                samples[additional_column].append(current_additional[additional_column])
-
-            if is_binocular:
-                x_left_pix_s = eye_tracking_sample_match.group('x_pix_left')
-                y_left_pix_s = eye_tracking_sample_match.group('y_pix_left')
-                pupil_left_s = eye_tracking_sample_match.group('pupil_left')
-                x_right_pix_s = eye_tracking_sample_match.group('x_pix_right')
-                y_right_pix_s = eye_tracking_sample_match.group('y_pix_right')
-                pupil_right_s = eye_tracking_sample_match.group('pupil_right')
-
-                x_left_pix = check_nan(x_left_pix_s)
-                y_left_pix = check_nan(y_left_pix_s)
-                pupil_left = check_nan(pupil_left_s)
-                x_right_pix = check_nan(x_right_pix_s)
-                y_right_pix = check_nan(y_right_pix_s)
-                pupil_right = check_nan(pupil_right_s)
-
-                samples['x_left_pix'].append(x_left_pix)
-                samples['y_left_pix'].append(y_left_pix)
-                samples['pupil_left'].append(pupil_left)
-                samples['x_right_pix'].append(x_right_pix)
-                samples['y_right_pix'].append(y_right_pix)
-                samples['pupil_right'].append(pupil_right)
-
-            else:
-                x_pix_s = eye_tracking_sample_match.group('x_pix')
-                y_pix_s = eye_tracking_sample_match.group('y_pix')
-                pupil_s = eye_tracking_sample_match.group('pupil')
-
-                x_pix = check_nan(x_pix_s)
-                y_pix = check_nan(y_pix_s)
-                pupil = check_nan(pupil_s)
-
-                samples['x_pix'].append(x_pix)
-                samples['y_pix'].append(y_pix)
-                samples['pupil'].append(pupil)
-
-            timestamp = float(timestamp_s)
-            samples['time'].append(timestamp)
-
-        elif match := _match_regex(CALIBRATION_TIMESTAMP_REGEX, line):
+        if match := _match_regex(CALIBRATION_TIMESTAMP_REGEX, line):
             cal_timestamp = match.groupdict()['timestamp']
 
         elif match := _match_regex(VALIDATION_REGEX, line):
