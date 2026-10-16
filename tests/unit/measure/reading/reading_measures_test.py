@@ -42,6 +42,7 @@ from pymovements.measure.reading.measures import rereading_time
 from pymovements.measure.reading.measures import right_bounded_reading_time
 from pymovements.measure.reading.measures import saccade_length_in
 from pymovements.measure.reading.measures import saccade_length_out
+from pymovements.measure.reading.measures import skipped
 from pymovements.measure.reading.measures import total_fixation_count
 from pymovements.measure.reading.processing import compute_reading_measures
 from pymovements.stimulus.text import TextStimulus
@@ -503,3 +504,73 @@ def test_non_aoi_fixation_duration_ratio(fixations, expected):
         non_aoi_fixation_duration_ratio(),
     )
     assert_frame_equal(result, expected, abs_tol=1e-5)
+
+
+def test_skipped_default_column():
+    df = pl.DataFrame(
+        {
+            'word': ['The', 'quick', 'brown', 'fox'],
+            'TFC': [2, 0, 1, 0],
+        }, schema_overrides={'TFC': pl.UInt64},
+    )
+    result = df.with_columns(skipped())
+    expected = pl.DataFrame(
+        {
+            'word': ['The', 'quick', 'brown', 'fox'],
+            'TFC': [2, 0, 1, 0],
+            'skipped': [0, 1, 0, 1],
+        }, schema_overrides={'TFC': pl.UInt64, 'skipped': pl.Int64},
+    )
+    assert_frame_equal(result, expected)
+
+
+@pytest.mark.parametrize(
+    'tfc',
+    [
+        pytest.param('my_count', id='column_name'),
+        pytest.param(pl.col('my_count'), id='expression'),
+    ],
+)
+def test_skipped_custom_column(tfc):
+    df = pl.DataFrame({
+        'word': ['a', 'b'],
+        'my_count': [0, 5],
+    })
+    result = df.with_columns(skipped(tfc))
+    expected = pl.DataFrame(
+        {
+            'word': ['a', 'b'],
+            'my_count': [0, 5],
+            'skipped': [1, 0],
+        }, schema_overrides={'skipped': pl.Int64},
+    )
+    assert_frame_equal(result, expected)
+
+
+def test_skipped_null_tfc_yields_null():
+    # skipped() does not fill nulls: a word whose count was never zero-filled stays undecided.
+    df = pl.DataFrame(
+        {
+            'word': ['The', 'quick', 'brown'],
+            'TFC': [2, 0, None],
+        }, schema_overrides={'TFC': pl.UInt64},
+    )
+    result = df.with_columns(skipped())
+    expected = pl.DataFrame(
+        {
+            'word': ['The', 'quick', 'brown'],
+            'TFC': [2, 0, None],
+            'skipped': [0, 1, None],
+        }, schema_overrides={'TFC': pl.UInt64, 'skipped': pl.Int64},
+    )
+    assert_frame_equal(result, expected)
+
+
+def test_skipped_empty_dataframe():
+    df = pl.DataFrame({'TFC': pl.Series([], dtype=pl.Int64)})
+    result = df.with_columns(skipped())
+    expected = pl.DataFrame({
+        'TFC': pl.Series([], dtype=pl.Int64),
+        'skipped': pl.Series([], dtype=pl.Int64),
+    })
+    assert_frame_equal(result, expected)
