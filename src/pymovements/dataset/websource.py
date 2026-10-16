@@ -47,8 +47,9 @@ class WebSource:
 
     Attributes
     ----------
-    url: str
-        Primary URL of the resource to be downloaded.
+    url: str | None
+        Primary URL of the resource to be downloaded. Must be set for calling
+        :py:meth:`~pymovements.WebSource.download`.
     filename: str | None
         Optional target filename. Must be provided for calling
         :py:meth:`~pymovements.WebSource.download`.
@@ -58,7 +59,7 @@ class WebSource:
         Optional list of full mirror URLs. Tried in order if primary URL fails.
     """
 
-    url: str
+    url: str | None
 
     _: KW_ONLY
 
@@ -70,7 +71,7 @@ class WebSource:
     def from_dict(data: dict[str, Any]) -> WebSource:
         """Create a `WebSource` from a dictionary."""
         return WebSource(
-            url=data.get('url'),  # type: ignore[arg-type]
+            url=data.get('url'),
             filename=data.get('filename'),
             md5=data.get('md5'),
             mirrors=data.get('mirrors'),
