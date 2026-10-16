@@ -330,7 +330,9 @@ html_theme_options = {
 myst_links_external_new_tab = True
 
 nb_execution_timeout = 60
-nb_execution_mode = 'auto'
+# Execute notebooks once and re-execute only when their content changes.
+# The cache lives in docs/.jupyter_cache, so CI and Read the Docs still start fresh.
+nb_execution_mode = 'cache'
 nb_execution_show_tb = True
 
 # -- Intersphinx options -------------------------------------------------
