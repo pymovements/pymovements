@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | Accepted |
 | **Type** | Standards |
 | **Author** | Daniel G. Krakowczyk |
 | **Created** | 2026-09-16 |
