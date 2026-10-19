@@ -189,7 +189,6 @@ around the columns. In memory the file is `sidecar`, as read by load or written 
 `metadata` is what describes the data object, see The metadata dict. Save raises when a sidecar
 already exists at the sidecar path, unless `overwrite` is given, see Conflicts. Save writes the
 sidecar as indented JSON that a person can read without a tool, one key per line at every depth.
-The style is not part of the schema, a change of it never moves the schema version.
 
 **The pymovements stamp.** The top-level `pymovements` entry holds exactly three keys. `schema`
 is a stable identifier of the writing class, the lowercase class name. It is written from the
