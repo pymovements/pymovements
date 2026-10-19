@@ -337,7 +337,9 @@ dispatches on `schema`, with its rule for a file labeled for another class. Read
 without its data file, and which sidecar a data file reads under a layout, the inheritance
 principle [7]. The data file contract: format selection, separators, nested columns, a default
 time unit, and what save does with an existing data file at its own target, a data file without
-a sidecar beside it included, common under inheritance.
+a sidecar beside it included, common under inheritance. The shape of `verify_bids`: the level
+and the consequence, warn or raise, as separate parameters, and the result type of the
+`verify_bids` method, a verification proposal of its own.
 
 ## Rationale
 
@@ -418,7 +420,9 @@ does not come back: the next load of that file degrades to inference. Save there
 before it writes anything, and the round trip onto the same path says `overwrite=True`. The same
 check covers two data files that share one stem, since the first one's sidecar sits at the path.
 Where none does, nothing is lost, and the entry-without-column warning catches a column mismatch
-on the later load.
+on the later load. The proposal adds no warning for a data file of the same stem beside the
+target. In the common case, the same object saved again in another format, that warning would
+name a file the caller just wrote. When save raises, the message names such files.
 
 **Why no default time unit.** A time unit is a factor on every value of a column, so a wrong one
 shows nowhere. pymovements therefore applies a unit only where something fixes it: the `Units`
