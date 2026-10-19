@@ -138,7 +138,7 @@ save(
     path: Path | str,
     *,
     sidecar_path: Path | str | None = None,   # <stem>.json when None
-    overwrite: bool = False,                  # write over what sits at the sidecar path
+    overwrite: bool = False,                  # write over a file at path or at the sidecar path
     verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
     ...
 ) -> None
@@ -182,9 +182,10 @@ roadmap](https://github.com/pymovements/pymovements/discussions/1763).
 when given. A load reads it from the same place. The sidecar holds one dict per column at the
 top level, keyed by the column name, and the file-level keys beside them, with no wrapper key
 around the columns. In memory the file is `sidecar`, as read by load or written by save.
-`metadata` is what describes the data object, see The metadata dict. Save raises when a sidecar
-already exists at the sidecar path, unless `overwrite` is given, see Conflicts. Save writes the
-sidecar as indented JSON that a person can read without a tool, one key per line at every depth.
+`metadata` is what describes the data object, see The metadata dict. Save raises when a file
+already exists at `path` or at the sidecar path, unless `overwrite` is given, see Conflicts. Save
+writes the sidecar as indented JSON that a person can read without a tool, one key per line at
+every depth.
 
 **The pymovements stamp.** The top-level `pymovements` entry holds exactly three keys. `schema`
 is a stable identifier of the writing class, the lowercase class name. It is written from the
@@ -290,13 +291,13 @@ adoption's choice.
 | `metadata=` given on `load` | becomes the metadata dict, with `Sources` added, the frame's dtypes come from it, `sidecar` is still the file as read |
 | entry with a `Format` key and no such column | kept, warns at construction and at save |
 | top-level key equals a column name, value is not a dict | load and save warn, kept as read, the column keeps its inferred dtype |
-| a sidecar exists at the sidecar path | save raises unless `overwrite`, the message names the file and the flag |
+| a file exists at `path` or at the sidecar path | save raises unless `overwrite`, the message names the file and the flag |
 | direct change to the metadata dict or the frame | not checked until the next save, `sidecar` is stale until then |
 
 The `Format` key is what makes an entry a column entry. Every other top-level dict, such as a free
 user key, is file-level metadata and stays silent. Load calls the constructor, so the warning for
-an entry without a column fires once per load. The check for an existing sidecar runs before
-anything is written, whatever the sidecar holds. None of the warnings and raises above depends on
+an entry without a column fires once per load. The check for existing files runs before anything
+is written, whatever the files hold. None of the warnings and raises above depends on
 `verify_bids`, and each message names the fix. Outside `verify_bids` a warning or raise means
 that something would go wrong in pymovements. `verify_bids` reports BIDS conformity alone.
 
@@ -332,10 +333,9 @@ column, `age` carries `years` and stays an integer column. `MeasurementToolMetad
 dispatches on `schema`, with its rule for a file labeled for another class. Reading a sidecar
 without its data file, and which sidecar a data file reads under a layout, the inheritance
 principle [7]. The data file contract: format selection, separators, nested columns, a default
-time unit, and what save does with an existing data file at its own target, a data file without
-a sidecar beside it included, common under inheritance. The shape of `verify_bids`: the level
-and the consequence, warn or raise, as separate parameters, and the result type of the
-`verify_bids` method, a verification proposal of its own.
+time unit, and the overwrite rule for every file pymovements writes outside this mechanism. The
+shape of `verify_bids`: the level and the consequence, warn or raise, as separate parameters,
+and the result type of the `verify_bids` method, a verification proposal of its own.
 
 ## Rationale
 
@@ -409,16 +409,18 @@ files gets them without asking. A caller who wants the check asks for it with `v
 save as on load. What warns or raises without asking is what would make a file load back
 differently from how it was saved, or make the record lie, see Conflicts.
 
-**Why an existing sidecar raises.** pymovements output goes to a derivatives directory, so a
-sidecar already at the sidecar path was written by someone else or by an earlier run. Writing
-over a sidecar beside a raw file is an accident in nearly every workflow, and the lost record
-does not come back: the next load of that file degrades to inference. Save therefore raises
-before it writes anything, and the round trip onto the same path says `overwrite=True`. The same
-check covers two data files that share one stem, since the first one's sidecar sits at the path.
-Where none does, nothing is lost, and the entry-without-column warning catches a column mismatch
-on the later load. The proposal adds no warning for a data file of the same stem beside the
-target. In the common case, the same object saved again in another format, that warning would
-name a file the caller just wrote. When save raises, the message names such files.
+**Why an existing file raises.** pymovements output goes to a derivatives directory, so a file
+already at `path` or at the sidecar path was written by someone else or by an earlier run.
+Writing over a sidecar beside a raw file is an accident in nearly every workflow, and the lost
+record does not come back: the next load of that file degrades to inference. Save therefore
+raises before it writes anything, and the round trip onto the same path says `overwrite=True`.
+One flag governs both files: a flag that protected the sidecar and not the data beside it would
+mislead. The data file contract takes the rule over for every other file pymovements writes. The
+same check covers two data files that share one stem, since the first one's sidecar sits at the
+path. Where none does, nothing is lost, and the entry-without-column warning catches a column
+mismatch on the later load. The proposal adds no warning for a data file of the same stem beside
+the target. In the common case, the same object saved again in another format, that warning
+would name a file the caller just wrote. When save raises, the message names such files.
 
 **Why no default time unit.** A time unit is a factor on every value of a column, so a wrong one
 shows nowhere. pymovements therefore applies a unit only where something fixes it: the `Units`
@@ -466,6 +468,7 @@ BIDS has no per-sidecar field for it.
 | files | the sidecar path of `Participants.save` when none is given | `participants.json` | `<stem>.json`, under a BIDS layout the stem is `participants` and nothing changes |
 | files | the `pymovements` entry and `Sources` in the sidecar | absent | written, two additional top-level keys for readers of these files |
 | files | a file written before v0.30.0 | carries no pymovements stamp | loads as the oldest schema version, silently |
+| files | a data file at `path` on save | overwritten | save raises, `overwrite=True` writes over it |
 | files | a sidecar at the sidecar path on save | overwritten | save raises, `overwrite=True` writes over it |
 | metadata dict | the `pymovements` entry | never held | held from construction on |
 | metadata dict | a round trip through save and load | gives the metadata dict back unchanged | adds `Sources` |
@@ -540,7 +543,7 @@ private, so every issue is tested through the public methods of the class that h
 - [ ] `Format` and `Units`: the six values and their dtypes, `boolean` for `bool`, unmapped
       values, the Duration columns rule with the save-time unit order
 - [ ] the conflict rules: the entry without a column, a column name whose value is not a dict,
-      the raise on an existing sidecar and the `overwrite` keyword
+      the raise on an existing data file or sidecar and the `overwrite` keyword
 - [ ] `verify_bids`: the `False` default on save, the two required-level checks the mechanism
       runs, and how an adoption declares its own
 - [ ] `sidecar_path` on save and load, `metadata` on load as a dict only, `metadata_path` and a
