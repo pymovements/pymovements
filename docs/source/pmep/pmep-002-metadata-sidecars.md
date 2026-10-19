@@ -130,13 +130,15 @@ in these roles, whatever else its signatures hold:
 
 ```python
 metadata: dict[str, Any]          # what describes the data object, see The metadata dict
-sidecar: dict[str, Any] | None    # read-only, the file as read by load or written by save
+sidecar: dict[str, Any] | None    # the file as read by load or written by save, kept by clone
+                                  # None without a file: after split, concat or a constructor call
+                                  # read-only, changes to what it returns do not reach it
 
 save(
     path: Path | str,
     *,
-    sidecar_path: Path | str | None = None,
-    overwrite: bool = False,
+    sidecar_path: Path | str | None = None,   # <stem>.json when None
+    overwrite: bool = False,                  # write over what sits at the sidecar path
     verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
     ...
 ) -> None
@@ -145,17 +147,11 @@ load(
     path: Path | str,
     metadata: dict[str, Any] | None = None,
     *,
-    sidecar_path: Path | str | None = None,
+    sidecar_path: Path | str | None = None,   # <stem>.json when None
     verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
     ...
 ) -> Self
 ```
-
-`sidecar_path` is the sidecar path on save and on load, `<stem>.json` when None. `overwrite`
-set to `True` lets save write over what sits at its sidecar path. `metadata` on load takes a
-dict. `sidecar` is set by load, save and `clone`. It is `None` on a data object
-that never had a file, after `split`, concat or a constructor call. Changes to what it returns
-do not reach it.
 
 ## Motivation
 
