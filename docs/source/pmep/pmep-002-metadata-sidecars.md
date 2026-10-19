@@ -23,8 +23,8 @@
 - `verify_bids` reports BIDS nonconformities and is off by default: `'REQUIRED'` and
   `'RECOMMENDED'` warn, `True` raises, `False` is silent. Every other warning or raise marks
   something that would go wrong in pymovements, not a BIDS matter.
-- `Participants` and `Phenotype` adopt: they gain the pymovements stamp, `Sources` and `sidecar`,
-  and verification on save becomes opt-in.
+- `Participants` and `Phenotype` adopt the sidecar here: they gain the pymovements stamp,
+  `Sources` and `sidecar`, and verification on save becomes opt-in.
 
 ## What it looks like
 
