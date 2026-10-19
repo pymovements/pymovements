@@ -154,6 +154,50 @@ load(
 ) -> Self
 ```
 
+**Participants and Phenotype.** `save` and `load` on both classes, before and after. `...`
+stands for the keywords that do not change, `separator`, `rename`, `read_csv_kwargs`,
+`write_csv_kwargs` and `metadata_encoding`, and for `verify_bids` on load. The two classes
+differ only in the released `metadata_path` default, `'participants.json'` on `Participants` and
+`None` on `Phenotype`:
+
+```python
+# before, v0.28.0
+def save(
+    self,
+    path: Path | str,
+    *,
+    verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = 'REQUIRED',
+    metadata_path: Path | str | None = None,
+    ...
+) -> None
+
+def load(
+    path: Path | str,
+    metadata: Path | str | dict[str, Any] | None = None,
+    *,
+    ...
+) -> Self
+
+# after, v0.30.0
+def save(
+    self,
+    path: Path | str,
+    *,
+    verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
+    sidecar_path: Path | str | None = None,
+    overwrite: bool = False,
+    ...
+) -> None
+
+def load(
+    path: Path | str,
+    metadata: dict[str, Any] | None = None,
+    *,
+    sidecar_path: Path | str | None = None,
+    ...
+) -> Self
+```
+
 ## Motivation
 
 `Participants` and `Phenotype` write a BIDS sidecar from their `metadata` dict, each on its own
@@ -477,55 +521,9 @@ BIDS has no per-sidecar field for it.
 | API | the save keyword for the sidecar path | `metadata_path` | `sidecar_path` |
 | API | the sidecar path on load | in `metadata` | in `sidecar_path`, `metadata` takes a dict only |
 
-`metadata_path` and a path in `metadata=` keep working under a deprecation warning from v0.30.0
-and are removed in v0.35.0.
-
-`save` and `load` on both classes, before and after. `...` stands for the keywords that do not
-change, `separator`, `rename`, `read_csv_kwargs`, `write_csv_kwargs` and `metadata_encoding`,
-and for `verify_bids` on load. The two classes differ only in the released `metadata_path`
-default, `'participants.json'` on `Participants` and `None` on `Phenotype`:
-
-```python
-# before, v0.28.0
-def save(
-    self,
-    path: Path | str,
-    *,
-    verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = 'REQUIRED',
-    metadata_path: Path | str | None = None,
-    ...
-) -> None
-
-def load(
-    path: Path | str,
-    metadata: Path | str | dict[str, Any] | None = None,
-    *,
-    ...
-) -> Self
-
-# after, v0.30.0
-def save(
-    self,
-    path: Path | str,
-    *,
-    verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
-    sidecar_path: Path | str | None = None,
-    overwrite: bool = False,
-    ...
-) -> None
-
-def load(
-    path: Path | str,
-    metadata: dict[str, Any] | None = None,
-    *,
-    sidecar_path: Path | str | None = None,
-    ...
-) -> Self
-```
-
-Until v0.35.0 `save` still accepts `metadata_path` and `load` still accepts a path in
-`metadata=`, each under a deprecation warning, and either given together with `sidecar_path`
-raises.
+`metadata_path` on `save` and a path in `metadata=` on `load` keep working under a deprecation
+warning from v0.30.0 and are removed in v0.35.0. Either given together with `sidecar_path`
+raises. The signatures before and after are written out under Resulting signatures.
 
 ## Implementation
 
