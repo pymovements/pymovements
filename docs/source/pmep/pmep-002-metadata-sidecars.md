@@ -402,14 +402,14 @@ nothing is ever dropped on it. The entry stays in both dicts and is written. A c
 value is not a dict is different. The loader looks the dtype up there and finds none, so the
 column keeps the dtype inferred from the data. Load and save warn, whatever `verify_bids` says.
 
-**Why verification is opt-in.** A default save conforms by construction: a tsv file with tab
-separators and `n/a` for nulls. Under the defaults, verification could only report what the
-caller chose, a comma separator or a csv path, and a choice is no correction, as with the
-time-unit keyword. So `verify_bids` is `False` on save as on load. An explicit `'REQUIRED'` on a
-csv file still warns, that is the caller asking. Outside `verify_bids` a warning or raise is a
-pymovements matter: something would go wrong on the next load or in the record. The warning for
-an entry without a column stays on that side on one ground. Nothing breaks on load, but the
-metadata dict stops following the frame, and that it does is the rule of The metadata dict.
+**Why verification is opt-in.** pymovements promises that a saved file loads back as it was
+saved: the frame with its dtypes, the metadata dict with its entries. The sidecar carries what
+that takes, `Format` and `Units`, so a csv file loads back as safely as a tsv file. BIDS
+conformity is a goal of the caller, not a condition pymovements enforces, so a nonconformant save
+is no failure and nothing warns on its own. The defaults conform, so a caller who writes BIDS
+files gets them without asking. A caller who wants the check asks for it with `verify_bids`, on
+save as on load. What warns or raises without asking is what would make a file load back
+differently from how it was saved, or make the record lie, see Conflicts.
 
 **Why an existing sidecar raises.** pymovements output goes to a derivatives directory, so a
 sidecar already at the sidecar path was written by someone else or by an earlier run. Writing
