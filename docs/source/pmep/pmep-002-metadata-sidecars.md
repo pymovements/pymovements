@@ -90,7 +90,8 @@ The two pymovements stamps differ in `version`: `sidecar` carries the one that w
 `metadata` the running one. `age` round-trips as an integer column because `Format` says
 `integer`. `Units` plays no part in it.
 
-Two rules show on the next save, and after each save `sidecar` equals `metadata` again:
+On the next save a contradicting `Format` is replaced and an entry without a column stays, and
+after each save `sidecar` equals `metadata` again:
 
 ```python
 participants.data = participants.data.cast({'age': polars.Float64})
@@ -99,7 +100,7 @@ participants.save('participants.tsv')
 
 participants.data = participants.data.drop('age')
 participants.save('participants.tsv')
-# UserWarning: metadata entry 'age' has a Format but the frame has no column 'age', kept
+# no warning, the entry 'age' stays in metadata and in the sidecar
 ```
 
 ## Resulting signatures
@@ -289,15 +290,14 @@ adoption's choice.
 |---|---|
 | keyword on `load` differs from its sidecar entry | keyword wins for the frame and replaces the entry in the metadata dict, the warning names both values, `sidecar` keeps the entry as read |
 | `metadata=` given on `load` | becomes the metadata dict, with `Sources` added, the frame's dtypes come from it, `sidecar` is still the file as read |
-| entry with a `Format` key and no such column | kept, warns at construction and at save |
+| entry for a column that does not exist | kept in both dicts and written, silent |
 | top-level key equals a column name, value is not a dict | load and save warn, kept as read, the column keeps its inferred dtype |
 | a file exists at `path` or at the sidecar path | save raises unless `overwrite`, the message names the file and the flag |
 | direct change to the metadata dict or the frame | not checked until the next save, `sidecar` is stale until then |
 
-The `Format` key is what makes an entry a column entry. Every other top-level dict, such as a free
-user key, is file-level metadata and stays silent. Load calls the constructor, so the warning for
-an entry without a column fires once per load. The check for existing files runs before anything
-is written, whatever the files hold. None of the warnings and raises above depends on
+A top-level dict that names no column, a free user key or an entry whose column is gone, is
+file-level metadata and stays silent. The check for existing files runs before anything is
+written, whatever the files hold. None of the warnings and raises above depends on
 `verify_bids`, and each message names the fix. Outside `verify_bids` a warning or raise means
 that something would go wrong in pymovements. `verify_bids` reports BIDS conformity alone.
 
@@ -389,16 +389,16 @@ make the next load build a column that does not match the saved frame. Save repl
 warning instead of raising, so a cast stays a one-step change and the warning says the sidecar
 followed.
 
-**Why an entry without a column is kept and warns on `Format`.** BIDS treats a description for a
-nonexistent column as other metadata [2], and the BIDS validator is clean on it. Dropping it would
-discard something the user wrote. Kept and warned, the user decides. BIDS identifies a column entry
-by its name matching a column [2], and that match is gone with the column. pymovements therefore
-needs its own criterion. Save fills `Format` into every column entry and file-level entries never
-carry one, so an entry with `Format` was a column entry. The `Format` heuristic decides only
-whether the warning fires. A user's nested dict may carry a `Format` for its own reasons, so
-nothing is ever dropped on it. The entry stays in both dicts and is written. A column name whose
-value is not a dict is different. The loader looks the dtype up there and finds none, so the
-column keeps the dtype inferred from the data. Load and save warn, whatever `verify_bids` says.
+**Why an entry without a column is kept, silently.** BIDS treats a description for a nonexistent
+column as other metadata [2], and the BIDS validator is clean on it. Dropping it would discard
+something the user wrote, so it stays in both dicts and is written. It stays without a warning
+because no warning could be reliable: BIDS identifies a column entry by its name matching a
+column [2], and that match is gone with the column. `Format` would mark the entries pymovements
+wrote, but it is optional in BIDS and absent from most hand-written entries. And nothing goes
+wrong in pymovements on such an entry, so by the rule above it is no warning. A column name
+whose value is not a dict is different. The loader looks the dtype up there and finds none, so
+the column keeps the dtype inferred from the data. Load and save warn, whatever `verify_bids`
+says.
 
 **Why verification is opt-in.** The aim of the sidecar is that a saved file loads back as it was
 saved: the frame with its dtypes, the metadata dict with its entries. The sidecar carries what
@@ -417,10 +417,10 @@ raises before it writes anything, and the round trip onto the same path says `ov
 One flag governs both files: a flag that protected the sidecar and not the data beside it would
 mislead. The data file contract takes the rule over for every other file pymovements writes. The
 same check covers two data files that share one stem, since the first one's sidecar sits at the
-path. Where none does, nothing is lost, and the entry-without-column warning catches a column
-mismatch on the later load. The proposal adds no warning for a data file of the same stem beside
-the target. In the common case, the same object saved again in another format, that warning
-would name a file the caller just wrote. When save raises, the message names such files.
+path. Where none does, nothing is lost, since that file had no record. The proposal adds no
+warning for a data file of the same stem beside the target. In the common case, the same object
+saved again in another format, that warning would name a file the caller just wrote. When save
+raises, the message names such files.
 
 **Why no default time unit.** A time unit is a factor on every value of a column, so a wrong one
 shows nowhere. pymovements therefore applies a unit only where something fixes it: the `Units`
@@ -462,7 +462,6 @@ BIDS has no per-sidecar field for it.
 | where | what | before | from v0.30.0 |
 |---|---|---|---|
 | files | a `Format` entry that contradicts the dtype of its column | written as it is | replaced by save, with a warning |
-| files | an entry with a `Format` key and no column | kept silently | kept, with a warning |
 | files | the `Format` of a boolean column | `bool`, which BIDS does not define | `boolean`, load reads both |
 | files | a `Format` value pymovements does not map, such as `date` or `uri` | load raised | sets no dtype, the column keeps the dtype inferred from the data |
 | files | the sidecar path of `Participants.save` when none is given | `participants.json` | `<stem>.json`, under a BIDS layout the stem is `participants` and nothing changes |
@@ -542,8 +541,8 @@ private, so every issue is tested through the public methods of the class that h
       keyword over an entry, what save corrects, writes and sets
 - [ ] `Format` and `Units`: the six values and their dtypes, `boolean` for `bool`, unmapped
       values, the Duration columns rule with the save-time unit order
-- [ ] the conflict rules: the entry without a column, a column name whose value is not a dict,
-      the raise on an existing data file or sidecar and the `overwrite` keyword
+- [ ] the conflict rules: a column name whose value is not a dict, the entry without a column
+      kept silently, the raise on an existing data file or sidecar and the `overwrite` keyword
 - [ ] `verify_bids`: the `False` default on save, the two required-level checks the mechanism
       runs, and how an adoption declares its own
 - [ ] `sidecar_path` on save and load, `metadata` on load as a dict only, `metadata_path` and a
