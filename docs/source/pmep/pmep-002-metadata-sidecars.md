@@ -402,7 +402,7 @@ nothing is ever dropped on it. The entry stays in both dicts and is written. A c
 value is not a dict is different. The loader looks the dtype up there and finds none, so the
 column keeps the dtype inferred from the data. Load and save warn, whatever `verify_bids` says.
 
-**Why verification is opt-in.** pymovements promises that a saved file loads back as it was
+**Why verification is opt-in.** The aim of the sidecar is that a saved file loads back as it was
 saved: the frame with its dtypes, the metadata dict with its entries. The sidecar carries what
 that takes, `Format` and `Units`, so a csv file loads back as safely as a tsv file. BIDS
 conformity is a goal of the caller, not a condition pymovements enforces, so a nonconformant save
