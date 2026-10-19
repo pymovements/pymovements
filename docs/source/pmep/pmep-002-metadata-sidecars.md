@@ -255,9 +255,8 @@ object records the file that was read, as a POSIX path, relative to the dataset 
 `Dataset` and absolute otherwise. A loaded sidecar's own `Sources` entry stays on `sidecar` and is
 not carried into the metadata dict. It describes that file's provenance and not the loaded
 object's. A `Sources` entry given in `metadata=` is kept, it states the caller's intent. Save writes
-the entry when the metadata dict holds it. BIDS URIs as the value form come with the PMEP that
-writes a BIDS dataset. The paths written until then stay readable, a URI is a prefix on the same
-path.
+the entry when the metadata dict holds it. The paths written stay readable under a BIDS URI, a
+URI is a prefix on the same path.
 
 **Format and Units.** `Format` says how the values of a column are read, `Units` states the
 unit they are written in. Text files store no dtypes, so for them the loader builds the dtype
@@ -268,16 +267,15 @@ keeps the dtype inferred from the data and the entry is kept. Save fills a missi
 from the dtype and replaces one that contradicts it, see The metadata dict. `Units` sets
 no dtype on its own. It refines the dtype where pymovements defines one for the unit, today
 Duration alone, see Duration columns. Any other unit, such as `years`, `deg` or `px`, is read
-and written as it is. A dtype for another unit extends this rule in its own proposal, the
-sidecar shape stays.
+and written as it is.
 
 **Duration columns.** A column loads as a Duration only when its `Format` is `number` or `integer`
 and its `Units` is one of the symbols `s`, `ms`, `us` and `ns`, written as a number. BIDS
 recommends these symbols over spelled-out names [3]. The one exception is a column whose unit BIDS
 fixes: an adoption declares such columns, and they load as a Duration in that unit when `Units` is
 absent. A number column without a time unit in `Units` is otherwise never a Duration. `step`, a
-sample index, carries no dtype here, the adoption that holds the sampling rate converts it. On save
-to a text file the unit of a Duration column resolves in this order:
+sample index, carries no dtype here. On save to a text file the unit of a Duration column
+resolves in this order:
 
 1. a save keyword of the adopting class, if it has one
 2. the `Units` entry of the column in the metadata dict
@@ -333,15 +331,13 @@ for their files and their signatures is listed under Backwards compatibility. Ne
 column, `age` carries `years` and stays an integer column. `MeasurementToolMetadata` in a
 `Phenotype` sidecar is file-level metadata [5] and stays silent.
 
-**Scope.** Outside this proposal: `Gaze` and its two YAML files, which Recording and Session
-supersede. `BIDSVersion` and `dataset_description.json`, which belong to the proposal that
-writes a BIDS dataset. The generic loader that dispatches on `schema`, with its rule for a
-file labeled for another class. Reading a sidecar without its data file, and which sidecar a
-data file reads under a layout, the inheritance principle [7], both of which come with the
-Dataset-level query over a layout. The data file contract, format selection, separators,
-nested columns and a default time unit, a mechanism of its own defined once in its own
-proposal. What save does with an existing data file at its own target belongs there too, a
-data file without a sidecar beside it included, which is common under inheritance.
+**Scope.** Outside this proposal: `Gaze` and its two YAML files. `BIDSVersion`,
+`dataset_description.json` and BIDS URIs as the `Sources` value form. The generic loader that
+dispatches on `schema`, with its rule for a file labeled for another class. Reading a sidecar
+without its data file, and which sidecar a data file reads under a layout, the inheritance
+principle [7]. The data file contract: format selection, separators, nested columns, a default
+time unit, and what save does with an existing data file at its own target, a data file without
+a sidecar beside it included, common under inheritance.
 
 ## Rationale
 
