@@ -373,16 +373,15 @@ adoption's choice.
 |---|---|
 | keyword on `load` differs from its sidecar entry | keyword wins and replaces the entry in the metadata dict, with a warning, see The metadata dict |
 | `metadata=` given on `load` | becomes the metadata dict, with `Sources` added when absent, the frame's dtypes come from it, `sidecar` is still the file as read |
-| entry for a column that does not exist | kept in both dicts and written, silent |
+| top-level dict that names no column, a free user key or an entry whose column is gone | file-level metadata, kept in both dicts and written, silent |
 | top-level key equals a column name, value is not a dict | load and save warn, kept as read, the column keeps its inferred dtype |
 | a file exists at `path` or at the sidecar path | save raises unless `overwrite`, the message names the file and the flag |
 | direct change to the metadata dict or the frame | not checked until the next save, `sidecar` is stale until then |
 
-A top-level dict that names no column, a free user key or an entry whose column is gone, is
-file-level metadata and stays silent. The check for existing files runs before anything is
-written, whatever the files hold. None of the warnings and raises above depends on
-`verify_bids`, and each message names the fix. Outside `verify_bids` a warning or raise means
-that something would go wrong in pymovements. `verify_bids` reports BIDS conformity alone.
+The check for existing files runs before anything is written, whatever the files hold. None of
+the warnings and raises above depends on `verify_bids`, and each message names the fix. Outside
+`verify_bids` a warning or raise means that something would go wrong in pymovements.
+`verify_bids` reports BIDS conformity alone.
 
 **Verification.** `verify_bids` reports nonconformities at a BIDS level, on save and on load,
 and is `False` on both by default. `'REQUIRED'` warns for each required-level finding.
@@ -525,20 +524,20 @@ BIDS has no per-sidecar field for it.
 
 **Alternatives rejected.**
 
-- *A `columns` wrapper for the column dicts.* Not the BIDS shape [2], and the validator no longer
+- A `columns` wrapper for the column dicts. Not the BIDS shape [2], and the validator no longer
   finds the descriptions.
-- *`Sources` inside the `pymovements` entry.* The validator checks `Sources` at the top level of a
+- `Sources` inside the `pymovements` entry. The validator checks `Sources` at the top level of a
   derivative sidecar [6].
-- *A schema version per class.* One version for the mechanism, since a class adds keys and the
+- A schema version per class. One version for the mechanism, since a class adds keys and the
   mechanism defines what a key means.
-- *A `file` key in the pymovements stamp naming the data file.* The clash of two data files on one
+- A `file` key in the pymovements stamp naming the data file. The clash of two data files on one
   sidecar path is caught by the raise on an existing sidecar, at save, where it arises, and the
   key would be stale after a rename.
-- *The full file name as the sidecar name, `a.tsv.json`.* Not the BIDS name, the validator would
+- The full file name as the sidecar name, `a.tsv.json`. Not the BIDS name, the validator would
   not find it.
-- *Recomputing `Format` at every save.* Turns `label` into `string`.
-- *One dict that mirrors the file.* After load the file's `Sources` and pymovements stamp differ
-  from the loaded object's, and each difference needed a rule for which side the one dict shows.
+- Recomputing `Format` at every save. Turns `label` into `string`.
+- One dict that mirrors the file. Each difference after load needed a rule for which side the one
+  dict shows, see Why two dicts.
 
 ## Backwards compatibility
 
@@ -583,8 +582,8 @@ private, so every issue is tested through the public methods of the class that h
       keyword over an entry, what save corrects, writes and sets
 - [ ] `Format` and `Units`: the six values and their dtypes, `boolean` for `bool`, unmapped
       values, the Duration columns rule with the save-time unit order
-- [ ] the conflict rules: a column name whose value is not a dict, the entry without a column
-      kept silently, the raise on an existing data file or sidecar and the `overwrite` keyword
+- [ ] the conflict rules: a column name whose value is not a dict, the entry without a column,
+      the raise on an existing data file or sidecar and the `overwrite` keyword
 - [ ] `verify_bids`: the `False` default on save, the two required-level checks the mechanism
       runs, and how an adoption declares its own
 - [ ] `sidecar_path` and `sidecar_encoding` on save and load, `metadata` on load as a dict only,
