@@ -1690,7 +1690,7 @@ class Dataset:
         Raises
         ------
         AttributeError
-            If number of mirrors or number of resources specified for dataset is zero.
+            If no downloadable sources are found in the dataset definition.
         RuntimeError
             If downloading a resource failed for all given mirrors.
         """
@@ -1735,6 +1735,15 @@ class Dataset:
         -------
         Dataset
             Returns self, useful for method cascading.
+
+        Raises
+        ------
+        AttributeError
+            If a resource resolves to a source without a filename, since such a file can never
+            have been downloaded.
+        ValueError
+            If the resolved sources of the resources conflict (see
+            :py:meth:`~pymovements.DatasetDefinition.resolved_sources`).
         """
         dataset_download.extract_dataset(
             definition=self.definition,
@@ -1763,23 +1772,26 @@ class Dataset:
         -------
         By passing a `str` or a `Path` as `path` during initialization, you can explicitly set the
         directory path of the dataset:
+
         >>> import pymovements as pm
         >>>
         >>> dataset = pm.Dataset("ToyDataset", path='/path/to/your/dataset')
-        >>> dataset.path# doctest: +SKIP
+        >>> dataset.path  # doctest: +SKIP
         Path('/path/to/your/dataset')
 
         If you just want to specify the root directory path which holds all your local datasets, you
-        can create pass a :py:class:`~pymovements.DatasetPaths` object and set the `root`:
+        can pass a :py:class:`~pymovements.DatasetPaths` object and set the `root`:
+
         >>> paths = pm.DatasetPaths(root='/path/to/your/common/root/')
         >>> dataset = pm.Dataset("ToyDataset", path=paths)
-        >>> dataset.path# doctest: +SKIP
+        >>> dataset.path  # doctest: +SKIP
         Path('/path/to/your/common/root/ToyDataset')
 
         You can also specify an alternative dataset directory name:
+
         >>> paths = pm.DatasetPaths(root='/path/to/your/common/root/', dataset='my_dataset')
         >>> dataset = pm.Dataset("ToyDataset", path=paths)
-        >>> dataset.path# doctest: +SKIP
+        >>> dataset.path  # doctest: +SKIP
         Path('/path/to/your/common/root/my_dataset')
         """
         return self.paths.dataset
