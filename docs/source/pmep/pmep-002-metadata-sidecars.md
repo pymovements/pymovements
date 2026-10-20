@@ -90,16 +90,17 @@ The two pymovements stamps differ in `version`: `sidecar` carries the one that w
 `integer`. `Units` plays no part in it.
 
 On the next save a contradicting `Format` is replaced and an entry without a column stays, and
-after each save `sidecar` equals `metadata` again:
+after each save `sidecar` equals `metadata` again. The saves go over the loaded file, so they
+say `overwrite=True`, see Conflicts:
 
 ```python
 participants.data = participants.data.cast({'age': polars.Float64})
-participants.save('participants.tsv')
+participants.save('participants.tsv', overwrite=True)
 # UserWarning: Format 'integer' of column 'age' does not fit Float64, replaced by 'number'
 
 participants.data = participants.data.drop('age')
-participants.save('participants.tsv')
-# no warning, the entry 'age' stays in metadata and in the sidecar
+participants.save('participants.tsv', overwrite=True)
+# no warning, the entry 'age' stays, see Conflicts
 ```
 
 ## Resulting signatures
@@ -303,8 +304,10 @@ object records the file that was read, as a POSIX path, relative to the dataset 
 `Dataset` and absolute otherwise. A loaded sidecar's own `Sources` entry stays on `sidecar` and is
 not carried into the metadata dict. It describes that file's provenance and not the loaded
 object's. A `Sources` entry given in `metadata=` is kept, it states the caller's intent. Save writes
-the entry when the metadata dict holds it. The paths written stay readable under a BIDS URI, a
-URI is a prefix on the same path.
+the entry when the metadata dict holds it. A save over the loaded file therefore writes that
+file's path as its own source, the record of a round trip. pymovements output belongs in a
+derivatives directory, see Why an existing file raises. The paths written stay readable under a
+BIDS URI, a URI is a prefix on the same path.
 
 **Format and Units.** `Format` says how the values of a column are read, `Units` states the
 unit they are written in. Text files store no dtypes, so for them the loader builds the dtype
