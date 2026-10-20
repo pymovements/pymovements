@@ -437,8 +437,9 @@ Neither has a time column, `age` carries `years` and stays an integer column.
 
 ### Scope
 
-Outside this proposal: `Gaze` and its two YAML files. `BIDSVersion`, `dataset_description.json` and
-BIDS URIs as the `Sources` value form. The generic loader that dispatches on `schema`, with its rule
+Outside this proposal: `Gaze` and its two YAML files. `BIDSVersion`, `dataset_description.json`
+with its `GeneratedBy` list [8] and BIDS URIs as the `Sources` value form. Whether `version` stays in
+the pymovements stamp once `GeneratedBy` is written is decided with that file. The generic loader that dispatches on `schema`, with its rule
 for a file labeled for another class. Reading a sidecar without its data file, and which sidecar a
 data file reads under a layout, the inheritance principle [7]. The data file contract: format
 selection, separators, the dtypes a text file can hold, nested columns included, a default time
@@ -557,8 +558,9 @@ inherited sidecar [7]. It reaches the file loader through `metadata=` or the loa
 rule and the keys adoptions add. Every file pymovements writes carries that reading, conformant or
 not, since BIDS allows the extra keys [2]. A third-party sidecar carries none of it, which is why a
 file without a pymovements stamp reads silently. `schema` serves a file outside a BIDS layout, where
-no file name says which class wrote it. `version` is provenance, BIDS has no per-sidecar field for
-it.
+no file name says which class wrote it. `version` is provenance. BIDS records it per dataset in
+`GeneratedBy` [8], which a sidecar loaded outside a layout cannot consult, see
+<a href="#scope">Scope</a>.
 
 ### Alternatives rejected
 
@@ -660,3 +662,7 @@ and assessment data.
 [7] Brain Imaging Data Structure (BIDS) specification v1.11.1, Common principles, The Inheritance
 Principle.
 <https://bids-specification.readthedocs.io/en/v1.11.1/common-principles.html#the-inheritance-principle>
+
+[8] Brain Imaging Data Structure (BIDS) specification v1.11.1, Modality agnostic files, Dataset
+description, Derived dataset and pipeline description.
+<https://bids-specification.readthedocs.io/en/v1.11.1/modality-agnostic-files/dataset-description.html#derived-dataset-and-pipeline-description>
