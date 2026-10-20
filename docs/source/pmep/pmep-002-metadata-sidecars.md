@@ -89,9 +89,9 @@ The two pymovements stamps differ in `version`: `sidecar` carries the one that w
 `metadata` the running one. `age` round-trips as an integer column because `Format` says
 `integer`. `Units` plays no part in it.
 
-On the next save a contradicting `Format` is replaced and an entry without a column stays, and
-after each save `sidecar` equals `metadata` again. The saves go over the loaded file, so they
-say `overwrite=True`, see Conflicts:
+On the next save a contradicting `Format` is replaced and an entry without a column stays, and after
+each save `sidecar` equals `metadata` again. The saves go over the loaded file, so they say
+`overwrite=True`, see <a href="#conflicts">Conflicts</a>:
 
 ```python
 participants.data = participants.data.cast({'age': polars.Float64})
@@ -124,10 +124,12 @@ The sidecar owns the `json` extension next to the stem, so no data format may us
 | `Sources` | top | BIDS provenance: list of the files directly used, as paths [1] |
 | `<column name>` | top | a dict that describes the column |
 | `Format` | column | BIDS format: `string`, `number`, `integer`, `boolean`, `index`, `label` [2] |
-| `Units` | column | unit of the column's values [2], on a Duration column also how it loads, see Duration columns |
+| `Units` | column | unit of the column's values [2], on a Duration column also how it loads, see <a href="#duration-columns">Duration columns</a> |
 
-**Adoption contract.** A class that adopts the sidecar carries two attributes and two parameters
-in these roles, whatever else its signatures hold:
+### Adoption contract
+
+A class that adopts the sidecar carries two attributes and two parameters in these roles, whatever
+else its signatures hold:
 
 ```python
 metadata: dict[str, Any]          # what describes the data object, see The metadata dict
@@ -156,10 +158,11 @@ load(
 ) -> Self
 ```
 
-**Participants and Phenotype signatures.** `save` and `load` on both classes: before, with the
-deprecated keywords from v0.30.0, and after their removal in v0.35.0. `...` stands for the
-keywords that do not change. The two classes differ only in the released `metadata_path`
-default:
+### Participants and Phenotype signatures
+
+`save` and `load` on both classes: before, with the deprecated keywords from v0.30.0, and after
+their removal in v0.35.0. `...` stands for the keywords that do not change. The two classes
+differ only in the released `metadata_path` default:
 
 ```python
 # before, v0.28.0
@@ -249,39 +252,46 @@ rule would be stated several times and drift.
 
 ## Specification
 
-**Adoption.** The mechanism is what every sidecar shares: the shape, the pymovements stamp and its
-version rules, the two attributes and the metadata dict rules, the Duration columns rule, the
-conflict rules and the two required-level checks. It is defined once, here. A class adopts it in its
-own proposal or issue by naming what belongs to that class: its `schema` value, the keys it writes
-beyond the ones defined here, its own checks and its save keyword for the time unit. The keys an
-adoption adds are top-level keys beside `Sources`, never part of the pymovements stamp. A class
-that has adopted follows every rule below.
+### Adoption
 
-**The sidecar file.** A save writes `<stem>.json` next to the data file, or to `sidecar_path`
-when given. The stem is the file name without its format extension, a compression suffix
-included: `sub-01_physio.tsv.gz` has the sidecar `sub-01_physio.json` and `data.v2.tsv` has
-`data.v2.json`. A load reads it from the same place. The sidecar holds one dict per column at the
-top level, keyed by the column name, and the file-level keys beside them, with no wrapper key
-around the columns. Save writes and load reads the sidecar in `sidecar_encoding`, `utf-8` by
-default. The `sidecar` attribute holds the file as read by load or written by save, the
-`metadata` attribute what describes the data object, see The metadata dict.
+The mechanism is what every sidecar shares: the shape, the pymovements stamp and its version rules,
+the two attributes and the metadata dict rules, the Duration columns rule, the conflict rules and
+the two required-level checks. It is defined once, here. A class adopts it in its own proposal or
+issue by naming what belongs to that class: its `schema` value, the keys it writes beyond the ones
+defined here, its own checks and its save keyword for the time unit. The keys an adoption adds are
+top-level keys beside `Sources`, never part of the pymovements stamp. A class that has adopted
+follows every rule below.
 
-**The pymovements stamp.** The top-level `pymovements` entry holds exactly three keys. `schema`
-is a stable identifier of the writing class, the lowercase class name. `schema_version` is the
-version of the schema defined here, see The schema version. `version` is the package version
-that wrote the file, as provenance. Construction writes the running
-pymovements stamp into the metadata dict. Save writes it as the first key of the sidecar, the
-other keys keep the order of the metadata dict. Load reads `schema_version` on `sidecar` for the
-version check, at any position, and the file's pymovements stamp stays there. A pymovements
-stamp in the metadata dict that differs from the running one is replaced with a warning, see The
-metadata dict, so an edited pymovements stamp is never written.
+### The sidecar file
 
-**The schema version** has three parts and is one version for the whole mechanism, initially
-`0.1.0`. Its breaking and its additive part follow the package's own rule. Below `1.0.0`
-the minor is the breaking part and the patch the additive one. From `1.0.0` the major is
-the breaking part and the minor the additive one. Schema `1.0.0` will be declared with
-pymovements `1.0.0`. Load compares the pymovements stamp on `sidecar` with the version it
-implements:
+A save writes `<stem>.json` next to the data file, or to `sidecar_path` when given. The stem is the
+file name without its format extension, a compression suffix included: `sub-01_physio.tsv.gz` has
+the sidecar `sub-01_physio.json` and `data.v2.tsv` has `data.v2.json`. A load reads it from the same
+place. The sidecar holds one dict per column at the top level, keyed by the column name, and the
+file-level keys beside them, with no wrapper key around the columns. Save writes and load reads the
+sidecar in `sidecar_encoding`, `utf-8` by default. The `sidecar` attribute holds the file as read by
+load or written by save, the `metadata` attribute what describes the data object, see
+<a href="#the-metadata-dict">The metadata dict</a>.
+
+### The pymovements stamp
+
+The top-level `pymovements` entry holds exactly three keys. `schema` is a stable identifier of the
+writing class, the lowercase class name. `schema_version` is the version of the schema defined here,
+see <a href="#the-schema-version">The schema version</a>. `version` is the package version that
+wrote the file, as provenance. Construction writes the running pymovements stamp into the metadata
+dict. Save writes it as the first key of the sidecar, the other keys keep the order of the metadata
+dict. Load reads `schema_version` on `sidecar` for the version check, at any position, and the
+file's pymovements stamp stays there. A pymovements stamp in the metadata dict that differs from the
+running one is replaced with a warning, see <a href="#the-metadata-dict">The metadata dict</a>, so
+an edited pymovements stamp is never written.
+
+### The schema version
+
+The schema version has three parts and is one version for the whole mechanism, initially `0.1.0`.
+Its breaking and its additive part follow the package's own rule. Below `1.0.0` the minor is the
+breaking part and the patch the additive one. From `1.0.0` the major is the breaking part and the
+minor the additive one. Schema `1.0.0` will be declared with pymovements `1.0.0`. Load compares the
+pymovements stamp on `sidecar` with the version it implements:
 
 | pymovements stamp found | load |
 |---|---|
@@ -292,20 +302,23 @@ A newer additive part does not warn. A sidecar without a pymovements stamp reads
 version, silently. This covers files written by pymovements before v0.30.0 and every third-party
 BIDS sidecar: a breaking schema version never changes how a BIDS-defined key is read.
 
-**The metadata dict.** `metadata` holds what describes the data object, `sidecar` the file.
-Three rules connect them to each other and to the frame:
+### The metadata dict
 
-1. Load reads the sidecar into `sidecar` as it is and builds the metadata dict from it with
-   three changes. The file's own `Sources` is left out and the loaded object's added, see
-   Sources. The file's pymovements stamp is left out. An entry a load keyword overrides is
-   replaced by the keyword's value, with a warning. `sidecar` keeps every value as read.
+`metadata` holds what describes the data object, `sidecar` the file. Three rules connect them to
+each other and to the frame:
+
+1. Load reads the sidecar into `sidecar` as it is and builds the metadata dict from it with three
+   changes. The file's own `Sources` is left out and the loaded object's added, see
+   <a href="#sources">Sources</a>. The file's pymovements stamp is left out. An entry a load keyword
+   overrides is replaced by the keyword's value, with a warning. `sidecar` keeps every value as
+   read.
 2. For text files the loader builds the dtype of a column from `Format`. A column loads as a
-   Duration when `Format` is `number` or `integer` and `Units` is a time unit, or when BIDS
-   fixes its unit, see Duration columns.
-3. Save writes the metadata dict to the sidecar path after the corrections below, as indented
-   JSON with one key per line at every depth, then sets `sidecar` to what it wrote. A Duration
-   column is written as `number`, see Duration columns. After save the metadata dict, `sidecar`
-   and the file are equal.
+   Duration when `Format` is `number` or `integer` and `Units` is a time unit, or when BIDS fixes
+   its unit, see <a href="#duration-columns">Duration columns</a>.
+3. Save writes the metadata dict to the sidecar path after the corrections below, as indented JSON
+   with one key per line at every depth, then sets `sidecar` to what it wrote. A Duration column is
+   written as `number`, see <a href="#duration-columns">Duration columns</a>. After save the
+   metadata dict, `sidecar` and the file are equal.
 
 One rule covers every correction pymovements makes to the metadata dict: it fills a missing
 entry silently and replaces an entry that contradicts the frame or the file with a warning that
@@ -322,41 +335,46 @@ names both values. It runs at construction and at save:
 | construction and save | pymovements stamp differs from the running one | replaced, the warning names both values, an equal one is silent |
 
 The load keyword in rule 1 is the same rule on the file side: the keyword states what the file
-contains and the entry contradicts it. The save keyword of an adopting class for the time unit is
-no correction but a conversion the caller chose. It wins silently and the unit written goes into
-`Units`, see Duration columns.
+contains and the entry contradicts it. The save keyword of an adopting class for the time unit is no
+correction but a conversion the caller chose. It wins silently and the unit written goes into
+`Units`, see <a href="#duration-columns">Duration columns</a>.
 
-**Sources.** `Sources` is the BIDS provenance key with the BIDS meaning [1]: the files directly used
-in the creation of this file, one hop, not the chain. Every adopting class carries it. A loaded
-object records the file that was read, as a POSIX path, relative to the dataset root under a
-`Dataset` and absolute otherwise. A loaded sidecar's own `Sources` entry stays on `sidecar` and is
-not carried into the metadata dict. It describes that file's provenance and not the loaded
-object's. A `Sources` entry given in `metadata=` is kept, it states the caller's intent. Save writes
-the entry when the metadata dict holds it. A save over the loaded file therefore writes that
-file's path as its own source, the record of a round trip. pymovements output belongs in a
-derivatives directory, see Why an existing file raises. The paths written stay readable under a
-BIDS URI, a URI is a prefix on the same path.
+### Sources
 
-**Format and Units.** `Format` says how the values of a column are read, `Units` states the
-unit they are written in. Text files store no dtypes, so for them the loader builds the dtype
-of a column from `Format`. pymovements writes six of the BIDS values [2]: `integer`, `number`,
-`index`, `boolean`, `string` and `label`. It reads each as one dtype, `label` as the same
-dtype as `string`. Any other BIDS value, such as `date` or `uri`, sets no dtype: the column
-keeps the dtype inferred from the data and the entry is kept. Save fills a missing `Format`
-from the dtype and replaces one that contradicts it, see The metadata dict. `Units` sets
-no dtype on its own. It refines the dtype where pymovements defines one for the unit, today
-Duration alone, see Duration columns. Any other unit, such as `years`, `deg` or `px`, is read
-and written as it is.
+`Sources` is the BIDS provenance key with the BIDS meaning [1]: the files directly used in the
+creation of this file, one hop, not the chain. Every adopting class carries it. A loaded object
+records the file that was read, as a POSIX path, relative to the dataset root under a `Dataset` and
+absolute otherwise. A loaded sidecar's own `Sources` entry stays on `sidecar` and is not carried
+into the metadata dict. It describes that file's provenance and not the loaded object's. A `Sources`
+entry given in `metadata=` is kept, it states the caller's intent. Save writes the entry when the
+metadata dict holds it. A save over the loaded file therefore writes that file's path as its own
+source, the record of a round trip. pymovements output belongs in a derivatives directory, see
+<a href="#why-an-existing-file-raises">Why an existing file raises</a>. The paths written stay
+readable under a BIDS URI, a URI is a prefix on the same path.
 
-**Duration columns.** A column loads as a Duration only when its `Format` is `number` or `integer`
-and its `Units` is one of the symbols `s`, `ms`, `us` and `ns`, written as a number. BIDS
-recommends these symbols over spelled-out names [3]. `Units` names the unit in the file. Load
-converts the values into the Duration unit the adopting class uses in memory, and save converts
-them back into the unit it writes. The one exception is a column whose unit BIDS fixes: an
-adoption declares such columns, and they load as a Duration from that unit when `Units` is
-absent. A number column without a time unit in `Units` is otherwise never a Duration. `step`, a
-sample index, carries no dtype here. On save to a text file the unit of a Duration column
-resolves in this order:
+### Format and Units
+
+`Format` says how the values of a column are read, `Units` states the unit they are written in. Text
+files store no dtypes, so for them the loader builds the dtype of a column from `Format`.
+pymovements writes six of the BIDS values [2]: `integer`, `number`, `index`, `boolean`, `string` and
+`label`. It reads each as one dtype, `label` as the same dtype as `string`. Any other BIDS value,
+such as `date` or `uri`, sets no dtype: the column keeps the dtype inferred from the data and the
+entry is kept. Save fills a missing `Format` from the dtype and replaces one that contradicts it,
+see <a href="#the-metadata-dict">The metadata dict</a>. `Units` sets no dtype on its own. It refines
+the dtype where pymovements defines one for the unit, today Duration alone, see
+<a href="#duration-columns">Duration columns</a>. Any other unit, such as `years`, `deg` or `px`, is
+read and written as it is.
+
+### Duration columns
+
+A column loads as a Duration only when its `Format` is `number` or `integer` and its `Units` is one
+of the symbols `s`, `ms`, `us` and `ns`, written as a number. BIDS recommends these symbols over
+spelled-out names [3]. `Units` names the unit in the file. Load converts the values into the
+Duration unit the adopting class uses in memory, and save converts them back into the unit it
+writes. The one exception is a column whose unit BIDS fixes: an adoption declares such columns, and
+they load as a Duration from that unit when `Units` is absent. A number column without a time unit
+in `Units` is otherwise never a Duration. `step`, a sample index, carries no dtype here. On save to
+a text file the unit of a Duration column resolves in this order:
 
 1. a save keyword of the adopting class, if it has one
 2. the `Units` entry of the column in the metadata dict
@@ -367,11 +385,11 @@ duration without its unit. Columns with different `Units` entries are therefore 
 different units. Which unit an adopting class defaults to for its own time columns is the
 adoption's choice.
 
-**Conflicts.**
+### Conflicts
 
 | situation | outcome |
 |---|---|
-| keyword on `load` differs from its sidecar entry | keyword wins and replaces the entry in the metadata dict, with a warning, see The metadata dict |
+| keyword on `load` differs from its sidecar entry | keyword wins and replaces the entry in the metadata dict, with a warning, see <a href="#the-metadata-dict">The metadata dict</a> |
 | `metadata=` given on `load` | becomes the metadata dict, with `Sources` added when absent, the frame's dtypes come from it, `sidecar` is still the file as read |
 | top-level dict that names no column, a free user key or an entry whose column is gone | file-level metadata, kept in both dicts and written, silent |
 | top-level key equals a column name, value is not a dict | load and save warn, kept as read, the column keeps its inferred dtype |
@@ -383,51 +401,59 @@ the warnings and raises above depends on `verify_bids`, and each message names t
 `verify_bids` a warning or raise means that something would go wrong in pymovements.
 `verify_bids` reports BIDS conformity alone.
 
-**Verification.** `verify_bids` reports nonconformities at a BIDS level, on save and on load,
-and is `False` on both by default. `'REQUIRED'` warns for each required-level finding.
-`'RECOMMENDED'` warns for required-level and recommended-level findings. `True` raises on a
-required-level finding. `False` is silent. The mechanism runs two required-level checks: the
-data file is a tsv file with tab separators, and nulls are written as `n/a` [2]. A csv file is
-therefore a finding when asked and silent otherwise. An adoption declares its own checks, at
-either level, and the same `verify_bids` runs them.
+### Verification
 
-**Loading BIDS files.** A BIDS-conformant data file loads with the class's `load(path)` alone,
-whether or not a sidecar exists next to it, since BIDS recommends the sidecar and does not
-require it [4]. The defaults on load are the BIDS conventions:
+`verify_bids` reports nonconformities at a BIDS level, on save and on load, and is `False` on both
+by default. `'REQUIRED'` warns for each required-level finding. `'RECOMMENDED'` warns for
+required-level and recommended-level findings. `True` raises on a required-level finding. `False` is
+silent. The mechanism runs two required-level checks: the data file is a tsv file with tab
+separators, and nulls are written as `n/a` [2]. A csv file is therefore a finding when asked and
+silent otherwise. An adoption declares its own checks, at either level, and the same `verify_bids`
+runs them.
+
+### Loading BIDS files
+
+A BIDS-conformant data file loads with the class's `load(path)` alone, whether or not a sidecar
+exists next to it, since BIDS recommends the sidecar and does not require it [4]. The defaults on
+load are the BIDS conventions:
 
 - a tsv file is read tab-separated
 - `n/a` is read as null
 - a column takes its dtype from `Format` where pymovements maps it and from the data otherwise
-- a column whose unit BIDS fixes loads as a Duration from that unit, see Duration columns
+- a column whose unit BIDS fixes loads as a Duration from that unit, see
+  <a href="#duration-columns">Duration columns</a>
 - `verify_bids` is `False`
 
 Without a sidecar `sidecar` is `None` and the metadata dict holds what construction writes, the
 pymovements stamp and a `Format` per column, and `Sources`.
 
-**Participants and Phenotype adopt.** Both classes already model the BIDS sidecar in `metadata`.
-They adopt with the `schema` values `participants` and `phenotype`, and every rule above applies
-to them. What changes
-for their files and their signatures is listed under Backwards compatibility. Neither has a time
-column, `age` carries `years` and stays an integer column. `MeasurementToolMetadata` in a
-`Phenotype` sidecar is file-level metadata [5] and stays silent.
+### Participants and Phenotype adopt
 
-**Scope.** Outside this proposal: `Gaze` and its two YAML files. `BIDSVersion`,
-`dataset_description.json` and BIDS URIs as the `Sources` value form. The generic loader that
-dispatches on `schema`, with its rule for a file labeled for another class. Reading a sidecar
-without its data file, and which sidecar a data file reads under a layout, the inheritance
-principle [7]. The data file contract: format selection, separators, the dtypes a text file can
-hold, nested columns included, a default time unit, and the overwrite rule for every file
-pymovements writes outside this mechanism. The
-shape of `verify_bids`: the level and the consequence, warn or raise, as separate parameters,
-and the result type of the `verify_bids` method, a verification proposal of its own.
+Both classes already model the BIDS sidecar in `metadata`. They adopt with the `schema` values
+`participants` and `phenotype`, and every rule above applies to them. What changes for their files
+and their signatures is listed under <a href="#backwards-compatibility">Backwards compatibility</a>.
+Neither has a time column, `age` carries `years` and stays an integer column.
+`MeasurementToolMetadata` in a `Phenotype` sidecar is file-level metadata [5] and stays silent.
+
+### Scope
+
+Outside this proposal: `Gaze` and its two YAML files. `BIDSVersion`, `dataset_description.json` and
+BIDS URIs as the `Sources` value form. The generic loader that dispatches on `schema`, with its rule
+for a file labeled for another class. Reading a sidecar without its data file, and which sidecar a
+data file reads under a layout, the inheritance principle [7]. The data file contract: format
+selection, separators, the dtypes a text file can hold, nested columns included, a default time
+unit, and the overwrite rule for every file pymovements writes outside this mechanism. The shape of
+`verify_bids`: the level and the consequence, warn or raise, as separate parameters, and the result
+type of the `verify_bids` method, a verification proposal of its own.
 
 ## Rationale
 
-**Why the BIDS shape.** BIDS conformity is the target, so the defaults conform and a deviation shows
-through verification when asked. The BIDS data dictionary allows file-level keys beside the
-column entries [2], which is where `Sources` and the `pymovements` entry sit. A probe with
-bids-validator 3.0.2 and 2.4.1 [6], on a raw and a derivative dataset with identical results,
-confirmed it:
+### Why the BIDS shape
+
+BIDS conformity is the target, so the defaults conform and a deviation shows through verification
+when asked. The BIDS data dictionary allows file-level keys beside the column entries [2], which is
+where `Sources` and the `pymovements` entry sit. A probe with bids-validator 3.0.2 and 2.4.1 [6], on
+a raw and a derivative dataset with identical results, confirmed it:
 
 | sidecar content | validator |
 |---|---|
@@ -444,85 +470,97 @@ The validator inspects only the keys it knows, so clean means not looked at for 
 `pymovements` entry. `Sources` it checks in a derivative dataset, as a list of strings, not the form
 of the string.
 
-**Why one definition.** A rule stated in several places drifts, and two classes already write their
-sidecars each on their own terms. The mechanism is defined once, here, and an adoption cites it
-instead of restating it.
+### Why one definition
 
-**Why two dicts.** `metadata` describes the data object and `sidecar` records the file, and one
-dict cannot be both. After load the two differ by design. The file's `Sources` is the file's
-provenance where the loaded object's is the file itself. The file's pymovements stamp says which
-version wrote it where the metadata dict carries the running one. A load keyword that overrides
-a sidecar entry is a third difference. With one dict each difference needed a rule for which
-side it shows. The other side was readable only with `json.load`. With two, the metadata dict
-follows the frame and `sidecar` follows the file. One correction rule covers every conflict.
-`Format` cannot be recomputed from the frame, since `label` and `string` share a dtype. The unit
-a file was written in exists only in `Units`. Load therefore carries both into the metadata dict
-as read. `sidecar` is read-only because it records a file, and a file changes only through save.
+A rule stated in several places drifts, and two classes already write their sidecars each on their
+own terms. The mechanism is defined once, here, and an adoption cites it instead of restating it.
 
-**Why `metadata` carries the pymovements stamp.** Construction writes the running pymovements
-stamp so that the metadata dict reads as the sidecar the next save would write, pymovements
-stamp included. The limit is the Conflicts rule: a direct change to the frame or to the metadata
-dict shows at the next save. The pymovements stamp warning is where a preview that did not hold
-becomes visible. An edited pymovements stamp is replaced at save and the warning names both
-values. The pymovements stamp the file carries stays on `sidecar`, where the version check reads
-it, so an older file loads silently.
+### Why two dicts
 
-**Why the frame wins at save.** The data file is written from the frame, and for a text file
-`Format` is the only record of how a column reads back. A `Format` that contradicts the frame would
-make the next load build a column that does not match the saved frame. Save replaces it with a
-warning instead of raising, so a cast stays a one-step change and the warning says the sidecar
-followed.
+`metadata` describes the data object and `sidecar` records the file, and one dict cannot be both.
+After load the two differ by design. The file's `Sources` is the file's provenance where the loaded
+object's is the file itself. The file's pymovements stamp says which version wrote it where the
+metadata dict carries the running one. A load keyword that overrides a sidecar entry is a third
+difference. With one dict each difference needed a rule for which side it shows. The other side was
+readable only with `json.load`. With two, the metadata dict follows the frame and `sidecar` follows
+the file. One correction rule covers every conflict. `Format` cannot be recomputed from the frame,
+since `label` and `string` share a dtype. The unit a file was written in exists only in `Units`.
+Load therefore carries both into the metadata dict as read. `sidecar` is read-only because it
+records a file, and a file changes only through save.
 
-**Why an entry without a column is kept, silently.** BIDS treats a description for a nonexistent
-column as other metadata [2], and the BIDS validator is clean on it. Dropping it would discard
-something the user wrote, so it stays in both dicts and is written. It stays without a warning
-because no warning could be reliable: BIDS identifies a column entry by its name matching a
-column [2], and that match is gone with the column. `Format` would mark the entries pymovements
-wrote, but it is optional in BIDS and absent from most hand-written entries. And nothing goes
-wrong in pymovements on such an entry, so by the rule above it is no warning. A column name
-whose value is not a dict is different. The loader looks the dtype up there and finds none, so
-the column keeps the dtype inferred from the data. Load and save warn, whatever `verify_bids`
-says.
+### Why `metadata` carries the pymovements stamp
 
-**Why verification is opt-in.** The aim of the sidecar is that a saved file loads back as it was
-saved: the frame with its dtypes, the metadata dict with its entries. The sidecar carries what
-that takes, `Format` and `Units`, so a csv file loads back as safely as a tsv file. BIDS
-conformity is a goal of the caller, not a condition pymovements enforces, so a nonconformant save
-is no failure and nothing warns on its own. The defaults conform, so a caller who writes BIDS
-files gets them without asking. A caller who wants the check asks for it with `verify_bids`, on
-save as on load. What warns or raises without asking is what would make a file load back
-differently from how it was saved, or make the record lie, see Conflicts.
+Construction writes the running pymovements stamp so that the metadata dict reads as the sidecar the
+next save would write, pymovements stamp included. The limit is the Conflicts rule: a direct change
+to the frame or to the metadata dict shows at the next save. The pymovements stamp warning is where
+a preview that did not hold becomes visible. An edited pymovements stamp is replaced at save and the
+warning names both values. The pymovements stamp the file carries stays on `sidecar`, where the
+version check reads it, so an older file loads silently.
 
-**Why an existing file raises.** pymovements output goes to a derivatives directory, so a file
-already at `path` or at the sidecar path was written by someone else or by an earlier run.
-Writing over a sidecar beside a raw file is an accident in nearly every workflow, and the lost
-record does not come back: the next load of that file degrades to inference. Save therefore
-raises before it writes anything, and the round trip onto the same path says `overwrite=True`.
-One flag governs both files: a flag that protected the sidecar and not the data beside it would
-mislead. The data file contract takes the rule over for every other file pymovements writes. The
-same check covers two data files that share one stem, since the first one's sidecar sits at the
-path. Where none does, nothing is lost, since that file had no record. The proposal adds no
-warning for a data file of the same stem beside the target. In the common case, the same object
-saved again in another format, that warning would name a file the caller just wrote. When save
-raises, the message names such files.
+### Why the frame wins at save
 
-**Why no default time unit.** A time unit is a factor on every value of a column, so a wrong one
-shows nowhere. pymovements therefore applies a unit only where something fixes it: the `Units`
-entry, a save keyword of the adopting class, or the BIDS definition of a column, which the adoption
-declares. `age` in years is such a BIDS-fixed unit already [4], the released age cap in
-`Participants.verify_bids` reads it as years. Where nothing fixes a unit, a number column has none.
-Save raises for a Duration column rather than falling back to one. A dataset-wide unit is the
-dataset's to state, BIDS does it with an inherited sidecar [7]. It reaches the file loader through
-`metadata=` or the load keyword.
+The data file is written from the frame, and for a text file `Format` is the only record of how a
+column reads back. A `Format` that contradicts the frame would make the next load build a column
+that does not match the saved frame. Save replaces it with a warning instead of raising, so a cast
+stays a one-step change and the warning says the sidecar followed.
 
-**Why the pymovements stamp.** `schema_version` guards the reading pymovements gives a sidecar
-beyond BIDS: the Duration columns rule and the keys adoptions add. Every file pymovements writes
-carries that reading, conformant or not, since BIDS allows the extra keys [2]. A third-party sidecar
-carries none of it, which is why a file without a pymovements stamp reads silently. `schema` serves
-a file outside a BIDS layout, where no file name says which class wrote it. `version` is provenance,
-BIDS has no per-sidecar field for it.
+### Why an entry without a column is kept, silently
 
-**Alternatives rejected.**
+BIDS treats a description for a nonexistent column as other metadata [2], and the BIDS validator is
+clean on it. Dropping it would discard something the user wrote, so it stays in both dicts and is
+written. It stays without a warning because no warning could be reliable: BIDS identifies a column
+entry by its name matching a column [2], and that match is gone with the column. `Format` would mark
+the entries pymovements wrote, but it is optional in BIDS and absent from most hand-written entries.
+And nothing goes wrong in pymovements on such an entry, so by the rule above it is no warning. A
+column name whose value is not a dict is different. The loader looks the dtype up there and finds
+none, so the column keeps the dtype inferred from the data. Load and save warn, whatever
+`verify_bids` says.
+
+### Why verification is opt-in
+
+The aim of the sidecar is that a saved file loads back as it was saved: the frame with its dtypes,
+the metadata dict with its entries. The sidecar carries what that takes, `Format` and `Units`, so a
+csv file loads back as safely as a tsv file. BIDS conformity is a goal of the caller, not a
+condition pymovements enforces, so a nonconformant save is no failure and nothing warns on its own.
+The defaults conform, so a caller who writes BIDS files gets them without asking. A caller who wants
+the check asks for it with `verify_bids`, on save as on load. What warns or raises without asking is
+what would make a file load back differently from how it was saved, or make the record lie, see
+<a href="#conflicts">Conflicts</a>.
+
+### Why an existing file raises
+
+pymovements output goes to a derivatives directory, so a file already at `path` or at the sidecar
+path was written by someone else or by an earlier run. Writing over a sidecar beside a raw file is
+an accident in nearly every workflow, and the lost record does not come back: the next load of that
+file degrades to inference. Save therefore raises before it writes anything, and the round trip onto
+the same path says `overwrite=True`. One flag governs both files: a flag that protected the sidecar
+and not the data beside it would mislead. The data file contract takes the rule over for every other
+file pymovements writes. The same check covers two data files that share one stem, since the first
+one's sidecar sits at the path. Where none does, nothing is lost, since that file had no record. The
+proposal adds no warning for a data file of the same stem beside the target. In the common case, the
+same object saved again in another format, that warning would name a file the caller just wrote.
+When save raises, the message names such files.
+
+### Why no default time unit
+
+A time unit is a factor on every value of a column, so a wrong one shows nowhere. pymovements
+therefore applies a unit only where something fixes it: the `Units` entry, a save keyword of the
+adopting class, or the BIDS definition of a column, which the adoption declares. `age` in years is
+such a BIDS-fixed unit already [4], the released age cap in `Participants.verify_bids` reads it as
+years. Where nothing fixes a unit, a number column has none. Save raises for a Duration column
+rather than falling back to one. A dataset-wide unit is the dataset's to state, BIDS does it with an
+inherited sidecar [7]. It reaches the file loader through `metadata=` or the load keyword.
+
+### Why the pymovements stamp
+
+`schema_version` guards the reading pymovements gives a sidecar beyond BIDS: the Duration columns
+rule and the keys adoptions add. Every file pymovements writes carries that reading, conformant or
+not, since BIDS allows the extra keys [2]. A third-party sidecar carries none of it, which is why a
+file without a pymovements stamp reads silently. `schema` serves a file outside a BIDS layout, where
+no file name says which class wrote it. `version` is provenance, BIDS has no per-sidecar field for
+it.
+
+### Alternatives rejected
 
 - A `columns` wrapper for the column dicts. Not the BIDS shape [2], and the validator no longer
   finds the descriptions.
@@ -537,11 +575,13 @@ BIDS has no per-sidecar field for it.
   not find it.
 - Recomputing `Format` at every save. Turns `label` into `string`.
 - One dict that mirrors the file. Each difference after load needed a rule for which side the one
-  dict shows, see Why two dicts.
+  dict shows, see <a href="#why-two-dicts">Why two dicts</a>.
 
 ## Backwards compatibility
 
-**Participants and Phenotype.** What changes from v0.30.0, by where it shows:
+### Participants and Phenotype
+
+What changes from v0.30.0, by where it shows:
 
 | where | what | before | from v0.30.0 |
 |---|---|---|---|
@@ -566,7 +606,8 @@ Under a BIDS layout the participants file is `participants.tsv`, so its default 
 not change. `metadata_path` on `save`, `metadata_encoding` on `save` and `load`, and a path in
 `metadata=` on `load` keep working under a deprecation warning from v0.30.0 and are removed in
 v0.35.0. A deprecated keyword given together with its replacement raises. The signatures before,
-with the deprecated keywords and after their removal are written out under Resulting signatures.
+with the deprecated keywords and after their removal are written out under
+<a href="#resulting-signatures">Resulting signatures</a>.
 
 ## Implementation
 
