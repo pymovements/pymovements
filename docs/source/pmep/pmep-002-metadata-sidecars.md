@@ -141,7 +141,7 @@ save(
     sidecar_path: Path | str | None = None,   # <stem>.json when None
     sidecar_encoding: str = 'utf-8',          # encoding of the sidecar file
     overwrite: bool = False,                  # write over a file at path or at the sidecar path
-    verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
+    verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,   # released shape, see Scope
     ...
 ) -> None
 
@@ -151,14 +151,15 @@ load(
     *,
     sidecar_path: Path | str | None = None,   # <stem>.json when None
     sidecar_encoding: str = 'utf-8',          # encoding of the sidecar file
-    verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
+    verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,   # released shape, see Scope
     ...
 ) -> Self
 ```
 
-**Participants and Phenotype.** `save` and `load` on both classes, before and after. `...`
-stands for the keywords that do not change. The two classes differ only in the released
-`metadata_path` default, `'participants.json'` on `Participants` and `None` on `Phenotype`:
+**Participants and Phenotype signatures.** `save` and `load` on both classes: before, with the
+deprecated keywords from v0.30.0, and after their removal in v0.35.0. `...` stands for the
+keywords that do not change. The two classes differ only in the released `metadata_path`
+default:
 
 ```python
 # before, v0.28.0
@@ -167,7 +168,7 @@ def save(
     path: Path | str,
     *,
     verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = 'REQUIRED',
-    metadata_path: Path | str | None = None,
+    metadata_path: Path | str | None = None,    # 'participants.json' on Participants
     metadata_encoding: str = 'utf-8',
     ...
 ) -> None
@@ -181,7 +182,32 @@ def load(
     ...
 ) -> Self
 
-# after, v0.30.0
+# from v0.30.0, the deprecated keywords warn and are removed in v0.35.0
+def save(
+    self,
+    path: Path | str,
+    *,
+    verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
+    sidecar_path: Path | str | None = None,
+    sidecar_encoding: str = 'utf-8',
+    overwrite: bool = False,
+    metadata_path: Path | str | None = None,    # deprecated, use sidecar_path
+    metadata_encoding: str | None = None,       # deprecated, use sidecar_encoding
+    ...
+) -> None
+
+def load(
+    path: Path | str,
+    metadata: Path | str | dict[str, Any] | None = None,   # a path is deprecated, use sidecar_path
+    *,
+    verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
+    sidecar_path: Path | str | None = None,
+    sidecar_encoding: str = 'utf-8',
+    metadata_encoding: str | None = None,       # deprecated, use sidecar_encoding
+    ...
+) -> Self
+
+# from v0.35.0
 def save(
     self,
     path: Path | str,
@@ -375,8 +401,9 @@ The defaults on load are the BIDS conventions:
 Without a sidecar `sidecar` is `None` and the metadata dict holds what construction writes, the
 pymovements stamp and a `Format` per column, and `Sources`.
 
-**Participants and Phenotype** already model the BIDS sidecar in `metadata`. They adopt with the
-`schema` values `participants` and `phenotype`, and every rule above applies to them. What changes
+**Participants and Phenotype adopt.** Both classes already model the BIDS sidecar in `metadata`.
+They adopt with the `schema` values `participants` and `phenotype`, and every rule above applies
+to them. What changes
 for their files and their signatures is listed under Backwards compatibility. Neither has a time
 column, `age` carries `years` and stays an integer column. `MeasurementToolMetadata` in a
 `Phenotype` sidecar is file-level metadata [5] and stays silent.
@@ -533,8 +560,8 @@ BIDS has no per-sidecar field for it.
 
 `metadata_path` on `save`, `metadata_encoding` on `save` and `load`, and a path in `metadata=`
 on `load` keep working under a deprecation warning from v0.30.0 and are removed in v0.35.0. A
-deprecated keyword given together with its replacement raises. The signatures before and after
-are written out under Resulting signatures.
+deprecated keyword given together with its replacement raises. The signatures before, with the
+deprecated keywords and after their removal are written out under Resulting signatures.
 
 ## Implementation
 
