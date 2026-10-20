@@ -26,7 +26,10 @@ saved file records the file that was actually read, not the sources of the
 original data. Full provenance chains are recovered hop by hop through the
 metadata saved alongside each file. Entries are POSIX-style path strings:
 absolute for standalone loading, relative to the dataset root when loaded via
-:py:class:`~pymovements.Dataset`.
+:py:class:`~pymovements.Dataset`. The absolute form is resolved, so symlinks
+are replaced by their targets: without a dataset root there is no reference
+point for a relative path, and the resolved path is the one the file was
+actually read from.
 """
 from __future__ import annotations
 
@@ -43,6 +46,10 @@ def add_source(metadata: dict[str, Any] | None, file: Any) -> dict[str, Any]:
     saved alongside the data must not forward that file's ``Sources`` entry
     here: it describes the saved file's own provenance, while the proximate
     source of the loaded object is the file that was actually read.
+
+    The recorded path is resolved: absolute, with symlinks replaced by their
+    targets. A standalone load has no dataset root to relativize against, and
+    the resolved path names the file that was actually read.
 
     Parameters
     ----------

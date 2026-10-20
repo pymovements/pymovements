@@ -149,6 +149,10 @@ class Dataset:
         attribute. All gaze files will be loaded as dataframes and assigned to the
         :py:attr:`~pymovements.Dataset.gaze` attribute.
 
+        Every loaded object records the file it was read from in the ``Sources`` entry of its
+        ``metadata``, as a POSIX path relative to the dataset root. Reloading files saved by
+        this dataset records the reloaded files, not the sources of the original data.
+
         Parameters
         ----------
         participants: bool | None

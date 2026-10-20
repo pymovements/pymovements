@@ -83,7 +83,9 @@ class Gaze:
         A dataframe of events in the gaze signal. (default: None)
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. A ``Sources`` entry lists the files the
-        gaze data was loaded from and is propagated to the events. (default: None)
+        gaze data was loaded from and is propagated to the events. Reloading a file saved
+        with :py:meth:`save` records the reloaded file, not the sources of the original
+        data. (default: None)
     messages: polars.DataFrame | None
         DataFrame containing messages from the experiment.
         The required columns are 'time' and 'content'. (default: None)
@@ -143,7 +145,8 @@ class Gaze:
         The experiment definition.
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. A ``Sources`` entry lists the files the
-        gaze data was loaded from.
+        gaze data was loaded from. Reloading a file saved with :py:meth:`save` records the
+        reloaded file, not the sources of the original data.
     messages: polars.DataFrame | None
         DataFrame containing messages from the experiment session.
     trial_columns: list[str] | None
