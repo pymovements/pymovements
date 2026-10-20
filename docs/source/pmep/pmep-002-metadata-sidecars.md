@@ -128,7 +128,7 @@ The sidecar owns the `json` extension next to the stem, so no data format may us
 
 ### Adoption contract
 
-A class that adopts the sidecar carries two attributes and two parameters in these roles, whatever
+A class that adopts the sidecar carries the attributes and keywords below in these roles, whatever
 else its signatures hold:
 
 ```python
@@ -160,9 +160,10 @@ load(
 
 ### Participants and Phenotype signatures
 
-`save` and `load` on both classes: before, with the deprecated keywords from v0.30.0, and after
-their removal in v0.35.0. `...` stands for the keywords that do not change. The two classes
-differ only in the released `metadata_path` default:
+`save` and `load` on both classes: before, with the deprecated keywords, and after their removal.
+`...` stands for the keywords that do not change. The before block shows `Phenotype`, the released
+`Participants` differs only in `metadata_path`, typed `Path | str` with the default
+`'participants.json'`:
 
 ```python
 # before, v0.28.0
@@ -185,7 +186,7 @@ def load(
     ...
 ) -> Self
 
-# from v0.30.0, the deprecated keywords warn and are removed in v0.35.0
+# from v0.30.0, with the deprecated keywords
 def save(
     self,
     path: Path | str,
@@ -258,9 +259,9 @@ The mechanism is what every sidecar shares: the shape, the pymovements stamp and
 the two attributes and the metadata dict rules, the Duration columns rule, the conflict rules and
 the two required-level checks. It is defined once, here. A class adopts it in its own proposal or
 issue by naming what belongs to that class: its `schema` value, the keys it writes beyond the ones
-defined here, its own checks and its save keyword for the time unit. The keys an adoption adds are
-top-level keys beside `Sources`, never part of the pymovements stamp. A class that has adopted
-follows every rule below.
+defined here, its own checks, the unit its Duration columns use in memory and its save keyword for
+the time unit. The keys an adoption adds are top-level keys beside `Sources`, never part of the
+pymovements stamp. A class that has adopted follows every rule below.
 
 ### The sidecar file
 
@@ -269,8 +270,8 @@ file name without its format extension, a compression suffix included: `sub-01_p
 the sidecar `sub-01_physio.json` and `data.v2.tsv` has `data.v2.json`. A load reads it from the same
 place. The sidecar holds one dict per column at the top level, keyed by the column name, and the
 file-level keys beside them, with no wrapper key around the columns. Save writes and load reads the
-sidecar in `sidecar_encoding`, `utf-8` by default. The `sidecar` attribute holds the file as read by
-load or written by save, the `metadata` attribute what describes the data object, see
+sidecar in `sidecar_encoding`. The `sidecar` attribute holds the file as read by load or written by
+save, the `metadata` attribute what describes the data object, see
 <a href="#the-metadata-dict">The metadata dict</a>.
 
 ### The pymovements stamp
@@ -321,8 +322,8 @@ each other and to the frame:
    metadata dict, `sidecar` and the file are equal.
 
 One rule covers every correction pymovements makes to the metadata dict: it fills a missing
-entry silently and replaces an entry that contradicts the frame or the file with a warning that
-names both values. It runs at construction and at save:
+entry silently, replaces an entry that contradicts the frame or the file with a warning that
+names both values, and raises where it has no value to fill. It runs at construction and at save:
 
 | when | what | outcome |
 |---|---|---|
@@ -331,7 +332,7 @@ names both values. It runs at construction and at save:
 | save | `Format` missing | filled from the dtype of its column, silently |
 | save | `Units` missing on a Duration column | filled from the unit save writes, silently |
 | construction and save | `Format` does not fit the dtype of its column | replaced, the warning names both values |
-| construction and save | the dtype of a column maps to no `Format` value, such as Date, Datetime, List or Struct | raises, as today, the message names the column and its dtype |
+| construction and save | `Format` missing and the dtype of its column maps to no value, such as Date, Datetime, List or Struct | raises, as today, the message names the column and its dtype |
 | construction and save | pymovements stamp differs from the running one | replaced, the warning names both values, an equal one is silent |
 
 The load keyword in rule 1 is the same rule on the file side: the keyword states what the file
@@ -611,8 +612,8 @@ What changes from v0.30.0, by where it shows:
 Under a BIDS layout the participants file is `participants.tsv`, so its default sidecar path does
 not change. `metadata_path` on `save`, `metadata_encoding` on `save` and `load`, and a path in
 `metadata=` on `load` keep working under a deprecation warning from v0.30.0 and are removed in
-v0.35.0. A deprecated keyword given together with its replacement raises. The signatures before,
-with the deprecated keywords and after their removal are written out under
+v0.35.0. `metadata_path` or a path in `metadata=` given together with `sidecar_path` raises. The
+signatures before, with the deprecated keywords and after their removal are written out under
 <a href="#resulting-signatures">Resulting signatures</a>.
 
 ## Implementation
@@ -634,8 +635,7 @@ private, so every issue is tested through the public methods of the class that h
 - [ ] `verify_bids`: the `False` default on save, the two required-level checks the mechanism
       runs, and how an adoption declares its own
 - [ ] `sidecar_path` and `sidecar_encoding` on save and load, `metadata` on load as a dict only,
-      `metadata_path`, `metadata_encoding` and a path in `metadata=` deprecated in v0.30.0 and
-      removed in v0.35.0
+      `metadata_path`, `metadata_encoding` and a path in `metadata=` deprecated
 - [ ] `Phenotype` adopts: `schema` `phenotype`, the pymovements stamp from construction,
       `Sources`, `sidecar`, `MeasurementToolMetadata` stays file-level
 - [ ] changelog entry and documentation of the sidecar format
