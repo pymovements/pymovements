@@ -392,8 +392,8 @@ therefore a finding when asked and silent otherwise. An adoption declares its ow
 either level, and the same `verify_bids` runs them.
 
 **Loading BIDS files.** A BIDS-conformant data file loads with the class's `load(path)` alone,
-whether or not a sidecar exists next to it, since BIDS recommends the sidecar and does not require it [4].
-The defaults on load are the BIDS conventions:
+whether or not a sidecar exists next to it, since BIDS recommends the sidecar and does not
+require it [4]. The defaults on load are the BIDS conventions:
 
 - a tsv file is read tab-separated
 - `n/a` is read as null
