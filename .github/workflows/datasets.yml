@@ -55,7 +55,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           key:
-            datasets-ubuntu-latest-py314-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/datasets') }}
+            datasets-ubuntu-latest-py314-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/datasets.yml') }}
           path: |
             ~/.cache
             ~/.tox
