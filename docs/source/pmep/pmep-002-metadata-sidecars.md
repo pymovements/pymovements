@@ -409,8 +409,8 @@ by default. `'REQUIRED'` warns for each required-level finding. `'RECOMMENDED'` 
 required-level and recommended-level findings. `True` raises on a required-level finding. `False` is
 silent. The mechanism runs two required-level checks: the data file is a tsv file with tab
 separators, and nulls are written as `n/a` <a href="#references">[2]</a>. A csv file is therefore a
-finding when asked and silent otherwise. An adoption declares its own checks, at either level, and
-the same `verify_bids` runs them.
+required-level finding unless `verify_bids` is `False`. An adoption declares its own checks, at
+either level, and the same `verify_bids` runs them.
 
 ### Loading BIDS files
 
