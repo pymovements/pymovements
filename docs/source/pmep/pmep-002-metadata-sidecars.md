@@ -346,7 +346,7 @@ correction but a conversion the caller chose. It wins silently and the unit writ
 `Sources` is the BIDS provenance key with the BIDS meaning <a href="#references">[1]</a>: the files
 directly used in the creation of this file, one hop, not the chain. Every adopting class carries it.
 A loaded object records the file that was read, as a POSIX path, relative to the dataset root under
-a `Dataset` and absolute otherwise. A loaded sidecar's own `Sources` entry stays on `sidecar` and is
+a `Dataset` and as passed otherwise. A loaded sidecar's own `Sources` entry stays on `sidecar` and is
 not carried into the metadata dict. It describes that file's provenance and not the loaded object's.
 A `Sources` entry given in `metadata=` is kept, it states the caller's intent. Save writes the entry
 when the metadata dict holds it. A save over the loaded file therefore writes that file's path as
