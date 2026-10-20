@@ -85,7 +85,8 @@ source_suffix = {
 
 
 def config_inited_handler(app, config):
-    os.makedirs(os.path.join(app.srcdir, app.config.generated_path), exist_ok=True)
+    os.makedirs(os.path.join(app.srcdir, config.generated_path), exist_ok=True)
+    config.exclude_patterns.append(config.generated_path)
 
 
 # Matches markdown links to our own hosted documentation pages, e.g.
@@ -231,9 +232,7 @@ templates_path = ['_templates']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-# Generated files are only pulled in via mdinclude and must not be picked up
-# as standalone documents.
-exclude_patterns = ['_generated', 'pmep/TEMPLATE.md']
+exclude_patterns = ['pmep/TEMPLATE.md']
 suppress_warnings = [
     'myst.header',
 ]
