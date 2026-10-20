@@ -138,6 +138,7 @@ save(
     path: Path | str,
     *,
     sidecar_path: Path | str | None = None,   # <stem>.json when None
+    sidecar_encoding: str = 'utf-8',          # encoding of the sidecar file
     overwrite: bool = False,                  # write over a file at path or at the sidecar path
     verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
     ...
@@ -148,6 +149,7 @@ load(
     metadata: dict[str, Any] | None = None,
     *,
     sidecar_path: Path | str | None = None,   # <stem>.json when None
+    sidecar_encoding: str = 'utf-8',          # encoding of the sidecar file
     verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
     ...
 ) -> Self
@@ -165,6 +167,7 @@ def save(
     *,
     verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = 'REQUIRED',
     metadata_path: Path | str | None = None,
+    metadata_encoding: str = 'utf-8',
     ...
 ) -> None
 
@@ -173,6 +176,7 @@ def load(
     metadata: Path | str | dict[str, Any] | None = None,
     *,
     verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
+    metadata_encoding: str = 'utf-8',
     ...
 ) -> Self
 
@@ -183,6 +187,7 @@ def save(
     *,
     verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
     sidecar_path: Path | str | None = None,
+    sidecar_encoding: str = 'utf-8',
     overwrite: bool = False,
     ...
 ) -> None
@@ -193,6 +198,7 @@ def load(
     *,
     verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
     sidecar_path: Path | str | None = None,
+    sidecar_encoding: str = 'utf-8',
     ...
 ) -> Self
 ```
@@ -225,7 +231,8 @@ roadmap](https://github.com/pymovements/pymovements/discussions/1763).
 **The sidecar file.** A save writes `<stem>.json` next to the data file, or to `sidecar_path`
 when given. A load reads it from the same place. The sidecar holds one dict per column at the
 top level, keyed by the column name, and the file-level keys beside them, with no wrapper key
-around the columns. In memory the file is `sidecar`, as read by load or written by save.
+around the columns. Save writes and load reads the sidecar in `sidecar_encoding`, `utf-8` by
+default. In memory the file is `sidecar`, as read by load or written by save.
 `metadata` is what describes the data object, see The metadata dict. Save raises when a file
 already exists at `path` or at the sidecar path, unless `overwrite` is given, see Conflicts. Save
 writes the sidecar as indented JSON that a person can read without a tool, one key per line at
@@ -519,10 +526,12 @@ BIDS has no per-sidecar field for it.
 | API | the save keyword `overwrite` | none | `overwrite: bool = False`, additive |
 | API | the save keyword for the sidecar path | `metadata_path` | `sidecar_path` |
 | API | the sidecar path on load | in `metadata` | in `sidecar_path`, `metadata` takes a dict only |
+| API | the encoding keyword of the sidecar, save and load | `metadata_encoding` | `sidecar_encoding` |
 
-`metadata_path` on `save` and a path in `metadata=` on `load` keep working under a deprecation
-warning from v0.30.0 and are removed in v0.35.0. Either given together with `sidecar_path`
-raises. The signatures before and after are written out under Resulting signatures.
+`metadata_path` on `save`, `metadata_encoding` on `save` and `load`, and a path in `metadata=`
+on `load` keep working under a deprecation warning from v0.30.0 and are removed in v0.35.0. A
+deprecated keyword given together with its replacement raises. The signatures before and after
+are written out under Resulting signatures.
 
 ## Implementation
 
@@ -542,8 +551,9 @@ private, so every issue is tested through the public methods of the class that h
       kept silently, the raise on an existing data file or sidecar and the `overwrite` keyword
 - [ ] `verify_bids`: the `False` default on save, the two required-level checks the mechanism
       runs, and how an adoption declares its own
-- [ ] `sidecar_path` on save and load, `metadata` on load as a dict only, `metadata_path` and a
-      path in `metadata=` deprecated in v0.30.0 and removed in v0.35.0
+- [ ] `sidecar_path` and `sidecar_encoding` on save and load, `metadata` on load as a dict only,
+      `metadata_path`, `metadata_encoding` and a path in `metadata=` deprecated in v0.30.0 and
+      removed in v0.35.0
 - [ ] `Phenotype` adopts: `schema` `phenotype`, the pymovements stamp from construction,
       `Sources`, `sidecar`, `MeasurementToolMetadata` stays file-level
 - [ ] changelog entry and documentation of the sidecar format
