@@ -86,6 +86,8 @@ source_suffix = {
 
 def config_inited_handler(app, config):
     os.makedirs(os.path.join(app.srcdir, config.generated_path), exist_ok=True)
+    # Generated files are only pulled in via mdinclude and must not be picked up
+    # as standalone documents.
     config.exclude_patterns.append(config.generated_path)
 
 
