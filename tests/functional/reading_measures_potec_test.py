@@ -48,14 +48,16 @@ from pymovements.dataset._utils._archives import extract_archive
 from pymovements.dataset.websource import WebSource
 from pymovements.measure.reading import compute_reading_measures
 
+# The OSF files are pinned to a version: a new upload of the published files changes the
+# unversioned download and its checksum.
 SCANPATHS_SOURCE = WebSource(
-    url='https://osf.io/download/7fkze/',
+    url='https://osf.io/download/7fkze/?version=6',
     filename='scanpaths_merged.zip',
     md5='a27f74d94cb00946c5f40b3bb54e3705',
 )
 
 READING_MEASURES_SOURCE = WebSource(
-    url='https://osf.io/download/3ywhz/',
+    url='https://osf.io/download/3ywhz/?version=6',
     filename='reading_measures_merged.zip',
     md5='b7ada7ca91f3a807d873598b821de88d',
 )
