@@ -38,6 +38,10 @@ def cluster(
 ) -> pl.Expr:
     """Cluster Y-coordinates into clusters matching text lines using K-Means.
 
+    The fixation y-coordinates are grouped into as many clusters as there are text
+    lines. Clusters ordered by their mean y-coordinate map to the text lines top to
+    bottom.
+
     Reference: :cite:p:`Carr2022`.
 
     Parameters

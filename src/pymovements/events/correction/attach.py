@@ -36,6 +36,9 @@ def attach(
 ) -> pl.Expr:
     """Attach each fixation to the vertically closest text line center.
 
+    Each fixation is corrected in isolation, making attach the most basic of the drift
+    correction algorithms.
+
     Reference: :cite:p:`Carr2022`.
 
     Parameters
@@ -51,6 +54,30 @@ def attach(
     -------
     pl.Expr
         Expression computing the corrected y-coordinates.
+
+    Examples
+    --------
+    Correcting fixations of a single trial that drift away from two lines of text with
+    their centers at y = 100 and 200 snaps each y-coordinate onto its closest line
+    center:
+
+    >>> import polars as pl
+    >>> from pymovements.events.correction import attach
+    >>> fixations = pl.DataFrame({
+    ...     'location': [[100.0, 108.0], [150.0, 95.0], [100.0, 210.0], [150.0, 195.0]],
+    ... })
+    >>> fixations.select(attach([100.0, 200.0]))
+    shape: (4, 1)
+    ┌──────────┐
+    │ y_attach │
+    │ ---      │
+    │ f64      │
+    ╞══════════╡
+    │ 100.0    │
+    │ 100.0    │
+    │ 200.0    │
+    │ 200.0    │
+    └──────────┘
     """
     line_values = to_line_values(line_ys)
     return nearest_line_y(location_y(location), line_values).alias('y_attach')
