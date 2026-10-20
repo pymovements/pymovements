@@ -21,13 +21,22 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
-      - name: Find merge-base
-        id: merge-base
-        if: github.event_name == 'pull_request'
+      # The baseline is the commit the head is measured against, on this same
+      # runner: the merge-base on a pull request, the previous commit otherwise.
+      - name: Find baseline commit
+        id: baseline
         env:
+          EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: echo "sha=$(git merge-base "$BASE_SHA" "$HEAD_SHA")" >> "$GITHUB_OUTPUT"
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            sha=$(git merge-base "$BASE_SHA" "$HEAD_SHA")
+          else
+            sha=$(git rev-parse --verify HEAD^)
+          fi
+          echo "baseline commit: $sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
       - name: Restore cached environment
         id: cache-restore
@@ -47,9 +56,29 @@ jobs:
       - name: Install tox
         run: python -m pip install tox
 
-      - name: Setup benchmark environment
-        if: github.event_name != 'pull_request'
+      - name: Checkout baseline commit
+        env:
+          SHA: ${{ steps.baseline.outputs.sha }}
+        run: git checkout --quiet "$SHA"
+
+      - name: Setup baseline benchmark environment
         run: tox -vv --notest -e benchmark
+
+      # The head run overwrites benchmark-data.json, keep a copy for the comparison.
+      - name: Benchmark baseline commit
+        run: |
+          tox --skip-pkg-install -e benchmark
+          mv benchmark-data.json benchmark-data-baseline.json
+
+      - name: Checkout head commit
+        env:
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: git checkout --quiet "$SHA"
+
+      # The environment holds the baseline package and its dependencies,
+      # recreate it for the head commit.
+      - name: Setup head benchmark environment
+        run: tox -vv --notest --recreate -e benchmark
 
       - name: Cache environment
         uses: actions/cache/save@v4
@@ -61,63 +90,30 @@ jobs:
             ~/.cache
             ~/.tox
 
-      - name: Run benchmark
-        if: github.event_name != 'pull_request'
+      - name: Benchmark head commit
         run: tox --skip-pkg-install -e benchmark
 
-      - name: Checkout merge-base
-        if: github.event_name == 'pull_request'
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.merge-base.outputs.sha }}
-          fetch-depth: 0
-
-      - name: Setup merge-base benchmark environment
-        if: github.event_name == 'pull_request'
-        run: tox -vv --notest -e benchmark
-
-      - name: Benchmark merge-base
-        if: github.event_name == 'pull_request'
-        run: tox --skip-pkg-install -e benchmark -- --benchmark-save=merge-base
-
-      - name: Checkout pull request head
-        if: github.event_name == 'pull_request'
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-          # Keep the merge-base result in .benchmarks for the comparison step.
-          clean: false
-
-      - name: Recreate pull request benchmark environment
-        if: github.event_name == 'pull_request'
-        run: tox -vv --notest --recreate -e benchmark
-
-      - name: Benchmark pull request head and compare
-        if: github.event_name == 'pull_request'
-        # CPU frequency metadata can change between runs on the same runner.
-        run: >-
-          tox --skip-pkg-install -e benchmark --
-          -W "ignore:Benchmark machine_info is different:pytest_benchmark.logger.PytestBenchmarkWarning"
-          --benchmark-compare=0001
-          --benchmark-compare-fail=mean:50%
-
-      - name: Download previous benchmark data
-        uses: actions/cache@v4
-        if: github.ref == 'refs/heads/main'
-        with:
-          path: ./cache
-          key: benchmark-${{ github.ref_name }}-${{ github.run_id }}
-          restore-keys: benchmark-main
-
-      - name: Store benchmark result
+      # The action compares against the last entry in its data file: seeded with
+      # the baseline result, the head result is compared on the same runner.
+      # The token is for the commit lookup on schedule and dispatch events,
+      # whose payload carries no commit.
+      - name: Record baseline result
         uses: benchmark-action/github-action-benchmark@v1
-        if: github.ref == 'refs/heads/main'
+        with:
+          name: pytest-benchmark
+          tool: 'pytest'
+          output-file-path: benchmark-data-baseline.json
+          external-data-json-path: ./comparison/benchmark-data.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false
+
+      - name: Compare head against baseline
+        uses: benchmark-action/github-action-benchmark@v1
         with:
           name: pytest-benchmark
           tool: 'pytest'
           output-file-path: benchmark-data.json
-          external-data-json-path: ./cache/benchmark-data.json
+          external-data-json-path: ./comparison/benchmark-data.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: false
           alert-threshold: '150%'
