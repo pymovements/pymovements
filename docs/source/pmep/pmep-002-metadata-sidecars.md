@@ -251,9 +251,9 @@ read such a file back as it was written. The sidecar is where that record belong
 version rules, the two attributes and the metadata dict rules, the Duration columns rule, the
 conflict rules and the two required-level checks. It is defined once, here. A class adopts it in its
 own proposal or issue by naming what belongs to that class: its `schema` value, the keys it writes
-beyond the ones defined here, its own checks and its save keyword for the time unit. A class that
-has adopted follows every rule below. Which class adopts next, and when, follows the [data model
-roadmap](https://github.com/pymovements/pymovements/discussions/1763).
+beyond the ones defined here, its own checks and its save keyword for the time unit. The keys an
+adoption adds are top-level keys beside `Sources`, never part of the pymovements stamp. A class
+that has adopted follows every rule below.
 
 **The sidecar file.** A save writes `<stem>.json` next to the data file, or to `sidecar_path`
 when given. The stem is the file name without its format extension, a compression suffix
@@ -268,10 +268,9 @@ writes the sidecar as indented JSON that a person can read without a tool, one k
 every depth.
 
 **The pymovements stamp.** The top-level `pymovements` entry holds exactly three keys. `schema`
-is a stable identifier of the writing class, the lowercase class name. It is written from the
-first version so that every file carries it once a generic loader dispatches on it.
-`schema_version` is the version of the schema defined here, see The schema version. `version` is
-the package version that wrote the file, as provenance. Construction writes the running
+is a stable identifier of the writing class, the lowercase class name. `schema_version` is the
+version of the schema defined here, see The schema version. `version` is the package version
+that wrote the file, as provenance. Construction writes the running
 pymovements stamp into the metadata dict. Save writes it as the first key of the sidecar, the
 other keys keep the order of the metadata dict. Load reads `schema_version` on `sidecar` for the
 version check, at any position, and the file's pymovements stamp stays there. A pymovements
@@ -319,6 +318,7 @@ names both values. It runs at construction and at save:
 | save | `Format` missing | filled from the dtype of its column, silently |
 | save | `Units` missing on a Duration column | filled from the unit save writes, silently |
 | construction and save | `Format` does not fit the dtype of its column | replaced, the warning names both values |
+| construction and save | the dtype of a column maps to no `Format` value, such as Date, Datetime, List or Struct | raises, as today, the message names the column and its dtype |
 | construction and save | pymovements stamp differs from the running one | replaced, the warning names both values, an equal one is silent |
 
 The load keyword in rule 1 is the same rule on the file side: the keyword states what the file
@@ -350,8 +350,10 @@ and written as it is.
 
 **Duration columns.** A column loads as a Duration only when its `Format` is `number` or `integer`
 and its `Units` is one of the symbols `s`, `ms`, `us` and `ns`, written as a number. BIDS
-recommends these symbols over spelled-out names [3]. The one exception is a column whose unit BIDS
-fixes: an adoption declares such columns, and they load as a Duration in that unit when `Units` is
+recommends these symbols over spelled-out names [3]. `Units` names the unit in the file. Load
+converts the values into the Duration unit the adopting class uses in memory, and save converts
+them back into the unit it writes. The one exception is a column whose unit BIDS fixes: an
+adoption declares such columns, and they load as a Duration from that unit when `Units` is
 absent. A number column without a time unit in `Units` is otherwise never a Duration. `step`, a
 sample index, carries no dtype here. On save to a text file the unit of a Duration column
 resolves in this order:
@@ -397,7 +399,7 @@ The defaults on load are the BIDS conventions:
 - a tsv file is read tab-separated
 - `n/a` is read as null
 - a column takes its dtype from `Format` where pymovements maps it and from the data otherwise
-- a column whose unit BIDS fixes loads as a Duration in that unit, see Duration columns
+- a column whose unit BIDS fixes loads as a Duration from that unit, see Duration columns
 - `verify_bids` is `False`
 
 Without a sidecar `sidecar` is `None` and the metadata dict holds what construction writes, the
@@ -414,8 +416,9 @@ column, `age` carries `years` and stays an integer column. `MeasurementToolMetad
 `dataset_description.json` and BIDS URIs as the `Sources` value form. The generic loader that
 dispatches on `schema`, with its rule for a file labeled for another class. Reading a sidecar
 without its data file, and which sidecar a data file reads under a layout, the inheritance
-principle [7]. The data file contract: format selection, separators, nested columns, a default
-time unit, and the overwrite rule for every file pymovements writes outside this mechanism. The
+principle [7]. The data file contract: format selection, separators, the dtypes a text file can
+hold, nested columns included, a default time unit, and the overwrite rule for every file
+pymovements writes outside this mechanism. The
 shape of `verify_bids`: the level and the consequence, warn or raise, as separate parameters,
 and the result type of the `verify_bids` method, a verification proposal of its own.
 
