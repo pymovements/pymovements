@@ -232,18 +232,20 @@ def load(
 
 ## Motivation
 
-`Participants` and `Phenotype` write a BIDS sidecar from their `metadata` dict, each on its own
-terms. Nothing in the file says which schema it follows or which pymovements version wrote it. A
-`Format` that contradicts the frame is written as it is. An entry without a column is handled by
-each class on its own.
+A saved file should load back as it was saved. tsv and csv files store no dtypes, so a text file
+alone does not say whether a column holds integers, labels or durations, nor which unit a time
+column is written in. Today the caller of `load` has to know that and pass the right parameters,
+and a wrong guess changes the data silently: a duration read as a plain number, a label column of
+digits read as integers. The sidecar is where that record belongs. BIDS defines it for this
+purpose [2], `Format` and `Units` say how a column is read, and a file that carries its record
+loads with the path alone.
 
-`Events` and more classes gain `save` and `load` methods as the data model grows. Without one
-definition each would define its own sidecar, and the same rule would be stated several times and
-drift.
-
-tsv and csv files store no dtypes. Today the caller of `load` has to pass the right parameters to
-read such a file back as it was written. The sidecar is where that record belongs: `Format` and
-`Units` say how a column is read.
+Today `Participants` and `Phenotype` write a BIDS sidecar from their `metadata` dict, each on its
+own terms, and `Events` and more classes gain `save` and `load` as the data model grows. Nothing
+in the files says which schema they follow or which pymovements version wrote them. A `Format`
+that contradicts the frame is written as it is, and an entry without a column is handled by each
+class on its own. Without one definition every class would define its own sidecar, and the same
+rule would be stated several times and drift.
 
 ## Specification
 
@@ -261,11 +263,8 @@ included: `sub-01_physio.tsv.gz` has the sidecar `sub-01_physio.json` and `data.
 `data.v2.json`. A load reads it from the same place. The sidecar holds one dict per column at the
 top level, keyed by the column name, and the file-level keys beside them, with no wrapper key
 around the columns. Save writes and load reads the sidecar in `sidecar_encoding`, `utf-8` by
-default. In memory the file is `sidecar`, as read by load or written by save.
-`metadata` is what describes the data object, see The metadata dict. Save raises when a file
-already exists at `path` or at the sidecar path, unless `overwrite` is given, see Conflicts. Save
-writes the sidecar as indented JSON that a person can read without a tool, one key per line at
-every depth.
+default. The `sidecar` attribute holds the file as read by load or written by save, the
+`metadata` attribute what describes the data object, see The metadata dict.
 
 **The pymovements stamp.** The top-level `pymovements` entry holds exactly three keys. `schema`
 is a stable identifier of the writing class, the lowercase class name. `schema_version` is the
@@ -303,9 +302,10 @@ Three rules connect them to each other and to the frame:
 2. For text files the loader builds the dtype of a column from `Format`. A column loads as a
    Duration when `Format` is `number` or `integer` and `Units` is a time unit, or when BIDS
    fixes its unit, see Duration columns.
-3. Save writes the metadata dict to the sidecar path after the corrections below, then sets
-   `sidecar` to what it wrote. A Duration column is written as `number`, see Duration columns.
-   After save the metadata dict, `sidecar` and the file are equal.
+3. Save writes the metadata dict to the sidecar path after the corrections below, as indented
+   JSON with one key per line at every depth, then sets `sidecar` to what it wrote. A Duration
+   column is written as `number`, see Duration columns. After save the metadata dict, `sidecar`
+   and the file are equal.
 
 One rule covers every correction pymovements makes to the metadata dict: it fills a missing
 entry silently and replaces an entry that contradicts the frame or the file with a warning that
