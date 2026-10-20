@@ -155,10 +155,8 @@ load(
 ```
 
 **Participants and Phenotype.** `save` and `load` on both classes, before and after. `...`
-stands for the keywords that do not change, `separator`, `rename`, `read_csv_kwargs`,
-`write_csv_kwargs` and `metadata_encoding`, and for `verify_bids` on load. The two classes
-differ only in the released `metadata_path` default, `'participants.json'` on `Participants` and
-`None` on `Phenotype`:
+stands for the keywords that do not change. The two classes differ only in the released
+`metadata_path` default, `'participants.json'` on `Participants` and `None` on `Phenotype`:
 
 ```python
 # before, v0.28.0
@@ -175,6 +173,7 @@ def load(
     path: Path | str,
     metadata: Path | str | dict[str, Any] | None = None,
     *,
+    verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
     ...
 ) -> Self
 
@@ -193,6 +192,7 @@ def load(
     path: Path | str,
     metadata: dict[str, Any] | None = None,
     *,
+    verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
     sidecar_path: Path | str | None = None,
     ...
 ) -> Self
