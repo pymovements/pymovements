@@ -244,7 +244,7 @@ class ResourceDefinition:
     def filename(self, data: str) -> None:
         source = self._inline_websource('filename')
         if source is None:
-            self.source = WebSource(url=None, filename=data)
+            self.source = WebSource(url=None, filename=data)  # type: ignore[arg-type]
         else:
             self.source = replace(source, filename=data)
 
@@ -277,7 +277,7 @@ class ResourceDefinition:
     def md5(self, data: str) -> None:
         source = self._inline_websource('md5')
         if source is None:
-            self.source = WebSource(url=None, md5=data)
+            self.source = WebSource(url=None, md5=data)  # type: ignore[arg-type]
         else:
             self.source = replace(source, md5=data)
 
@@ -310,7 +310,7 @@ class ResourceDefinition:
     def mirrors(self, data: list[str]) -> None:
         source = self._inline_websource('mirrors')
         if source is None:
-            self.source = WebSource(url=None, mirrors=data)
+            self.source = WebSource(url=None, mirrors=data)  # type: ignore[arg-type]
         else:
             self.source = replace(source, mirrors=data)
 
