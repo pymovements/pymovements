@@ -277,14 +277,15 @@ save, the `metadata` attribute what describes the data object, see
 ### The pymovements stamp
 
 The top-level `pymovements` entry holds exactly three keys. `schema` is a stable identifier of the
-writing class, the lowercase class name. `schema_version` is the version of the schema defined here,
-see <a href="#the-schema-version">The schema version</a>. `version` is the package version that
-wrote the file, as provenance. Construction writes the running pymovements stamp into the metadata
-dict. Save writes it as the first key of the sidecar, the other keys keep the order of the metadata
-dict. Load reads `schema_version` on `sidecar` for the version check, at any position, and the
-file's pymovements stamp stays there. A pymovements stamp in the metadata dict that differs from the
-running one is replaced with a warning, see <a href="#the-metadata-dict">The metadata dict</a>, so
-an edited pymovements stamp is never written.
+writing class, fixed when the class adopts, by convention its lowercase name. `schema_version` is
+the version of the schema defined here, see <a href="#the-schema-version">The schema version</a>.
+`version` is the package version that wrote the file, as provenance. Construction writes the
+running pymovements stamp into the metadata dict. Save writes it as the first key of the sidecar,
+the other keys keep the order of the metadata dict. Load reads `schema_version` on `sidecar` for
+the version check, at any position, and the file's pymovements stamp stays there. A pymovements
+stamp in the metadata dict that differs from the running one is replaced with a warning, see
+<a href="#the-metadata-dict">The metadata dict</a>, so an edited pymovements stamp is never
+written.
 
 ### The schema version
 
