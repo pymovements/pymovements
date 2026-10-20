@@ -40,14 +40,14 @@ from pymovements.gaze.io import from_ipc
     ],
 )
 class TestLoadFunctionSources:
-    def test_adds_absolute_source(
+    def test_adds_source_as_given(
             self, load_function, example_filename, load_kwargs, make_example_file,
     ):
         filepath = make_example_file(example_filename)
 
         gaze = load_function(filepath, **load_kwargs)
 
-        expected_sources = [filepath.resolve().as_posix()]
+        expected_sources = [filepath.as_posix()]
         assert gaze.metadata['Sources'] == expected_sources
         # The source files are propagated to the events container.
         assert gaze.events.metadata['Sources'] == expected_sources
@@ -59,7 +59,18 @@ class TestLoadFunctionSources:
 
         gaze = load_function(str(filepath), **load_kwargs)
 
-        assert gaze.metadata['Sources'] == [filepath.resolve().as_posix()]
+        assert gaze.metadata['Sources'] == [filepath.as_posix()]
+
+    def test_keeps_relative_filepath_relative(
+            self, load_function, example_filename, load_kwargs, make_example_file, monkeypatch,
+    ):
+        filepath = make_example_file(example_filename)
+        monkeypatch.chdir(filepath.parent)
+
+        gaze = load_function(filepath.name, **load_kwargs)
+
+        # A standalone load has no dataset root, the path is recorded as given.
+        assert gaze.metadata['Sources'] == [filepath.name]
 
     @pytest.mark.parametrize(
         ('malformed_sources', 'message'),

@@ -123,7 +123,7 @@ def from_csv(
             The loaded columns follow the order of ``columns`` instead of the file order.
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. When ``file`` is a path, a ``Sources``
-        entry holding its resolved path is added unless already present. When reloading a
+        entry holding the path as given is added unless already present. When reloading a
         file previously saved with :py:meth:`~pymovements.Gaze.save`, the reloaded file
         itself is recorded, not the sources of the original data. (default: None)
     **kwargs: Any
@@ -473,7 +473,7 @@ def from_asc(
         (default: False)
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. When ``file`` is a path, a ``Sources``
-        entry holding its resolved path is added unless already present. (default: None)
+        entry holding the path as given is added unless already present. (default: None)
     extend_resolution: bool | None
         Extend the parsed screen resolution by 1 pixel if ``True``.
         If ``None``, the resolution is extended by 1 pixel unless the file was recorded by
@@ -686,7 +686,7 @@ def from_ipc(
             Additional keyword arguments to be passed to :py:func:`polars.read_ipc`. (default: None)
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. When ``file`` is a path, a ``Sources``
-        entry holding its resolved path is added unless already present. When reloading a
+        entry holding the path as given is added unless already present. When reloading a
         file previously saved with :py:meth:`~pymovements.Gaze.save`, the reloaded file
         itself is recorded, not the sources of the original data. (default: None)
     **kwargs: Any
@@ -989,7 +989,7 @@ def from_begaze(
         Preferred eye to parse when both eyes are present ("L" or "R"). Defaults to "L".
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. Unless already present, a ``Sources``
-        entry holding the resolved path of ``file`` is added. (default: None)
+        entry holding ``file`` as given is added. (default: None)
 
     Returns
     -------

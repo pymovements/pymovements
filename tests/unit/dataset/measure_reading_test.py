@@ -86,7 +86,7 @@ def test_compute_reading_measures(dummy_dataset, make_example_file):
     # The relativization happens on a copy. The dataset's events keep their own metadata,
     # extended by map_to_aois with the absolute AOI path, but never relativized.
     events_sources = dummy_dataset.gaze[0].events.metadata['Sources']
-    assert events_sources == ['raw/sub_5.csv', aoi_path.resolve().as_posix()]
+    assert events_sources == ['raw/sub_5.csv', aoi_path.as_posix()]
 
 
 def test_compute_reading_measures_save(dummy_dataset, tmp_path, make_example_file):

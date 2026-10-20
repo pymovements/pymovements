@@ -519,7 +519,7 @@ def test_load_gaze_file_has_correct_metadata(
         dataset_definition=DatasetDefinition(),
     )
 
-    expected_sources = [filepath.resolve().as_posix()]
+    expected_sources = [filepath.as_posix()]
     assert gaze.metadata == {**metadata, 'Sources': expected_sources}
     # The DatasetFile metadata dictionary is copied, not mutated.
     assert 'Sources' not in file.metadata
@@ -562,7 +562,7 @@ def test_load_stimulus_file_has_correct_metadata(
         file,
     )
 
-    expected_sources = [filepath.resolve().as_posix()]
+    expected_sources = [filepath.as_posix()]
     assert stimulus.metadata == {**metadata, 'Sources': expected_sources}
     # The DatasetFile metadata dictionary is copied, not mutated.
     assert 'Sources' not in file.metadata
@@ -1598,7 +1598,7 @@ def test_load_event_files_keeps_user_sources_list_unmutated(tmp_path):
     events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [1]})
     events_df.write_ipc(events_dirpath / 'sub_1.feather')
 
-    absolute_source = (events_dirpath / 'sub_1.feather').resolve().as_posix()
+    absolute_source = (events_dirpath / 'sub_1.feather').as_posix()
     metadata = {'Sources': [absolute_source]}
     resource_definition = ResourceDefinition(content='gaze')
     files = [
@@ -1616,6 +1616,31 @@ def test_load_event_files_keeps_user_sources_list_unmutated(tmp_path):
     assert events_list[0].metadata == {'Sources': ['events/sub_1.feather']}
     # The user's own sources list is not rewritten during relativization.
     assert metadata == {'Sources': [absolute_source]}
+
+
+def test_load_event_files_relativizes_relative_user_source(tmp_path, monkeypatch):
+    events_dirpath = tmp_path / 'events'
+    events_dirpath.mkdir()
+    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [1]})
+    events_df.write_ipc(events_dirpath / 'sub_1.feather')
+
+    # A standalone load from inside the events directory records the path as given.
+    monkeypatch.chdir(events_dirpath)
+    metadata = {'Sources': ['sub_1.feather']}
+    resource_definition = ResourceDefinition(content='gaze')
+    files = [
+        DatasetFile(
+            path=tmp_path / 'raw' / 'sub_1.csv',
+            definition=resource_definition,
+            metadata=metadata,
+        ),
+    ]
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+
+    events_list = load_event_files(files, paths, verbose=False)
+
+    # The relative entry is anchored at the working directory and then made root-relative.
+    assert events_list[0].metadata == {'Sources': ['events/sub_1.feather']}
 
 
 def test_load_event_files_respects_empty_user_sources(tmp_path):

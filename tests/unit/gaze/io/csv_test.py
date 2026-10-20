@@ -393,5 +393,5 @@ def test_from_csv_does_not_mutate_passed_metadata(make_example_file):
     assert metadata == {'subject_id': 42}
     assert gaze.metadata == {
         'subject_id': 42,
-        'Sources': [filepath.resolve().as_posix()],
+        'Sources': [filepath.as_posix()],
     }

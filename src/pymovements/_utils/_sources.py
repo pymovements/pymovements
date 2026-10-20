@@ -25,11 +25,9 @@ Like in BIDS, it records proximate provenance only: reloading a previously
 saved file records the file that was actually read, not the sources of the
 original data. Full provenance chains are recovered hop by hop through the
 metadata saved alongside each file. Entries are POSIX-style path strings:
-absolute for standalone loading, relative to the dataset root when loaded via
-:py:class:`~pymovements.Dataset`. The absolute form is resolved, so symlinks
-are replaced by their targets: without a dataset root there is no reference
-point for a relative path, and the resolved path is the one the file was
-actually read from.
+relative to the dataset root when loaded via :py:class:`~pymovements.Dataset`,
+the path as given to the loader for standalone loading. The standalone rule is
+a stopgap until a dataset root exists for every loaded object.
 """
 from __future__ import annotations
 
@@ -47,9 +45,9 @@ def add_source(metadata: dict[str, Any] | None, file: Any) -> dict[str, Any]:
     here: it describes the saved file's own provenance, while the proximate
     source of the loaded object is the file that was actually read.
 
-    The recorded path is resolved: absolute, with symlinks replaced by their
-    targets. A standalone load has no dataset root to relativize against, and
-    the resolved path names the file that was actually read.
+    The path is recorded as given, in POSIX form: a relative path stays
+    relative, an absolute path stays absolute. A standalone load has no dataset
+    root to relativize against.
 
     Parameters
     ----------
@@ -73,7 +71,7 @@ def add_source(metadata: dict[str, Any] | None, file: Any) -> dict[str, Any]:
 
     metadata = dict(metadata) if metadata else {}
     if 'Sources' not in metadata and isinstance(file, (str, Path)):
-        metadata['Sources'] = [Path(file).resolve().as_posix()]
+        metadata['Sources'] = [Path(file).as_posix()]
     return metadata
 
 
@@ -102,9 +100,13 @@ def _as_posix_string(source: str | Path) -> str:
 
 
 def _relativize_source(source: str | Path, resolved_root: Path) -> str:
-    """Return the source entry as a POSIX-style path string, root-relative if below the root."""
+    """Return the source entry as a POSIX-style path string, root-relative if below the root.
+
+    The entry is resolved first, so a relative entry recorded by a standalone
+    load is anchored at the working directory before it is compared to the root.
+    """
     try:
-        return Path(source).relative_to(resolved_root).as_posix()
+        return Path(source).resolve().relative_to(resolved_root).as_posix()
     except ValueError:
         return _as_posix_string(source)
 

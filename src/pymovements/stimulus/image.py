@@ -128,7 +128,7 @@ class ImageStimulus:
             Path to image file to be read.
         metadata: dict[str, Any] | None
             Dictionary containing additional metadata. Unless already present, a ``Sources``
-            entry holding the resolved path of ``path`` is added. (default: None)
+            entry holding ``path`` as given is added. (default: None)
 
         Returns
         -------
@@ -147,7 +147,7 @@ def from_file(image_path: str | Path, metadata: dict[str, Any] | None = None) ->
         Path to file to be read.
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. Unless already present, a ``Sources``
-        entry holding the resolved path of ``image_path`` is added. (default: None)
+        entry holding ``image_path`` as given is added. (default: None)
 
     Returns
     -------
@@ -159,6 +159,9 @@ def from_file(image_path: str | Path, metadata: dict[str, Any] | None = None) ->
 
 def from_files(path: str | Path, filename_format: str) -> ImageStimulus:
     """Load image stimulus from file.
+
+    The matched files are recorded in a ``Sources`` metadata entry as found
+    below ``path``, in POSIX form.
 
     Parameters
     ----------
@@ -175,7 +178,7 @@ def from_files(path: str | Path, filename_format: str) -> ImageStimulus:
     filenames = list(get_filepaths(path, regex=curly_to_regex(filename_format)))
     metadata = {}
     if filenames:
-        metadata['Sources'] = [Path(filename).resolve().as_posix() for filename in filenames]
+        metadata['Sources'] = [Path(filename).as_posix() for filename in filenames]
     return ImageStimulus(filenames, metadata=metadata)
 
 

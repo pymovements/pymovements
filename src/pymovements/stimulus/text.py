@@ -384,7 +384,7 @@ class TextStimulus:
             (default: ``'left-to-right'``)
         metadata: dict[str, Any] | None
             Dictionary containing additional metadata. Unless already present, a ``Sources``
-            entry holding the resolved path of ``path`` is added. (default: None)
+            entry holding ``path`` as given is added. (default: None)
         read_csv_kwargs: dict[str, Any] | None
             Custom read keyword arguments for polars. (default: None)
 
@@ -777,7 +777,7 @@ def from_file(
         (default: WritingSystem(horizontal, top-to-bottom, left-to-right))
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. Unless already present, a ``Sources``
-        entry holding the resolved path of ``aoi_path`` is added. (default: None)
+        entry holding ``aoi_path`` as given is added. (default: None)
 
 
     Returns

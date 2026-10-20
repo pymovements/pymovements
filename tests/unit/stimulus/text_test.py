@@ -267,7 +267,7 @@ def test_text_stimulus_from_file_has_correct_metadata_default(make_example_file)
         height_column='height',
         page_column='page',
     )
-    assert stimulus.metadata == {'Sources': [aoi_path.resolve().as_posix()]}
+    assert stimulus.metadata == {'Sources': [aoi_path.as_posix()]}
 
 
 @pytest.mark.parametrize(
@@ -291,7 +291,7 @@ def test_text_stimulus_has_correct_metadata(metadata, make_example_file):
         metadata=metadata,
     )
 
-    expected_sources = [aoi_path.resolve().as_posix()]
+    expected_sources = [aoi_path.as_posix()]
     assert stimulus.metadata == {**metadata, 'Sources': expected_sources}
 
 
@@ -313,7 +313,7 @@ def test_text_stimulus_from_file_does_not_mutate_passed_metadata(make_example_fi
     assert metadata == {'key': 'value'}
     assert stimulus.metadata == {
         'key': 'value',
-        'Sources': [aoi_path.resolve().as_posix()],
+        'Sources': [aoi_path.as_posix()],
     }
 
 
