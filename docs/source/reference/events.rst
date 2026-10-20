@@ -33,3 +33,66 @@ All events have a starting time (onset) and an ending time (offset, inclusive).
     microsaccades.compute_threshold
     blink
     fill
+
+.. currentmodule:: pymovements
+
+.. rubric:: Fixation Drift Correction
+    :name: fixation-drift-correction
+
+These functions can be used to apply a line-alignment correction algorithm to a set of fixations.
+The algorithms will adjust the y-coordinates of the fixations to correct for drift and systematic
+error in the eye-tracking data. This is particularly useful for paragraph reading data, where
+y-alignment issues can lead to a fixation being assigned to the wrong line of text. Fixation
+drift correction assumes reading data recorded on a
+:py:class:`~pymovements.stimulus.TextStimulus`, whose areas of interest provide the text line
+positions. Available
+algorithms are listed under :ref:`Drift Correction Algorithms <drift-correction-algorithms>`.
+The most convenient way to correct fixations is via the
+:py:meth:`Events.correct_fixations` and
+:py:meth:`Dataset.correct_fixations` methods.
+
+.. currentmodule:: pymovements.events.correction
+
+.. autosummary::
+    :toctree: api
+    :nosignatures:
+    :template: function.rst
+
+    correct_fixations
+    correct_fixation_locations
+
+.. currentmodule:: pymovements
+
+.. rubric:: Drift Correction Algorithms
+    :name: drift-correction-algorithms
+
+The following algorithms can be used to apply a line-alignment correction algorithm to a set of
+fixations. These algorithms, which are described in detail by Carr et al. :cite:p:`Carr2022`,
+can be applied to the fixations using the
+:func:`~pymovements.events.correction.correct_fixations` function. By default, the
+:func:`~pymovements.events.correction.correct_fixations` function will use the
+:func:`~pymovements.events.correction.wisdom_of_the_crowd` algorithm which is an
+ensemble method that combines the results of the other algorithms to produce a more robust
+correction. Each algorithm operates on the fixation sequence of a single trial and must be
+applied per trial. The :func:`~pymovements.events.correction.correct_fixations` function and
+the :py:meth:`Events.correct_fixations` method take care of this per-trial application.
+
+.. currentmodule:: pymovements.events.correction
+
+.. autosummary::
+    :toctree: api
+    :nosignatures:
+    :template: function.rst
+
+    attach
+    chain
+    cluster
+    compare
+    merge
+    regress
+    segment
+    slice
+    split
+    stretch
+    warp
+    wisdom_of_the_crowd
