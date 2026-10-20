@@ -29,6 +29,7 @@ from dataclasses import dataclass
 from dataclasses import KW_ONLY
 from pathlib import Path
 from typing import Any
+from urllib.error import ContentTooShortError
 from urllib.error import HTTPError
 from urllib.error import URLError
 from warnings import warn
@@ -39,6 +40,8 @@ from pymovements._version import __version__
 from pymovements.exceptions import ChecksumError
 
 USER_AGENT: str = f'pymovements/{__version__}'
+
+_CHUNK_SIZE: int = 64 * 1024
 
 
 @dataclass(frozen=True)
@@ -97,6 +100,10 @@ class WebSource:
 
         Tries the primary `url` first, then any `mirrors` in order. Integrity is
         validated via MD5 when available. Returns the local file path.
+
+        The file is streamed into a temporary ``<filename>.part`` next to the target and moved
+        into place once the download has completed, so a failed download never leaves a file at
+        the target path.
         """
         dirpath = Path(target_dirpath).expanduser()
 
@@ -227,7 +234,6 @@ def _download_file(
         md5: str | None = None,
         *,
         verify_checksum: bool = True,
-        max_redirect_hops: int = 3,
         verbose: bool = True,
 ) -> Path:
     """Download a file from a URL and place it in root.
@@ -244,8 +250,6 @@ def _download_file(
         MD5 checksum of downloaded file. If None, do not check. (default: None)
     verify_checksum : bool
         If True, check integrity by using the md5 checksum. (default: True)
-    max_redirect_hops : int
-        Maximum number of redirect hops allowed. (default: 3)
     verbose : bool
         If True, show a progress bar and print info messages on the downloading file.
         (default: True)
@@ -290,11 +294,8 @@ def _download_file(
     if verbose:
         print(f'Downloading {url} to {filepath}')
 
-    # expand redirect chain if needed
-    redirected_url = _get_redirected_url(url=url, max_hops=max_redirect_hops)
-
     # download the file
-    _download_url(url=redirected_url, destination=filepath, verbose=verbose)
+    _download_url(url=url, destination=filepath, verbose=verbose)
 
     # check integrity of downloaded file
     if verify_checksum and md5:
@@ -305,60 +306,8 @@ def _download_file(
     return filepath
 
 
-def _get_redirected_url(url: str, max_hops: int = 3) -> str:
-    """Get redirected URL.
-
-    Parameters
-    ----------
-    url: str
-        Initial URL to be requested for redirection.
-    max_hops: int
-        Maximum number of redirection hops. (default: 3)
-
-    Returns
-    -------
-    str
-        Final URL after all redirections.
-
-    Raises
-    ------
-    RuntimeError
-        If number of redirects exceed `max_hops`.
-    HTTPError
-        If the server returns an HTTP error status.
-    """
-    initial_url = url
-    headers = {'Method': 'HEAD', 'User-Agent': USER_AGENT}
-    opener = urllib.request.build_opener()
-    opener.addheaders = [('User-Agent', USER_AGENT)]
-    urllib.request.install_opener(opener)
-
-    for _ in range(max_hops + 1):
-        try:
-            response = urllib.request.urlopen(urllib.request.Request(url, headers=headers))
-        except HTTPError as e:
-            # Close explicitly, otherwise the buffered error response leaks a temporary file
-            # on Python 3.14, causing a ResourceWarning during garbage collection.
-            e.close()
-            raise
-
-        with response:
-            if response.url == url or response.url is None:
-                return url
-            url = response.url
-
-    raise RuntimeError(
-        f'Request to {initial_url} exceeded {max_hops} redirects.'
-        f' The last redirect points to {url}.',
-    )
-
-
 class _DownloadProgressBar(tqdm):
-    """Progress bar for downloads.
-
-    Provides `update_to(n)` which uses `tqdm.update(delta_n)`.
-
-    Reference: https://github.com/tqdm/tqdm#hooks-and-callbacks
+    """Progress bar for downloads, counting bytes.
 
     Parameters
     ----------
@@ -368,31 +317,13 @@ class _DownloadProgressBar(tqdm):
     def __init__(self, **kwargs: Any):
         super().__init__(unit='B', unit_scale=True, unit_divisor=1024, miniters=1, **kwargs)
 
-    def update_to(self, b: int = 1, bsize: int = 1, tsize: int | None = None) -> bool | None:
-        """Update progress bar.
-
-        Parameters
-        ----------
-        b  : int
-            Number of blocks transferred so far (default: 1).
-        bsize  : int
-            Size of each block (in tqdm units) (default: 1).
-        tsize  : int | None
-            Total size (in tqdm units). If None it remains unchanged (default: None).
-
-        Returns
-        -------
-        bool | None
-            Returns `None` if the update was successful, `False` if the update was skipped
-            because the last update was too recent.
-        """
-        if tsize is not None:
-            self.total = tsize
-        return self.update(b * bsize - self.n)  # also sets self.n = b * bsize
-
 
 def _download_url(url: str, destination: Path, verbose: bool = True) -> None:
     """Download file from URL and save to destination.
+
+    A single request is issued, redirects are followed by urllib. The response is streamed into
+    ``<destination>.part`` and moved to ``destination`` only after the transfer has completed, so
+    a failed download never leaves a file at ``destination``.
 
     Parameters
     ----------
@@ -402,13 +333,51 @@ def _download_url(url: str, destination: Path, verbose: bool = True) -> None:
         Destination path of downloaded file.
     verbose : bool
         If True, show progressbar.
+
+    Raises
+    ------
+    HTTPError
+        If the server returns an HTTP error status.
+    URLError
+        If the connection to the server fails.
+    ContentTooShortError
+        If the server announced a content length and the response ended before reaching it.
+    OSError
+        If writing the temporary file or moving it into place fails.
     """
-    with _DownloadProgressBar(desc=destination.name, disable=not verbose) as t:
-        try:
-            urllib.request.urlretrieve(url=url, filename=destination, reporthook=t.update_to)
-        except HTTPError as e:
-            # Close explicitly, otherwise the buffered error response leaks a temporary file
-            # on Python 3.14, causing a ResourceWarning during garbage collection.
-            e.close()
-            raise
-        t.total = t.n
+    request = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
+    try:
+        response = urllib.request.urlopen(request)
+    except HTTPError as e:
+        # Close explicitly, otherwise the buffered error response leaks a temporary file
+        # on Python 3.14, causing a ResourceWarning during garbage collection.
+        e.close()
+        raise
+
+    part_path = destination.with_name(f'{destination.name}.part')
+    completed = False
+    try:
+        content_length = response.headers.get('Content-Length')
+        expected_size = int(content_length) if content_length is not None else None
+
+        with response, open(part_path, 'wb') as part_file, _DownloadProgressBar(
+                desc=destination.name, total=expected_size, disable=not verbose,
+        ) as progress_bar:
+            bytes_read = 0
+            while chunk := response.read(_CHUNK_SIZE):
+                part_file.write(chunk)
+                bytes_read += len(chunk)
+                progress_bar.update(len(chunk))
+
+            progress_bar.total = bytes_read
+            if expected_size is not None and bytes_read < expected_size:
+                raise ContentTooShortError(
+                    f'retrieval incomplete: got only {bytes_read} out of {expected_size} bytes',
+                    (str(destination), response.headers),
+                )
+
+        os.replace(part_path, destination)
+        completed = True
+    finally:
+        if not completed:
+            part_path.unlink(missing_ok=True)
