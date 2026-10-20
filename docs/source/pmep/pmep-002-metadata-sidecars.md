@@ -21,8 +21,7 @@
   writing package version.
 - A BIDS-conformant file loads with `load(path)` alone, sidecar or not.
 - `verify_bids` reports BIDS nonconformities and is off by default: `'REQUIRED'` and
-  `'RECOMMENDED'` warn, `True` raises, `False` is silent. Every other warning or raise marks
-  something that would go wrong in pymovements, not a BIDS matter.
+  `'RECOMMENDED'` warn, `True` raises, `False` is silent.
 - `Participants` and `Phenotype` adopt the sidecar here: they gain the pymovements stamp,
   `Sources` and `sidecar`, and verification on save becomes opt-in.
 
