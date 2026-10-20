@@ -559,6 +559,7 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
             'OFFSET 0.19 deg. 4.2,6.3 pix.\n',
             [{
                 'error': 'POOR ERROR',
+                'quality': 'POOR',
                 'tracked_eye': 'RIGHT',
                 'num_points': '9',
                 'timestamp': '1076158',
@@ -603,6 +604,60 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
                 'type': 'P-CR',
             }],
             id='cal_with_msg',
+        ),
+        pytest.param(
+            'MSG	7045618 !CAL\n'
+            '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+            'MSG	7045621 !CAL CALIBRATION HV9 L LEFT    GOOD\n',
+            [],
+            [{
+                'num_points': '9',
+                'timestamp': '7045618',
+                'tracked_eye': 'LEFT',
+                'type': 'P-CR',
+                'quality': 'GOOD',
+            }],
+            id='cal_quality_good',
+        ),
+        pytest.param(
+            'MSG	7045618 !CAL\n'
+            '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+            'MSG	7045621 !CAL CALIBRATION HV9 L LEFT    FAILED\n',
+            [],
+            [{
+                'num_points': '9',
+                'timestamp': '7045618',
+                'tracked_eye': 'LEFT',
+                'type': 'P-CR',
+                'quality': 'FAILED',
+            }],
+            id='cal_quality_failed',
+        ),
+        pytest.param(
+            'MSG	7045618 !CAL\n'
+            '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+            'MSG	7045618 !CAL\n'
+            '>>>>>>> CALIBRATION (HV9,P-CR) FOR RIGHT: <<<<<<<<<\n'
+            'MSG	7045621 !CAL CALIBRATION HV9 LR LEFT    GOOD\n'
+            'MSG	7045621 !CAL CALIBRATION HV9 LR RIGHT   FAILED\n',
+            [],
+            [
+                {
+                    'num_points': '9',
+                    'timestamp': '7045618',
+                    'tracked_eye': 'LEFT',
+                    'type': 'P-CR',
+                    'quality': 'GOOD',
+                },
+                {
+                    'num_points': '9',
+                    'timestamp': '7045618',
+                    'tracked_eye': 'RIGHT',
+                    'type': 'P-CR',
+                    'quality': 'FAILED',
+                },
+            ],
+            id='cal_quality_binocular',
         ),
     ],
 )
@@ -666,6 +721,7 @@ def test_check_samples_config_key_warnings_and_casting(make_example_file):
 
     expected_validation = [{
         'error': 'GOOD ERROR',
+        'quality': 'GOOD',
         'tracked_eye': 'LEFT',
         'num_points': '9',
         'timestamp': '2148587',
@@ -674,6 +730,7 @@ def test_check_samples_config_key_warnings_and_casting(make_example_file):
     }]
     expected_calibration = [{
         'num_points': '9', 'type': 'P-CR', 'tracked_eye': 'LEFT', 'timestamp': '2135819',
+        'quality': 'GOOD',
     }]
 
     assert metadata['calibrations'] == expected_calibration
