@@ -19,7 +19,7 @@
 - A top-level `pymovements` entry, written at construction, carries the pymovements stamp.
   `schema` labels the writing class, `schema_version` starts at `0.1.0` and `version` names the
   writing package version.
-- A BIDS-conformant file loads with `load(path)` alone, sidecar or not.
+- A BIDS-conformant file loads with the class's `load(path)` alone, sidecar or not.
 - `verify_bids` reports BIDS nonconformities and is off by default: `'REQUIRED'` and
   `'RECOMMENDED'` warn, `True` raises, `False` is silent.
 - `Participants` and `Phenotype` adopt the sidecar here: they gain the pymovements stamp,
@@ -124,7 +124,7 @@ The sidecar owns the `json` extension next to the stem, so no data format may us
 | `Sources` | top | BIDS provenance: list of the files directly used, as paths [1] |
 | `<column name>` | top | a dict that describes the column |
 | `Format` | column | BIDS format: `string`, `number`, `integer`, `boolean`, `index`, `label` [2] |
-| `Units` | column | unit of the column, on a time column the unit it is written in [2] |
+| `Units` | column | unit of the column's values [2], on a Duration column also how it loads, see Duration columns |
 
 **Adoption contract.** A class that adopts the sidecar carries two attributes and two parameters
 in these roles, whatever else its signatures hold:
@@ -256,7 +256,9 @@ has adopted follows every rule below. Which class adopts next, and when, follows
 roadmap](https://github.com/pymovements/pymovements/discussions/1763).
 
 **The sidecar file.** A save writes `<stem>.json` next to the data file, or to `sidecar_path`
-when given. A load reads it from the same place. The sidecar holds one dict per column at the
+when given. The stem is the file name without its format extension, a compression suffix
+included: `sub-01_physio.tsv.gz` has the sidecar `sub-01_physio.json` and `data.v2.tsv` has
+`data.v2.json`. A load reads it from the same place. The sidecar holds one dict per column at the
 top level, keyed by the column name, and the file-level keys beside them, with no wrapper key
 around the columns. Save writes and load reads the sidecar in `sidecar_encoding`, `utf-8` by
 default. In memory the file is `sidecar`, as read by load or written by save.
@@ -367,8 +369,8 @@ adoption's choice.
 
 | situation | outcome |
 |---|---|
-| keyword on `load` differs from its sidecar entry | keyword wins for the frame and replaces the entry in the metadata dict, the warning names both values, `sidecar` keeps the entry as read |
-| `metadata=` given on `load` | becomes the metadata dict, with `Sources` added, the frame's dtypes come from it, `sidecar` is still the file as read |
+| keyword on `load` differs from its sidecar entry | keyword wins and replaces the entry in the metadata dict, with a warning, see The metadata dict |
+| `metadata=` given on `load` | becomes the metadata dict, with `Sources` added when absent, the frame's dtypes come from it, `sidecar` is still the file as read |
 | entry for a column that does not exist | kept in both dicts and written, silent |
 | top-level key equals a column name, value is not a dict | load and save warn, kept as read, the column keeps its inferred dtype |
 | a file exists at `path` or at the sidecar path | save raises unless `overwrite`, the message names the file and the flag |
@@ -388,8 +390,8 @@ data file is a tsv file with tab separators, and nulls are written as `n/a` [2].
 therefore a finding when asked and silent otherwise. An adoption declares its own checks, at
 either level, and the same `verify_bids` runs them.
 
-**Loading BIDS files.** A BIDS-conformant data file loads with `load(path)` alone, whether or
-not a sidecar exists next to it, since BIDS recommends the sidecar and does not require it [4].
+**Loading BIDS files.** A BIDS-conformant data file loads with the class's `load(path)` alone,
+whether or not a sidecar exists next to it, since BIDS recommends the sidecar and does not require it [4].
 The defaults on load are the BIDS conventions:
 
 - a tsv file is read tab-separated
@@ -543,8 +545,8 @@ BIDS has no per-sidecar field for it.
 |---|---|---|---|
 | files | a `Format` entry that contradicts the dtype of its column | written as it is | replaced by save, with a warning |
 | files | the `Format` of a boolean column | `bool`, which BIDS does not define | `boolean`, load reads both |
-| files | a `Format` value pymovements does not map, such as `date` or `uri` | load raised | sets no dtype, the column keeps the dtype inferred from the data |
-| files | the sidecar path of `Participants.save` when none is given | `participants.json` | `<stem>.json`, under a BIDS layout the stem is `participants` and nothing changes |
+| files | a `Format` value pymovements does not map, such as `date` or `uri` | raised | sets no dtype, the column keeps the dtype inferred from the data |
+| files | the default sidecar path of `Participants.save` | `participants.json` | `<stem>.json` |
 | files | the `pymovements` entry and `Sources` in the sidecar | absent | written, two additional top-level keys for readers of these files |
 | files | a file written before v0.30.0 | carries no pymovements stamp | loads as the oldest schema version, silently |
 | files | a data file at `path` on save | overwritten | save raises, `overwrite=True` writes over it |
@@ -558,10 +560,11 @@ BIDS has no per-sidecar field for it.
 | API | the sidecar path on load | in `metadata` | in `sidecar_path`, `metadata` takes a dict only |
 | API | the encoding keyword of the sidecar, save and load | `metadata_encoding` | `sidecar_encoding` |
 
-`metadata_path` on `save`, `metadata_encoding` on `save` and `load`, and a path in `metadata=`
-on `load` keep working under a deprecation warning from v0.30.0 and are removed in v0.35.0. A
-deprecated keyword given together with its replacement raises. The signatures before, with the
-deprecated keywords and after their removal are written out under Resulting signatures.
+Under a BIDS layout the participants file is `participants.tsv`, so its default sidecar path does
+not change. `metadata_path` on `save`, `metadata_encoding` on `save` and `load`, and a path in
+`metadata=` on `load` keep working under a deprecation warning from v0.30.0 and are removed in
+v0.35.0. A deprecated keyword given together with its replacement raises. The signatures before,
+with the deprecated keywords and after their removal are written out under Resulting signatures.
 
 ## Implementation
 
