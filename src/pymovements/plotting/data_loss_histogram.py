@@ -22,15 +22,18 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import Literal
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 
 from pymovements._utils._time import duration_to_ms
-from pymovements.gaze.gaze import Gaze
 from pymovements.measure.samples.measures import _is_invalid
 from pymovements.plotting._matplotlib import prepare_figure
+
+if TYPE_CHECKING:
+    from pymovements.gaze.gaze import Gaze
 
 
 def data_loss_histogram(

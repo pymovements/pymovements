@@ -31,6 +31,7 @@ import importlib.resources
 import inspect
 import os
 import pkgutil
+import re
 import string
 import sys
 from subprocess import CalledProcessError
@@ -84,7 +85,36 @@ source_suffix = {
 
 
 def config_inited_handler(app, config):
-    os.makedirs(os.path.join(app.srcdir, app.config.generated_path), exist_ok=True)
+    os.makedirs(os.path.join(app.srcdir, config.generated_path), exist_ok=True)
+    # Generated files are only pulled in via mdinclude and must not be picked up
+    # as standalone documents.
+    config.exclude_patterns.append(config.generated_path)
+
+
+# Matches markdown links to our own hosted documentation pages, e.g.
+# [Tutorials](https://pymovements.readthedocs.io/en/stable/tutorials/index.html).
+# Links with anchors are excluded as they have no :doc: equivalent.
+DOCS_LINK_PATTERN = re.compile(
+    r'\[([^]]+)]\(https://pymovements\.readthedocs\.io/en/stable/([^)#]+)\.html\)',
+)
+
+
+def generate_readme_handler(app, config):
+    """Write a copy of README.md with documentation links rewritten to :doc: references.
+
+    README.md must keep absolute URLs so that links render on GitHub and PyPI.
+    The landing page includes this preprocessed copy instead, so that links
+    point to the version being built and are validated as cross-references.
+    """
+    readme_path = os.path.join(app.srcdir, '..', '..', 'README.md')
+    with open(readme_path, encoding='utf-8') as readme_file:
+        content = readme_file.read()
+
+    content = DOCS_LINK_PATTERN.sub(r':doc:`\1 </\2>`', content)
+
+    generated_readme_path = os.path.join(app.srcdir, app.config.generated_path, 'README.md')
+    with open(generated_readme_path, 'w', encoding='utf-8') as generated_readme_file:
+        generated_readme_file.write(content)
 
 
 def doctree_resolved_handler(app, doctree, docname):
@@ -192,6 +222,7 @@ def setup(app):
     app.add_config_value('REVISION', 'master', 'env')
     app.add_config_value('generated_path', '_generated', 'env')
     app.connect('config-inited', config_inited_handler)
+    app.connect('config-inited', generate_readme_handler)
     app.connect('doctree-resolved', doctree_resolved_handler)
     # napoleon connects with the default priority 500, lower priorities run first.
     app.connect('autodoc-process-docstring', strip_property_attributes_handler, priority=400)
@@ -330,7 +361,9 @@ html_theme_options = {
 myst_links_external_new_tab = True
 
 nb_execution_timeout = 60
-nb_execution_mode = 'auto'
+# Execute notebooks once and re-execute only when their content changes.
+# The cache lives in docs/.jupyter_cache, so CI and Read the Docs still start fresh.
+nb_execution_mode = 'cache'
 nb_execution_show_tb = True
 
 # -- Intersphinx options -------------------------------------------------
