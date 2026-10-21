@@ -17,11 +17,11 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Benchmark the invalid-value check used by ``null_ratio`` and ``data_loss``.
+"""Benchmark the sample measures ``null_ratio`` and ``data_loss``.
 
-Both measures count invalid samples (null/NaN/inf elements). The check used to run per row
-through ``map_elements``; it is now a vectorized ``list.eval`` expression whenever the column
-dtype is known. These benchmarks track that cost on a synthetic list column.
+Both measures run over a synthetic 500k-row ``List(Float64)`` position column at 1 kHz with one
+missing sample in 1000, once called directly with ``column_dtype`` and once for ``data_loss``
+through :py:meth:`pymovements.Gaze.measure_samples`.
 """
 import numpy as np
 import polars as pl
