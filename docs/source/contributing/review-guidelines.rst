@@ -78,10 +78,10 @@ API Consistency
 - ``@overload`` signatures actually narrow the type under mypy.
 - A change in behavior of an existing signature needs a justification. Could an existing call
   behave differently?
-- Deprecations follow the project cycle:
+- Deprecations:
 
-  - A warning in the next minor release, removal five minor releases later (for example
-    deprecated in v0.28.0, removed in v0.33.0).
+  - The project cycle is a warning in the next minor release and removal five minor releases
+    later (for example deprecated in v0.28.0, removed in v0.33.0).
   - The warning names the removal version, and a test using ``assert_deprecation_is_removed``
     covers it.
   - The pull request description opens with a "⚠️ Deprecation" section, added on demand and not
