@@ -894,10 +894,10 @@ def parse_eyelink(
     # RECCFG uses L/R/LR, SAMPLES uses LEFT/RIGHT/LEFT RIGHT
     recorded_eyes = {d['tracked_eye'] for d in recording_config if d.get('tracked_eye')}
     if is_binocular and len(recorded_eyes) > 1:
-        # Both eyes appear in the RECCFG messages of a file in the binocular layout, whether
-        # the tracked eye changed or every block was binocular. The consistency helper would
-        # report this as inconsistent values. See issue #1401.
-        metadata['recorded_eye'] = 'LR'
+        # More than one RECCFG eye in a file with the binocular layout: the tracked eye changed,
+        # or the samples were binocular throughout while RECCFG named one eye per block. The
+        # consistency helper would report this as inconsistent values. See issue #1401.
+        metadata['recorded_eye'] = _TRACKED_EYE_CODE['both']
     else:
         metadata['recorded_eye'] = _check_reccfg_key(recording_config, 'tracked_eye')
 
