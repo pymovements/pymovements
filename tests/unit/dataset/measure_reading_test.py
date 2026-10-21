@@ -83,10 +83,8 @@ def test_compute_reading_measures(dummy_dataset, make_example_file):
     # below the dataset root and is therefore recorded relative to it.
     assert reading_measures.metadata['Sources'] == ['raw/sub_5.csv', aoi_path.name]
 
-    # The relativization happens on a copy. The dataset's events keep their own metadata,
-    # extended by map_to_aois with the absolute AOI path, but never relativized.
-    events_sources = dummy_dataset.gaze[0].events.metadata['Sources']
-    assert events_sources == ['raw/sub_5.csv', aoi_path.as_posix()]
+    # The mapping happens on a copy. The dataset's events keep their own metadata.
+    assert dummy_dataset.gaze[0].events.metadata['Sources'] == ['raw/sub_5.csv']
 
 
 def test_compute_reading_measures_save(dummy_dataset, tmp_path, make_example_file):
@@ -146,6 +144,30 @@ def test_measure_reading_group_columns_partition_output(dummy_dataset, make_exam
         )
 
     assert 'trial' in reading_measures.frame.columns
+
+
+def test_measure_reading_event_name_selects_events(dummy_dataset, make_example_file):
+    """``event_name`` selects the events the measures are computed from."""
+    aoi_path = make_example_file('potec_word_aoi_b0.tsv')
+    aoi_dict = {'b0': aoi_path}
+    expected = dummy_dataset.measure_reading(
+        aoi_dict,
+        word_index_column='aoi',
+        word_column='character',
+    )
+
+    # map_to_aois only maps event names starting with 'fixation'.
+    events = dummy_dataset.gaze[0].events
+    events.frame = events.frame.with_columns(pl.lit('fixation_ivt').alias('name'))
+
+    reading_measures = dummy_dataset.measure_reading(
+        aoi_dict,
+        word_index_column='aoi',
+        word_column='character',
+        event_name='fixation_ivt',
+    )
+
+    assert reading_measures.frame.equals(expected.frame)
 
 
 def test_compute_reading_measures_empty_dataset(tmp_path):

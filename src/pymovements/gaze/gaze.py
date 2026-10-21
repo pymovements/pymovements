@@ -60,6 +60,7 @@ from pymovements.gaze.validation import check_trial_columns_dtype
 from pymovements.gaze.validation import check_trial_columns_exist
 from pymovements.gaze.validation import CheckResult
 from pymovements.measure.events.processing import EventSamplesProcessor
+from pymovements.measure.reading import ReadingMeasures
 from pymovements.measure.samples.library import SampleMeasureLibrary
 from pymovements.stimulus import TextStimulus
 
@@ -1121,12 +1122,7 @@ class Gaze:
         >>> gaze.samples['pixel'].to_list()
         [[1.0, 2.0], [1.0, 2.0], None, None, [1.0, 2.0], [1.0, 2.0]]
         """
-        if self.events is None:
-            raise AttributeError(
-                'Gaze object has no events. Use detect() to detect events first.',
-            )
-
-        events_frame = self.events.frame
+        events_frame = self._require_events().frame
         has_matching = events_frame.filter(polars.col('name') == name).height > 0
 
         if not has_matching:
@@ -2013,6 +2009,90 @@ class Gaze:
 
         # The AOI-mapped samples are derived from the stimulus file as well.
         self.metadata = merge_sources(self.metadata, aoi_dataframe.metadata)
+
+    def measure_reading(
+            self,
+            stimulus: TextStimulus | dict[Any, TextStimulus],
+            *,
+            word_index_column: str = 'word_idx',
+            word_column: str = 'word',
+            event_name: str = 'fixation',
+            group_columns: list[str] | None = None,
+    ) -> ReadingMeasures:
+        """Compute word-level reading measures from the detected fixation events.
+
+        This is a convenience wrapper that forwards to
+        :py:meth:`~pymovements.Events.measure_reading` on this gaze's events. Fixation events must
+        have been detected first (see :py:meth:`~pymovements.Gaze.detect`). Reading measures are
+        computed from the events, not from the raw samples.
+
+        Parameters
+        ----------
+        stimulus : TextStimulus | dict[Any, TextStimulus]
+            Text stimulus defining the AOIs. Pass a dict mapping values of the first group column
+            to a separate stimulus per value when the events span several stimuli.
+        word_index_column : str
+            Shared column name in the mapped fixations and the stimulus AOIs that corresponds to
+            the word index of the text.
+            (default: ``'word_idx'``)
+        word_column : str
+            Column in the stimulus AOIs with the content within each AOI.
+            (default: ``'word'``)
+        event_name : str
+            Name of the fixation events to compute measures from. Rows with a different ``name``
+            are dropped.
+            (default: ``'fixation'``)
+        group_columns : list[str] | None
+            Column names used to partition the data into independent reading sequences. The first
+            column takes the trial role, the remaining columns take the page role. If ``None`` or
+            empty, the whole input is treated as a single reading sequence. Required if
+            ``stimulus`` is a dict, whose keys are the values of the first group column.
+            (default: None)
+
+        Returns
+        -------
+        ReadingMeasures
+            Reading measures container with one row per word.
+
+        Raises
+        ------
+        AttributeError
+            If the gaze has no events or no detected events. Use
+            :py:meth:`~pymovements.Gaze.detect` first.
+        """
+        return self._require_events(allow_empty=False).measure_reading(
+            stimulus,
+            word_index_column=word_index_column,
+            word_column=word_column,
+            event_name=event_name,
+            group_columns=group_columns,
+        )
+
+    def _require_events(self, *, allow_empty: bool = True) -> Events:
+        """Return the events of this gaze, raising if there are none to work on.
+
+        Parameters
+        ----------
+        allow_empty : bool
+            Whether an events object without any detected events counts as events.
+            (default: True)
+
+        Returns
+        -------
+        Events
+            The events of this gaze.
+
+        Raises
+        ------
+        AttributeError
+            If the gaze has no events, or no detected events and ``allow_empty`` is ``False``.
+        """
+        if self.events is None or (not allow_empty and self.events.frame.is_empty()):
+            raise AttributeError(
+                'Gaze object has no events or no detected events. '
+                'Use detect() to detect events first.',
+            )
+        return self.events
 
     def nest(
             self,
