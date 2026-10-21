@@ -636,13 +636,13 @@ class Dataset:
         Downloading https://... to data...toy_dataset...downloads...
         Checking integrity of ...
         Extracting ... to data...toy_dataset...raw
-        Dataset(name='ToyDataset', path='data/toy_dataset')
+        Dataset(name='ToyDataset', path='data...toy_dataset')
           experiment: Experiment(...)
           resources: 1 defined
           gaze: 0 recordings
           events: 0 recordings
         >>> dataset.load()# doctest:+ELLIPSIS
-        Dataset(name='ToyDataset', path='data/toy_dataset')
+        Dataset(name='ToyDataset', path='data...toy_dataset')
           experiment: Experiment(...)
           resources: 1 defined
           gaze: 20 recordings
@@ -653,24 +653,24 @@ class Dataset:
         Use apply for your gaze transformations:
 
         >>> dataset.apply('pix2deg')# doctest:+ELLIPSIS
-        Dataset(name='ToyDataset', path='data/toy_dataset')...
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
 
         >>> dataset.apply('pos2vel', method='neighbors')# doctest:+ELLIPSIS
-        Dataset(name='ToyDataset', path='data/toy_dataset')...
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
 
         Use apply for your event detection:
 
         >>> dataset.apply('ivt')# doctest:+ELLIPSIS
-        Dataset(name='ToyDataset', path='data/toy_dataset')...
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
 
         >>> dataset.apply('microsaccades', minimum_duration=8)# doctest:+ELLIPSIS
-        Dataset(name='ToyDataset', path='data/toy_dataset')...
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
 
         Use apply for upsampling, downsampling or making the sampling rate constant
         using resample:
 
         >>> dataset.apply('resample', resampling_rate=2000)# doctest:+ELLIPSIS
-        Dataset(name='ToyDataset', path='data/toy_dataset')...
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
         """
         self._check_gaze()
 
