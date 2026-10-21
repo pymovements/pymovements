@@ -578,8 +578,31 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 'dispersion_threshold': 1,
                 'minimum_duration': 100,
             },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[99],
+            ),
+            id='constant_position_single_fixation_with_sparse_timesteps_tail_covering_duration',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=3, steps=[0], values=[(0, 0)]),
+                'timesteps': [0, 50, 60],
+                'dispersion_threshold': 1,
+                'minimum_duration': 100,
+            },
             Events(),
             id='constant_position_no_fixation_with_timesteps_shorter_than_duration',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=1, steps=[0], values=[(0, 0)]),
+                'dispersion_threshold': 1,
+                'minimum_duration': 1,
+            },
+            Events(),
+            id='constant_position_no_fixation_with_single_sample',
         ),
         pytest.param(
             {

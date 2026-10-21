@@ -139,7 +139,7 @@ def idt(
 
     Run fixation detection with custom parameters:
 
-    >>> idt(positions, minimum_duration = 40, dispersion_threshold = 0.5)
+    >>> idt(positions, minimum_duration = 50, dispersion_threshold = 0.5)
     shape: (2, 4)
     ┌──────────┬──────────────┬──────────────┬──────────────┐
     │ name     ┆ onset        ┆ offset       ┆ duration     │
@@ -226,7 +226,7 @@ def idt(
 
     Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
 
-    >>> gaze.detect('idt', minimum_duration = 40, dispersion_threshold = 0.5, name='fixation_idt')
+    >>> gaze.detect('idt', minimum_duration = 50, dispersion_threshold = 0.5, name='fixation_idt')
     >>> gaze.events.filter_by_name('fixation_idt')
     shape: (2, 4)
     ┌──────────────┬──────────────┬──────────────┬──────────────┐
@@ -259,22 +259,27 @@ def idt(
     onsets = []
     offsets = []
 
-    # The window is measured in elapsed time between its first and last sample, so the
-    # interval between timesteps may be fractional and need not be constant.
-    # A window covering minimum_duration always holds at least two samples.
+    # Each sample covers the interval to its successor, so a window [win_start, win_end) covers
+    # end_times[win_end] - timesteps[win_start]. The last sample has no successor, its interval
+    # is taken as the last observed one until the sampling rate is available. A window must
+    # hold at least two samples, so a single sample never forms a fixation.
+    if len(timesteps) < 2:
+        return Events(name=name, onsets=[], offsets=[])
+    end_times = numpy.append(timesteps, 2 * timesteps[-1] - timesteps[-2])
+
     win_start = 0
     win_end = 0
 
-    while win_start < len(timesteps):
+    while win_start < len(timesteps) - 1:
 
         # Extend the window from its start until it covers the minimum duration.
-        win_end = max(win_end, win_start + 1)
+        win_end = max(win_end, win_start + 2)
         while (
                 win_end < len(timesteps)
-                and timesteps[win_end - 1] - timesteps[win_start] < minimum_duration
+                and end_times[win_end] - timesteps[win_start] < minimum_duration
         ):
             win_end += 1
-        if timesteps[win_end - 1] - timesteps[win_start] < minimum_duration:
+        if end_times[win_end] - timesteps[win_start] < minimum_duration:
             # The remaining samples are too short for a fixation.
             break
 
@@ -304,7 +309,8 @@ def idt(
                 # Filter all candidates by minimum duration.
                 tmp_candidates = [
                     candidate for candidate in tmp_candidates
-                    if timesteps[candidate[-1]] - timesteps[candidate[0]] >= minimum_duration
+                    if len(candidate) >= 2
+                    and end_times[candidate[-1] + 1] - timesteps[candidate[0]] >= minimum_duration
                 ]
                 for candidate in tmp_candidates:
                     onsets.append(timesteps[candidate[0]])
