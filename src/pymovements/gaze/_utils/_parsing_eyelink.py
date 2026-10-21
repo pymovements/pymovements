@@ -455,7 +455,8 @@ _EyeLayout = Literal['left', 'right', 'both']
 # Eye layout to the eye code used in the metadata.
 _TRACKED_EYE_CODE: dict[_EyeLayout, str] = {'left': 'L', 'right': 'R', 'both': 'LR'}
 
-# Sample columns of each eye in a binocular layout, in the order x, y, pupil.
+# Sample columns of the monocular layout and of each eye in the binocular layout,
+# in the order x, y, pupil.
 _MONOCULAR_CHANNELS = ('x_pix', 'y_pix', 'pupil')
 _LEFT_CHANNELS = ('x_left_pix', 'y_left_pix', 'pupil_left')
 _RIGHT_CHANNELS = ('x_right_pix', 'y_right_pix', 'pupil_right')
@@ -893,8 +894,9 @@ def parse_eyelink(
     # RECCFG uses L/R/LR, SAMPLES uses LEFT/RIGHT/LEFT RIGHT
     recorded_eyes = {d['tracked_eye'] for d in recording_config if d.get('tracked_eye')}
     if is_binocular and len(recorded_eyes) > 1:
-        # The recorded eye changed along with the tracked eye, so both eyes were recorded.
-        # The consistency helper would report this as inconsistent values. See issue #1401.
+        # Both eyes appear in the RECCFG messages of a file in the binocular layout, whether
+        # the tracked eye changed or every block was binocular. The consistency helper would
+        # report this as inconsistent values. See issue #1401.
         metadata['recorded_eye'] = 'LR'
     else:
         metadata['recorded_eye'] = _check_reccfg_key(recording_config, 'tracked_eye')
@@ -902,7 +904,7 @@ def parse_eyelink(
     if is_binocular:
         # A genuinely binocular recording or one whose tracked eye changes within the file.
         # Both use the binocular layout and are reported as 'LR'.
-        metadata['tracked_eye'] = 'LR'
+        metadata['tracked_eye'] = _TRACKED_EYE_CODE['both']
     elif mono_eye_seen is not None:
         metadata['tracked_eye'] = _TRACKED_EYE_CODE[mono_eye_seen]
 

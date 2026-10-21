@@ -1074,6 +1074,15 @@ _EYE_CHANGE_BLOCKS = {
         'left': (None, None, None),
         'right': (500.0, 400.0, 600.0),
     },
+    'left_again': {
+        'reccfg_eye': 'L',
+        'samples_eye': 'LEFT',
+        'start_eye': 'LEFT',
+        'time': 4000,
+        'sample': '4000\t150.2\t140.0\t790.0\t0.0\t.....',
+        'left': (150.2, 140.0, 790.0),
+        'right': (None, None, None),
+    },
     'both': {
         'reccfg_eye': 'LR',
         'samples_eye': 'LEFT\tRIGHT',
@@ -1150,16 +1159,16 @@ def test_parse_eyelink_tracked_eye_change_promotes_to_binocular(make_text_file, 
 
 def test_parse_eyelink_same_eye_in_two_blocks_stays_monocular(make_text_file):
     """Two recording blocks tracking the same eye are an ordinary monocular file (#1401)."""
-    asc_text = _build_eye_change_asc(['left', 'left'])
+    asc_text = _build_eye_change_asc(['left', 'left_again'])
     filepath = make_text_file(filename='sub_left_twice.asc', body=asc_text)
 
     gaze_df, _, metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
 
     expected = {
-        'time': [2000.0, 2000.0],
-        'x_pix': [138.1, 138.1],
-        'y_pix': [131.0, 131.0],
-        'pupil': [778.0, 778.0],
+        'time': [2000.0, 4000.0],
+        'x_pix': [138.1, 150.2],
+        'y_pix': [131.0, 140.0],
+        'pupil': [778.0, 790.0],
     }
 
     assert_frame_equal(gaze_df, pl.from_dict(expected), check_column_order=False, rel_tol=0)
