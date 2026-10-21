@@ -36,6 +36,9 @@ def warp(
 ) -> pl.Expr:
     """Dynamic Time Warping alignment between fixation sequence and word positions.
 
+    The fixation sequence is aligned to the word centroids of the text. Each fixation
+    takes the most frequent line y-coordinate among the words it is mapped to.
+
     Reference: :cite:p:`Carr2022`.
 
     Parameters
