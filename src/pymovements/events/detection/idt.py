@@ -83,10 +83,11 @@ def idt(
         accepted. If None, sample based timesteps are assumed. (default: None)
     minimum_duration: float
         Minimum fixation duration. Each sample covers the interval to its successor, so a
-        fixation is measured from its first sample to the sample after its last one.
-        The duration is specified in the units used in ``timesteps``; for a ``polars.Duration``
-        timesteps series the unit is milliseconds. If ``timesteps`` is None, then
-        ``minimum_duration`` is specified in numbers of samples. (default: 100)
+        fixation is measured from its first sample to the sample after its last one. The last
+        sample's interval is taken as the last observed one. The duration is specified in the
+        units used in ``timesteps``; for a ``polars.Duration`` timesteps series the unit is
+        milliseconds. If ``timesteps`` is None, then ``minimum_duration`` is specified in
+        numbers of samples. (default: 100)
     dispersion_threshold: float
         Threshold for dispersion for a group of consecutive samples to be identified as fixation.
         (default: 1.0)
@@ -258,16 +259,17 @@ def idt(
     if minimum_duration <= 0:
         raise ValueError('minimum_duration must be greater than 0')
 
-    onsets = []
-    offsets = []
-
     # Each sample covers the interval to its successor, so a window [win_start, win_end) covers
     # end_times[win_end] - timesteps[win_start]. The last sample has no successor, its interval
-    # is taken as the last observed one until the sampling rate is available. A window must
-    # hold at least two samples, so a single sample never forms a fixation.
+    # is taken as the last observed one (PMEP 1 replaces it with the nominal interval from the
+    # sampling rate). A window must hold at least two samples, so a single sample never forms
+    # a fixation.
     if len(timesteps) < 2:
         return Events(name=name, onsets=[], offsets=[])
     end_times = numpy.append(timesteps, 2 * timesteps[-1] - timesteps[-2])
+
+    onsets = []
+    offsets = []
 
     win_start = 0
     win_end = 0
