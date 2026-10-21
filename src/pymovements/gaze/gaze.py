@@ -1122,12 +1122,7 @@ class Gaze:
         >>> gaze.samples['pixel'].to_list()
         [[1.0, 2.0], [1.0, 2.0], None, None, [1.0, 2.0], [1.0, 2.0]]
         """
-        if self.events is None:
-            raise AttributeError(
-                'Gaze object has no events. Use detect() to detect events first.',
-            )
-
-        events_frame = self.events.frame
+        events_frame = self._require_events().frame
         has_matching = events_frame.filter(polars.col('name') == name).height > 0
 
         if not has_matching:
@@ -2062,20 +2057,42 @@ class Gaze:
         Raises
         ------
         AttributeError
-            If the gaze has no events, because none were detected yet.
+            If the gaze has no events or no detected events. Use
+            :py:meth:`~pymovements.Gaze.detect` first.
         """
-        if self.events is None or self.events.frame.is_empty():
-            raise AttributeError(
-                'Gaze object has no events. Use detect() to detect events first.',
-            )
-
-        return self.events.measure_reading(
+        return self._require_events(allow_empty=False).measure_reading(
             stimulus,
             word_index_column=word_index_column,
             word_column=word_column,
             event_name=event_name,
             group_columns=group_columns,
         )
+
+    def _require_events(self, *, allow_empty: bool = True) -> Events:
+        """Return the events of this gaze, raising if there are none to work on.
+
+        Parameters
+        ----------
+        allow_empty : bool
+            Whether an events object without any detected events counts as events.
+            (default: True)
+
+        Returns
+        -------
+        Events
+            The events of this gaze.
+
+        Raises
+        ------
+        AttributeError
+            If the gaze has no events, or no detected events and ``allow_empty`` is ``False``.
+        """
+        if self.events is None or (not allow_empty and self.events.frame.is_empty()):
+            raise AttributeError(
+                'Gaze object has no events or no detected events. '
+                'Use detect() to detect events first.',
+            )
+        return self.events
 
     def nest(
             self,

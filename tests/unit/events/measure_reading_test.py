@@ -74,6 +74,21 @@ def fixture_fixation_events():
     )
 
 
+@pytest.fixture(name='two_trial_events')
+def fixture_two_trial_events():
+    # trial_1 fixates words 0 and 1, trial_2 fixates word 0.
+    return Events(
+        pl.DataFrame({
+            'name': ['fixation'] * 3,
+            'onset': [0, 200, 400],
+            'offset': [200, 400, 600],
+            'duration': [200, 200, 200],
+            'location': [[15.0, 15.0], [25.0, 15.0], [15.0, 15.0]],
+            'trial': ['trial_1', 'trial_1', 'trial_2'],
+        }),
+    )
+
+
 def test_events_measure_reading_returns_reading_measures(fixation_events, stimulus):
     result = fixation_events.measure_reading(stimulus)
 
@@ -166,21 +181,6 @@ def test_events_measure_reading_multiple_stimuli(two_trial_events):
     assert result['word'].to_list() == ['The', 'quick', 'brown', 'fox', 'jumps']
     # trial_1: words 0 and 1 fixated, word 2 skipped; trial_2: only word 0 fixated
     assert result['TFC'].to_list() == [1, 1, 0, 1, 0]
-
-
-@pytest.fixture(name='two_trial_events')
-def fixture_two_trial_events():
-    # trial_1 fixates words 0 and 1, trial_2 fixates word 0.
-    return Events(
-        pl.DataFrame({
-            'name': ['fixation'] * 3,
-            'onset': [0, 200, 400],
-            'offset': [200, 400, 600],
-            'duration': [200, 200, 200],
-            'location': [[15.0, 15.0], [25.0, 15.0], [15.0, 15.0]],
-            'trial': ['trial_1', 'trial_1', 'trial_2'],
-        }),
-    )
 
 
 def test_events_measure_reading_multiple_stimuli_null_key_raises():
@@ -326,8 +326,9 @@ def test_gaze_measure_reading_delegates_to_events(fixation_events, stimulus):
 
 @pytest.mark.parametrize('events', [None, Events()], ids=['none', 'empty'])
 def test_gaze_measure_reading_without_events_raises(events, stimulus):
-    gaze = Gaze(events=Events())
+    # Gaze(events=None) creates empty events, so the events are assigned afterwards.
+    gaze = Gaze()
     gaze.events = events
 
-    with pytest.raises(AttributeError, match=r'has no events. Use detect\(\)'):
+    with pytest.raises(AttributeError, match=r'Use detect\(\) to detect events first'):
         gaze.measure_reading(stimulus)

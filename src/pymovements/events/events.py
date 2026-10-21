@@ -1261,9 +1261,18 @@ class Events:
         Raises
         ------
         ValueError
-            If ``stimulus`` is a dict and ``group_columns`` is empty, the events have no first
-            group column, the keys cannot be cast to that column's dtype, an entry's own
-            sequence column differs from its key, or a sequence of the events has no entry.
+            If ``stimulus`` is a dict and ``group_columns`` is empty, the dict is empty, the
+            events have no first group column, the keys cannot be cast to that column's dtype,
+            an entry's own sequence column differs from its key, or a sequence of the events has
+            no entry.
+
+        Warns
+        -----
+        UserWarning
+            If ``stimulus`` is a dict with a key that matches no fixation. Its words are kept in
+            the output with all measures zero and ``skipped`` set to 1. Also if a single
+            ``stimulus`` has no first group column while the events do, in which case its AOIs
+            are broadcast to every value of that column.
 
         Examples
         --------
@@ -1318,19 +1327,20 @@ class Events:
         stale_columns = [
             column for column in (word_index_column, 'char_idx') if column in self.frame.columns
         ]
-        source = self.frame.drop(stale_columns)
+        working_frame = self.frame.drop(stale_columns)
 
         if isinstance(stimulus, dict):
+            stimuli = list(stimulus.values())
             fixations, aois = self._map_to_reading_stimuli(
-                source, stimulus, group_columns, word_index_column,
+                working_frame, stimulus, group_columns, word_index_column,
             )
         else:
-            mapped = Events(source, trial_columns=self.trial_columns)
+            stimuli = [stimulus]
+            mapped = Events(working_frame, trial_columns=self.trial_columns)
             mapped.map_to_aois(stimulus, verbose=False)
             fixations, aois = mapped.frame, stimulus.aois
 
         # The measures are derived from the events and the stimulus files.
-        stimuli = list(stimulus.values()) if isinstance(stimulus, dict) else [stimulus]
         metadata = deepcopy(self.metadata)
         for stim in stimuli:
             metadata = merge_sources(metadata, stim.metadata)
