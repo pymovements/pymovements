@@ -1201,7 +1201,8 @@ class Events:
         :py:meth:`~pymovements.Events.map_to_aois`) and word-level reading measures are computed
         from the resulting word indices (see
         :func:`~pymovements.measure.reading.compute_reading_measures`). The events are not
-        modified; the mapping happens on an internal copy.
+        modified. The mapping happens on an internal copy, and index columns from an earlier
+        mapping are replaced on that copy.
 
         Parameters
         ----------
@@ -1230,14 +1231,75 @@ class Events:
         -------
         ReadingMeasures
             Reading measures container with one row per word.
+
+        Raises
+        ------
+        ValueError
+            If ``stimulus`` is a dict and ``group_columns`` is empty, the events have no first
+            group column, the keys cannot be cast to that column's dtype, an entry's own
+            sequence column differs from its key, or a sequence of the events has no entry.
+
+        Examples
+        --------
+        Two fixations on a three-word stimulus, where the third word is never looked at:
+
+        >>> import polars
+        >>> import pymovements as pm
+        >>> events = pm.Events(
+        ...     polars.DataFrame({
+        ...         'name': ['fixation', 'fixation'],
+        ...         'onset': [0, 200],
+        ...         'offset': [200, 400],
+        ...         'location': [[15.0, 15.0], [25.0, 15.0]],
+        ...     }),
+        ... )
+        >>> stimulus = pm.stimulus.TextStimulus(
+        ...     aois=polars.DataFrame({
+        ...         'word': ['The', 'quick', 'brown'],
+        ...         'word_idx': [0, 1, 2],
+        ...         'start_x': [10.0, 20.0, 30.0],
+        ...         'start_y': [10.0, 10.0, 10.0],
+        ...         'end_x': [20.0, 30.0, 40.0],
+        ...         'end_y': [30.0, 30.0, 30.0],
+        ...     }),
+        ...     aoi_column='word',
+        ...     start_x_column='start_x',
+        ...     start_y_column='start_y',
+        ...     end_x_column='end_x',
+        ...     end_y_column='end_y',
+        ... )
+
+        The measures hold one row per word. The skipped word has a total fixation time of 0:
+
+        >>> measures = events.measure_reading(stimulus)
+        >>> measures.frame.select(['word_index', 'word', 'TFT', 'TFC', 'skipped'])
+        shape: (3, 5)
+        ┌────────────┬───────┬─────┬─────┬─────────┐
+        │ word_index ┆ word  ┆ TFT ┆ TFC ┆ skipped │
+        │ ---        ┆ ---   ┆ --- ┆ --- ┆ ---     │
+        │ i64        ┆ str   ┆ i64 ┆ u64 ┆ i64     │
+        ╞════════════╪═══════╪═════╪═════╪═════════╡
+        │ 0          ┆ The   ┆ 200 ┆ 1   ┆ 0       │
+        │ 1          ┆ quick ┆ 200 ┆ 1   ┆ 0       │
+        │ 2          ┆ brown ┆ 0   ┆ 0   ┆ 1       │
+        └────────────┴───────┴─────┴─────┴─────────┘
         """
         if self.frame.is_empty():
             return ReadingMeasures()
 
+        # map_to_aois keeps columns the events already have, so a previous mapping would be
+        # reused. The index columns the measures consume are dropped from the working copy.
+        stale_columns = [
+            column for column in (word_index_column, 'char_idx') if column in self.frame.columns
+        ]
+        source = self.frame.drop(stale_columns)
+
         if isinstance(stimulus, dict):
-            fixations, aois = self._map_to_reading_stimuli(stimulus, group_columns)
+            fixations, aois = self._map_to_reading_stimuli(
+                source, stimulus, group_columns, word_index_column,
+            )
         else:
-            mapped = self.clone()
+            mapped = Events(source, trial_columns=self.trial_columns)
             mapped.map_to_aois(stimulus, verbose=False)
             fixations, aois = mapped.frame, stimulus.aois
 
@@ -1254,40 +1316,60 @@ class Events:
 
     def _map_to_reading_stimuli(
             self,
+            frame: polars.DataFrame,
             stimuli: dict[Any, TextStimulus],
             group_columns: list[str] | None,
+            word_index_column: str,
     ) -> tuple[polars.DataFrame, dict[Any, polars.DataFrame]]:
         """Map each reading sequence to its own stimulus and collect the per-key AOI tables.
 
-        The events are split by the first group column; the subset for each key is mapped to the
-        matching stimulus. Only events whose key has a stimulus entry are mapped. Returns the
-        concatenated mapped fixations and a dict of the per-key AOI tables for
+        The events in ``frame`` are split by the first group column and the subset for each key
+        is mapped to the matching stimulus. Rows whose key has no stimulus entry pass through
+        unmapped. Returns the concatenated fixations and a dict of the per-key AOI tables for
         :func:`~pymovements.measure.reading.compute_reading_measures`.
         """
         # The dict is keyed by the first group column (the trial role), matching
         # compute_reading_measures.
         if not group_columns:
             raise ValueError(
-                'stimulus given as dict requires at least one group column for its keys.',
+                'stimulus given as dict requires at least one group column for its keys, e.g. '
+                "group_columns=['trial'] when the dict is keyed by the trial column.",
             )
         sequence_column = group_columns[0]
-        if sequence_column not in self.frame.columns:
+        if sequence_column not in frame.columns:
             raise ValueError(
                 f'stimulus is a dict keyed by {sequence_column!r}, but the events have no '
                 f'{sequence_column!r} column.',
             )
 
+        # The keys are compared with the column, so they are cast to its dtype once, the same
+        # way compute_reading_measures does it.
+        sequence_dtype = frame.schema[sequence_column]
+        try:
+            keys = polars.Series(sequence_column, list(stimuli)).cast(sequence_dtype)
+        except polars.exceptions.PolarsError as exception:
+            raise ValueError(
+                f'stimulus dict keys are not compatible with the fixation {sequence_column} '
+                f'dtype {sequence_dtype}: {exception}',
+            ) from exception
+
         mapped_frames = []
         aois = {}
-        for key, stim in stimuli.items():
+        for key, (original_key, stim) in zip(keys, stimuli.items()):
             # The dict key defines the sequence column, so it must not also live in the entry.
-            aois[key] = (
-                stim.aois.drop(sequence_column)
-                if sequence_column in stim.aois.columns
-                else stim.aois
-            )
+            aois[original_key] = stim.aois
+            if sequence_column in stim.aois.columns:
+                # map_to_aois still filters the entry's AOIs by this column, so values other
+                # than the key would leave every fixation of the sequence unmatched.
+                values = stim.aois[sequence_column].unique().to_list()
+                if values != [key]:
+                    raise ValueError(
+                        f'stimulus for key {original_key!r} has {sequence_column} values '
+                        f'{values} that differ from its dict key.',
+                    )
+                aois[original_key] = stim.aois.drop(sequence_column)
             subset = Events(
-                self.frame.filter(polars.col(sequence_column) == key),
+                frame.filter(polars.col(sequence_column) == key),
                 trial_columns=self.trial_columns,
             )
             if subset.frame.is_empty():
@@ -1295,10 +1377,21 @@ class Events:
             subset.map_to_aois(stim, verbose=False)
             mapped_frames.append(subset.frame)
 
-        if not mapped_frames:
-            return self.frame.clear(), aois
+        # Rows whose key has no stimulus entry pass through unmapped, so that
+        # compute_reading_measures raises its missing-key error instead of silently dropping them.
+        unmatched = frame.filter(~polars.col(sequence_column).is_in(keys.implode()))
+        if not unmatched.is_empty():
+            mapped_frames.append(unmatched)
+
         # Different stimuli may contribute different AOI columns, so align on the column union.
-        return polars.concat(mapped_frames, how='diagonal_relaxed'), aois
+        fixations = polars.concat(mapped_frames, how='diagonal_relaxed')
+        if word_index_column not in fixations.columns:
+            # No key matched any row, so no mapping added the index column that
+            # compute_reading_measures reads before it raises its own error.
+            fixations = fixations.with_columns(
+                polars.lit(None, dtype=polars.Int64).alias(word_index_column),
+            )
+        return fixations, aois
 
     def __eq__(self, other: Events) -> bool:
         """Check equality between this and another :py:class:`~pymovements.Events` object."""

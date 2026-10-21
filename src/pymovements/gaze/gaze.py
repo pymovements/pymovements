@@ -2008,7 +2008,7 @@ class Gaze:
 
         This is a convenience wrapper that forwards to
         :py:meth:`~pymovements.Events.measure_reading` on this gaze's events. Fixation events must
-        have been detected first (see :py:meth:`~pymovements.Gaze.detect`); reading measures are
+        have been detected first (see :py:meth:`~pymovements.Gaze.detect`). Reading measures are
         computed from the events, not from the raw samples.
 
         Parameters
@@ -2038,9 +2038,16 @@ class Gaze:
         -------
         ReadingMeasures
             Reading measures container with one row per word.
+
+        Raises
+        ------
+        AttributeError
+            If the gaze has no events, because none were detected yet.
         """
-        if self.events is None:
-            return ReadingMeasures()
+        if self.events is None or self.events.frame.is_empty():
+            raise AttributeError(
+                'Gaze object has no events. Use detect() to detect events first.',
+            )
 
         return self.events.measure_reading(
             stimulus,

@@ -27,26 +27,30 @@ from pymovements.measure.reading import ReadingMeasures
 from pymovements.stimulus.text import TextStimulus
 
 
-def _make_stimulus(words, trial='trial_1'):
+def _make_stimulus(words, trial='trial_1', start_x=None):
     n = len(words)
+    if start_x is None:
+        start_x = [10.0 + 10 * i for i in range(n)]
+    aois = pl.DataFrame({
+        'char': words,
+        'char_idx': list(range(n)),
+        'word_idx': list(range(n)),
+        'word': words,
+        'top_left_x': start_x,
+        'top_left_y': [10.0] * n,
+        'width': [10.0] * n,
+        'height': [20.0] * n,
+    })
+    if trial is not None:
+        aois = aois.with_columns(pl.lit(trial).alias('trial'))
     return TextStimulus(
-        aois=pl.DataFrame({
-            'char': words,
-            'char_idx': list(range(n)),
-            'word_idx': list(range(n)),
-            'word': words,
-            'top_left_x': [10.0 + 10 * i for i in range(n)],
-            'top_left_y': [10.0] * n,
-            'width': [10.0] * n,
-            'height': [20.0] * n,
-            'trial': [trial] * n,
-        }),
+        aois=aois,
         aoi_column='char',
         start_x_column='top_left_x',
         start_y_column='top_left_y',
         width_column='width',
         height_column='height',
-        trial_column='trial',
+        trial_column='trial' if trial is not None else None,
     )
 
 
@@ -91,6 +95,18 @@ def test_events_measure_reading_does_not_mutate_events(fixation_events, stimulus
     assert 'word_idx' not in fixation_events.columns
 
 
+def test_events_measure_reading_remaps_already_mapped_events(fixation_events, stimulus):
+    # words of the second stimulus sit at x = 20, 30 and 10, so the fixations at x = 15 and
+    # x = 25 land on its words 2 and 0.
+    other_stimulus = _make_stimulus(['x', 'y', 'z'], start_x=[20.0, 30.0, 10.0])
+    fixation_events.map_to_aois(stimulus)
+
+    result = fixation_events.measure_reading(other_stimulus)
+
+    assert result.frame['word'].to_list() == ['x', 'y', 'z']
+    assert result.frame['TFC'].to_list() == [1, 0, 1]
+
+
 def test_events_measure_reading_empty_returns_empty(stimulus):
     empty = Events()
 
@@ -125,6 +141,102 @@ def test_events_measure_reading_multiple_stimuli():
     assert result['TFC'].to_list() == [1, 1, 0, 1, 0]
 
 
+@pytest.fixture(name='two_trial_events')
+def fixture_two_trial_events():
+    # trial_1 fixates words 0 and 1, trial_2 fixates word 0.
+    return Events(
+        pl.DataFrame({
+            'name': ['fixation'] * 3,
+            'onset': [0, 200, 400],
+            'offset': [200, 400, 600],
+            'duration': [200, 200, 200],
+            'location': [[15.0, 15.0], [25.0, 15.0], [15.0, 15.0]],
+            'trial': ['trial_1', 'trial_1', 'trial_2'],
+        }),
+    )
+
+
+def test_events_measure_reading_multiple_stimuli_missing_key_raises(two_trial_events):
+    stimuli = {'trial_1': _make_stimulus(['The', 'quick', 'brown'], trial='trial_1')}
+
+    with pytest.raises(ValueError, match=r"without an entry in the aois dict: \['trial_2'\]"):
+        two_trial_events.measure_reading(stimuli, group_columns=['trial'])
+
+
+def test_events_measure_reading_multiple_stimuli_unused_key_warns(fixation_events):
+    stimuli = {
+        'trial_1': _make_stimulus(['The', 'quick', 'brown'], trial='trial_1'),
+        'trial_2': _make_stimulus(['fox', 'jumps'], trial='trial_2'),
+    }
+
+    with pytest.warns(UserWarning, match=r"keys without any matching fixations: \['trial_2'\]"):
+        result = fixation_events.measure_reading(stimuli, group_columns=['trial'])
+
+    result = result.frame.sort(['trial', 'word_index'])
+    assert result['word'].to_list() == ['The', 'quick', 'brown', 'fox', 'jumps']
+    assert result['TFC'].to_list() == [1, 1, 0, 0, 0]
+    assert result['skipped'].to_list() == [0, 0, 1, 1, 1]
+
+
+def test_events_measure_reading_multiple_stimuli_empty_dict_raises(fixation_events):
+    with pytest.raises(ValueError, match='aois dict is empty'):
+        fixation_events.measure_reading({}, group_columns=['trial'])
+
+
+def test_events_measure_reading_multiple_stimuli_no_key_matches_raises(fixation_events):
+    stimuli = {'trial_9': _make_stimulus(['fox', 'jumps'], trial='trial_9')}
+
+    with pytest.raises(ValueError, match=r"without an entry in the aois dict: \['trial_1'\]"):
+        fixation_events.measure_reading(stimuli, group_columns=['trial'])
+
+
+@pytest.fixture(name='int_trial_events')
+def fixture_int_trial_events():
+    return Events(
+        pl.DataFrame({
+            'name': ['fixation', 'fixation'],
+            'onset': [0, 200],
+            'offset': [200, 400],
+            'duration': [200, 200],
+            'location': [[15.0, 15.0], [25.0, 15.0]],
+            'trial': [1, 1],
+        }),
+    )
+
+
+def test_events_measure_reading_multiple_stimuli_incompatible_key_dtype_raises(int_trial_events):
+    stimuli = {'trial_1': _make_stimulus(['The', 'quick', 'brown'], trial='trial_1')}
+
+    with pytest.raises(ValueError, match='keys are not compatible with the fixation trial dtype'):
+        int_trial_events.measure_reading(stimuli, group_columns=['trial'])
+
+
+def test_events_measure_reading_multiple_stimuli_casts_keys_to_column_dtype(int_trial_events):
+    stimuli = {'1': _make_stimulus(['The', 'quick', 'brown'], trial=1)}
+
+    result = int_trial_events.measure_reading(stimuli, group_columns=['trial'])
+
+    assert result.frame['trial'].to_list() == [1, 1, 1]
+    assert result.frame['TFC'].to_list() == [1, 1, 0]
+
+
+def test_events_measure_reading_multiple_stimuli_without_sequence_column(fixation_events):
+    stimuli = {'trial_1': _make_stimulus(['The', 'quick', 'brown'], trial=None)}
+
+    result = fixation_events.measure_reading(stimuli, group_columns=['trial'])
+
+    assert result.frame['trial'].to_list() == ['trial_1'] * 3
+    assert result.frame['TFC'].to_list() == [1, 1, 0]
+
+
+def test_events_measure_reading_multiple_stimuli_key_mismatch_raises(fixation_events):
+    stimuli = {'trial_1': _make_stimulus(['The', 'quick', 'brown'], trial='trial_2')}
+
+    message = r"stimulus for key 'trial_1' has trial values \['trial_2'\]"
+    with pytest.raises(ValueError, match=message):
+        fixation_events.measure_reading(stimuli, group_columns=['trial'])
+
+
 def test_events_measure_reading_multiple_stimuli_requires_sequence_column(stimulus):
     events = Events(
         pl.DataFrame({
@@ -155,11 +267,10 @@ def test_gaze_measure_reading_delegates_to_events(fixation_events, stimulus):
     assert gaze_result.frame.equals(events_result.frame)
 
 
-def test_gaze_measure_reading_without_events_returns_empty(stimulus):
+@pytest.mark.parametrize('events', [None, Events()], ids=['none', 'empty'])
+def test_gaze_measure_reading_without_events_raises(events, stimulus):
     gaze = Gaze(events=Events())
-    gaze.events = None
+    gaze.events = events
 
-    result = gaze.measure_reading(stimulus)
-
-    assert isinstance(result, ReadingMeasures)
-    assert result.frame.is_empty()
+    with pytest.raises(AttributeError, match=r'has no events. Use detect\(\)'):
+        gaze.measure_reading(stimulus)
