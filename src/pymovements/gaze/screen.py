@@ -32,7 +32,7 @@ from deprecated.sphinx import deprecated
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
-from pymovements.plotting.screen import screen
+from pymovements.plotting.screen import make_screen_axes
 from pymovements.transforms.numpy import pix2deg
 
 if TYPE_CHECKING:
@@ -538,7 +538,7 @@ class Screen:
 
         See Also
         --------
-        pymovements.plotting.screen : Create an empty axes spanning a display's pixel extent.
+        pymovements.plotting.make_screen_axes : Create an empty axes for a display's pixel extent.
 
         Examples
         --------
@@ -556,7 +556,7 @@ class Screen:
         >>> tuple(float(value) for value in ax.get_ylim())
         (1024.0, 0.0)
         """
-        return screen(self.width_px, self.height_px, origin=self.origin, ax=ax)
+        return make_screen_axes(self.width_px, self.height_px, origin=self.origin, ax=ax)
 
     def __bool__(self) -> bool:
         """Return True if the screen has data defined, else False."""

@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test for Screen class."""
+import re
+
 import matplotlib.pyplot as plt
 import pytest
 
@@ -660,5 +662,16 @@ def test_screen_plot_reuses_passed_axes():
 def test_screen_plot_without_resolution_raises():
     screen = pm.Screen(origin='upper left')
 
-    with pytest.raises(ValueError, match='screen width and height must be set'):
+    expected_message = (
+        'screen width and height must be set, got width_px=None and height_px=None.'
+    )
+    with pytest.raises(ValueError, match=re.escape(expected_message)):
+        screen.plot()
+
+
+def test_screen_plot_without_origin_raises():
+    screen = pm.Screen(1280, 1024)
+
+    expected_message = 'screen origin must be one of "upper left", "center", got "None".'
+    with pytest.raises(ValueError, match=re.escape(expected_message)):
         screen.plot()
