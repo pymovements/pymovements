@@ -1431,3 +1431,15 @@ def test_map_to_aois_warns_once_with_count_of_invalid_samples(
         'Returning no match for these samples.',
     ]
     assert gaze.samples.get_column('aoi').to_list() == ['A', None, None, None]
+
+
+def test_map_to_aois_empty_samples_returns_empty_aoi_columns(
+        simple_stimulus_w_h: TextStimulus,
+) -> None:
+    samples = pl.DataFrame(schema={'pixel': pl.List(pl.Float64)})
+    gaze = Gaze(samples=samples)
+
+    gaze.map_to_aois(simple_stimulus_w_h, preserve_structure=False)
+
+    assert gaze.samples.height == 0
+    assert gaze.samples.columns == ['pixel', 'aoi', 'x', 'y', 'width', 'height']
