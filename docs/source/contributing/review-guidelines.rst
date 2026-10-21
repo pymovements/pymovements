@@ -11,7 +11,8 @@ software engineers, so a clear API and good docstrings carry real weight.
 
 Many pull requests come from students and first-time contributors. Review firmly on substance and
 explain the reason behind a convention, so that the contributor learns the rule and not only the
-fix.
+fix. Mark uncertainty as uncertainty: a wrong confident comment costs more than an honest
+question. A review that finds nothing says so plainly.
 
 Before You Start
 ----------------
@@ -144,6 +145,3 @@ Severity
 - **Should-fix**: missing edge-case tests, missing documentation, error messages that are not
   asserted, avoidable row-wise polars operations.
 - **Nit**: what a linter enforces is not worth a comment.
-
-Mark uncertainty as uncertainty: a wrong confident comment costs more than an honest question. A
-review that finds nothing says so plainly.
