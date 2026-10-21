@@ -63,6 +63,27 @@ The most convenient way to correct fixations is via the
 
 .. currentmodule:: pymovements
 
+.. rubric:: Text Lines
+    :name: text-lines
+
+Drift correction moves a fixation onto a line; :py:meth:`Events.map_to_lines` tells you *which*
+line it ended up on, as a zero-based index counted from the top. That index is what you need to
+compare a correction against manually corrected data, and to compute reading measures per line
+rather than per word.
+
+The line index of the areas of interest themselves comes from
+:py:meth:`~pymovements.stimulus.TextStimulus.with_line_idx`, which groups AOIs by their vertical
+centre with a tolerance expressed in line heights rather than in pixels, so that it carries over
+between stimuli of different font sizes.
+
+Nothing in pymovements writes a ``line_idx`` column today, so
+:py:func:`~pymovements.events.correction.correct_fixations` always falls back to grouping AOIs
+by an exactly equal top edge. Deriving the column first gives it explicit lines instead. For
+PoTeC and EMTeC the two ways of grouping happen to agree, because every character of a line
+shares one centre there; grouping by centre is the one that does not depend on that.
+
+.. currentmodule:: pymovements
+
 .. rubric:: Drift Correction Algorithms
     :name: drift-correction-algorithms
 
