@@ -629,7 +629,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 onsets=[0],
                 offsets=[99],
             ),
-            id='constant_position_single_fixation_with_minimum_duration_one_sample',
+            id='constant_position_single_fixation_with_minimum_duration_one_interval',
         ),
         pytest.param(
             {

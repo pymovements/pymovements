@@ -82,7 +82,8 @@ def idt(
         Corresponding continuous 1D timestep time series. Fractional (float) timesteps are
         accepted. If None, sample based timesteps are assumed. (default: None)
     minimum_duration: float
-        Minimum fixation duration, measured from the first to the last sample of a fixation.
+        Minimum fixation duration. Each sample covers the interval to its successor, so a
+        fixation is measured from its first sample to the sample after its last one.
         The duration is specified in the units used in ``timesteps``; for a ``polars.Duration``
         timesteps series the unit is milliseconds. If ``timesteps`` is None, then
         ``minimum_duration`` is specified in numbers of samples. (default: 100)
