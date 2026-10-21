@@ -349,6 +349,23 @@ def my_non_aggregating_measure(column: str) -> pl.Expr:
 
         pytest.param(
             {
+                'samples': pl.DataFrame(
+                    data={'A': [], 'trial': []},
+                    schema={'A': pl.Int64, 'trial': pl.Int64},
+                ),
+                'trial_columns': 'trial',
+            },
+            'null_ratio',
+            {'column': 'A'},
+            pl.DataFrame(
+                data={'trial': [], 'null_ratio': []},
+                schema={'trial': pl.Int64, 'null_ratio': pl.Float64},
+            ),
+            id='null_ratio_empty_samples_with_trials',
+        ),
+
+        pytest.param(
+            {
                 'samples': pl.from_dict(
                     data={'A': [1, 2, 3, 4], 'trial': [1, 1, 2, 2]},
                     schema={'A': pl.Int64, 'trial': pl.Int64},
