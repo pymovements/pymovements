@@ -116,23 +116,13 @@ def test_events_measure_reading_empty_returns_empty(stimulus):
     assert result.frame.is_empty()
 
 
-def test_events_measure_reading_multiple_stimuli():
-    events = Events(
-        pl.DataFrame({
-            'name': ['fixation'] * 3,
-            'onset': [0, 200, 400],
-            'offset': [200, 400, 600],
-            'duration': [200, 200, 200],
-            'location': [[15.0, 15.0], [25.0, 15.0], [15.0, 15.0]],
-            'trial': ['trial_1', 'trial_1', 'trial_2'],
-        }),
-    )
+def test_events_measure_reading_multiple_stimuli(two_trial_events):
     stimuli = {
         'trial_1': _make_stimulus(['The', 'quick', 'brown'], trial='trial_1'),
         'trial_2': _make_stimulus(['fox', 'jumps'], trial='trial_2'),
     }
 
-    result = events.measure_reading(stimuli, group_columns=['trial'])
+    result = two_trial_events.measure_reading(stimuli, group_columns=['trial'])
     result = result.frame.sort(['trial', 'word_index'])
 
     assert result['trial'].to_list() == ['trial_1', 'trial_1', 'trial_1', 'trial_2', 'trial_2']
@@ -154,6 +144,23 @@ def fixture_two_trial_events():
             'trial': ['trial_1', 'trial_1', 'trial_2'],
         }),
     )
+
+
+def test_events_measure_reading_multiple_stimuli_null_key_raises():
+    events = Events(
+        pl.DataFrame({
+            'name': ['fixation', 'fixation'],
+            'onset': [0, 200],
+            'offset': [200, 400],
+            'duration': [200, 200],
+            'location': [[15.0, 15.0], [25.0, 15.0]],
+            'trial': ['trial_1', None],
+        }),
+    )
+    stimuli = {'trial_1': _make_stimulus(['The', 'quick', 'brown'], trial='trial_1')}
+
+    with pytest.raises(ValueError, match=r'without an entry in the aois dict: \[None\]'):
+        events.measure_reading(stimuli, group_columns=['trial'])
 
 
 def test_events_measure_reading_multiple_stimuli_missing_key_raises(two_trial_events):
@@ -226,6 +233,17 @@ def test_events_measure_reading_multiple_stimuli_without_sequence_column(fixatio
     result = fixation_events.measure_reading(stimuli, group_columns=['trial'])
 
     assert result.frame['trial'].to_list() == ['trial_1'] * 3
+    assert result.frame['TFC'].to_list() == [1, 1, 0]
+
+
+def test_events_measure_reading_multiple_stimuli_stimulus_column_dtype_differs(fixation_events):
+    # the stimulus keeps its sequence column as a string while the key and the events are ints
+    events = Events(fixation_events.frame.with_columns(pl.lit(1).alias('trial')))
+    stimuli = {1: _make_stimulus(['The', 'quick', 'brown'], trial='1')}
+
+    result = events.measure_reading(stimuli, group_columns=['trial'])
+
+    assert result.frame['trial'].to_list() == [1, 1, 1]
     assert result.frame['TFC'].to_list() == [1, 1, 0]
 
 

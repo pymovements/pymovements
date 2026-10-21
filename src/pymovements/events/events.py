@@ -1356,17 +1356,22 @@ class Events:
         mapped_frames = []
         aois = {}
         for key, (original_key, stim) in zip(keys, stimuli.items()):
-            # The dict key defines the sequence column, so it must not also live in the entry.
             aois[original_key] = stim.aois
             if sequence_column in stim.aois.columns:
                 # map_to_aois still filters the entry's AOIs by this column, so values other
-                # than the key would leave every fixation of the sequence unmatched.
-                values = stim.aois[sequence_column].unique().to_list()
+                # than the key would leave every fixation of the sequence unmatched. AOI rows
+                # with a null value are ignored by the mapping and by this check.
+                values = (
+                    stim.aois[sequence_column].drop_nulls().cast(sequence_dtype, strict=False)
+                    .unique().to_list()
+                )
                 if values != [key]:
                     raise ValueError(
                         f'stimulus for key {original_key!r} has {sequence_column} values '
                         f'{values} that differ from its dict key.',
                     )
+                # The dict key defines the sequence column, so it must not also live in the
+                # entry handed to compute_reading_measures.
                 aois[original_key] = stim.aois.drop(sequence_column)
             subset = Events(
                 frame.filter(polars.col(sequence_column) == key),
@@ -1379,7 +1384,10 @@ class Events:
 
         # Rows whose key has no stimulus entry pass through unmapped, so that
         # compute_reading_measures raises its missing-key error instead of silently dropping them.
-        unmatched = frame.filter(~polars.col(sequence_column).is_in(keys.implode()))
+        # is_in is null for a null key, which filter would drop. A null key is unmatched too.
+        unmatched = frame.filter(
+            ~polars.col(sequence_column).is_in(keys.implode()).fill_null(False),
+        )
         if not unmatched.is_empty():
             mapped_frames.append(unmatched)
 
