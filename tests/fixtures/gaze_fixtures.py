@@ -20,6 +20,9 @@
 """Provide shared fixtures for gaze tests."""
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 import polars as pl
 import pytest
 
@@ -103,3 +106,48 @@ def fixture_gaze_minimal():
         pixel_columns=['x', 'y'],
         trial_columns='trial',
     )
+
+
+@pytest.fixture(name='make_unvalidated_gaze', scope='function')
+def fixture_make_unvalidated_gaze() -> Callable[..., Gaze]:
+    """Return a factory that creates Gaze objects bypassing __init__ validation.
+
+    The factory constructs the Gaze via ``Gaze.__new__``, so invalid states which
+    the constructor would reject (e.g. declared trial columns missing from the
+    sample schema) can be created for testing validation checks.
+
+    A numeric ``time`` column is interpreted as milliseconds and converted to
+    ``Duration('us')`` to mirror real Gaze construction, unless ``convert_time``
+    is False.
+
+    Returns
+    -------
+    Callable[..., Gaze]
+        Function that takes samples, trial_columns, experiment, convert_time and
+        metadata and returns a Gaze.
+
+    """
+    def _make_unvalidated_gaze(
+            samples: pl.DataFrame,
+            trial_columns: list[str] | None = None,
+            experiment: Experiment | None = None,
+            convert_time: bool = True,
+            metadata: dict[str, Any] | None = None,
+    ) -> Gaze:
+        if convert_time and 'time' in samples.columns and samples['time'].dtype.is_numeric():
+            samples = samples.with_columns(
+                (pl.col('time').cast(pl.Float64) * 1000).round().cast(pl.Duration('us')),
+            )
+        gaze = Gaze.__new__(Gaze)
+        gaze.samples = samples
+        gaze.trial_columns = trial_columns
+        gaze.experiment = experiment
+        gaze.n_components = None
+        gaze.events = Events()
+        gaze.metadata = {} if metadata is None else metadata
+        gaze.messages = None
+        gaze.calibrations = None
+        gaze.validations = None
+        gaze._metadata = None
+        return gaze
+    return _make_unvalidated_gaze
