@@ -21,8 +21,6 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
-      # The baseline is the commit the head is measured against, on this same
-      # runner: the merge-base on a pull request, the previous commit otherwise.
       - name: Find baseline commit
         id: baseline
         env:
@@ -64,7 +62,6 @@ jobs:
       - name: Setup baseline benchmark environment
         run: tox -vv --notest -e benchmark
 
-      # The head run overwrites benchmark-data.json, keep a copy for the comparison.
       - name: Benchmark baseline commit
         run: |
           tox --skip-pkg-install -e benchmark
@@ -75,8 +72,6 @@ jobs:
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: git checkout --quiet "$SHA"
 
-      # The environment holds the baseline package and its dependencies,
-      # recreate it for the head commit.
       - name: Setup head benchmark environment
         run: tox -vv --notest --recreate -e benchmark
 
@@ -93,10 +88,9 @@ jobs:
       - name: Benchmark head commit
         run: tox --skip-pkg-install -e benchmark
 
-      # The action compares against the last entry in its data file: seeded with
-      # the baseline result, the head result is compared on the same runner.
-      # The token is for the commit lookup on schedule and dispatch events,
-      # whose payload carries no commit.
+      # The action compares a result with the last entry in its data file, so
+      # the baseline pass seeds the file and the head pass compares. The token
+      # is for the commit lookup on schedule and dispatch, their payload has none.
       - name: Record baseline result
         uses: benchmark-action/github-action-benchmark@v1
         with:
