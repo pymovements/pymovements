@@ -20,6 +20,7 @@
 """Provides the Events class."""
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from typing import Any
 from typing import Literal
@@ -82,6 +83,177 @@ def _build_time_series(values: list[int | float] | np.ndarray) -> polars.Series:
     if series.dtype == polars.Null:
         series = series.cast(polars.Float64)
     return series
+
+
+_AOI_ROW_ID = '__pymovements_aoi_row_id'
+_AOI_MATCH_ORDER = '__pymovements_aoi_match_order'
+_AOI_X = '__pymovements_aoi_x'
+_AOI_Y = '__pymovements_aoi_y'
+
+
+def _event_coordinate_expr(frame: polars.DataFrame, component: Literal['x', 'y']) -> polars.Expr:
+    """Resolve one fixation coordinate from component columns or the ``location`` list column."""
+    index = 0 if component == 'x' else 1
+    # The leading null keeps the expression valid for frames without any coordinate column.
+    expressions: list[polars.Expr] = [polars.lit(None, dtype=polars.Float64)]
+    if f'location_{component}' in frame.columns:
+        expressions.append(polars.col(f'location_{component}'))
+    if 'location' in frame.columns:
+        expressions.append(polars.col('location').list.get(index))
+    return polars.coalesce(expressions).cast(polars.Float64, strict=False)
+
+
+def _map_fixations_to_aois(
+        frame: polars.DataFrame,
+        aoi_dataframe: TextStimulus,
+        aoi_columns: list[str],
+        aoi_schema: dict[str, polars.PolarsDataType],
+        verbose: bool,
+) -> polars.DataFrame:
+    """Return the AOI columns for all fixations in ``frame``, aligned to its row order.
+
+    Non-fixation rows, rows with invalid coordinates and rows without a matching AOI receive
+    null values. Fixation-to-AOI matching is done with a single vectorized join and spatial
+    filter instead of a per-row Python loop.
+    """
+    key_columns = [
+        column
+        for column in (aoi_dataframe.trial_column, aoi_dataframe.page_column)
+        if column is not None and column in frame.columns
+    ]
+
+    candidates = frame.select(
+        polars.int_range(polars.len()).alias(_AOI_ROW_ID),
+        polars.col('name').alias('__aoi_name'),
+        _event_coordinate_expr(frame, 'x').alias(_AOI_X),
+        _event_coordinate_expr(frame, 'y').alias(_AOI_Y),
+        # Cast to the AOI key dtypes so the join keys always share a common dtype.
+        *[
+            polars.col(column).cast(aoi_dataframe.aois.schema[column], strict=False)
+            for column in key_columns
+        ],
+    )
+    is_fixation = (
+        polars.col('__aoi_name').is_not_null()
+        & polars.col('__aoi_name').str.starts_with('fixation')
+    )
+    has_valid_xy = (
+        polars.col(_AOI_X).is_not_null()
+        & polars.col(_AOI_Y).is_not_null()
+        & polars.col(_AOI_X).is_not_nan()
+        & polars.col(_AOI_Y).is_not_nan()
+    )
+    candidates = candidates.filter(is_fixation & has_valid_xy)
+
+    # Rows whose configured key columns contain null are matched against all AOIs of the
+    # respective other key (legacy behavior); handle them via the per-row lookup below.
+    if key_columns:
+        keys_present = polars.all_horizontal(
+            [polars.col(column).is_not_null() for column in key_columns],
+        )
+        constrained = candidates.filter(keys_present)
+        wildcard = candidates.filter(~keys_present)
+    else:
+        constrained = candidates
+        wildcard = candidates.head(0)
+
+    aois = aoi_dataframe.aois.with_columns(
+        polars.int_range(polars.len()).alias(_AOI_MATCH_ORDER),
+    )
+    if key_columns:
+        matches = constrained.join(aois, on=key_columns, how='inner', suffix='_aoi')
+    else:
+        matches = constrained.join(aois, how='cross', suffix='_aoi')
+
+    if aoi_dataframe.width_column is not None:
+        spatial = (
+            (polars.col(aoi_dataframe.start_x_column) <= polars.col(_AOI_X))
+            & (
+                polars.col(_AOI_X)
+                < polars.col(aoi_dataframe.start_x_column) + polars.col(aoi_dataframe.width_column)
+            )
+            & (polars.col(aoi_dataframe.start_y_column) <= polars.col(_AOI_Y))
+            & (
+                polars.col(_AOI_Y)
+                < polars.col(aoi_dataframe.start_y_column) + polars.col(aoi_dataframe.height_column)
+            )
+        )
+    else:
+        spatial = (
+            (polars.col(aoi_dataframe.start_x_column) <= polars.col(_AOI_X))
+            & (polars.col(_AOI_X) < polars.col(aoi_dataframe.end_x_column))
+            & (polars.col(aoi_dataframe.start_y_column) <= polars.col(_AOI_Y))
+            & (polars.col(_AOI_Y) < polars.col(aoi_dataframe.end_y_column))
+        )
+    matches = matches.filter(spatial)
+
+    multiple = (
+        matches.group_by(_AOI_ROW_ID).len().filter(polars.col('len') > 1)
+        .join(candidates.select(_AOI_ROW_ID, _AOI_X, _AOI_Y), on=_AOI_ROW_ID, how='left')
+        .sort(_AOI_ROW_ID)
+    )
+    for candidate in multiple.iter_rows(named=True):
+        warnings.warn(
+            f'Multiple AOIs matched this point (x={candidate[_AOI_X]}, y={candidate[_AOI_Y]}).',
+            UserWarning,
+        )
+
+    matched = (
+        matches.sort([_AOI_ROW_ID, _AOI_MATCH_ORDER])
+        .group_by(_AOI_ROW_ID)
+        .agg([polars.col(column).first() for column in aoi_columns])
+    )
+
+    if wildcard.height:
+        fallback_records = [
+            _aoi_lookup_record(aoi_dataframe, row, key_columns, aoi_columns)
+            for row in tqdm(
+                wildcard.iter_rows(named=True),
+                desc='Mapping events to AOIs',
+                unit='event',
+                ncols=80,
+                disable=not verbose,
+            )
+        ]
+        fallback_records = [record for record in fallback_records if record is not None]
+        if fallback_records:
+            fallback = polars.DataFrame(
+                fallback_records,
+                schema={_AOI_ROW_ID: candidates.schema[_AOI_ROW_ID], **aoi_schema},
+            )
+            matched = polars.concat([matched, fallback])
+
+    matched = matched.unique(subset=[_AOI_ROW_ID], keep='first')
+
+    result = frame.with_row_index(_AOI_ROW_ID)
+    if matched.height:
+        result = result.join(matched, on=_AOI_ROW_ID, how='left')
+    else:
+        result = result.with_columns(
+            [polars.lit(None).cast(aoi_schema[column]).alias(column) for column in aoi_columns],
+        )
+    return result.sort(_AOI_ROW_ID).select(aoi_columns).cast(aoi_schema)
+
+
+def _aoi_lookup_record(
+        aoi_dataframe: TextStimulus,
+        row: dict[str, Any],
+        key_columns: list[str],
+        aoi_columns: list[str],
+) -> dict[str, Any] | None:
+    """Look up a single wildcard (null key) event row via the per-row AOI lookup."""
+    lookup = {column: row[column] for column in key_columns}
+    lookup[_AOI_X] = row[_AOI_X]
+    lookup[_AOI_Y] = row[_AOI_Y]
+    try:
+        aoi_row = aoi_dataframe.get_aoi(
+            row=lookup, x_eye=_AOI_X, y_eye=_AOI_Y, max_matches=1,
+        )
+    except (KeyError, TypeError):
+        return None
+    record: dict[str, Any] = {_AOI_ROW_ID: row[_AOI_ROW_ID]}
+    record.update({column: aoi_row[column][0] for column in aoi_columns})
+    return record
 
 
 @repr_html(['frame', 'trial_columns'])
@@ -949,67 +1121,11 @@ class Events:
             if aoi_columns else {}
         )
 
-        def _empty_aoi_row() -> polars.DataFrame:
-            # Create one row of all-None cast to expected AOI dtypes
-            return polars.DataFrame({col: [None] for col in aoi_columns}).cast(aoi_schema)
-
-        out_rows: list[polars.DataFrame] = []
-        for row in tqdm(
-                self.frame.iter_rows(named=True),
-                total=len(self.frame),
-                desc='Mapping events to AOIs',
-                unit='event',
-                ncols=80,
-                disable=not verbose,
-        ):
-            name_val = row.get('name')
-            is_fix = isinstance(name_val, str) and name_val.startswith('fixation')
-            if not is_fix:
-                out_rows.append(_empty_aoi_row())
-                continue
-
-            # Extract coordinates - support either pre-existing component columns or list column
-            x = row.get('location_x')
-            y = row.get('location_y')
-            if x is None or y is None:
-                loc = row.get('location')
-                if isinstance(loc, (list, tuple)) and len(loc) >= 2:
-                    x, y = loc[0], loc[1]
-
-            if x is None or y is None:
-                out_rows.append(_empty_aoi_row())
-                continue
-
-            # Create a shallow copy with temporary keys for AOI lookup
-            tmp_row = dict(row)
-            tmp_row['__x'] = x
-            tmp_row['__y'] = y
-
-            try:
-                aoi_row = aoi_dataframe.get_aoi(
-                    row=tmp_row, x_eye='__x', y_eye='__y', max_matches=1,
-                )
-            except (KeyError, TypeError):  # tolerate common lookup/type errors per row
-                aoi_row = _empty_aoi_row()
-            else:
-                # Project to the selected AOI columns and fill any missing ones with None
-                if aoi_columns:
-                    present = [c for c in aoi_columns if c in aoi_row.columns]
-                    missing = [c for c in aoi_columns if c not in aoi_row.columns]
-                    aoi_row = aoi_row.select(
-                        [polars.col(c) for c in present]
-                        + [polars.lit(None).alias(c) for c in missing],
-                    )
-                    # Cast to the stable AOI schema to ensure consistent dtypes across rows
-                    aoi_row = aoi_row.cast(aoi_schema)
-                else:
-                    # No AOI columns are to be appended (all already exist in the Events frame).
-                    # Keep row count but contribute zero columns to avoid duplicate-column errors.
-                    aoi_row = aoi_row.select([])
-            out_rows.append(aoi_row)
-
-        aoi_df = polars.concat(out_rows)
-        self.frame = polars.concat([self.frame, aoi_df], how='horizontal_extend')
+        if aoi_columns:
+            aoi_df = _map_fixations_to_aois(
+                self.frame, aoi_dataframe, aoi_columns, aoi_schema, verbose,
+            )
+            self.frame = polars.concat([self.frame, aoi_df], how='horizontal_extend')
 
         # Backward-compatibility: some pipelines expect that a prior unnest removed the
         # original 'location' list column and kept only component columns. We avoid unnesting,
