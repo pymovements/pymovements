@@ -142,10 +142,14 @@ def _match_points_to_aois(
             (polars.col(_AOI_START_X) + polars.col(aoi_dataframe.width_column)).alias(_AOI_END_X),
             (polars.col(_AOI_START_Y) + polars.col(aoi_dataframe.height_column)).alias(_AOI_END_Y),
         )
-    else:
+    elif aoi_dataframe.end_x_column is not None:
         aois = aois.with_columns(
             polars.col(aoi_dataframe.end_x_column).cast(polars.Float64).alias(_AOI_END_X),
             polars.col(aoi_dataframe.end_y_column).cast(polars.Float64).alias(_AOI_END_Y),
+        )
+    else:
+        raise ValueError(
+            'either TextStimulus.width or TextStimulus.end_x_column must be defined',
         )
 
     matches = points.join_where(

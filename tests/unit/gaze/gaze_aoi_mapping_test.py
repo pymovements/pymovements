@@ -1367,3 +1367,18 @@ def test_map_to_aois_uses_first_overlapping_aoi_without_misalignment() -> None:
 
     assert gaze.samples.height == 4
     assert gaze.samples.get_column('content').to_list() == ['AOI1', 'AOI1', 'AOI2', None]
+
+
+def test_map_to_aois_raises_value_error_missing_width_and_end_columns() -> None:
+    stimulus = TextStimulus(
+        pl.DataFrame({'char': ['A'], 'top_left_x': [0.0], 'top_left_y': [0.0]}),
+        aoi_column='char',
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+    )
+    gaze = Gaze(samples=pl.DataFrame({'pixel': [[1.0, 1.0]]}))
+
+    with pytest.raises(ValueError) as excinfo:
+        gaze.map_to_aois(stimulus)
+    msg, = excinfo.value.args
+    assert msg == 'either TextStimulus.width or TextStimulus.end_x_column must be defined'
