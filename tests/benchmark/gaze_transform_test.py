@@ -21,24 +21,26 @@
 
 When ``trial_columns`` is set, ``Gaze.transform`` used to apply *every* transform once per
 trial group and concatenate the results. For element-wise transforms such as ``pix2deg`` this
-is pure overhead that grows with the number of trials. These benchmarks track that cost.
+is pure overhead that grows with the number of trials. These benchmarks track that cost at a
+fixed number of samples, so the runtime should stay flat across trial counts.
 """
 import numpy as np
 import polars as pl
+import pytest
 
 from pymovements import Experiment
 from pymovements import Gaze
 
 _RNG = np.random.default_rng(42)
-_N_TRIALS = 2660
-_SAMPLES_PER_TRIAL = 1000
+_N_SAMPLES = 2_660_000
 
 
-def _build_gaze() -> Gaze:
-    n_samples = _N_TRIALS * _SAMPLES_PER_TRIAL
+def _build_gaze(n_trials: int, columns_kwarg: str) -> Gaze:
+    samples_per_trial = _N_SAMPLES // n_trials
+    n_samples = n_trials * samples_per_trial
     samples = pl.DataFrame(
         {
-            'trial': np.repeat(np.arange(_N_TRIALS), _SAMPLES_PER_TRIAL),
+            'trial': np.repeat(np.arange(n_trials), samples_per_trial),
             'x': _RNG.uniform(0, 1024, size=n_samples),
             'y': _RNG.uniform(0, 768, size=n_samples),
         },
@@ -46,21 +48,26 @@ def _build_gaze() -> Gaze:
     return Gaze(
         samples=samples,
         experiment=Experiment(1024, 768, 38, 30, 60, 'center', 1000),
-        pixel_columns=['x', 'y'],
         trial_columns='trial',
+        **{columns_kwarg: ['x', 'y']},
     )
 
 
-def test_gaze_pix2deg_benchmark(benchmark):
-    """Benchmark pix2deg over 2.66M samples in 2660 trials."""
-    gaze = _build_gaze()
+@pytest.mark.parametrize(
+    ('method', 'columns_kwarg'),
+    [
+        pytest.param('pix2deg', 'pixel_columns', id='pix2deg'),
+        pytest.param('deg2pix', 'position_columns', id='deg2pix'),
+    ],
+)
+@pytest.mark.parametrize('n_trials', [1, 200, 2660])
+def test_gaze_element_wise_transform_benchmark(benchmark, method, columns_kwarg, n_trials):
+    """Benchmark an element-wise transform over 2.66M samples split into ``n_trials`` trials."""
+    gaze = _build_gaze(n_trials, columns_kwarg)
     pristine = gaze.samples.clone()
 
     def _setup() -> None:
-        # pix2deg replaces the pixel column, so restore the pristine samples before each round.
+        # The transform adds or replaces columns, so restore the pristine samples each round.
         gaze.samples = pristine.clone()
 
-    def _run() -> None:
-        gaze.pix2deg()
-
-    benchmark.pedantic(_run, setup=_setup, iterations=1, rounds=5)
+    benchmark.pedantic(getattr(gaze, method), setup=_setup, iterations=1, rounds=5)
