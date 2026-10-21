@@ -1053,15 +1053,15 @@ def test_parse_eyelink_binocular_samples_config_after_calibration(make_text_file
 
 
 # One recording block per tracked-eye configuration. Each entry maps to the SAMPLES/START/
-# RECCFG tokens, the sample line, and the expected (left, right) channel values for that block
-# after promotion to a binocular layout (the non-tracked eye is null). See issue #1401.
+# RECCFG tokens, the channel values of the sample line, and the expected (left, right) channel
+# values for that block after promotion to a binocular layout (the non-tracked eye is null).
+# Block times follow the block order, see _eye_change_block_time. See issue #1401.
 _EYE_CHANGE_BLOCKS = {
     'left': {
         'reccfg_eye': 'L',
         'samples_eye': 'LEFT',
         'start_eye': 'LEFT',
-        'time': 2000,
-        'sample': '2000\t138.1\t131.0\t778.0\t0.0\t.....',
+        'sample': '138.1\t131.0\t778.0\t0.0\t.....',
         'left': (138.1, 131.0, 778.0),
         'right': (None, None, None),
     },
@@ -1069,8 +1069,7 @@ _EYE_CHANGE_BLOCKS = {
         'reccfg_eye': 'R',
         'samples_eye': 'RIGHT',
         'start_eye': 'RIGHT',
-        'time': 3000,
-        'sample': '3000\t500.0\t400.0\t600.0\t0.0\t.....',
+        'sample': '500.0\t400.0\t600.0\t0.0\t.....',
         'left': (None, None, None),
         'right': (500.0, 400.0, 600.0),
     },
@@ -1078,8 +1077,7 @@ _EYE_CHANGE_BLOCKS = {
         'reccfg_eye': 'L',
         'samples_eye': 'LEFT',
         'start_eye': 'LEFT',
-        'time': 4000,
-        'sample': '4000\t150.2\t140.0\t790.0\t0.0\t.....',
+        'sample': '150.2\t140.0\t790.0\t0.0\t.....',
         'left': (150.2, 140.0, 790.0),
         'right': (None, None, None),
     },
@@ -1087,12 +1085,16 @@ _EYE_CHANGE_BLOCKS = {
         'reccfg_eye': 'LR',
         'samples_eye': 'LEFT\tRIGHT',
         'start_eye': 'LEFT\tRIGHT',
-        'time': 1000,
-        'sample': '1000\t964.3\t541.5\t288.0\t960.5\t538.8\t305.0\t.....',
+        'sample': '964.3\t541.5\t288.0\t960.5\t538.8\t305.0\t.....',
         'left': (964.3, 541.5, 288.0),
         'right': (960.5, 538.8, 305.0),
     },
 }
+
+
+def _eye_change_block_time(index):
+    """Return the timestamp of the block at ``index``, increasing with the block order."""
+    return 1000 * (index + 1)
 
 
 def _build_eye_change_asc(block_keys, reccfg_eye=None, with_reccfg=True):
@@ -1106,15 +1108,15 @@ def _build_eye_change_asc(block_keys, reccfg_eye=None, with_reccfg=True):
         '** DATE: Wed Mar 10 12:00:00 2021',
         'MSG\t1 ELCLCFG BTABLER',
     ]
-    for key in block_keys:
+    for index, key in enumerate(block_keys):
         block = _EYE_CHANGE_BLOCKS[key]
-        time = block['time']
+        time = _eye_change_block_time(index)
         if with_reccfg:
             lines.append(f"MSG\t{time} RECCFG CR 1000 2 1 {reccfg_eye or block['reccfg_eye']}")
         lines += [
             f"START\t{time} \t{block['start_eye']}\tSAMPLES\tEVENTS",
             f"SAMPLES\tGAZE\t{block['samples_eye']}\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2",
-            block['sample'],
+            f"{time}\t{block['sample']}",
             f'END\t{time} \tSAMPLES\tEVENTS\tRES\t38.54\t31.12',
         ]
     return '\n'.join(lines) + '\n'
@@ -1143,7 +1145,7 @@ def test_parse_eyelink_tracked_eye_change_promotes_to_binocular(make_text_file, 
     gaze_df, _, metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
 
     expected = {
-        'time': [float(_EYE_CHANGE_BLOCKS[key]['time']) for key in block_keys],
+        'time': [float(_eye_change_block_time(index)) for index in range(len(block_keys))],
         'x_left_pix': [_EYE_CHANGE_BLOCKS[key]['left'][0] for key in block_keys],
         'y_left_pix': [_EYE_CHANGE_BLOCKS[key]['left'][1] for key in block_keys],
         'pupil_left': [_EYE_CHANGE_BLOCKS[key]['left'][2] for key in block_keys],
@@ -1165,7 +1167,7 @@ def test_parse_eyelink_same_eye_in_two_blocks_stays_monocular(make_text_file):
     gaze_df, _, metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
 
     expected = {
-        'time': [2000.0, 4000.0],
+        'time': [1000.0, 2000.0],
         'x_pix': [138.1, 150.2],
         'y_pix': [131.0, 140.0],
         'pupil': [778.0, 790.0],

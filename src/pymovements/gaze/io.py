@@ -500,8 +500,8 @@ def from_asc(
 
     A file whose tracked eye changes between recording blocks, for example a monocular left block
     followed by a monocular right block, is loaded in the binocular four-channel layout. Each
-    sample holds the data of the eye tracked at that time and null for the other eye. The parsed
-    ``tracked_eye`` metadata reports ``'LR'`` for such a file, the same value as for a simultaneous
+    sample holds the data of the eye tracked at that time and null for the other eye. The
+    experiment's eye tracker then reports both eyes as tracked, the same as for a simultaneous
     binocular recording. Per-recording metadata that tells the two cases apart is planned in
     `issue 1663 <https://github.com/pymovements/pymovements/issues/1663>`_.
 

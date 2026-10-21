@@ -469,7 +469,7 @@ def _parse_tracked_eye_layout(tracked: str) -> _EyeLayout:
     ----------
     tracked: str
         Upper-cased tracked-eye token from a SAMPLES config line, one of the alternatives
-        captured by ``SAMPLES_CONFIG_REGEX`` (``LEFT``, ``RIGHT``, ``LEFT\\tRIGHT``, ``L``,
+        captured by ``SAMPLES_CONFIG_REGEX`` (``LEFT``, ``RIGHT``, ``LEFT\tRIGHT``, ``L``,
         ``R``, ``LR``).
 
     Returns
@@ -519,8 +519,9 @@ def _migrate_samples_to_binocular(
     samples: dict[str, list[Any]]
         Dictionary of sample columns to migrate in place.
     prev_eye: _MonocularEye | None
-        Eye the already-collected monocular samples belong to.
-        None (no prior samples) defaults to the left eye.
+        Eye the already-collected monocular samples belong to. None means no monocular
+        SAMPLES config was seen before the change. Samples parsed before any SAMPLES line
+        still exist and go to the left eye.
     """
     own_channels, _ = _eye_channels(prev_eye or 'left')
     prev_values = [samples.pop(channel, []) for channel in _MONOCULAR_CHANNELS]
@@ -795,16 +796,7 @@ def parse_eyelink(
             for additional_column in additional_columns:
                 samples[additional_column].append(current_additional[additional_column])
 
-            if not is_binocular:
-                # Monocular file: a single tracked eye throughout, three channels.
-                x_pix = check_nan(eye_tracking_sample_match.group('x_pix'))
-                y_pix = check_nan(eye_tracking_sample_match.group('y_pix'))
-                pupil = check_nan(eye_tracking_sample_match.group('pupil'))
-
-                samples['x_pix'].append(x_pix)
-                samples['y_pix'].append(y_pix)
-                samples['pupil'].append(pupil)
-            elif current_block_binocular:
+            if current_block_binocular:
                 # Binocular block: both eyes present in the sample line.
                 x_left_pix = check_nan(eye_tracking_sample_match.group('x_pix_left'))
                 y_left_pix = check_nan(eye_tracking_sample_match.group('y_pix_left'))
@@ -820,19 +812,26 @@ def parse_eyelink(
                 samples['y_right_pix'].append(y_right_pix)
                 samples['pupil_right'].append(pupil_right)
             else:
-                # Monocular block within a promoted binocular file: route the sample to its
-                # tracked eye and fill the other eye with null.
+                # Monocular sample line: one tracked eye in this block.
                 x_pix = check_nan(eye_tracking_sample_match.group('x_pix'))
                 y_pix = check_nan(eye_tracking_sample_match.group('y_pix'))
                 pupil = check_nan(eye_tracking_sample_match.group('pupil'))
 
-                own_channels, other_channels = _eye_channels(
-                    'right' if current_layout == 'right' else 'left',
-                )
-                for channel, value in zip(own_channels, (x_pix, y_pix, pupil)):
-                    samples[channel].append(value)
-                for channel in other_channels:
-                    samples[channel].append(None)
+                if not is_binocular:
+                    # Monocular file: a single tracked eye throughout, three channels.
+                    samples['x_pix'].append(x_pix)
+                    samples['y_pix'].append(y_pix)
+                    samples['pupil'].append(pupil)
+                else:
+                    # Monocular block within a promoted binocular file: route the sample to
+                    # its tracked eye and fill the other eye with null.
+                    own_channels, other_channels = _eye_channels(
+                        'right' if current_layout == 'right' else 'left',
+                    )
+                    for channel, value in zip(own_channels, (x_pix, y_pix, pupil)):
+                        samples[channel].append(value)
+                    for channel in other_channels:
+                        samples[channel].append(None)
 
             timestamp = float(timestamp_s)
             samples['time'].append(timestamp)
