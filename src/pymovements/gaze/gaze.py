@@ -71,6 +71,11 @@ _AOI_END_X = '__pymovements_aoi_end_x'
 _AOI_END_Y = '__pymovements_aoi_end_y'
 
 
+def _is_numeric_or_null(dtype: polars.DataType) -> bool:
+    """Return whether coordinates of this dtype can be matched to AOIs without parsing."""
+    return dtype.is_numeric() or dtype == polars.Null
+
+
 def _list_xy_exprs(column: str, eye: str) -> tuple[polars.Expr, polars.Expr]:
     """Build expressions selecting one eye's x/y from a list column of components.
 
@@ -115,7 +120,7 @@ def _list_xy_exprs(column: str, eye: str) -> tuple[polars.Expr, polars.Expr]:
     # A two-component list is always treated as mono, regardless of the requested eye.
     x_expr = polars.when(n_components == 2).then(value(0)).otherwise(general_x)
     y_expr = polars.when(n_components == 2).then(value(1)).otherwise(general_y)
-    return x_expr.cast(polars.Float64, strict=False), y_expr.cast(polars.Float64, strict=False)
+    return x_expr.cast(polars.Float64), y_expr.cast(polars.Float64)
 
 
 def _match_points_to_aois(
@@ -1970,7 +1975,11 @@ class Gaze:
             mode, payload, warn_msg = flat
             if warn_msg:
                 warn(warn_msg, UserWarning)
-            if mode == 'direct':
+            if not all(_is_numeric_or_null(self.samples.schema[column]) for column in payload):
+                # Non-numeric coordinates are never parsed, they give no match.
+                x_expr = polars.lit(None, dtype=polars.Float64)
+                y_expr = polars.lit(None, dtype=polars.Float64)
+            elif mode == 'direct':
                 x_eye, y_eye = payload
                 x_expr = polars.col(x_eye)
                 y_expr = polars.col(y_eye)
@@ -1993,7 +2002,8 @@ class Gaze:
                     'neither position nor pixel column in samples dataframe, '
                     'at least one needed for mapping',
                 )
-            if isinstance(self.samples.schema[source_col], polars.List):
+            source_dtype = self.samples.schema[source_col]
+            if isinstance(source_dtype, polars.List) and _is_numeric_or_null(source_dtype.inner):
                 x_expr, y_expr = _list_xy_exprs(source_col, eye)
             else:
                 x_expr = polars.lit(None, dtype=polars.Float64)

@@ -1382,3 +1382,31 @@ def test_map_to_aois_raises_value_error_missing_width_and_end_columns() -> None:
         gaze.map_to_aois(stimulus)
     msg, = excinfo.value.args
     assert msg == 'either TextStimulus.width or TextStimulus.end_x_column must be defined'
+
+
+@pytest.mark.parametrize(
+    'samples',
+    [
+        pytest.param(
+            pl.DataFrame({'pixel_x': ['5', 'abc'], 'pixel_y': ['5', 'abc']}),
+            id='flat_string_columns',
+        ),
+        pytest.param(
+            pl.DataFrame({'pixel': [['5', '5'], ['abc', 'abc']]}),
+            id='list_of_strings',
+        ),
+    ],
+)
+@pytest.mark.filterwarnings(
+    'ignore:Gaze contains samples but no components could be inferred.*:UserWarning',
+)
+def test_map_to_aois_non_numeric_coordinates_give_no_match(
+        samples: pl.DataFrame,
+        simple_stimulus_w_h: TextStimulus,
+) -> None:
+    gaze = Gaze(samples=samples)
+
+    gaze.map_to_aois(simple_stimulus_w_h, eye='mono', preserve_structure=False)
+
+    for column in simple_stimulus_w_h.aois.columns:
+        assert gaze.samples[column].null_count() == 2
