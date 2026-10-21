@@ -48,6 +48,7 @@ from pymovements._utils._time import time_column_to_duration_us
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
 from pymovements.gaze.experiment import Experiment
+from pymovements.gaze.quality import _metadata_source_path
 from pymovements.gaze.quality import DataQualityReport
 from pymovements.gaze.quality import run_report
 from pymovements.gaze.validation import check_gaze_components_defined
@@ -2212,7 +2213,7 @@ class Gaze:
             levels: list[str] | None = None,
             raise_on_error: bool = False,
             output_path: Path | str | None = None,
-            source_path: str = '',
+            source_path: str | None = None,
             max_gap_factor: float = 5.0,
             max_deviation: float = 0.05,
             min_fraction: float = 0.95,
@@ -2235,7 +2236,8 @@ class Gaze:
         measures : list[str] | None
             Measures to compute. ``None`` computes all four.
             Valid values: ``'data_loss'``, ``'std_rms'``, ``'rms_s2s'``,
-            ``'bcea'``.
+            ``'bcea'``. The precision measures read the first ``(x, y)`` pair of
+            the coordinate column, which is the left eye for binocular data.
         levels : list[str] | None
             Aggregation levels. ``None`` defaults to ``['dataset', 'trial']``
             (meaningful for a single file; pass ``'subject'`` or ``'session'``
@@ -2247,10 +2249,12 @@ class Gaze:
             If given, write BIDS-conformant derivative files here via
             :py:meth:`~DataQualityReport.save_bids_report`.
             (default: ``None``)
-        source_path : str
+        source_path : str | None
             Identifier for this gaze object (e.g. a file path). Used as
-            ``affected_files`` in failing :py:class:`CheckResult` objects.
-            (default: ``''``)
+            ``sources`` of each :py:class:`CheckResult` and as ``affected_files``
+            of a raised :py:class:`ValidationError`.
+            ``None`` uses the first ``metadata['Sources']`` entry, which loaders
+            record, or ``''`` if there is none. (default: ``None``)
         max_gap_factor : float
             Maximum allowed inter-sample gap as a multiple of the expected ISI.
             Passed to the ``'max_gap'`` check. (default: 5.0)
@@ -2274,7 +2278,8 @@ class Gaze:
             If *raise_on_error* is ``True`` and any check produces an error
             result.
         ValueError
-            If any name in *checks* is not a valid check identifier.
+            If any name in *checks*, *measures* or *levels* is not a valid
+            identifier.
 
         Examples
         --------
@@ -2289,13 +2294,12 @@ class Gaze:
         True
         """
         return run_report(
-            gaze=self,
+            [(self, _metadata_source_path(self) if source_path is None else source_path)],
             checks=checks,
             measures=measures,
-            levels=levels,
+            levels=levels if levels is not None else ['dataset', 'trial'],
             raise_on_error=raise_on_error,
             output_path=output_path,
-            source_path=source_path,
             max_gap_factor=max_gap_factor,
             max_deviation=max_deviation,
             min_fraction=min_fraction,

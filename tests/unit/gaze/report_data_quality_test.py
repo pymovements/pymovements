@@ -737,6 +737,26 @@ class TestGazeReportDataQuality:
         assert len(fails) == 1
         assert 'subject01/run01.csv' in fails[0].sources
 
+    def test_source_path_defaults_to_sources_metadata(self, make_unvalidated_gaze):
+        gaze = make_unvalidated_gaze(
+            pl.DataFrame({'time': [0], 'trial': [1]}),
+            trial_columns=['missing_col'],
+            metadata={'Sources': ['subject01/run01.csv']},
+        )
+        report = gaze.report_data_quality(checks=['trial_columns_exist'])
+        fails = [r for r in report.check_results if r.severity == 'fail']
+        assert fails[0].sources == ['subject01/run01.csv']
+
+    def test_empty_source_path_overrides_sources_metadata(self, make_unvalidated_gaze):
+        gaze = make_unvalidated_gaze(
+            pl.DataFrame({'time': [0], 'trial': [1]}),
+            trial_columns=['missing_col'],
+            metadata={'Sources': ['subject01/run01.csv']},
+        )
+        report = gaze.report_data_quality(checks=['trial_columns_exist'], source_path='')
+        fails = [r for r in report.check_results if r.severity == 'fail']
+        assert fails[0].sources == []
+
     def test_warning_log_captured(self, clean_gaze):
         report = clean_gaze.report_data_quality()
         assert isinstance(report.warning_log, list)

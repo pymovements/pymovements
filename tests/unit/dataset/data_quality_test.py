@@ -19,10 +19,7 @@
 # SOFTWARE.
 """Tests for pymovements.gaze.quality and pymovements.gaze.validation."""
 import json
-import types
 import warnings
-from pathlib import Path
-from typing import Any
 from unittest.mock import patch
 
 import polars as pl
@@ -31,9 +28,9 @@ import pytest
 from pymovements.dataset import Dataset
 from pymovements.dataset import DatasetDefinition
 from pymovements.gaze.gaze import Gaze
-from pymovements.gaze.quality import _compute_data_loss_simple
 from pymovements.gaze.quality import compute_measures
 from pymovements.gaze.quality import DataQualityReport
+from pymovements.gaze.quality import DataQualityWarning
 from pymovements.gaze.quality import ValidationError
 from pymovements.gaze.validation import _ALL_CHECKS
 from pymovements.gaze.validation import check_gaze_components_defined
@@ -791,12 +788,100 @@ class TestSaveBidsReport:
 
 
 # ---------------------------------------------------------------------------
+# warning log of a report
+# ---------------------------------------------------------------------------
+
+class TestReportWarningLog:
+    def test_degradation_warning_is_recorded_and_emitted(self, recwarn):
+        # No experiment: data_loss falls back to the simple null-ratio with a warning.
+        gaze = Gaze(
+            samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 0.0, 0.0]}),
+            position_columns=['x', 'y'],
+        )
+        report = gaze.report_data_quality(levels=['dataset'], measures=['data_loss'])
+        assert any('simple null-ratio' in message for message in report.warning_log)
+        assert any(
+            isinstance(w.message, DataQualityWarning) and 'simple null-ratio' in str(w.message)
+            for w in recwarn
+        )
+
+    def test_trial_only_run_warns_once_for_data_loss_fallback(self):
+        # No experiment: only the trial level is requested, so no file-level value is computed.
+        gaze = Gaze(
+            samples=pl.DataFrame({
+                'time': [0, 1, 2, 3],
+                'trial': [1, 1, 2, 2],
+                'x': [0.0, 1.0, 2.0, 3.0],
+                'y': [0.0, 0.0, 0.0, 0.0],
+            }),
+            position_columns=['x', 'y'],
+            trial_columns=['trial'],
+        )
+        with pytest.warns(DataQualityWarning) as record:
+            gaze.report_data_quality(levels=['trial'], measures=['data_loss'])
+        messages = [str(w.message) for w in record if issubclass(w.category, DataQualityWarning)]
+        assert len(messages) == 1
+        assert messages[0].startswith('trial-level data_loss cannot use the time base')
+
+    def test_fallback_warning_names_the_subject_id(self):
+        gaze = Gaze(
+            samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 0.0, 0.0]}),
+            position_columns=['x', 'y'],
+            metadata={'subject_id': 's1'},
+        )
+        with pytest.warns(DataQualityWarning, match="data_loss for subject 's1' cannot use"):
+            gaze.report_data_quality(levels=['dataset'], measures=['data_loss'])
+
+    @pytest.mark.parametrize(
+        ('levels', 'measures', 'match'),
+        [
+            pytest.param(
+                ['subject'], ['std_rms'], "'subject_id' is not a metadata key", id='missing_id',
+            ),
+            pytest.param(['dataset'], ['data_loss'], 'data_loss cannot use', id='file_row'),
+            pytest.param(['trial'], ['data_loss'], 'trial-level data_loss', id='trial_rows'),
+        ],
+    )
+    def test_warning_points_at_the_report_call(self, levels, measures, match):
+        # No experiment and no metadata: each level warns from a different call depth.
+        gaze = Gaze(
+            samples=pl.DataFrame({
+                'time': [0, 1, 2, 3],
+                'trial': [1, 1, 2, 2],
+                'x': [0.0, 1.0, 2.0, 3.0],
+                'y': [0.0, 0.0, 0.0, 0.0],
+            }),
+            position_columns=['x', 'y'],
+            trial_columns=['trial'],
+        )
+        with pytest.warns(DataQualityWarning, match=match) as record:
+            gaze.report_data_quality(levels=levels, measures=measures)
+        filenames = {w.filename for w in record if issubclass(w.category, DataQualityWarning)}
+        assert filenames == {__file__}
+
+    def test_empty_when_no_warnings(self, make_experiment):
+        gaze = Gaze(
+            samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 0.0, 0.0]}),
+            position_columns=['x', 'y'],
+            experiment=make_experiment(),
+        )
+        report = gaze.report_data_quality(levels=['dataset'], measures=['data_loss'])
+        assert not report.warning_log
+
+    def test_restores_showwarning(self):
+        original = warnings.showwarning
+        gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
+        gaze.report_data_quality(levels=['dataset'], measures=[])
+        assert warnings.showwarning is original
+
+
+# ---------------------------------------------------------------------------
 # compute_measures
 # ---------------------------------------------------------------------------
 
 class TestComputeMeasures:
     def test_empty_gaze_list_returns_empty(self):
-        result = compute_measures([], None, ['dataset', 'trial'])
+        result = compute_measures([], ['dataset', 'trial'])
         assert isinstance(result, dict)
 
     def test_dataset_level_returned(self, make_experiment):
@@ -808,7 +893,7 @@ class TestComputeMeasures:
             }),
             experiment=exp,
         )
-        result = compute_measures([gaze], None, ['dataset'])
+        result = compute_measures([gaze], ['dataset'])
         assert 'dataset' in result
         assert isinstance(result['dataset'], pl.DataFrame)
         assert len(result['dataset']) == 1
@@ -824,7 +909,7 @@ class TestComputeMeasures:
             trial_columns=['trial'],
             experiment=exp,
         )
-        result = compute_measures([gaze], None, ['trial'])
+        result = compute_measures([gaze], ['trial'])
         assert 'trial' in result
         assert len(result['trial']) == 2
 
@@ -837,7 +922,7 @@ class TestComputeMeasures:
             }),
             experiment=exp,
         )
-        result = compute_measures([gaze], None, ['dataset'], measures=['data_loss'])
+        result = compute_measures([gaze], ['dataset'], measures=['data_loss'])
         if 'dataset' in result:
             assert 'data_loss' in result['dataset'].columns
             assert 'std_rms' not in result['dataset'].columns
@@ -853,7 +938,7 @@ class TestComputeMeasures:
 
         gaze = Gaze(samples, experiment=exp)
         assert gaze.samples.schema['time'] == pl.Duration('us')
-        result = compute_measures([gaze], None, ['dataset'], measures=['data_loss'])
+        result = compute_measures([gaze], ['dataset'], measures=['data_loss'])
         assert result['dataset']['data_loss'].to_list() == [pytest.approx(1 / 3)]
 
         trial_gaze = Gaze(
@@ -861,7 +946,7 @@ class TestComputeMeasures:
             experiment=exp,
             trial_columns=['trial'],
         )
-        trial_result = compute_measures([trial_gaze], None, ['trial'], measures=['data_loss'])
+        trial_result = compute_measures([trial_gaze], ['trial'], measures=['data_loss'])
         assert trial_result['trial']['data_loss'].to_list() == [pytest.approx(1 / 3)]
 
     def test_trial_precision_measure_without_time_column(self):
@@ -875,13 +960,13 @@ class TestComputeMeasures:
             trial_columns=['trial'],
         )
         assert 'time' not in gaze.samples.columns
-        result = compute_measures([gaze], None, ['trial'], measures=['std_rms'])
+        result = compute_measures([gaze], ['trial'], measures=['std_rms'])
         assert 'std_rms' in result['trial'].columns
         assert len(result['trial']) == 2
 
     def test_no_coord_column_still_returns(self):
         gaze = Gaze(pl.DataFrame({'time': [0, 1, 2], 'trial': [1, 1, 1]}))
-        result = compute_measures([gaze], None, ['dataset'])
+        result = compute_measures([gaze], ['dataset'])
         assert isinstance(result, dict)
 
     def test_session_level(self, make_experiment):
@@ -892,16 +977,10 @@ class TestComputeMeasures:
                 'position': [[float(i), float(i)] for i in range(4)],
             }),
             experiment=exp,
+            metadata={'subject_id': 's1', 'session_id': 'ses-1'},
         )
-        fileinfo = {
-            'gaze': pl.DataFrame({
-                'subject_id': ['s1'],
-                'session_id': ['ses-1'],
-                'filepath': ['/data/s1.csv'],
-            }),
-        }
-        result = compute_measures([gaze], fileinfo, ['session'])
-        assert isinstance(result, dict)
+        result = compute_measures([gaze], ['session'])
+        assert result['session'].select('subject_id', 'session_id').rows() == [('s1', 'ses-1')]
 
     def test_subject_level(self, make_experiment):
         exp = make_experiment()
@@ -911,46 +990,200 @@ class TestComputeMeasures:
                 'position': [[float(i), float(i)] for i in range(4)],
             }),
             experiment=exp,
+            metadata={'subject_id': 's1'},
         )
-        fileinfo = {
-            'gaze': pl.DataFrame({
-                'subject_id': ['s1'],
-                'filepath': ['/data/s1.csv'],
+        result = compute_measures([gaze], ['subject'])
+        assert result['subject']['subject_id'].to_list() == ['s1']
+
+    def test_subject_level_missing_column_warns(self, make_experiment):
+        gaze = Gaze(
+            pl.DataFrame({
+                'time': list(range(4)),
+                'position': [[float(i), float(i)] for i in range(4)],
             }),
-        }
-        result = compute_measures([gaze], fileinfo, ['subject'])
-        assert 'subject' in result
+            experiment=make_experiment(),
+            # The filename pattern named the group 'participant', not 'subject_id'.
+            metadata={'participant': 'p1'},
+        )
+        with pytest.warns(DataQualityWarning, match="'subject_id' is not a metadata key"):
+            result = compute_measures([gaze], ['subject'])
+        assert result['subject']['subject_id'].to_list() == [None]
+
+    def test_subject_level_missing_subject_id_groups_under_null(self, make_experiment):
+        samples = pl.DataFrame({
+            'time': list(range(4)),
+            'position': [[float(i), float(i)] for i in range(4)],
+        })
+        gaze_with = Gaze(samples, experiment=make_experiment(), metadata={'subject_id': 1})
+        gaze_without = Gaze(samples, experiment=make_experiment())
+        with pytest.warns(DataQualityWarning, match='grouping them under a null subject id'):
+            result = compute_measures([gaze_with, gaze_without], ['subject'])
+        assert result['subject']['subject_id'].to_list() == [None, 1]
+
+    def test_trial_level_missing_subject_id_concatenates_with_int_ids(self, make_experiment):
+        samples = pl.DataFrame({
+            'time': list(range(4)),
+            'trial': [1, 1, 2, 2],
+            'position': [[float(i), float(i)] for i in range(4)],
+        })
+        gaze_with = Gaze(
+            samples, trial_columns=['trial'], experiment=make_experiment(),
+            metadata={'subject_id': 1},
+        )
+        gaze_without = Gaze(samples, trial_columns=['trial'], experiment=make_experiment())
+        result = compute_measures([gaze_with, gaze_without], ['trial'])
+        assert result['trial']['subject_id'].to_list() == [1, 1, None, None]
+
+    def test_subject_id_has_the_same_dtype_at_subject_and_trial_level(self, make_experiment):
+        samples = pl.DataFrame({
+            'time': list(range(4)),
+            'trial': [1, 1, 2, 2],
+            'position': [[float(i), float(i)] for i in range(4)],
+        })
+        gaze = Gaze(
+            samples, trial_columns=['trial'], experiment=make_experiment(),
+            metadata={'subject_id': 1},
+        )
+        result = compute_measures([gaze], ['subject', 'trial'])
+        assert result['trial']['subject_id'].dtype == result['subject']['subject_id'].dtype
+
+    def test_session_level_missing_column_warns(self, make_experiment):
+        gaze = Gaze(
+            pl.DataFrame({
+                'time': list(range(4)),
+                'position': [[float(i), float(i)] for i in range(4)],
+            }),
+            experiment=make_experiment(),
+            metadata={'subject_id': 's1'},
+        )
+        with pytest.warns(DataQualityWarning, match="'session_id' is not a metadata key"):
+            result = compute_measures([gaze], ['session'])
+        assert 'session' not in result
+
+    def test_session_level_partially_missing_session_id_warns(self, make_experiment):
+        samples = pl.DataFrame({
+            'time': list(range(4)),
+            'position': [[float(i), float(i)] for i in range(4)],
+        })
+        gaze_with = Gaze(
+            samples, experiment=make_experiment(),
+            metadata={'subject_id': 's1', 'session_id': 'ses-1'},
+        )
+        gaze_without = Gaze(samples, experiment=make_experiment(), metadata={'subject_id': 's1'})
+        with pytest.warns(DataQualityWarning, match="'session_id' is not a metadata key of 1 of 2"):
+            result = compute_measures([gaze_with, gaze_without], ['session'])
+        assert result['session']['session_id'].to_list() == [None, 'ses-1']
+
+    def test_no_session_warning_when_session_level_not_requested(self, make_experiment):
+        gaze = Gaze(
+            pl.DataFrame({
+                'time': list(range(4)),
+                'position': [[float(i), float(i)] for i in range(4)],
+            }),
+            experiment=make_experiment(),
+            metadata={'subject_id': 's1'},
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            compute_measures([gaze], ['dataset', 'subject'])
+
+    def test_no_warning_when_id_columns_present(self, make_experiment):
+        gaze = Gaze(
+            pl.DataFrame({
+                'time': list(range(4)),
+                'position': [[float(i), float(i)] for i in range(4)],
+            }),
+            experiment=make_experiment(),
+            metadata={'subject_id': 's1', 'session_id': 'ses-1'},
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            compute_measures([gaze], ['subject', 'session'])
 
     def test_trial_level_no_trial_columns_skips(self):
         gaze = Gaze(
             pl.DataFrame({'time': [0, 1], 'position': [[0.0, 0.0], [1.0, 1.0]]}),
         )
-        result = compute_measures([gaze], None, ['trial'])
-        assert 'trial' not in result or len(result.get('trial', pl.DataFrame())) == 0
+        with warnings.catch_warnings():
+            warnings.simplefilter('error', DataQualityWarning)
+            result = compute_measures([gaze], ['trial'])
+        assert 'trial' not in result
 
-    def test_data_loss_simple_empty_samples(self, make_unvalidated_gaze):
+    def test_data_loss_empty_samples_is_zero(self):
+        # Empty samples with a coordinate column but no experiment reaches the
+        # simple data-loss fallback, which returns 0.0 for zero samples.
         empty_df = pl.DataFrame({'position': []}).with_columns(
             pl.col('position').cast(pl.List(pl.Float64)),
         )
-        gaze = make_unvalidated_gaze(empty_df)
-        result = _compute_data_loss_simple(gaze, 'position')
-        assert result == 0.0
+        gaze = Gaze(empty_df)
+        with pytest.warns(DataQualityWarning, match='the gaze has no experiment'):
+            result = compute_measures([gaze], ['dataset'], measures=['data_loss'])
+        assert result['dataset'][0, 'data_loss'] == 0.0
 
-    def test_fileinfo_not_dataframe_handled(self, make_experiment):
-        gaze = Gaze(
-            pl.DataFrame({'time': [0, 1], 'position': [[0.0, 0.0], [1.0, 1.0]]}),
+    def test_data_loss_without_time_column_warns_and_falls_back(
+            self, make_unvalidated_gaze, make_experiment,
+    ):
+        # Gaze() would add a time column from the sampling rate.
+        gaze = make_unvalidated_gaze(
+            pl.DataFrame({'position': [[0.0, 0.0], None, [1.0, 1.0], None]}),
             experiment=make_experiment(),
         )
-        bad_fileinfo = {'gaze': 'not_a_dataframe'}
-        result = compute_measures([gaze], bad_fileinfo, ['dataset'])
-        assert isinstance(result, dict)
+        with pytest.warns(DataQualityWarning, match="there is no 'time' column"):
+            result = compute_measures([gaze], ['dataset'], measures=['data_loss'])
+        assert result['dataset'][0, 'data_loss'] == 0.5
+
+    def test_data_loss_without_sampling_rate_warns_and_falls_back(self):
+        gaze = Gaze(
+            pl.DataFrame({'time': [0, 1, 2, 3], 'position': [[0.0, 0.0], None, [1.0, 1.0], None]}),
+        )
+        with pytest.warns(DataQualityWarning, match='the gaze has no experiment'):
+            result = compute_measures([gaze], ['dataset'], measures=['data_loss'])
+        assert result['dataset'][0, 'data_loss'] == 0.5
+
+    def test_data_loss_experiment_without_sampling_rate_warns_and_falls_back(
+            self, make_experiment,
+    ):
+        gaze = Gaze(
+            pl.DataFrame({'time': [0, 1, 2, 3], 'position': [[0.0, 0.0], None, [1.0, 1.0], None]}),
+            experiment=make_experiment(sampling_rate=None),
+        )
+        with pytest.warns(DataQualityWarning, match='the experiment defines no sampling rate'):
+            result = compute_measures([gaze], ['dataset'], measures=['data_loss'])
+        assert result['dataset'][0, 'data_loss'] == 0.5
+
+    def test_trial_rows_carry_only_the_requested_measures(self, make_experiment):
+        gaze = Gaze(
+            pl.DataFrame({
+                'time': list(range(6)),
+                'trial': [1, 1, 1, 2, 2, 2],
+                'position': [[float(i), float(i)] for i in range(6)],
+            }),
+            trial_columns=['trial'],
+            experiment=make_experiment(),
+        )
+        result = compute_measures([gaze], ['trial'], measures=['bcea'])
+        assert sorted(result['trial'].columns) == ['bcea', 'subject_id', 'trial']
+
+    def test_trial_rows_are_sorted_by_trial(self, make_experiment):
+        trials = [trial for trial in range(20, 0, -1) for _ in range(2)]
+        gaze = Gaze(
+            pl.DataFrame({
+                'time': list(range(40)),
+                'trial': trials,
+                'position': [[float(i), float(i)] for i in range(40)],
+            }),
+            trial_columns=['trial'],
+            experiment=make_experiment(),
+        )
+        result = compute_measures([gaze], ['trial'], measures=['std_rms'])
+        assert result['trial']['trial'].to_list() == list(range(1, 21))
 
     def test_trial_no_coord_column_skips(self):
         gaze = Gaze(
             pl.DataFrame({'time': [0, 1], 'trial': [1, 1]}),
             trial_columns=['trial'],
         )
-        result = compute_measures([gaze], None, ['trial'])
+        result = compute_measures([gaze], ['trial'])
         assert 'trial' not in result
 
     def test_trial_empty_agg_exprs_skips(self, make_experiment):
@@ -960,7 +1193,7 @@ class TestComputeMeasures:
             trial_columns=['trial'],
             experiment=exp,
         )
-        result = compute_measures([gaze], None, ['trial'], measures=[])
+        result = compute_measures([gaze], ['trial'], measures=[])
         assert 'trial' not in result
 
     def test_trial_data_loss_ratio_rename(self, make_experiment):
@@ -974,7 +1207,7 @@ class TestComputeMeasures:
             trial_columns=['trial'],
             experiment=exp,
         )
-        result = compute_measures([gaze], None, ['trial'], measures=['data_loss'])
+        result = compute_measures([gaze], ['trial'], measures=['data_loss'])
         if 'trial' in result:
             assert 'data_loss' in result['trial'].columns
             assert 'data_loss_ratio' not in result['trial'].columns
@@ -984,15 +1217,17 @@ class TestComputeMeasures:
             pl.DataFrame({'time': [0, 1], 'position': [[0.0, 0.0], [1.0, 1.0]]}),
             trial_columns=['nonexistent'],
         )
-        result = compute_measures([gaze], None, ['trial'])
+        with warnings.catch_warnings():
+            warnings.simplefilter('error', DataQualityWarning)
+            result = compute_measures([gaze], ['trial'])
         assert 'trial' not in result
 
     def test_dataset_no_coord_col_skips_measures(self):
         gaze = Gaze(pl.DataFrame({'time': [0, 1, 2]}))
-        result = compute_measures([gaze], None, ['dataset'])
+        result = compute_measures([gaze], ['dataset'])
         assert isinstance(result, dict)
 
-    def test_trial_no_sampling_rate_skips_data_loss_agg(self):
+    def test_trial_no_sampling_rate_warns_and_sets_data_loss_none(self):
         gaze = Gaze(
             pl.DataFrame({
                 'time': [0, 1, 2, 3],
@@ -1002,8 +1237,61 @@ class TestComputeMeasures:
             trial_columns=['trial'],
             experiment=None,
         )
-        result = compute_measures([gaze], None, ['trial'])
-        assert isinstance(result, dict)
+        with pytest.warns(DataQualityWarning) as record:
+            result = compute_measures([gaze], ['trial'], measures=['data_loss', 'std_rms'])
+        assert any('trial-level data_loss' in str(w.message) for w in record)
+        assert result['trial']['data_loss'].null_count() == 2
+        assert result['trial']['std_rms'].null_count() == 0
+
+    def test_file_rows_carry_every_requested_key(self, make_experiment):
+        # The second gaze object has no coordinate column, so none of its measures can be
+        # computed. Its row still carries every key, with None, so the frame built from all
+        # rows has a stable schema regardless of which rows come first.
+        complete = Gaze(
+            pl.DataFrame({'time': [0, 1, 2], 'position': [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]]}),
+            experiment=make_experiment(),
+            metadata={'subject_id': 'a'},
+        )
+        without_coords = Gaze(
+            pl.DataFrame({'time': [0, 1, 2]}),
+            experiment=make_experiment(),
+            metadata={'subject_id': 'b'},
+        )
+        result = compute_measures(
+            [without_coords, complete], ['subject'], measures=['data_loss', 'std_rms'],
+        )
+        assert result['subject'].columns == ['subject_id', 'data_loss', 'std_rms']
+        assert result['subject'].filter(
+            pl.col('subject_id') == 'b',
+        ).null_count().row(0) == (
+            0, 1, 1,
+        )
+        assert result['subject'].filter(
+            pl.col('subject_id') == 'a',
+        ).null_count().row(0) == (
+            0, 0, 0,
+        )
+
+    def test_binocular_precision_uses_the_left_eye(self, make_experiment):
+        left = [[0.0, 0.0], [1.0, 1.0], [2.0, 0.0], [0.0, 2.0]]
+        right = [[5.0, 5.0], [5.0, 5.0], [5.0, 5.0], [5.0, 5.0]]
+        monocular = Gaze(
+            pl.DataFrame({'time': [0, 1, 2, 3], 'position': left}),
+            experiment=make_experiment(),
+        )
+        binocular = Gaze(
+            pl.DataFrame({
+                'time': [0, 1, 2, 3], 'position': [
+                    lft + rgt for lft, rgt in zip(left, right)
+                ],
+            }),
+            experiment=make_experiment(),
+        )
+        precision = ['std_rms', 'rms_s2s', 'bcea']
+        expected = compute_measures([monocular], ['dataset'], measures=precision)['dataset']
+        result = compute_measures([binocular], ['dataset'], measures=precision)['dataset']
+        assert result.equals(expected)
+        assert result['std_rms'][0] > 0
 
     def test_partial_precision_measures_only_std_rms(self, make_experiment):
         exp = make_experiment()
@@ -1011,7 +1299,7 @@ class TestComputeMeasures:
             pl.DataFrame({'time': [0, 1, 2], 'position': [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]]}),
             experiment=exp,
         )
-        result = compute_measures([gaze], None, ['dataset'], measures=['std_rms'])
+        result = compute_measures([gaze], ['dataset'], measures=['std_rms'])
         if 'dataset' in result:
             assert 'std_rms' in result['dataset'].columns
             assert 'rms_s2s' not in result['dataset'].columns
@@ -1023,7 +1311,7 @@ class TestComputeMeasures:
             pl.DataFrame({'time': [0, 1, 2], 'position': [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]]}),
             experiment=exp,
         )
-        result = compute_measures([gaze], None, ['dataset'], measures=['rms_s2s'])
+        result = compute_measures([gaze], ['dataset'], measures=['rms_s2s'])
         if 'dataset' in result:
             assert 'rms_s2s' in result['dataset'].columns
             assert 'std_rms' not in result['dataset'].columns
@@ -1034,7 +1322,7 @@ class TestComputeMeasures:
             pl.DataFrame({'time': [0, 1, 2], 'position': [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]]}),
             experiment=exp,
         )
-        result = compute_measures([gaze], None, ['dataset'], measures=['bcea'])
+        result = compute_measures([gaze], ['dataset'], measures=['bcea'])
         if 'dataset' in result:
             assert 'bcea' in result['dataset'].columns
             assert 'std_rms' not in result['dataset'].columns
@@ -1048,8 +1336,8 @@ class TestComputeMeasures:
         with patch(
             'pymovements.gaze.quality.data_loss',
             side_effect=pl.exceptions.ComputeError('mock error'),
-        ):
-            result = compute_measures([gaze], None, ['dataset'], measures=['data_loss'])
+        ), pytest.warns(DataQualityWarning, match='data_loss computation failed'):
+            result = compute_measures([gaze], ['dataset'], measures=['data_loss'])
         assert isinstance(result, dict)
 
     def test_precision_polars_error_sets_none(self, make_experiment):
@@ -1062,8 +1350,8 @@ class TestComputeMeasures:
             pl.DataFrame,
             'select',
             side_effect=pl.exceptions.ComputeError('mock precision error'),
-        ):
-            result = compute_measures([gaze], None, ['dataset'], measures=['std_rms'])
+        ), pytest.warns(DataQualityWarning, match='precision measures failed'):
+            result = compute_measures([gaze], ['dataset'], measures=['std_rms'])
         assert isinstance(result, dict)
 
     def test_trial_agg_polars_error_continues(self, make_experiment):
@@ -1081,150 +1369,10 @@ class TestComputeMeasures:
             pl.DataFrame,
             'group_by',
             side_effect=pl.exceptions.ComputeError('mock agg error'),
-        ):
-            result = compute_measures([gaze], None, ['trial'])
+        ), pytest.warns(DataQualityWarning, match='trial-level measures failed'):
+            result = compute_measures([gaze], ['trial'])
         assert isinstance(result, dict)
         assert 'trial' not in result
-
-
-# ---------------------------------------------------------------------------
-# Integration: Dataset.report_data_quality via Gaze.validate
-# ---------------------------------------------------------------------------
-
-class TestDatasetReportDataQuality:
-    """Integration tests using a minimal mock Dataset."""
-
-    def _make_dataset(
-            self,
-            gaze_list: list[Gaze],
-            fileinfo: dict[str, Any] | None = None,
-    ) -> object:
-        ds = types.SimpleNamespace()
-        ds.gaze = gaze_list
-        ds.fileinfo = fileinfo or {}
-        return ds
-
-    def _call_report(
-            self,
-            ds: object,
-            checks: list[str] | None = None,
-            measures: list[str] | None = None,
-            levels: list[str] | None = None,
-            raise_on_error: bool = False,
-            output_path: Path | None = None,
-    ) -> DataQualityReport:
-        gaze_list: list[Gaze] = getattr(ds, 'gaze', [])
-        fileinfo: Any = getattr(ds, 'fileinfo', {})
-
-        checks_to_run = set(checks) if checks is not None else set(_ALL_CHECKS.keys())
-        levels_to_run = (
-            levels if levels is not None else ['dataset', 'subject', 'session', 'trial']
-        )
-
-        source_paths = ['' for _ in gaze_list]
-        check_results: list = []
-
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter('always')
-            for idx, gaze in enumerate(gaze_list):
-                src = source_paths[idx]
-                results = gaze.validate(
-                    trial_columns_exist='trial_columns_exist' in checks_to_run,
-                    trial_columns_dtype='trial_columns_dtype' in checks_to_run,
-                    time_column_exists='time_column_exists' in checks_to_run,
-                    gaze_components_defined='gaze_components_defined' in checks_to_run,
-                    time_monotone='time_monotone' in checks_to_run,
-                    max_gap='max_gap' in checks_to_run,
-                    sampling_rate_consistency='sampling_rate_consistency' in checks_to_run,
-                    gaze_range='gaze_range' in checks_to_run,
-                    source_path=src,
-                )
-                for result in results:
-                    check_results.append(result)
-                    if raise_on_error and result.severity in {'fail', 'error'}:
-                        raise ValidationError(
-                            check_id=result.code,
-                            message=str(result.message),
-                            affected_files=result.sources,
-                        )
-            measure_results = compute_measures(
-                gaze_list,
-                fileinfo,
-                levels_to_run,
-                measures,
-            )
-            captured = [str(w.message) for w in caught]
-
-        report = DataQualityReport(
-            check_results=check_results,
-            measures=measure_results,
-            warning_log=captured,
-        )
-        if output_path is not None:
-            report.save_bids_report(output_path)
-        return report
-
-    def test_all_checks_run_by_default(self, make_unvalidated_gaze):
-        gaze = make_unvalidated_gaze(pl.DataFrame({'time': [0, 1, 2]}))
-        ds = self._make_dataset([gaze])
-        report = self._call_report(ds)
-        check_codes = [r.code for r in report.check_results]
-        assert 'trial_columns_exist' in check_codes
-        assert 'gaze_range' in check_codes
-
-    def test_subset_of_checks(self, make_unvalidated_gaze):
-        gaze = make_unvalidated_gaze(pl.DataFrame({'time': [0, 1]}))
-        ds = self._make_dataset([gaze])
-        report = self._call_report(ds, checks=['time_column_exists'])
-        assert len(report.check_results) == 1
-        assert report.check_results[0].code == 'time_column_exists'
-
-    def test_raise_on_error_raises(self, make_unvalidated_gaze):
-        gaze = make_unvalidated_gaze(
-            pl.DataFrame({'time': [0]}),
-            trial_columns=['nonexistent'],
-        )
-        ds = self._make_dataset([gaze])
-        with pytest.raises(ValidationError):
-            self._call_report(
-                ds,
-                checks=['trial_columns_exist'],
-                raise_on_error=True,
-            )
-
-    def test_no_raise_by_default(self, make_unvalidated_gaze):
-        gaze = make_unvalidated_gaze(
-            pl.DataFrame({'time': [0]}),
-            trial_columns=['nonexistent'],
-        )
-        ds = self._make_dataset([gaze])
-        report = self._call_report(ds, checks=['trial_columns_exist'], raise_on_error=False)
-        assert report.passed is False
-
-    def test_output_path_writes_files(self, tmp_path, make_unvalidated_gaze):
-        gaze = make_unvalidated_gaze(pl.DataFrame({'time': [0, 1]}))
-        ds = self._make_dataset([gaze])
-        self._call_report(ds, output_path=tmp_path)
-        assert (tmp_path / 'derivatives' / 'pymovements' / 'dataset_description.json').exists()
-
-    def test_multiple_gaze_frames(self, make_unvalidated_gaze):
-        gaze1 = make_unvalidated_gaze(pl.DataFrame({'time': [0, 1]}))
-        gaze2 = make_unvalidated_gaze(pl.DataFrame({'time': [0, 1]}))
-        ds = self._make_dataset([gaze1, gaze2])
-        report = self._call_report(ds, checks=['time_column_exists'])
-        assert len(report.check_results) == 2
-
-    def test_passed_updated_after_checks(self, make_unvalidated_gaze):
-        gaze = make_unvalidated_gaze(pl.DataFrame({'time': [0]}), trial_columns=['missing'])
-        ds = self._make_dataset([gaze])
-        report = self._call_report(ds, checks=['trial_columns_exist'])
-        assert report.passed is False
-
-    def test_empty_gaze_list(self):
-        ds = self._make_dataset([])
-        report = self._call_report(ds)
-        assert not report.check_results
-        assert report.passed is True
 
 
 # ---------------------------------------------------------------------------
@@ -1233,7 +1381,10 @@ class TestDatasetReportDataQuality:
 
 @pytest.fixture(name='make_real_gaze', scope='function')
 def fixture_make_real_gaze(make_experiment):
-    """Make a fixture function that creates a valid gaze object sampled at 100 Hz."""
+    """Make a fixture function that creates a valid gaze object sampled at 100 Hz.
+
+    The gaze object carries subject and session ids, as a loaded one does.
+    """
 
     def _make_real_gaze():
         return Gaze(
@@ -1242,16 +1393,15 @@ def fixture_make_real_gaze(make_experiment):
             ),
             pixel_columns=['x', 'y'],
             experiment=make_experiment(sampling_rate=100.0),
+            metadata={'subject_id': '1', 'session_id': '1'},
         )
 
     return _make_real_gaze
 
 
-def _make_real_dataset(gaze_list, fileinfo=None):
+def _make_real_dataset(gaze_list):
     ds = Dataset(DatasetDefinition, path='.')
     ds.gaze = gaze_list
-    if fileinfo is not None:
-        ds.fileinfo = fileinfo
     return ds
 
 
@@ -1273,11 +1423,39 @@ class TestDatasetReportDataQualityDirect:
         assert len(report.check_results) == 1
         assert report.check_results[0].code == 'time_column_exists'
 
-    def test_unknown_check_raises_value_error(self, make_real_gaze):
-        """Unknown check identifier raises ValueError."""
+    def test_multiple_gaze_frames(self, make_real_gaze):
+        """Each loaded gaze frame contributes its own check results."""
+        ds = _make_real_dataset([
+            make_real_gaze(), make_real_gaze(),
+        ])
+        report = ds.report_data_quality(checks=['time_column_exists'])
+        assert len(report.check_results) == 2
+
+    @pytest.mark.parametrize(
+        ('kwargs', 'match'),
+        [
+            pytest.param(
+                {'checks': ['not_a_valid_check']},
+                r"Unknown check identifier\(s\) \['not_a_valid_check'\]",
+                id='checks',
+            ),
+            pytest.param(
+                {'measures': ['data_loss', 'accuracy']},
+                r"Unknown measure identifier\(s\) \['accuracy'\]",
+                id='measures',
+            ),
+            pytest.param(
+                {'levels': ['file']},
+                r"Unknown level identifier\(s\) \['file'\]",
+                id='levels',
+            ),
+        ],
+    )
+    def test_unknown_identifier_raises_value_error(self, kwargs, match, make_real_gaze):
+        """Unknown check, measure and level identifiers raise ValueError alike."""
         ds = _make_real_dataset([make_real_gaze()])
-        with pytest.raises(ValueError, match='Unknown check identifier'):
-            ds.report_data_quality(checks=['not_a_valid_check'])
+        with pytest.raises(ValueError, match=match):
+            ds.report_data_quality(**kwargs)
 
     def test_raise_on_error_raises_gaze_validation_error(self, make_unvalidated_gaze):
         """raise_on_error=True raises ValidationError on first error."""
@@ -1292,13 +1470,51 @@ class TestDatasetReportDataQualityDirect:
                 raise_on_error=True,
             )
 
-    def test_fileinfo_with_filepath_sets_source_paths(self, make_real_gaze):
-        """Fileinfo with filepath column sets source paths on check results."""
+    def test_sources_metadata_sets_source_paths(self, make_real_gaze):
+        """The first Sources metadata entry becomes the source path of the check results."""
         gaze = make_real_gaze()
-        fileinfo = {'gaze': pl.DataFrame({'filepath': ['subject1.csv']})}
-        ds = _make_real_dataset([gaze], fileinfo=fileinfo)
+        gaze.metadata['Sources'] = ['sub-01/subject1.csv']
+        ds = _make_real_dataset([gaze])
         report = ds.report_data_quality(checks=['time_column_exists'])
-        assert report.passed is True
+        assert report.check_results[0].sources == ['sub-01/subject1.csv']
+
+    def test_without_sources_metadata_source_paths_are_empty(self, make_real_gaze):
+        """A gaze object without Sources metadata gets no source path."""
+        ds = _make_real_dataset([make_real_gaze()])
+        report = ds.report_data_quality(checks=['time_column_exists'])
+        assert report.check_results[0].sources == []
+
+    def test_subject_and_session_from_metadata(self, make_real_gaze):
+        """Subject and session levels group by the metadata entries of each gaze object."""
+        gaze_a = make_real_gaze()
+        gaze_a.metadata.update({'subject_id': 'a', 'session_id': '1'})
+        gaze_b = make_real_gaze()
+        gaze_b.metadata.update({'subject_id': 'b', 'session_id': '1'})
+        ds = _make_real_dataset([gaze_a, gaze_b])
+        report = ds.report_data_quality(measures=['data_loss'])
+        assert report.measures['subject']['subject_id'].to_list() == ['a', 'b']
+        assert report.measures['session'].select('subject_id', 'session_id').rows() == [
+            ('a', '1'), ('b', '1'),
+        ]
+
+    def test_default_levels_omit_session_without_session_ids(self, make_real_gaze, recwarn):
+        """Without any session id the default levels leave out session, without a warning."""
+        gaze = make_real_gaze()
+        del gaze.metadata['session_id']
+        ds = _make_real_dataset([gaze])
+        report = ds.report_data_quality(measures=['data_loss'])
+        assert set(report.measures) == {'dataset', 'subject'}
+        assert not report.warning_log
+        assert not [w for w in recwarn if issubclass(w.category, DataQualityWarning)]
+
+    def test_explicit_session_level_without_session_ids_warns(self, make_real_gaze):
+        """An explicitly requested session level still warns and is omitted."""
+        gaze = make_real_gaze()
+        del gaze.metadata['session_id']
+        ds = _make_real_dataset([gaze])
+        with pytest.warns(DataQualityWarning, match="'session_id' is not a metadata key of any"):
+            report = ds.report_data_quality(levels=['dataset', 'session'], measures=['data_loss'])
+        assert set(report.measures) == {'dataset'}
 
     def test_output_path_writes_bids_report(self, tmp_path, make_real_gaze):
         """output_path triggers writing of BIDS derivative files."""
@@ -1326,6 +1542,7 @@ class TestDatasetReportDataQualityDirect:
         gaze = Gaze(
             pl.DataFrame({'time': [0, 10, 25]}),
             experiment=exp,
+            metadata={'subject_id': '1', 'session_id': '1'},
         )
         ds = _make_real_dataset([gaze])
         report_default = ds.report_data_quality(checks=['max_gap'])
@@ -1339,6 +1556,7 @@ class TestDatasetReportDataQualityDirect:
         gaze = Gaze(
             pl.DataFrame({'time': [0, 11, 22, 33, 44]}),
             experiment=exp,
+            metadata={'subject_id': '1', 'session_id': '1'},
         )
         ds = _make_real_dataset([gaze])
         report_tight = ds.report_data_quality(
@@ -1356,6 +1574,7 @@ class TestDatasetReportDataQualityDirect:
                 'py': [9999.0, 9999.0, 9999.0],
             }),
             experiment=exp,
+            metadata={'subject_id': '1', 'session_id': '1'},
         )
         gaze.samples = gaze.samples.with_columns(
             pl.concat_list(['px', 'py']).alias('pixel'),
