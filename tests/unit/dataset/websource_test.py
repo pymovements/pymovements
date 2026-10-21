@@ -23,14 +23,27 @@ import io
 from pathlib import Path
 from unittest import mock
 from unittest.mock import patch
+from urllib.error import ContentTooShortError
 from urllib.error import HTTPError
 
 import pytest
 
-from pymovements.dataset.websource import _DownloadProgressBar
-from pymovements.dataset.websource import _get_redirected_url
+from pymovements._version import __version__
 from pymovements.dataset.websource import ChecksumError
 from pymovements.dataset.websource import WebSource
+
+
+class FakeResponse(io.BytesIO):
+    """Minimal stand-in for the response object returned by ``urllib.request.urlopen``."""
+
+    def __init__(self, content: bytes, headers: dict[str, str] | None = None):
+        super().__init__(content)
+        self.headers = headers if headers is not None else {}
+
+
+def raises_download_failed(source):
+    """Return the ``pytest.raises`` context for a failed ``source.download()`` call."""
+    return pytest.raises(RuntimeError, match=f'Downloading resource {source.url} failed')
 
 
 def test_websource_init():
@@ -283,8 +296,7 @@ def test_websource_download_404(tmp_path):
         md5='52bbf03a7c50ee7152ccb9d357c2bb30',
     )
 
-    message = f'Downloading resource {source.url} failed'
-    with pytest.raises(RuntimeError, match=message):
+    with raises_download_failed(source):
         source.download(tmp_path)
 
 
@@ -302,9 +314,8 @@ def test_websource_download_os_error(verbose, tmp_path):
         md5='52bbf03a7c50ee7152ccb9d357c2bb30',
     )
 
-    with mock.patch('pymovements.dataset.websource._download_url', side_effect=OSError()):
-        message = f'Downloading resource {source.url} failed'
-        with pytest.raises(RuntimeError, match=message):
+    with mock.patch('urllib.request.urlopen', side_effect=OSError()):
+        with raises_download_failed(source):
             source.download(tmp_path, verbose=verbose)
 
 
@@ -315,8 +326,8 @@ def test_websource_download_http_failure(tmp_path):
         md5='52bbf03a7c50ee7152ccb9d357c2bb30',
     )
 
-    with mock.patch('pymovements.dataset.websource._download_url', side_effect=OSError()):
-        with pytest.raises(RuntimeError, match=f'Downloading resource {source.url} failed'):
+    with mock.patch('urllib.request.urlopen', side_effect=OSError()):
+        with raises_download_failed(source):
             source.download(tmp_path)
 
 
@@ -339,41 +350,52 @@ def test_websource_download_file_not_found(tmp_path):
     assert str(excinfo.value.__cause__) == message
 
 
-@pytest.mark.network
-def test__get_redirected_url():
-    url = 'https://codeload.github.com/pymovements/pymovements/tar.gz/refs/tags/v0.4.0'
-    expected_url = 'https://codeload.github.com/pymovements/pymovements/tar.gz/refs/tags/v0.4.0'
+@pytest.mark.parametrize(
+    'verbose',
+    [
+        pytest.param(False, id='verbose_false'),
+        pytest.param(True, id='verbose_true'),
+    ],
+)
+@pytest.mark.parametrize(
+    'headers',
+    [
+        pytest.param({}, id='without_content_length'),
+        pytest.param({'Content-Length': '12'}, id='with_content_length'),
+    ],
+)
+def test_websource_download_single_request_streams_to_file(tmp_path, verbose, headers):
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    content = b'file content'
 
-    final_url = _get_redirected_url(url)
+    with mock.patch(
+        'urllib.request.urlopen', return_value=FakeResponse(content, headers),
+    ) as mock_urlopen:
+        filepath = source.download(tmp_path, verbose=verbose)
 
-    assert final_url == expected_url
+    assert filepath == tmp_path / 'file.zip'
+    assert filepath.read_bytes() == content
+    assert sorted(path.name for path in tmp_path.iterdir()) == ['file.zip']
 
-
-@pytest.mark.network
-def test__get_redirected_url_with_redirects():
-    url = 'https://github.com/pymovements/pymovements/archive/master.zip'
-    expected_final_url = 'https://codeload.github.com/pymovements/pymovements/zip/main'
-
-    final_url = _get_redirected_url(url)
-
-    assert final_url == expected_final_url
-
-
-@pytest.mark.network
-def test__get_redirected_url_with_redirects_max_hops():
-    url = 'https://github.com/pymovements/pymovements/archive/master.zip'
-
-    with pytest.raises(RuntimeError) as excinfo:
-        _get_redirected_url(url, max_hops=0)
-
-    msg, = excinfo.value.args
-    assert msg == 'Request to '\
-        'https://github.com/pymovements/pymovements/archive/master.zip '\
-        'exceeded 0 redirects. The last redirect points to '\
-        'https://codeload.github.com/pymovements/pymovements/zip/main.'
+    mock_urlopen.assert_called_once()
+    request, = mock_urlopen.call_args.args
+    assert request.full_url == source.url
+    assert request.get_header('User-agent') == f'pymovements/{__version__}'
 
 
-def test_websource_download_http_error_on_redirect_closes_response(tmp_path):
+def test_websource_download_replaces_stale_part_file(tmp_path):
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    content = b'file content'
+    (tmp_path / 'file.zip.part').write_bytes(b'leftover from an interrupted download')
+
+    with mock.patch('urllib.request.urlopen', return_value=FakeResponse(content)):
+        filepath = source.download(tmp_path, verbose=False)
+
+    assert filepath.read_bytes() == content
+    assert sorted(path.name for path in tmp_path.iterdir()) == ['file.zip']
+
+
+def test_websource_download_http_error_closes_response(tmp_path):
     source = WebSource(url='http://example.com/file.zip', filename='file.zip')
     http_error = HTTPError(
         url=source.url, code=404, msg='Not Found', hdrs=None, fp=io.BytesIO(b''),
@@ -381,41 +403,75 @@ def test_websource_download_http_error_on_redirect_closes_response(tmp_path):
 
     with mock.patch.object(http_error, 'close', wraps=http_error.close) as mock_close:
         with mock.patch('urllib.request.urlopen', side_effect=http_error):
-            with pytest.raises(RuntimeError, match=f'Downloading resource {source.url} failed'):
+            with raises_download_failed(source):
                 source.download(tmp_path, verbose=False)
 
     mock_close.assert_called_once()
+    assert not list(tmp_path.iterdir())
 
 
-def test_websource_download_http_error_on_retrieve_closes_response(tmp_path):
+def test_websource_download_interrupted_transfer_leaves_no_file(tmp_path):
     source = WebSource(url='http://example.com/file.zip', filename='file.zip')
-    http_error = HTTPError(
-        url=source.url, code=404, msg='Not Found', hdrs=None, fp=io.BytesIO(b''),
-    )
-    mock_response = mock.MagicMock()
-    mock_response.url = source.url
+    response = FakeResponse(b'first chunk')
+    response.read = mock.Mock(side_effect=[b'first chunk', ConnectionResetError()])
 
-    with mock.patch.object(http_error, 'close', wraps=http_error.close) as mock_close:
-        with mock.patch('urllib.request.urlopen', return_value=mock_response):
-            with mock.patch('urllib.request.urlretrieve', side_effect=http_error):
-                with pytest.raises(
-                        RuntimeError, match=f'Downloading resource {source.url} failed',
-                ):
-                    source.download(tmp_path, verbose=False)
+    with mock.patch('urllib.request.urlopen', return_value=response):
+        with raises_download_failed(source):
+            source.download(tmp_path, verbose=False)
 
-    mock_close.assert_called_once()
+    assert not list(tmp_path.iterdir())
 
 
-def test__DownloadProgressBar_tsize_not_None():
-    download_progress_bar = _DownloadProgressBar()
-    assert download_progress_bar.n == 0
-    assert download_progress_bar.total is None
-    download_progress_bar.update_to()
-    assert download_progress_bar.n == 1
-    assert download_progress_bar.total is None
-    download_progress_bar.update_to(tsize=100)
-    assert download_progress_bar.n == 1
-    assert download_progress_bar.total == 100
+def test_websource_download_short_transfer_leaves_no_file(tmp_path):
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    response = FakeResponse(b'short', headers={'Content-Length': '100'})
+
+    with mock.patch('urllib.request.urlopen', return_value=response):
+        with raises_download_failed(source) as exc:
+            source.download(tmp_path, verbose=False)
+
+    assert isinstance(exc.value.__cause__, ContentTooShortError)
+    assert exc.value.__cause__.reason == 'retrieval incomplete: got only 5 out of 100 bytes'
+    assert not list(tmp_path.iterdir())
+
+
+def test_websource_download_failed_rename_leaves_no_file(tmp_path):
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    response = FakeResponse(b'complete content')
+
+    with mock.patch('urllib.request.urlopen', return_value=response):
+        with mock.patch('os.replace', side_effect=PermissionError('file.zip is locked')):
+            with raises_download_failed(source):
+                source.download(tmp_path, verbose=False)
+
+    assert not list(tmp_path.iterdir())
+
+
+def test_websource_download_invalid_content_length_closes_response(tmp_path):
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    response = FakeResponse(b'complete content', headers={'Content-Length': 'many'})
+
+    with mock.patch('urllib.request.urlopen', return_value=response):
+        with pytest.raises(ValueError, match="'many'"):
+            source.download(tmp_path, verbose=False)
+
+    assert response.closed
+    assert not list(tmp_path.iterdir())
+
+
+def test_websource_download_interrupted_transfer_without_md5_redownloads(tmp_path):
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    broken_response = FakeResponse(b'')
+    broken_response.read = mock.Mock(side_effect=[b'partial', ConnectionResetError()])
+    responses = [broken_response, FakeResponse(b'complete content')]
+
+    with mock.patch('urllib.request.urlopen', side_effect=responses) as mock_urlopen:
+        with raises_download_failed(source):
+            source.download(tmp_path, verbose=False)
+        filepath = source.download(tmp_path, verbose=False)
+
+    assert mock_urlopen.call_count == 2
+    assert filepath.read_bytes() == b'complete content'
 
 
 @pytest.mark.parametrize(
