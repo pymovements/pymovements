@@ -75,8 +75,7 @@ jobs:
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: git checkout --quiet "$SHA"
 
-      # The environment holds the baseline package and its dependencies,
-      # recreate it for the head commit.
+      # The environment holds the baseline's package and dependencies, recreate it for the head.
       - name: Setup head benchmark environment
         run: tox -vv --notest --recreate -e benchmark
 
@@ -93,10 +92,9 @@ jobs:
       - name: Benchmark head commit
         run: tox --skip-pkg-install -e benchmark
 
-      # The action compares against the last entry in its data file: seeded with
-      # the baseline result, the head result is compared on the same runner.
-      # The token is for the commit lookup on schedule and dispatch events,
-      # whose payload carries no commit.
+      # The action compares a result with the last entry in its data file, so
+      # the baseline pass seeds the file and the head pass compares. The token
+      # is for the commit lookup on schedule and dispatch, their payload has none.
       - name: Record baseline result
         uses: benchmark-action/github-action-benchmark@v1
         with:
