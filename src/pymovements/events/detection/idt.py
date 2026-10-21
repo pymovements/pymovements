@@ -54,7 +54,7 @@ def dispersion(positions: list[list[float]] | numpy.ndarray) -> float:
 def idt(
         positions: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series,
         timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None = None,
-        minimum_duration: int = 100,
+        minimum_duration: float = 100,
         dispersion_threshold: float = 1.0,
         include_nan: bool = False,
         name: str = 'fixation',
@@ -81,7 +81,7 @@ def idt(
         shape (N, )
         Corresponding continuous 1D timestep time series. Fractional (float) timesteps are
         accepted. If None, sample based timesteps are assumed. (default: None)
-    minimum_duration: int
+    minimum_duration: float
         Minimum fixation duration, measured from the first to the last sample of a fixation.
         The duration is specified in the units used in ``timesteps``; for a ``polars.Duration``
         timesteps series the unit is milliseconds. If ``timesteps`` is None, then
@@ -104,7 +104,6 @@ def idt(
     ------
     TypeError
         If positions is a polars Series and dtype not List
-        If minimum_duration is not of type ``int``
     ValueError
         If positions is not shaped (N, 2)
         If positions and timesteps differ in length
@@ -262,11 +261,6 @@ def idt(
         raise ValueError('dispersion_threshold must be greater than 0')
     if minimum_duration <= 0:
         raise ValueError('minimum_duration must be greater than 0')
-    if not isinstance(minimum_duration, int):
-        raise TypeError(
-            'minimum_duration must be of type int'
-            f' but is of type {type(minimum_duration)}',
-        )
 
     onsets = []
     offsets = []

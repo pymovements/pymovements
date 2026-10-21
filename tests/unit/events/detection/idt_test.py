@@ -151,16 +151,6 @@ from pymovements.synthetic import step_function
             'minimum_duration must be greater than 0',
             id='duration_threshold_not_greater_than_0_raises_value_error',
         ),
-        pytest.param(
-            {
-                'positions': [[1, 2], [1, 2]],
-                'dispersion_threshold': 1,
-                'minimum_duration': 1.1,
-            },
-            TypeError,
-            'minimum_duration must be of type int but is of type',
-            id='duration_threshold_not_integer_raises_type_error',
-        ),
     ],
 )
 def test_idt_raises_error(kwargs, expected_error, expected_message):
@@ -617,6 +607,20 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 offsets=[99],
             ),
             id='constant_position_single_fixation_with_minimum_duration_one_sample',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'timesteps': np.arange(0, 50, 0.5),
+                'dispersion_threshold': 1,
+                'minimum_duration': 0.5,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[49.5],
+            ),
+            id='constant_position_single_fixation_with_float_minimum_duration',
         ),
     ],
 )
