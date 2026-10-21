@@ -628,6 +628,7 @@ class Dataset:
             >>> getfixture('doctest_tmp_cwd')
 
         Let's load in our dataset first,
+
         >>> import pymovements as pm
         >>>
         >>> dataset = pm.Dataset("ToyDataset", path='data/toy_dataset')
@@ -650,6 +651,7 @@ class Dataset:
         Each call returns the dataset itself:
 
         Use apply for your gaze transformations:
+
         >>> dataset.apply('pix2deg')# doctest:+ELLIPSIS
         Dataset(name='ToyDataset', path='data/toy_dataset')...
 
@@ -657,6 +659,7 @@ class Dataset:
         Dataset(name='ToyDataset', path='data/toy_dataset')...
 
         Use apply for your event detection:
+
         >>> dataset.apply('ivt')# doctest:+ELLIPSIS
         Dataset(name='ToyDataset', path='data/toy_dataset')...
 
@@ -665,6 +668,7 @@ class Dataset:
 
         Use apply for upsampling, downsampling or making the sampling rate constant
         using resample:
+
         >>> dataset.apply('resample', resampling_rate=2000)# doctest:+ELLIPSIS
         Dataset(name='ToyDataset', path='data/toy_dataset')...
         """
