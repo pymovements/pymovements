@@ -1085,3 +1085,20 @@ def test_from_asc_skips_malformed_sample_line():
 
     assert gaze.samples['time'].to_list() == [timedelta(seconds=1)]
 
+
+def test_from_asc_calibration_timestamp_followed_by_sample_line():
+    """A sample line right after !CAL ends the calibration entry with its timestamp only."""
+    content = (
+        _MONOCULAR_HEADER
+        + 'MSG\t300 !CAL\n'
+        + '1000\t10.0\t20.0\t3.0\t0.0\t.....\n'
+        + '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+    )
+
+    gaze = from_asc(io.StringIO(content))
+
+    assert gaze.calibrations.height == 1
+    assert gaze.calibrations['time'].to_list() == [timedelta(milliseconds=300)]
+    assert gaze.calibrations['num_points'].to_list() == [None]
+    assert gaze.calibrations['eye'].to_list() == [None]
+    assert gaze.samples['time'].to_list() == [timedelta(seconds=1)]

@@ -691,6 +691,11 @@ def parse_eyelink(
                 timestamp = float(timestamp_s)
                 samples['time'].append(timestamp)
 
+            # A sample line directly after !CAL ends the calibration entry with its timestamp only.
+            if cal_timestamp:
+                calibrations.append({'timestamp': cal_timestamp})
+                cal_timestamp = ''
+
             continue
 
         # Collect event starts/ends for deterministic matching
