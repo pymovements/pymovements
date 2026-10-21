@@ -1376,12 +1376,13 @@ class Gaze:
         """Calculate eye movement measure on :py:attr:`~.Gaze.samples`.
 
         If :py:class:``Gaze`` has :py:attr:``trial_columns``, measures will be grouped by
-        trials.
+        trials. The result then holds one row per trial, with the trial columns first.
 
         Parameters
         ----------
         method: str | Callable[..., polars.Expr]
-            Measure to be calculated.
+            Measure to be calculated. With trial columns, its expression runs per trial and
+            should aggregate to one value.
         **kwargs: Any
             Keyword arguments to be passed to the respective measure function.
 

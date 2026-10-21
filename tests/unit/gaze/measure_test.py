@@ -32,6 +32,10 @@ def my_test_measure(column: str) -> pl.Expr:
     return pl.col(column).len().cast(pl.Int64).alias('my_measure')
 
 
+def my_non_aggregating_measure(column: str) -> pl.Expr:
+    return pl.col(column)
+
+
 @pytest.mark.filterwarnings('ignore:Gaze contains samples but no.*:UserWarning')
 @pytest.mark.parametrize(
     ('gaze_init_kwargs', 'measure', 'kwargs', 'expected'),
@@ -341,6 +345,23 @@ def my_test_measure(column: str) -> pl.Expr:
             {},
             pl.DataFrame(data={'trial': [1, 2], 'disposition': [5.0, 0.0]}),
             id='disposition_two_trials',
+        ),
+
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    data={'A': [1, 2, 3, 4], 'trial': [1, 1, 2, 2]},
+                    schema={'A': pl.Int64, 'trial': pl.Int64},
+                ),
+                'trial_columns': 'trial',
+            },
+            my_non_aggregating_measure,
+            {'column': 'A'},
+            pl.DataFrame(
+                data={'trial': [1, 2], 'A': [[1, 2], [3, 4]]},
+                schema={'trial': pl.Int64, 'A': pl.List(pl.Int64)},
+            ),
+            id='non_aggregating_measure_two_trials_returns_list',
         ),
 
         pytest.param(
