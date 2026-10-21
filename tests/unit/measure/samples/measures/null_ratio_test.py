@@ -145,6 +145,26 @@ from pymovements.measure.samples import null_ratio
             pl.from_dict(data={'null_ratio': [0.5]}),
             id='list_dtype_utf8_half_nulls',
         ),
+
+        pytest.param(
+            pl.from_dict(
+                data={'A': [[1, 2], [1, None], None]},
+                schema={'A': pl.List(pl.Int64)},
+            ),
+            {'column': 'A', 'column_dtype': pl.List(pl.Int64)},
+            pl.from_dict(data={'null_ratio': [2 / 3]}),
+            id='list_dtype_int_null_element_and_null_row',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                data={'A': [['a', 'b'], ['a', None], ['inf', 'x'], None]},
+                schema={'A': pl.List(pl.Utf8)},
+            ),
+            {'column': 'A', 'column_dtype': pl.List(pl.Utf8)},
+            pl.from_dict(data={'null_ratio': [0.5]}),
+            id='list_dtype_utf8_inf_string_is_valid',
+        ),
     ],
 )
 def test_null_ratio_expected(df, kwargs, expected):
