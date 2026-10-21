@@ -105,6 +105,18 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: false
 
+      # The action stamps every entry with the commit from the event payload,
+      # the head. Name the baseline entry after the baseline commit so the
+      # comparison header reads "Previous: <baseline>".
+      - name: Stamp the baseline entry with the baseline commit
+        env:
+          SHA: ${{ steps.baseline.outputs.sha }}
+        run: |
+          jq --arg sha "$SHA" \
+            '.entries["pytest-benchmark"][-1].commit |= (.id = $sha | .url = (.url | sub("[0-9a-f]{40}$"; $sha)))' \
+            comparison/benchmark-data.json > stamped.json
+          mv stamped.json comparison/benchmark-data.json
+
       - name: Compare head against baseline
         uses: benchmark-action/github-action-benchmark@v1
         with:
