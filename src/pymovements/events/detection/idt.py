@@ -105,6 +105,7 @@ def idt(
     ------
     TypeError
         If positions is a polars Series and dtype not List
+        If timesteps is a polars Series and dtype neither numeric nor Duration
     ValueError
         If positions is not shaped (N, 2)
         If positions and timesteps differ in length
