@@ -546,24 +546,24 @@ def test_data_loss_time_column_not_found():
 
 
 @pytest.mark.parametrize(
-    ('column', 'data', 'column_dtype'),
+    ('column', 'data', 'column_dtype', 'expected'),
     [
         pytest.param(
-            'value', [1.0, nan, None, inf, 3.0], pl.Float64,
+            'value', [1.0, nan, None, inf, 3.0], pl.Float64, 3,
             id='scalar_float',
         ),
         pytest.param(
-            'value', [1, None, 3, 4], pl.Int64,
+            'value', [1, None, 3, 4], pl.Int64, 1,
             id='scalar_int',
         ),
         pytest.param(
-            'value', [[1.0, 1.0], [nan, 1.0], None, [1.0, None]], pl.List(pl.Float64),
+            'value', [[1.0, 1.0], [nan, 1.0], None, [1.0, None]], pl.List(pl.Float64), 3,
             id='list_float',
         ),
     ],
 )
-def test_data_loss_column_dtype_matches_default(column, data, column_dtype):
-    """The vectorized dtype-aware invalid check matches the per-row fallback."""
+def test_data_loss_column_dtype_matches_default(column, data, column_dtype, expected):
+    """The dtype-aware invalid check gives the expected count and matches the fallback."""
     df = pl.DataFrame(
         {'time': list(range(len(data))), column: data},
         schema={'time': pl.Int64, column: column_dtype},
@@ -576,4 +576,5 @@ def test_data_loss_column_dtype_matches_default(column, data, column_dtype):
         data_loss(column, sampling_rate=1000.0, unit='count'),
     )
 
+    assert with_dtype.item() == expected
     assert_frame_equal(with_dtype, without_dtype)
