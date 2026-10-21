@@ -1262,15 +1262,29 @@ class Gaze:
                     f'available columns: {self.events.frame.columns}',
                 )
 
+            method_args = (
+                inspect.getfullargspec(method).args
+                + inspect.getfullargspec(method).kwonlyargs
+            )
+            # Only detectors that accept an ``events`` argument look at previously detected
+            # events. For all others the per-trial events selection can be skipped, and an empty
+            # events frame can be shared across trials instead of being filtered once per trial.
+            needs_events = 'events' in method_args
+            shared_empty_events = (
+                Events(self.events.frame)
+                if needs_events and self.events.frame.height == 0
+                else None
+            )
+
             new_events_grouped: list[polars.DataFrame] = []
 
             for group_identifier, group_gaze in grouped_samples.items():
-                # Create filter expression for selecting respective group rows.
-                if len(self.trial_columns) == 1:
-                    group_filter_expression = polars.col(
-                        self.trial_columns[0],
-                    ) == group_identifier[0]
+                if not needs_events:
+                    group_events = self.events
+                elif shared_empty_events is not None:
+                    group_events = shared_empty_events
                 else:
+                    # Create filter expression for selecting respective group rows.
                     group_filter_expression = polars.col(
                         self.trial_columns[0],
                     ) == group_identifier[0]
@@ -1279,8 +1293,8 @@ class Gaze:
                             polars.col(name) == value
                         )
 
-                # Select group events
-                group_events = Events(self.events.frame.filter(group_filter_expression))
+                    # Select group events.
+                    group_events = Events(self.events.frame.filter(group_filter_expression))
 
                 method_kwargs = self._fill_event_detection_kwargs(
                     method,
