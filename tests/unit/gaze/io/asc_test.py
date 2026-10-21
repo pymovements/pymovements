@@ -18,7 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from eyelink asc files."""
+import io
 import re
+from datetime import timedelta
 
 import polars as pl
 import pytest
@@ -1054,3 +1056,32 @@ def test_from_asc_rejects_nonfile_objects():
     """Test that from_asc raises an error when given a non-file object."""
     with pytest.raises(TypeError, match='Expected a file path or a file-like object'):
         from_asc(12345)
+
+
+_MONOCULAR_HEADER = (
+    '** DATE: Wed Mar  8 09:25:20 2023\n'
+    '** TYPE: EDF_FILE BINARY EVENT SAMPLE TAGGED\n'
+    '** VERSION: EYELINK II 1\n'
+    '** EYELINK II CL v6.12 Feb  1 2018 (EyeLink Portable Duo)\n'
+    '** RECORDED BY pymovements\n'
+    '**\n'
+    'MSG\t100 RECCFG CR 1000 2 1 L\n'
+    'MSG\t100 ELCLCFG BTABLER\n'
+    'MSG\t100 GAZE_COORDS 0.00 0.00 1279.00 1023.00\n'
+    'START\t200 \tLEFT\tSAMPLES\tEVENTS\n'
+    'SAMPLES\tGAZE\tLEFT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2\n'
+)
+
+
+def test_from_asc_skips_malformed_sample_line():
+    """A digit-first line that is not a valid sample is skipped."""
+    content = (
+        _MONOCULAR_HEADER
+        + '1000\t10.0\t20.0\t3.0\t0.0\t.....\n'
+        + '1234567'  # no trailing newline: starts with a digit but is not a sample line
+    )
+
+    gaze = from_asc(io.StringIO(content))
+
+    assert gaze.samples['time'].to_list() == [timedelta(seconds=1)]
+
