@@ -166,6 +166,40 @@ def timesteps_to_numpy(timesteps: pl.Series) -> np.ndarray:
     return timesteps.to_numpy()
 
 
+def normalize_timesteps(
+        timesteps: list[int] | list[float] | np.ndarray | pl.Series | None,
+        length: int,
+) -> np.ndarray:
+    """Convert the timesteps input of a detection function to a flat numpy array.
+
+    A ``polars.Series`` is converted with :py:func:`timesteps_to_numpy`, so ``polars.Duration``
+    series arrive as fractional milliseconds. Any other array-like input is flattened as given.
+    If ``timesteps`` is None, sample based timesteps ``0`` to ``length - 1`` are returned.
+
+    Parameters
+    ----------
+    timesteps: list[int] | list[float] | np.ndarray | pl.Series | None
+        The timesteps input of a detection function.
+    length: int
+        The number of samples, used for the sample based timesteps if ``timesteps`` is None.
+
+    Returns
+    -------
+    np.ndarray
+        The timesteps as a flat numpy array of numeric time values.
+
+    Raises
+    ------
+    TypeError
+        If the series is neither a Duration nor a numeric dtype.
+    """
+    if timesteps is None:
+        return np.arange(length, dtype=np.int64)
+    if isinstance(timesteps, pl.Series):
+        timesteps = timesteps_to_numpy(timesteps)
+    return np.array(timesteps).flatten()
+
+
 def durations_to_ms(frame: pl.DataFrame) -> pl.DataFrame:
     """Convert all Duration columns of a dataframe to numeric milliseconds.
 
