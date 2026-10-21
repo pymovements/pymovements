@@ -606,6 +606,22 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
         ),
         pytest.param(
             {
+                'positions': step_function(
+                    length=12, steps=[5, 6, 7, 8],
+                    values=[(np.nan, np.nan), (0, 0), (np.nan, np.nan), (0, 0)],
+                ),
+                'dispersion_threshold': 1,
+                'minimum_duration': 1,
+            },
+            Events(
+                name='fixation',
+                onsets=[0, 8],
+                offsets=[4, 10],
+            ),
+            id='two_fixations_single_sample_between_nans_dropped',
+        ),
+        pytest.param(
+            {
                 'positions': step_function(length=10, steps=[0], values=[(0, 0)]),
                 'timesteps': np.arange(0, 30, step=3, dtype=int),
                 'dispersion_threshold': 1,
