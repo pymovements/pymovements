@@ -1490,8 +1490,8 @@ def test_detect_after_clear_events_with_trial_columns():
     assert_frame_equal(gaze.events.frame, expected_events.frame, check_row_order=False)
 
 
-def test_detect_events_aware_detector_with_empty_events_shares_one_frame():
-    """An events-aware detector with empty events reuses a single empty events frame."""
+def test_detect_fill_with_empty_events_and_trial_columns():
+    """Fill on empty events yields one unclassified event per trial."""
     gaze = pm.gaze.from_numpy(
         time=np.arange(100),
         position=np.zeros((2, 100)),
