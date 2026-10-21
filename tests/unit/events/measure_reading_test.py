@@ -95,6 +95,42 @@ def test_events_measure_reading_does_not_mutate_events(fixation_events, stimulus
     assert 'word_idx' not in fixation_events.columns
 
 
+def test_events_measure_reading_merges_sources(fixation_events, stimulus):
+    fixation_events.metadata = {'Sources': ['events.tsv']}
+    stimulus.metadata = {'Sources': ['aoi.tsv']}
+
+    result = fixation_events.measure_reading(stimulus)
+
+    assert result.metadata == {'Sources': ['events.tsv', 'aoi.tsv']}
+    # the events keep their own metadata, the stimulus source is only recorded on the result
+    assert fixation_events.metadata == {'Sources': ['events.tsv']}
+
+
+def test_events_measure_reading_multiple_stimuli_merges_sources(two_trial_events):
+    two_trial_events.metadata = {'Sources': ['events.tsv']}
+    stimuli = {
+        'trial_1': _make_stimulus(['The', 'quick', 'brown'], trial='trial_1'),
+        'trial_2': _make_stimulus(['fox', 'jumps'], trial='trial_2'),
+    }
+    stimuli['trial_1'].metadata = {'Sources': ['aoi_1.tsv']}
+    stimuli['trial_2'].metadata = {'Sources': ['aoi_2.tsv']}
+
+    result = two_trial_events.measure_reading(stimuli, group_columns=['trial'])
+
+    assert result.metadata == {'Sources': ['events.tsv', 'aoi_1.tsv', 'aoi_2.tsv']}
+    assert two_trial_events.metadata == {'Sources': ['events.tsv']}
+
+
+def test_events_measure_reading_empty_keeps_events_metadata(stimulus):
+    empty = Events(metadata={'Sources': ['events.tsv']})
+    stimulus.metadata = {'Sources': ['aoi.tsv']}
+
+    result = empty.measure_reading(stimulus)
+
+    # nothing was mapped, so the stimulus is not a source of the empty measures
+    assert result.metadata == {'Sources': ['events.tsv']}
+
+
 def test_events_measure_reading_remaps_already_mapped_events(fixation_events, stimulus):
     # words of the second stimulus sit at x = 20, 30 and 10, so the fixations at x = 15 and
     # x = 25 land on its words 2 and 0.

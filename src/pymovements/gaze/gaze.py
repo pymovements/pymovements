@@ -41,6 +41,7 @@ from pymovements._utils._column_nesting import get_nested_columns
 from pymovements._utils._column_nesting import unnest_list_columns
 from pymovements._utils._html import repr_html
 from pymovements._utils._nulls import row_is_null
+from pymovements._utils._sources import merge_sources
 from pymovements._utils._time import duration_to_ms
 from pymovements._utils._time import durations_to_ms
 from pymovements._utils._time import time_column_to_duration_us
@@ -82,7 +83,10 @@ class Gaze:
     events: Events | None
         A dataframe of events in the gaze signal. (default: None)
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. (default: None)
+        Dictionary containing additional metadata. A ``Sources`` entry lists the files the
+        gaze data was loaded from and is propagated to the events. Reloading a file saved
+        with :py:meth:`save` records the reloaded file, not the sources of the original
+        data. (default: None)
     messages: polars.DataFrame | None
         DataFrame containing messages from the experiment.
         The required columns are 'time' and 'content'. The ``time`` column is converted to a
@@ -147,7 +151,9 @@ class Gaze:
     experiment : Experiment | None
         The experiment definition.
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata.
+        Dictionary containing additional metadata. A ``Sources`` entry lists the files the
+        gaze data was loaded from. Reloading a file saved with :py:meth:`save` records the
+        reloaded file, not the sources of the original data.
     messages: polars.DataFrame | None
         DataFrame containing messages from the experiment session. The ``time`` column is
         stored as a ``polars.Duration`` column with microsecond precision.
@@ -335,6 +341,9 @@ class Gaze:
             self.metadata = {}
         else:
             self.metadata = metadata
+
+        # Events derived from this gaze object share its source files.
+        self.events.metadata = merge_sources(self.events.metadata, self.metadata)
 
         # The auxiliary frames' time column is migrated to Duration('us') before being stored,
         # consistent with the samples time column. Numeric values are interpreted as
@@ -1221,6 +1230,12 @@ class Gaze:
         if isinstance(method, str):
             method = EventDetectionLibrary.get(method)
 
+        # Events detected from this gaze object share its source files. This also covers
+        # events containers replaced after construction, e.g. by Dataset.clear_events().
+        # Merging after method resolution keeps detect free of side effects when the
+        # method name is invalid.
+        self.events.metadata = merge_sources(self.events.metadata, self.metadata)
+
         if self.n_components is not None:
             eye_components = self._infer_eye_components(eye)
         else:
@@ -1677,6 +1692,8 @@ class Gaze:
 
         This maps each gaze point to an AOI label based on the configured stimulus rectangles.
         The mapping uses half-open intervals [start, end) for spatial bounds.
+        The source files of the stimulus are merged into the ``Sources`` entry of
+        :py:attr:`~.Gaze.metadata`.
 
         Parameters
         ----------
@@ -1994,6 +2011,9 @@ class Gaze:
 
         aoi_df = polars.concat(aois)
         self.samples = polars.concat([self.samples, aoi_df], how='horizontal_extend')
+
+        # The AOI-mapped samples are derived from the stimulus file as well.
+        self.metadata = merge_sources(self.metadata, aoi_dataframe.metadata)
 
     def measure_reading(
             self,
