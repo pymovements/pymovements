@@ -36,7 +36,7 @@ from pymovements.transforms.numpy import consecutive
 @register_event_detection
 def microsaccades(
         velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series,
-        timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
+        timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None = None,
         minimum_duration: int = 6,
         threshold: numpy.ndarray | tuple[float, float] | str = 'engbert2015',
         threshold_factor: float = 6,
@@ -58,10 +58,10 @@ def microsaccades(
     velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series
         shape (N, 2)
         x and y velocities of N samples in chronological order
-    timesteps: list[int] | numpy.ndarray | polars.Series | None
+    timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None
         shape (N, )
-        Corresponding continuous 1D timestep time series. If None, sample based timesteps are
-        assumed. (default: None)
+        Corresponding continuous 1D timestep time series. Fractional (float) timesteps are
+        accepted. If None, sample based timesteps are assumed. (default: None)
     minimum_duration: int
         Minimum saccade duration. The duration is specified in the units used in ``timesteps``;
          for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is

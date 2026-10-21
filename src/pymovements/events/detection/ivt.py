@@ -35,7 +35,7 @@ from pymovements.transforms.numpy import norm
 @register_event_detection
 def ivt(
         velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series,
-        timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
+        timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None = None,
         minimum_duration: int = 100,
         velocity_threshold: float = 20.0,
         include_nan: bool = False,
@@ -55,10 +55,10 @@ def ivt(
     velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series
         shape (N, 2)
         Corresponding continuous 2D velocity time series.
-    timesteps: list[int] | numpy.ndarray | polars.Series | None
+    timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None
         shape (N, )
-        Corresponding continuous 1D timestep time series. If None, sample based timesteps are
-        assumed. (default: None)
+        Corresponding continuous 1D timestep time series. Fractional (float) timesteps are
+        accepted. If None, sample based timesteps are assumed. (default: None)
     minimum_duration: int
         Minimum fixation duration. The duration is specified in the units used in ``timesteps``;
         for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
