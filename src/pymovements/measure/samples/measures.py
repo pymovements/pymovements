@@ -345,6 +345,86 @@ def location(
 
 
 @register_sample_measure
+def location_onset(
+        *,
+        position_column: str = 'position',
+        n_components: int = 2,
+) -> pl.Expr:
+    r"""Location of the onset of an event.
+
+    The location of the first sample in the event is used.
+
+    Parameters
+    ----------
+    position_column: str
+        The column name of the position tuples. (default: 'position')
+    n_components: int
+        Number of positional components. Usually these are the two components yaw and pitch.
+        (default: 2)
+
+    Returns
+    -------
+    pl.Expr
+        The location of the onset of the event.
+    """
+    component_expressions = []
+    for component in range(n_components):
+        position_component = (
+            pl.col(position_column)
+            .list.slice(0, None)
+            .list.get(component)
+        )
+
+        expression_component = position_component.first()
+        component_expressions.append(expression_component)
+
+    # Not sure why first() is needed here, but an outer list is being created somehow.
+    result = pl.concat_list(component_expressions).first()
+
+    return result.alias('location_onset')
+
+
+@register_sample_measure
+def location_offset(
+        *,
+        position_column: str = 'position',
+        n_components: int = 2,
+) -> pl.Expr:
+    r"""Location of the offset of an event.
+
+    The location of the last sample in the event is used.
+
+    Parameters
+    ----------
+    position_column: str
+        The column name of the position tuples. (default: 'position')
+    n_components: int
+        Number of positional components. Usually these are the two components yaw and pitch.
+        (default: 2)
+
+    Returns
+    -------
+    pl.Expr
+        The location of the offset of the event.
+    """
+    component_expressions = []
+    for component in range(n_components):
+        position_component = (
+            pl.col(position_column)
+            .list.slice(0, None)
+            .list.get(component)
+        )
+
+        expression_component = position_component.last()
+        component_expressions.append(expression_component)
+
+    # Not sure why first() is needed here, but an outer list is being created somehow.
+    result = pl.concat_list(component_expressions).first()
+
+    return result.alias('location_offset')
+
+
+@register_sample_measure
 def null_ratio(column: str, column_dtype: pl.DataType) -> pl.Expr:
     """Ratio of null values to overall values.
 
