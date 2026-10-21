@@ -635,28 +635,38 @@ class Dataset:
         Downloading https://... to data...toy_dataset...downloads...
         Checking integrity of ...
         Extracting ... to data...toy_dataset...raw
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data/toy_dataset')
+          experiment: Experiment(...)
+          resources: 1 defined
+          gaze: 0 recordings
+          events: 0 recordings
         >>> dataset.load()# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data/toy_dataset')
+          experiment: Experiment(...)
+          resources: 1 defined
+          gaze: 20 recordings
+          events: 20 recordings
+
+        Each call returns the dataset itself:
 
         Use apply for your gaze transformations:
         >>> dataset.apply('pix2deg')# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data/toy_dataset')...
 
         >>> dataset.apply('pos2vel', method='neighbors')# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data/toy_dataset')...
 
         Use apply for your event detection:
         >>> dataset.apply('ivt')# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data/toy_dataset')...
 
         >>> dataset.apply('microsaccades', minimum_duration=8)# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data/toy_dataset')...
 
         Use apply for upsampling, downsampling or making the sampling rate constant
         using resample:
         >>> dataset.apply('resample', resampling_rate=2000)# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data/toy_dataset')...
         """
         self._check_gaze()
 
@@ -1311,8 +1321,9 @@ class Dataset:
         preserves the original locations:
 
         >>> dataset.correct_fixations(stimulus, algorithm='attach', verbose=False)
-        ... # doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='.', path='data')
+          gaze: 1 recordings
+          events: 1 recordings
         >>> dataset.events[0].frame.select(['name', 'location', 'location_original'])
         shape: (3, 3)
         ┌──────────┬────────────────┬───────────────────┐
