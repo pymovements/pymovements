@@ -87,12 +87,16 @@ def test_events_measure_reading_returns_reading_measures(fixation_events, stimul
 
 
 def test_events_measure_reading_does_not_mutate_events(fixation_events, stimulus):
+    fixation_events.metadata = {'Sources': ['events.tsv']}
+    stimulus.metadata = {'Sources': ['aoi.tsv']}
     before = fixation_events.frame.clone()
 
     fixation_events.measure_reading(stimulus)
 
     assert fixation_events.frame.equals(before)
     assert 'word_idx' not in fixation_events.columns
+    # the stimulus source is only recorded on the result
+    assert fixation_events.metadata == {'Sources': ['events.tsv']}
 
 
 def test_events_measure_reading_merges_sources(fixation_events, stimulus):
@@ -102,8 +106,6 @@ def test_events_measure_reading_merges_sources(fixation_events, stimulus):
     result = fixation_events.measure_reading(stimulus)
 
     assert result.metadata == {'Sources': ['events.tsv', 'aoi.tsv']}
-    # the events keep their own metadata, the stimulus source is only recorded on the result
-    assert fixation_events.metadata == {'Sources': ['events.tsv']}
 
 
 def test_events_measure_reading_multiple_stimuli_merges_sources(two_trial_events):
@@ -118,7 +120,6 @@ def test_events_measure_reading_multiple_stimuli_merges_sources(two_trial_events
     result = two_trial_events.measure_reading(stimuli, group_columns=['trial'])
 
     assert result.metadata == {'Sources': ['events.tsv', 'aoi_1.tsv', 'aoi_2.tsv']}
-    assert two_trial_events.metadata == {'Sources': ['events.tsv']}
 
 
 def test_events_measure_reading_empty_keeps_events_metadata(stimulus):
@@ -312,13 +313,15 @@ def test_events_measure_reading_multiple_stimuli_requires_group_columns(fixation
 
 
 def test_gaze_measure_reading_delegates_to_events(fixation_events, stimulus):
-    gaze = Gaze(events=fixation_events)
+    stimulus.metadata = {'Sources': ['aoi.tsv']}
+    gaze = Gaze(events=fixation_events, metadata={'Sources': ['raw.csv']})
 
     gaze_result = gaze.measure_reading(stimulus)
-    events_result = fixation_events.measure_reading(stimulus)
+    events_result = gaze.events.measure_reading(stimulus)
 
     assert isinstance(gaze_result, ReadingMeasures)
     assert gaze_result.frame.equals(events_result.frame)
+    assert gaze_result.metadata == {'Sources': ['raw.csv', 'aoi.tsv']}
 
 
 @pytest.mark.parametrize('events', [None, Events()], ids=['none', 'empty'])

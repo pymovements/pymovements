@@ -1227,7 +1227,8 @@ class Events:
         :func:`~pymovements.measure.reading.compute_reading_measures`). The events are not
         modified. The mapping happens on an internal copy, and index columns from an earlier
         mapping are replaced on that copy. The ``Sources`` entry of the returned measures lists
-        the sources of the events followed by those of the stimuli.
+        the sources of the events followed by those of the stimuli. Empty events return only
+        their own sources.
 
         Parameters
         ----------
@@ -1323,14 +1324,13 @@ class Events:
             fixations, aois = self._map_to_reading_stimuli(
                 source, stimulus, group_columns, word_index_column,
             )
-            stimuli = list(stimulus.values())
         else:
             mapped = Events(source, trial_columns=self.trial_columns)
             mapped.map_to_aois(stimulus, verbose=False)
             fixations, aois = mapped.frame, stimulus.aois
-            stimuli = [stimulus]
 
         # The measures are derived from the events and the stimulus files.
+        stimuli = list(stimulus.values()) if isinstance(stimulus, dict) else [stimulus]
         metadata = deepcopy(self.metadata)
         for stim in stimuli:
             metadata = merge_sources(metadata, stim.metadata)
