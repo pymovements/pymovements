@@ -991,3 +991,45 @@ def test_from_asc_orphaned_event_end_marker_with_custom_patterns_does_not_raise_
     )
 
     assert_frame_equal(gaze.events.frame, expected_events, check_column_order=False)
+
+
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
+def test_from_asc_tracked_eye_change_yields_binocular_gaze(make_text_file):
+    """A file that switches the tracked eye loads as a binocular recording (#1401).
+
+    Each sample carries its own eye, the non-tracked eye is null, and the experiment reports
+    both eyes as tracked.
+    """
+    asc_text = (
+        '** VERSION: EYELINK II 1\n'
+        '** DATE: Wed Mar 10 12:00:00 2021\n'
+        'MSG\t1 ELCLCFG BTABLER\n'
+        'MSG\t1000 RECCFG CR 1000 2 1 R\n'
+        'START\t1000 \tRIGHT\tSAMPLES\tEVENTS\n'
+        'SAMPLES\tGAZE\tRIGHT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2\n'
+        '1000\t500.0\t400.0\t600.0\t0.0\t.....\n'
+        'END\t1000 \tSAMPLES\tEVENTS\tRES\t38.54\t31.12\n'
+        'MSG\t2000 RECCFG CR 1000 2 1 L\n'
+        'START\t2000 \tLEFT\tSAMPLES\tEVENTS\n'
+        'SAMPLES\tGAZE\tLEFT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2\n'
+        '2000\t138.1\t131.0\t778.0\t0.0\t.....\n'
+        'END\t2000 \tSAMPLES\tEVENTS\tRES\t38.54\t31.12\n'
+    )
+    filepath = make_text_file(filename='sub_eye_change.asc', body=asc_text)
+
+    gaze = from_asc(filepath)
+
+    expected_samples = pl.DataFrame(
+        {
+            'time': [1000, 2000],
+            'pixel': [[None, None, 500.0, 400.0], [138.1, 131.0, None, None]],
+            'pupil': [[None, 600.0], [778.0, None]],
+        },
+        schema={'time': pl.Int64, 'pixel': pl.List(pl.Float64), 'pupil': pl.List(pl.Float64)},
+    )
+    assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
+    assert gaze.experiment.eyetracker.left is True
+    assert gaze.experiment.eyetracker.right is True
