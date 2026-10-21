@@ -132,7 +132,7 @@ def test_from_asc_has_expected_samples(
                     'trial_id': [0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 3, 3, 4, 4, None],
                     'point_id': 3 * [None] + [0, 1, 2, 3] + [None, 0] + [0, 0, 1, 2] + [0, 1, None],
                     'screen_id': [None, 0, 1] + 13 * [None],
-                    'task': [None] + 2 * ['reading'] + 12 * ['judo'] + [None],
+                    'task': 3 * ['reading'] + 12 * ['judo'] + [None],
                 },
                 schema={
                     'time': pl.Float64,
