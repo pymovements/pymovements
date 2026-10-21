@@ -45,6 +45,8 @@ from pymovements.events.correction.attach import attach
 from pymovements.events.correction.chain import chain
 from pymovements.events.correction.cluster import cluster
 from pymovements.events.correction.compare import compare
+from pymovements.events.correction.corrector_registry import register_corrector
+from pymovements.events.correction.corrector_registry import TrialCorrector
 from pymovements.events.correction.fixation_correction import correct_fixation_locations
 from pymovements.events.correction.fixation_correction import correct_fixations
 from pymovements.events.correction.merge import merge
@@ -59,6 +61,8 @@ from pymovements.events.correction.wisdom_of_the_crowd import wisdom_of_the_crow
 __all__ = [
     'correct_fixations',
     'correct_fixation_locations',
+    'register_corrector',
+    'TrialCorrector',
 
     'attach',
     'chain',
