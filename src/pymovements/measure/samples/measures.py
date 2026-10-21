@@ -93,9 +93,22 @@ def _is_invalid(column: str | pl.Expr, dtype: pl.DataType | None = None) -> pl.E
     if dtype in {pl.Float32, pl.Float64}:
         return column.is_null() | column.is_nan() | column.is_infinite()
 
+    if isinstance(dtype, pl.List):
+        # Vectorized element-wise check: any null element marks the row invalid, and for
+        # floating-point elements NaN/inf are invalid as well. Non-float inner dtypes (e.g.
+        # int, str) can only be invalid through null elements.
+        invalid_element = pl.element().is_null()
+        if dtype.inner in {pl.Float32, pl.Float64}:
+            invalid_element = (
+                invalid_element
+                | pl.element().is_nan()
+                | pl.element().is_infinite()
+            )
+        return column.list.eval(invalid_element).list.any().fill_null(True)
+
     if dtype == pl.List:
-        # For list columns, any null/NaN/inf element marks the row invalid.
-        # We use map_elements here for robust cross-type support.
+        # Unparameterized list dtype: the inner dtype is unknown, so fall back to the
+        # element-wise path to keep NaN/inf detection for floating-point elements.
         return column.map_elements(_is_invalid_value, return_dtype=pl.Boolean).fill_null(True)
 
     if dtype is not None:
@@ -749,6 +762,7 @@ def data_loss(
         column: str,
         *,
         sampling_rate: float,
+        column_dtype: pl.DataType | None = None,
         time_column: str = 'time',
         start_time: float | None = None,
         end_time: float | None = None,
@@ -779,6 +793,9 @@ def data_loss(
         For list columns, any null/NaN/inf element marks the whole row as invalid.
     sampling_rate: float
         Expected sampling rate in Hz (must be > 0).
+    column_dtype: pl.DataType | None
+        Data type of ``column``. If provided, a vectorized element-wise check is used
+        instead of the per-row fallback. (default: ``None``)
     time_column: str
         Name of the timestamp column. (default: 'time')
     start_time: float | None
@@ -867,7 +884,7 @@ def data_loss(
     ).otherwise(pl.lit(None))
 
     invalid_loss = (
-        _is_invalid(column)
+        _is_invalid(column, dtype=column_dtype)
         .sum()
         .cast(pl.Int64)
     )
