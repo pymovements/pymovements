@@ -28,7 +28,8 @@ import pymovements as pm
 from pymovements import Gaze
 from pymovements.stimulus import TextStimulus
 
-EXPECTED_DF = {
+
+EXPECTED_GAZE_SAMPLES = {
     'char_left_pixel': pl.DataFrame(
         [
             (
@@ -1097,6 +1098,9 @@ EXPECTED_DF = {
         'position',
     ],
 )
+@pytest.mark.filterwarnings(
+    'ignore:Gaze contains samples but no components could be inferred.*:UserWarning',
+)
 def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type, make_example_file):
     aoi_filepath = make_example_file('stimuli/toy_text_aoi.csv')
     gaze_filepath = make_example_file('judo1000_example.csv')
@@ -1126,7 +1130,12 @@ def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type, make_
         assert False, 'unknown gaze_type'
 
     gaze.map_to_aois(aoi_df, eye=eye, gaze_type=gaze_type)
-    assert_frame_equal(gaze.samples, EXPECTED_DF[f'{aoi_column}_{eye}_{gaze_type}'])
+    expected = Gaze(
+        EXPECTED_GAZE_SAMPLES[f'{aoi_column}_{eye}_{gaze_type}'],
+        time_column='time',
+        time_unit='ms',
+    )
+    assert_frame_equal(gaze.samples, expected.samples)
 
 
 @pytest.mark.parametrize(
@@ -1151,6 +1160,9 @@ def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type, make_
         'pixel',
         'position',
     ],
+)
+@pytest.mark.filterwarnings(
+    'ignore:Gaze contains samples but no components could be inferred.*:UserWarning',
 )
 def test_gaze_to_aoi_mapping_char_end(eye, aoi_column, gaze_type, make_example_file):
     aoi_filepath = make_example_file('stimuli/toy_text_aoi.csv')
@@ -1181,7 +1193,12 @@ def test_gaze_to_aoi_mapping_char_end(eye, aoi_column, gaze_type, make_example_f
         assert False, 'unknown gaze_type'
 
     gaze.map_to_aois(aoi_df, eye=eye, gaze_type=gaze_type)
-    assert_frame_equal(gaze.samples, EXPECTED_DF[f'{aoi_column}_{eye}_{gaze_type}'])
+    expected = Gaze(
+        EXPECTED_GAZE_SAMPLES[f'{aoi_column}_{eye}_{gaze_type}'],
+        time_column='time',
+        time_unit='ms',
+    )
+    assert_frame_equal(gaze.samples, expected.samples)
 
 
 def test_map_to_aois_raises_value_error(make_example_file):
@@ -1350,3 +1367,48 @@ def test_map_to_aois_uses_first_overlapping_aoi_without_misalignment() -> None:
 
     assert gaze.samples.height == 4
     assert gaze.samples.get_column('content').to_list() == ['AOI1', 'AOI1', 'AOI2', None]
+
+
+@pytest.fixture(name='gaze_with_sources')
+def fixture_gaze_with_sources():
+    return Gaze(
+        samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+        metadata={'Sources': ['raw/sub_1.csv']},
+    )
+
+
+@pytest.fixture(name='text_stimulus_with_sources')
+def fixture_text_stimulus_with_sources():
+    return TextStimulus(
+        aois=pl.DataFrame({
+            'char': ['a'],
+            'sx': [0.0],
+            'sy': [0.0],
+            'ex': [1.0],
+            'ey': [1.0],
+        }),
+        aoi_column='char',
+        start_x_column='sx',
+        start_y_column='sy',
+        end_x_column='ex',
+        end_y_column='ey',
+        metadata={'Sources': ['stimuli/text_1_aoi.csv']},
+    )
+
+
+def test_gaze_map_to_aois_merges_stimulus_sources(gaze_with_sources, text_stimulus_with_sources):
+    gaze_with_sources.map_to_aois(text_stimulus_with_sources, verbose=False)
+
+    assert gaze_with_sources.metadata['Sources'] == ['raw/sub_1.csv', 'stimuli/text_1_aoi.csv']
+
+
+def test_gaze_map_to_aois_with_none_metadata_adopts_stimulus_sources(
+        gaze_with_sources, text_stimulus_with_sources,
+):
+    gaze_with_sources.metadata = None
+
+    gaze_with_sources.map_to_aois(text_stimulus_with_sources, verbose=False)
+
+    assert gaze_with_sources.metadata == {'Sources': ['stimuli/text_1_aoi.csv']}

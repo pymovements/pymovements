@@ -48,11 +48,13 @@ pip-delete-this-directory.txt
 
 # Docs
 docs/build
+docs/source/_generated
 docs/doctree*
 docs/source/reference/api
 docs/source/tutorials/data
 .ipynb_checkpoints
 docs/jupyter_execute
+docs/.jupyter_cache
 docs/source/contributing/my_dataset.yaml
 
 # Testing

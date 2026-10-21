@@ -164,9 +164,11 @@ def from_numpy(
         The name or index of the timestamp column in the samples data frame. (default: None)
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the samples data frame. Supported
-        units are 's' for seconds, 'ms' for milliseconds, and 'step' for steps. If the unit is
-        'step,' the experiment definition must be specified. All timestamps will be converted to
-        milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
+        units are 's' for seconds, 'ms' for milliseconds, 'us' for microseconds and 'step' for
+        steps. If the unit is 'step' the experiment definition must be specified. All timestamps
+        will be converted to a ``polars.Duration`` column with microsecond precision. If the
+        column already holds ``polars.Duration`` values, it is used as is and ``time_unit`` is
+        ignored. If time_unit is None, milliseconds are assumed. (default: None)
     pixel_columns: list[str | int] | None
         The names or indices of the pixel position columns in the samples data frame.
         (default: None)
@@ -214,23 +216,23 @@ def from_numpy(
     ... )
     >>> gaze.samples
     shape: (100, 2)
-    ┌──────┬────────────┐
-    │ time ┆ position   │
-    │ ---  ┆ ---        │
-    │ i64  ┆ list[f64]  │
-    ╞══════╪════════════╡
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ …    ┆ …          │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    └──────┴────────────┘
+    ┌──────────────┬────────────┐
+    │ time         ┆ position   │
+    │ ---          ┆ ---        │
+    │ duration[μs] ┆ list[f64]  │
+    ╞══════════════╪════════════╡
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ …            ┆ …          │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    └──────────────┴────────────┘
 
     Use the ``orient`` keyword argument to specify the layout of your array.
     >>> arr.T.shape
@@ -246,23 +248,23 @@ def from_numpy(
     ... )
     >>> gaze.samples
     shape: (100, 2)
-    ┌──────┬────────────┐
-    │ time ┆ position   │
-    │ ---  ┆ ---        │
-    │ i64  ┆ list[f64]  │
-    ╞══════╪════════════╡
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ …    ┆ …          │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    └──────┴────────────┘
+    ┌──────────────┬────────────┐
+    │ time         ┆ position   │
+    │ ---          ┆ ---        │
+    │ duration[μs] ┆ list[f64]  │
+    ╞══════════════╪════════════╡
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ …            ┆ …          │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    └──────────────┴────────────┘
 
     Pass the samples explicitly via the specific keyword arguments, without having to specify a
     schema.
@@ -274,23 +276,23 @@ def from_numpy(
     ... )
     >>> gaze.samples
     shape: (100, 2)
-    ┌──────┬────────────┐
-    │ time ┆ position   │
-    │ ---  ┆ ---        │
-    │ i64  ┆ list[f64]  │
-    ╞══════╪════════════╡
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ …    ┆ …          │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    │ 0    ┆ [0.0, 0.0] │
-    └──────┴────────────┘
+    ┌──────────────┬────────────┐
+    │ time         ┆ position   │
+    │ ---          ┆ ---        │
+    │ duration[μs] ┆ list[f64]  │
+    ╞══════════════╪════════════╡
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ …            ┆ …          │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
+    └──────────────┴────────────┘
     """
     # Either samples or {time, pixel, position, velocity, acceleration} must be None.
     _checks.check_is_mutual_exclusive(samples=samples, time=time)
@@ -448,9 +450,11 @@ def from_pandas(
         The name of the timestamp column in the input data frame. (default: None)
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
-        units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
-        'step' the experiment definition must be specified. All timestamps will be converted to
-        milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
+        units are 's' for seconds, 'ms' for milliseconds, 'us' for microseconds and 'step' for
+        steps. If the unit is 'step' the experiment definition must be specified. All timestamps
+        will be converted to a ``polars.Duration`` column with microsecond precision. If the
+        column already holds ``polars.Duration`` values, it is used as is and ``time_unit`` is
+        ignored. If time_unit is None, milliseconds are assumed. (default: None)
     pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. (default: None)
     position_columns: list[str] | None

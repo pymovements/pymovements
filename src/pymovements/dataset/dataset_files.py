@@ -20,6 +20,7 @@
 """Functionality to scan, load and save dataset files."""
 from __future__ import annotations
 
+import operator
 from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass
@@ -33,7 +34,10 @@ import pyreadr
 from tqdm.auto import tqdm
 
 from pymovements._utils._paths import match_filepaths
+from pymovements._utils._sources import add_source
+from pymovements._utils._sources import relativize_sources
 from pymovements._utils._strings import curly_to_regex
+from pymovements._utils._time import durations_to_ms
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_paths import DatasetPaths
 from pymovements.dataset.resources import ResourceDefinition
@@ -60,7 +64,7 @@ class DatasetFile:
     definition: ResourceDefinition
         Associated :py:class:`~pymovements.ResourceDefinition`.
     metadata: dict[str, Any]
-        Additional metadata parsed via `:py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
+        Additional metadata parsed via :py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
 
     Parameters
     ----------
@@ -70,7 +74,7 @@ class DatasetFile:
         Associated :py:class:`~pymovements.ResourceDefinition`.
         (default: None)
     metadata: dict[str, Any] | None
-        Additional metadata parsed via `:py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
+        Additional metadata parsed via :py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
         (default: None)
     """
 
@@ -155,8 +159,8 @@ def scan_dataset(
         if not filepaths:
             raise RuntimeError(f'no matching files found in {resource_dirpath} with regex {regex}')
 
-        fileinfo_df = pl.from_dicts(data=filepaths, infer_schema_length=1)
-        fileinfo_df = fileinfo_df.sort(by='filepath')
+        filepaths = sorted(filepaths, key=operator.itemgetter('filepath'))
+        fileinfo_df = pl.from_dicts(data=filepaths, infer_schema_length=None)
 
         if resource_definition.filename_pattern_schema_overrides:
             items = resource_definition.filename_pattern_schema_overrides.items()
@@ -200,8 +204,6 @@ def load_event_files(
         Path of directory containing event files.
     events_dirname: str | None
         One-time usage of an alternative directory name to save data relative to dataset path.
-        This argument is used only for this single call and does not alter
-        :py:meth:`pymovements.Dataset.events_rootpath`.
     extension: str
         Specifies the file format for loading data. Valid options are: `csv`, `feather`,
         `tsv`, `txt`.
@@ -244,7 +246,9 @@ def load_event_files(
                 f'Supported formats are: {valid_extensions}',
             )
 
-        list_of_events.append(Events(events))
+        metadata = add_source(file.metadata, filepath)
+        metadata = relativize_sources(metadata, paths.dataset)
+        list_of_events.append(Events(events, metadata=metadata))
 
     return list_of_events
 
@@ -272,9 +276,7 @@ def load_gaze_files(
         (default: False)
     preprocessed_dirname : str | None
         One-time usage of an alternative directory name to save data relative to
-        :py:meth:`pymovements.Dataset.path`.
-        This argument is used only for this single call and does not alter
-        :py:meth:`pymovements.Dataset.preprocessed_rootpath`.
+        :py:attr:`pymovements.Dataset.path`.
     extension: str
         Specifies the file format for loading data. Valid options are: `csv`, `feather`,
         `txt`, `tsv`.
@@ -310,6 +312,8 @@ def load_gaze_files(
             dataset_definition=deepcopy(definition),
             preprocessed=preprocessed,
         )
+        gaze.metadata = relativize_sources(gaze.metadata, paths.dataset)
+        gaze.events.metadata = relativize_sources(gaze.events.metadata, paths.dataset)
         gazes.append(gaze)
 
     return gazes
@@ -456,6 +460,7 @@ def load_gaze_file(
 def load_precomputed_reading_measures(
         definition: DatasetDefinition,
         files: list[DatasetFile],
+        paths: DatasetPaths,
 ) -> list[ReadingMeasures]:
     """Load reading measures files.
 
@@ -465,6 +470,8 @@ def load_precomputed_reading_measures(
         Dataset definition to load precomputed reading measures.
     files: list[DatasetFile]
         Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
+    paths: DatasetPaths
+        The dataset paths for relativizing source filepaths.
 
     Returns
     -------
@@ -473,9 +480,11 @@ def load_precomputed_reading_measures(
     """
     precomputed_reading_measures = []
     for file in files:
-        precomputed_reading_measures.append(
-            load_precomputed_reading_measure_file(file=file, dataset_definition=definition),
+        reading_measures = load_precomputed_reading_measure_file(
+            file=file, dataset_definition=definition,
         )
+        reading_measures.metadata = relativize_sources(reading_measures.metadata, paths.dataset)
+        precomputed_reading_measures.append(reading_measures)
     return precomputed_reading_measures
 
 
@@ -540,12 +549,16 @@ def load_precomputed_reading_measure_file(
             f'Supported formats are: {", ".join(sorted(valid_extensions))}',
         )
 
-    return ReadingMeasures(precomputed_reading_measure_df)
+    return ReadingMeasures(
+        precomputed_reading_measure_df,
+        metadata=add_source(file.metadata, file.path),
+    )
 
 
 def load_precomputed_event_files(
         definition: DatasetDefinition,
         files: list[DatasetFile],
+        paths: DatasetPaths,
 ) -> list[PrecomputedEventDataFrame]:
     """Load precomputed event dataframes from files.
 
@@ -559,6 +572,8 @@ def load_precomputed_event_files(
     files: list[DatasetFile]
         Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
         Valid extensions: .csv, .tsv, .txt, .jsonl, and .ndjson.
+    paths: DatasetPaths
+        The dataset paths for relativizing source filepaths.
 
     Returns
     -------
@@ -567,9 +582,13 @@ def load_precomputed_event_files(
     """
     precomputed_events = []
     for file in files:
-        precomputed_events.append(
-            load_precomputed_event_file(file=file, dataset_definition=definition),
+        precomputed_event_frame = load_precomputed_event_file(
+            file=file, dataset_definition=definition,
         )
+        precomputed_event_frame.metadata = relativize_sources(
+            precomputed_event_frame.metadata, paths.dataset,
+        )
+        precomputed_events.append(precomputed_event_frame)
     return precomputed_events
 
 
@@ -634,11 +653,15 @@ def load_precomputed_event_file(
             f'Supported formats are: {", ".join(sorted(valid_extensions))}',
         )
 
-    return PrecomputedEventDataFrame(data=precomputed_event_df)
+    return PrecomputedEventDataFrame(
+        data=precomputed_event_df,
+        metadata=add_source(file.metadata, file.path),
+    )
 
 
 def load_stimuli_files(
         files: list[DatasetFile],
+        paths: DatasetPaths,
 ) -> list[ImageStimulus | TextStimulus]:
     """Load all available text stimuli files.
 
@@ -646,6 +669,8 @@ def load_stimuli_files(
     ----------
     files: list[DatasetFile]
         Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
+    paths: DatasetPaths
+        The dataset paths for relativizing source filepaths.
 
     Returns
     -------
@@ -656,6 +681,7 @@ def load_stimuli_files(
     stimuli: list[ImageStimulus | TextStimulus] = []
     for file in files:
         stimulus = load_stimulus_file(file=file)
+        stimulus.metadata = relativize_sources(stimulus.metadata, paths.dataset)
         stimuli.append(stimulus)
     return stimuli
 
@@ -734,9 +760,8 @@ def save_events(
     paths: DatasetPaths
         Path of directory containing event files.
     events_dirname: str | None
-        One-time usage of an alternative directory name to save data relative to dataset path.
-        This argument is used only for this single call and does not alter
-        :py:meth:`pymovements.Dataset.events_rootpath`. (default: None)
+        One-time usage of an alternative directory name to save data relative to
+        dataset path. (default: None)
     verbose: int
         Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
         (default: 1)
@@ -773,7 +798,7 @@ def save_events(
         if extension == 'feather':
             events_instance.frame.write_ipc(events_filepath)
         elif extension == 'csv':
-            events_instance.frame.write_csv(events_filepath)
+            durations_to_ms(events_instance.frame).write_csv(events_filepath)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
@@ -804,9 +829,8 @@ def save_preprocessed(
     paths: DatasetPaths
         Path of directory containing event files.
     preprocessed_dirname: str | None
-        One-time usage of an alternative directory name to save data relative to dataset path.
-        This argument is used only for this single call and does not alter
-        :py:meth:`pymovements.Dataset.preprocessed_rootpath`. (default: None)
+        One-time usage of an alternative directory name to save data relative to
+        dataset path. (default: None)
     verbose: int
         Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
         (default: 1)
@@ -848,7 +872,7 @@ def save_preprocessed(
         if extension == 'feather':
             gaze.samples.write_ipc(preprocessed_filepath)
         elif extension == 'csv':
-            gaze.samples.write_csv(preprocessed_filepath)
+            durations_to_ms(gaze.samples).write_csv(preprocessed_filepath)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
@@ -939,6 +963,6 @@ def take_subset(
         files = [
             file for file in files
             if file.metadata.get(metadata_key) in metadata_values
-            or file.definition.content == 'stimulus'  # subset is only applied on gaze data.
+            or 'stimulus' in file.definition.content.lower()  # subset is only applied on gaze data.
         ]
     return fileinfo, files

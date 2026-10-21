@@ -20,7 +20,9 @@
 """Provides the scanpath plotting function."""
 from __future__ import annotations
 
+import datetime
 import math
+from typing import TYPE_CHECKING
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -29,13 +31,14 @@ import numpy as np
 import polars as pl
 from matplotlib.patches import Circle
 
-from pymovements.events import Events
-from pymovements.gaze import Gaze
 from pymovements.plotting._matplotlib import _draw_arrow_data
 from pymovements.plotting._matplotlib import _draw_line_data
 from pymovements.plotting._matplotlib import _set_screen_axes
 from pymovements.plotting._matplotlib import _setup_axes_and_colormap
 from pymovements.plotting._matplotlib import LinearSegmentedColormapType
+
+if TYPE_CHECKING:
+    from pymovements.gaze import Gaze
 
 
 def scanpathplot(
@@ -174,7 +177,6 @@ def scanpathplot(
     if gaze.events is None:
         raise TypeError("scanpathplot 'gaze.events' must not be None")
     events = gaze.events
-    assert isinstance(events, Events)  # otherwise mypy complains
 
     fixations = events.frame.filter(pl.col('name') == event_name)
 
@@ -199,9 +201,12 @@ def scanpathplot(
     )
 
     for row in fixations.iter_rows(named=True):
+        duration = row['duration']
+        if isinstance(duration, datetime.timedelta):
+            duration = duration / datetime.timedelta(milliseconds=1)
         fixation = Circle(
             row[position_column],
-            math.sqrt(row['duration']),
+            math.sqrt(duration),
             color=color,
             fill=True,
             alpha=alpha,
@@ -239,7 +244,13 @@ def scanpathplot(
         )
 
     if gaze is not None and gaze.experiment is not None:
-        _set_screen_axes(ax, gaze.experiment.screen, func_name='scanpathplot')
+        _set_screen_axes(
+            ax,
+            gaze.experiment.screen.width_px,
+            gaze.experiment.screen.height_px,
+            gaze.experiment.screen.origin,
+            func_name='scanpathplot',
+        )
 
     if title:
         ax.set_title(title)

@@ -436,12 +436,9 @@ def test_map_to_aois_preserves_saccades_with_structure(
         },
     )
 
-    original = base.clone()
-
     events = Events(data=base)
+    original = events.frame.clone()
     events.map_to_aois(simple_stimulus, preserve_structure=True)
-
-    # only middle fixation is inside AOI 'A'
     labels = events.frame.get_column('label').to_list()
     assert labels == [None, 'A', None]
 
@@ -483,12 +480,9 @@ def test_map_to_aois_preserves_saccades_without_structure(
         },
     )
 
-    original = base.clone()
-
     events = Events(data=base)
+    original = events.frame.clone()
     events.map_to_aois(simple_stimulus, preserve_structure=False)
-
-    # only middle fixation is inside AOI 'A'
     labels = events.frame.get_column('label').to_list()
     assert labels == [None, 'A', None]
 

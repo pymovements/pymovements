@@ -263,6 +263,20 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
             ),
             id='constant_position_single_fixation_with_timesteps',
         ),
+        pytest.param(
+            {
+                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'timesteps': pl.Series(np.arange(1000, 1100)).cast(pl.Duration('ms')),
+                'velocity_threshold': 1,
+                'minimum_duration': 1,
+            },
+            Events(
+                name='fixation',
+                onsets=[1000],
+                offsets=[1099],
+            ),
+            id='constant_position_single_fixation_with_duration_timesteps',
+        ),
     ],
 )
 def test_ivt_detects_fixations_numpy(kwargs, expected):

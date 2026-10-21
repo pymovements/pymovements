@@ -73,12 +73,14 @@ def test_from_pandas_explicit_columns():
         position_columns=['x_pos', 'y_pos'],
     )
 
-    expected = pl.DataFrame({
-        'time': [101, 102, 103, 104],
-        'distance': [100, 100, 100, 100],
-        'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
-        'position': [[9, 5], [8, 4], [7, 3], [6, 2]],
-    })
+    expected = pl.DataFrame(
+        {
+            'time': [101000, 102000, 103000, 104000],
+            'distance': [100, 100, 100, 100],
+            'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
+            'position': [[9, 5], [8, 4], [7, 3], [6, 2]],
+        }, schema_overrides={'time': pl.Duration('us')},
+    )
 
     assert_frame_equal(gaze.samples, expected)
 
@@ -103,11 +105,13 @@ def test_from_pandas_with_trial_columnms():
         pixel_columns=['x_pix', 'y_pix'],
     )
 
-    expected = pl.DataFrame({
-        'trial_id': [1, 1, 2, 2],
-        'time': [101, 102, 103, 104],
-        'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
-    })
+    expected = pl.DataFrame(
+        {
+            'trial_id': [1, 1, 2, 2],
+            'time': [101000, 102000, 103000, 104000],
+            'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
+        }, schema_overrides={'time': pl.Duration('us')},
+    )
 
     assert_frame_equal(gaze.samples, expected)
     assert gaze.trial_columns == ['trial_id']
