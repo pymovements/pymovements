@@ -638,6 +638,7 @@ class Dataset:
             >>> getfixture('doctest_tmp_cwd')
 
         Let's load in our dataset first,
+
         >>> import pymovements as pm
         >>>
         >>> dataset = pm.Dataset("ToyDataset", path='data/toy_dataset')
@@ -645,28 +646,41 @@ class Dataset:
         Downloading https://... to data...toy_dataset...downloads...
         Checking integrity of ...
         Extracting ... to data...toy_dataset...raw
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')
+          experiment: Experiment(...)
+          resources: 1 defined
+          gaze: 0 recordings
+          events: 0 recordings
         >>> dataset.load()# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')
+          experiment: Experiment(...)
+          resources: 1 defined
+          gaze: 20 recordings
+          events: 20 recordings
+
+        Each call returns the dataset itself:
 
         Use apply for your gaze transformations:
+
         >>> dataset.apply('pix2deg')# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
 
         >>> dataset.apply('pos2vel', method='neighbors')# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
 
         Use apply for your event detection:
+
         >>> dataset.apply('ivt')# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
 
         >>> dataset.apply('microsaccades', minimum_duration=8)# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
 
         Use apply for upsampling, downsampling or making the sampling rate constant
         using resample:
+
         >>> dataset.apply('resample', resampling_rate=2000)# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
         """
         self._check_gaze()
 
@@ -1294,6 +1308,57 @@ class Dataset:
         -------
         Dataset
             Returns self, useful for method cascading.
+
+        Examples
+        --------
+        Let's create a dataset holding fixations that drift away from three lines of
+        text with their centers at y = 100, 200 and 300:
+
+        >>> import polars as pl
+        >>> import pymovements as pm
+        >>> events = pm.Events(
+        ...     pl.DataFrame({
+        ...         'name': ['fixation', 'fixation', 'fixation'],
+        ...         'onset': [0, 200, 400],
+        ...         'offset': [100, 300, 500],
+        ...         'location': [[100.0, 105.0], [110.0, 195.0], [120.0, 302.0]],
+        ...     }),
+        ... )
+        >>> dataset = pm.Dataset(pm.DatasetDefinition(), path='data')
+        >>> dataset.gaze.append(pm.Gaze(events=events))
+        >>> stimulus = pm.stimulus.TextStimulus(
+        ...     aois=pl.DataFrame({
+        ...         'word': ['first', 'second', 'third'],
+        ...         'start_x': [90.0, 90.0, 90.0],
+        ...         'start_y': [80.0, 180.0, 280.0],
+        ...         'end_x': [200.0, 200.0, 200.0],
+        ...         'end_y': [120.0, 220.0, 320.0],
+        ...     }),
+        ...     aoi_column='word',
+        ...     start_x_column='start_x',
+        ...     start_y_column='start_y',
+        ...     end_x_column='end_x',
+        ...     end_y_column='end_y',
+        ... )
+
+        Correcting the fixations snaps each y-coordinate onto its line center and
+        preserves the original locations:
+
+        >>> dataset.correct_fixations(stimulus, algorithm='attach', verbose=False)
+        Dataset(name='.', path='data')
+          gaze: 1 recordings
+          events: 1 recordings
+        >>> dataset.events[0].frame.select(['name', 'location', 'location_original'])
+        shape: (3, 3)
+        ┌──────────┬────────────────┬───────────────────┐
+        │ name     ┆ location       ┆ location_original │
+        │ ---      ┆ ---            ┆ ---               │
+        │ str      ┆ list[f64]      ┆ list[f64]         │
+        ╞══════════╪════════════════╪═══════════════════╡
+        │ fixation ┆ [100.0, 100.0] ┆ [100.0, 105.0]    │
+        │ fixation ┆ [110.0, 200.0] ┆ [110.0, 195.0]    │
+        │ fixation ┆ [120.0, 300.0] ┆ [120.0, 302.0]    │
+        └──────────┴────────────────┴───────────────────┘
         """
         disable_progressbar = not verbose
         for events in tqdm(self.events, disable=disable_progressbar):
@@ -1831,6 +1896,84 @@ class Dataset:
             raise AttributeError('gaze files were not loaded yet. please run load() beforehand')
         if len(self.gaze) == 0:
             raise AttributeError('no files present in gaze attribute')
+
+    def summary(self) -> None:
+        """Print a summary of the dataset.
+
+        The summary extends the string representation with the total number of loaded gaze
+        samples, their estimated in-memory size and the total number of detected events,
+        including the event counts grouped by event name across all recordings.
+
+        See Also
+        --------
+        pymovements.Events.summary : Print a summary of the events.
+        pymovements.Dataset.report_data_quality :
+            Check dataset configuration and compute data quality measures.
+
+        Examples
+        --------
+        Initialize your :py:class:`~pymovements.Dataset` object and load the data first:
+
+        >>> import pymovements as pm
+        >>>
+        >>> dataset = pm.Dataset("ToyDataset", path='data/ToyDataset')# doctest: +SKIP
+        >>> dataset.load()# doctest: +SKIP
+
+        Print the dataset summary:
+
+        >>> dataset.summary()# doctest: +SKIP
+        Dataset(name='ToyDataset', path='data/ToyDataset')
+          experiment: Experiment(screen=Screen(...), eyetracker=EyeTracker(...))
+          resources: 1 defined
+          gaze: 20 recordings
+          events: 20 recordings
+          total samples: 566,715 (26.1 MB in memory)
+          total events: 0
+        """
+        lines = [str(self)]
+
+        total_samples = sum(
+            len(gaze.samples) for gaze in self.gaze if gaze.samples is not None
+        )
+        estimated_size_mb = sum(
+            gaze.samples.estimated_size() for gaze in self.gaze if gaze.samples is not None
+        ) / (1024 * 1024)
+        lines.append(f'  total samples: {total_samples:,} ({estimated_size_mb:.1f} MB in memory)')
+
+        total_events = sum(len(events) for events in self.events)
+        lines.append(f'  total events: {total_events:,}')
+
+        if total_events:
+            name_counts = pl.concat(
+                [events.frame.select('name') for events in self.events],
+            )['name'].value_counts().sort('name')
+            for name, count in name_counts.iter_rows():
+                lines.append(f'    {name}: {count:,}')
+
+        print('\n'.join(lines))
+
+    def __str__(self) -> str:
+        """Return string representation of Dataset.
+
+        The representation includes the dataset name and path, the experiment definition, the
+        number of defined resources and the number of loaded gaze and event recordings.
+        """
+        lines = [f'{type(self).__name__}(name={self.definition.name!r}, path={str(self.path)!r})']
+
+        if self.definition.experiment:
+            lines.append(f'  experiment: {self.definition.experiment}')
+
+        if self.definition.resources:
+            lines.append(f'  resources: {len(self.definition.resources)} defined')
+
+        lines.append(f'  gaze: {len(self.gaze)} recordings')
+        lines.append(f'  events: {len(self.events)} recordings')
+
+        return '\n'.join(lines)
+
+    def __repr__(self) -> str:
+        """Return string representation of Dataset."""
+        return self.__str__()
 
     def _disclaimer(self) -> str:
         """Return string for dataset download disclaimer."""

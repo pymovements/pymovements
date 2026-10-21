@@ -42,6 +42,10 @@ def split(
 ) -> pl.Expr:
     """Split fixation sequence into line subsequences using K-Means return sweep identification.
 
+    A two-cluster K-Means on the saccade x-differences identifies the return sweeps
+    separating the lines. Each subsequence is aligned to the text line closest to its
+    mean y-coordinate.
+
     Reference: :cite:p:`Carr2022`.
 
     Parameters
