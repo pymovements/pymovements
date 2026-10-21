@@ -26,6 +26,8 @@ through :py:meth:`pymovements.Gaze.measure_samples`.
 import numpy as np
 import polars as pl
 
+from pymovements import Experiment
+from pymovements import Gaze
 from pymovements.measure.samples import data_loss
 from pymovements.measure.samples import null_ratio
 
@@ -65,6 +67,22 @@ def test_data_loss_benchmark(benchmark):
         lambda: samples.select(
             data_loss('position', sampling_rate=1000.0, column_dtype=pl.List(pl.Float64)),
         ),
+        iterations=1,
+        rounds=10,
+    )
+
+
+def test_gaze_measure_samples_data_loss_benchmark(benchmark):
+    """Benchmark Gaze.measure_samples('data_loss') over 500k list samples."""
+    samples = _synthetic_samples()
+    gaze = Gaze(
+        samples=samples,
+        experiment=Experiment(1024, 768, 38, 30, 60, 'upper left', 1000),
+        time_unit='ms',
+    )
+
+    benchmark.pedantic(
+        lambda: gaze.measure_samples('data_loss', column='position'),
         iterations=1,
         rounds=10,
     )
