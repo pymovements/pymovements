@@ -19,6 +19,22 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Find baseline commit
+        id: baseline
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            sha=$(git merge-base "$BASE_SHA" "$HEAD_SHA")
+          else
+            sha=$(git rev-parse --verify HEAD^)
+          fi
+          echo "baseline commit: $sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
       - name: Restore cached environment
         id: cache-restore
@@ -38,8 +54,26 @@ jobs:
       - name: Install tox
         run: python -m pip install tox
 
-      - name: Setup benchmark environment
+      - name: Checkout baseline commit
+        env:
+          SHA: ${{ steps.baseline.outputs.sha }}
+        run: git checkout --quiet "$SHA"
+
+      - name: Setup baseline benchmark environment
         run: tox -vv --notest -e benchmark
+
+      - name: Benchmark baseline commit
+        run: |
+          tox --skip-pkg-install -e benchmark
+          mv benchmark-data.json benchmark-data-baseline.json
+
+      - name: Checkout head commit
+        env:
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: git checkout --quiet "$SHA"
+
+      - name: Setup head benchmark environment
+        run: tox -vv --notest --recreate -e benchmark
 
       - name: Cache environment
         uses: actions/cache/save@v4
@@ -51,23 +85,41 @@ jobs:
             ~/.cache
             ~/.tox
 
-      - name: Run benchmark
+      - name: Benchmark head commit
         run: tox --skip-pkg-install -e benchmark
 
-      - name: Download previous benchmark data
-        uses: actions/cache@v4
+      # The action compares a result with the last entry in its data file, so
+      # the baseline pass seeds the file and the head pass compares. The token
+      # is for the commit lookup on schedule and dispatch, their payload has none.
+      - name: Record baseline result
+        uses: benchmark-action/github-action-benchmark@v1
         with:
-          path: ./cache
-          key: benchmark-${{ github.ref_name }}-${{ github.run_id }}
-          restore-keys: benchmark-main
+          name: pytest-benchmark
+          tool: 'pytest'
+          output-file-path: benchmark-data-baseline.json
+          external-data-json-path: ./comparison/benchmark-data.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false
 
-      - name: Store benchmark result
+      # The action stamps every entry with the commit from the event payload,
+      # the head. Name the baseline entry after the baseline commit so the
+      # comparison header reads "Previous: <baseline>".
+      - name: Stamp the baseline entry with the baseline commit
+        env:
+          SHA: ${{ steps.baseline.outputs.sha }}
+        run: |
+          jq --arg sha "$SHA" \
+            '.entries["pytest-benchmark"][-1].commit |= (.id = $sha | .url = (.url | sub("[0-9a-f]{40}$"; $sha)))' \
+            comparison/benchmark-data.json > stamped.json
+          mv stamped.json comparison/benchmark-data.json
+
+      - name: Compare head against baseline
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: pytest-benchmark
           tool: 'pytest'
           output-file-path: benchmark-data.json
-          external-data-json-path: ./cache/benchmark-data.json
+          external-data-json-path: ./comparison/benchmark-data.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: false
           alert-threshold: '150%'
