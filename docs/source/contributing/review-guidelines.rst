@@ -11,8 +11,7 @@ software engineers, so a clear API and good docstrings carry real weight.
 
 Many pull requests come from students and first-time contributors. Review firmly on substance and
 explain the reason behind a convention, so that the contributor learns the rule and not only the
-fix. First-time contributors can add themselves to ``CITATION.cff`` before the merge to be
-credited in the next release.
+fix.
 
 Before You Start
 ----------------
@@ -78,17 +77,19 @@ API Consistency
 - ``@overload`` signatures actually narrow the type under mypy.
 - A change in behavior of an existing signature needs a justification. Could an existing call
   behave differently?
-- Deprecations:
 
-  - The project cycle is a warning in the next minor release and removal five minor releases
-    later (for example deprecated in v0.28.0, removed in v0.33.0).
-  - The warning names the removal version, and a test using ``assert_deprecation_is_removed``
-    covers it.
-  - The pull request description opens with a "⚠️ Deprecation" section, added on demand and not
-    part of the template. It has one paragraph per deprecated item, naming the item, the version
-    that deprecates it, its replacement and the removal version.
-  - The pull request carries the ``deprecation`` label, next to ``enhancement`` when it also adds
-    a feature.
+Deprecations
+------------
+
+- The project cycle is a warning in the next minor release and removal five minor releases later
+  (for example deprecated in v0.28.0, removed in v0.33.0).
+- The warning names the removal version, and a test using ``assert_deprecation_is_removed``
+  covers it.
+- The pull request description opens with a "⚠️ Deprecation" section, added on demand and not
+  part of the template. It has one paragraph per deprecated item, naming the item, the version
+  that deprecates it, its replacement and the removal version.
+- The pull request carries the ``deprecation`` label, next to ``enhancement`` when it also adds a
+  feature.
 
 Tests
 -----
@@ -122,6 +123,8 @@ Documentation
 - A new public property has its own entry in the ``Attributes`` section of the class docstring, in
   definition order.
 - User-visible changes update the pages under ``docs/source/``.
+- Invite a first-time contributor to add themselves to ``CITATION.cff`` before the merge, so that
+  they are credited in the next release.
 - Changes to ``CITATION.cff``: every author has an ``orcid``. The maintainer block comes first in
   its fixed order, then contributors alphabetically by family name and given names, and the last
   entry is always Jäger, Lena A. A common mistake is a new entry appended at the very end.
