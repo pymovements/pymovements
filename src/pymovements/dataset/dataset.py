@@ -1148,6 +1148,7 @@ class Dataset:
             group_columns: list[str] | None = None,
             word_index_column: str = 'word_idx',
             word_column: str = 'word',
+            event_name: str = 'fixation',
     ) -> ReadingMeasures:
         """Map fixations to AOIs and compute reading measures for an entire dataset.
 
@@ -1174,6 +1175,10 @@ class Dataset:
         word_column : str
             Column in AOIs with the content within each AOI.
             (default: ``'word'``)
+        event_name : str
+            Name of the fixation events to compute measures from. Rows with a different ``name``
+            are dropped.
+            (default: ``'fixation'``)
 
         Returns
         -------
@@ -1208,6 +1213,7 @@ class Dataset:
                 group_columns=group_columns,
                 word_index_column=word_index_column,
                 word_column=word_column,
+                event_name=event_name,
             )
 
             # The reading measures are derived from the events and their AOI stimulus files.

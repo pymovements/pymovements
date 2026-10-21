@@ -146,6 +146,30 @@ def test_measure_reading_group_columns_partition_output(dummy_dataset, make_exam
     assert 'trial' in reading_measures.frame.columns
 
 
+def test_measure_reading_event_name_selects_events(dummy_dataset, make_example_file):
+    """``event_name`` selects the events the measures are computed from."""
+    aoi_path = make_example_file('potec_word_aoi_b0.tsv')
+    aoi_dict = {'b0': aoi_path}
+    expected = dummy_dataset.measure_reading(
+        aoi_dict,
+        word_index_column='aoi',
+        word_column='character',
+    )
+
+    # map_to_aois only maps event names starting with 'fixation'.
+    events = dummy_dataset.gaze[0].events
+    events.frame = events.frame.with_columns(pl.lit('fixation_ivt').alias('name'))
+
+    reading_measures = dummy_dataset.measure_reading(
+        aoi_dict,
+        word_index_column='aoi',
+        word_column='character',
+        event_name='fixation_ivt',
+    )
+
+    assert reading_measures.frame.equals(expected.frame)
+
+
 def test_compute_reading_measures_empty_dataset(tmp_path):
     definition = DatasetDefinition(name='dummy')
     dataset = Dataset(definition, path=tmp_path)
