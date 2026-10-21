@@ -1,2 +1,6 @@
 # these users will be requested for review when someone opens a pull request.
 *       @dkrako @SiQube @cbueth
+
+# changes to the PMEP process and the core contributor list are reviewed by all core contributors.
+/docs/source/pmep/  @dkrako @SiQube @cbueth @saeub @prassepaul @theDebbister @kasprowski @LenaJaeger
+/GOVERNANCE.md      @dkrako @SiQube @cbueth @saeub @prassepaul @theDebbister @kasprowski @LenaJaeger

@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from copy import deepcopy
 from typing import Any
 from typing import Literal
 from typing import overload
@@ -33,10 +34,42 @@ from pymovements._utils import _checks
 from pymovements._utils._column_nesting import unnest_list_columns
 from pymovements._utils._html import repr_html
 from pymovements._utils._nulls import row_is_null
+from pymovements._utils._sources import merge_sources
 from pymovements._utils._time import normalize_duration_to_us
 from pymovements._utils._time import numeric_to_duration_us
+from pymovements.events.correction import fixation_correction
 from pymovements.measure.events.measures import duration
 from pymovements.stimulus.text import TextStimulus
+
+
+def _aois_frame_from_text_stimulus(stimulus: TextStimulus) -> polars.DataFrame:
+    """Map the configured column names of a TextStimulus to drift correction column names.
+
+    Parameters
+    ----------
+    stimulus: TextStimulus
+        Text stimulus whose AOIs dataframe is extracted.
+
+    Returns
+    -------
+    polars.DataFrame
+        AOIs dataframe with columns renamed to the names expected by
+        :py:mod:`~pymovements.events.correction`.
+    """
+    column_mapping = {
+        stimulus.start_x_column: 'start_x',
+        stimulus.start_y_column: 'start_y',
+        stimulus.end_x_column: 'end_x',
+        stimulus.end_y_column: 'end_y',
+        stimulus.width_column: 'width',
+        stimulus.height_column: 'height',
+    }
+    rename_mapping = {
+        source: target
+        for source, target in column_mapping.items()
+        if source is not None and source != target and source in stimulus.aois.columns
+    }
+    return stimulus.aois.rename(rename_mapping)
 
 
 def _build_time_series(values: list[int | float] | np.ndarray) -> polars.Series:
@@ -79,6 +112,9 @@ class Events:
         List of trial identifiers. (default: None)
     trial_columns: list[str] | str | None
         List of trial columns in the passed dataframe.
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. A ``Sources`` entry lists the files the
+        event data was generated from. (default: None)
     time_unit: str | None
         The unit of the numeric ``onset``, ``offset`` and ``duration`` input: ``'s'`` for
         seconds, ``'ms'`` for milliseconds or ``'us'`` for microseconds. Ignored for
@@ -92,6 +128,9 @@ class Events:
     trial_columns: list[str] | None
         The name of the trial columns in the data frame. If not None, processing methods
         will be applied to each trial separately.
+    metadata: dict[str, Any]
+        Dictionary containing additional metadata. A ``Sources`` entry lists the files the
+        event data was generated from.
     schema: polars.type_aliases.SchemaDict
         Schema of the event dataframe.
     columns: list[str]
@@ -142,6 +181,8 @@ class Events:
 
     trial_columns: list[str] | None
 
+    metadata: dict[str, Any]
+
     _minimal_schema: dict[str, Any] = {
         'name': polars.Utf8,
         'onset': polars.Duration('us'),
@@ -157,9 +198,11 @@ class Events:
             offsets: list[int | float] | np.ndarray | None = None,
             trials: list[int | float | str | None] | np.ndarray | None = None,
             trial_columns: list[str] | str | None = None,
+            metadata: dict[str, Any] | None = None,
             time_unit: str | None = None,
     ):
         self.trial_columns: list[str] | None  # otherwise mypy gets confused.
+        self.metadata = metadata if metadata is not None else {}
 
         # Numeric onset/offset/duration input is interpreted in this unit; None means
         # milliseconds. Duration input carries its own unit, so time_unit is ignored for it.
@@ -636,6 +679,7 @@ class Events:
         return Events(
             data=self.frame.clone(),
             trial_columns=self.trial_columns,
+            metadata=deepcopy(self.metadata),
         )
 
     @overload
@@ -686,12 +730,14 @@ class Events:
         if as_dict:
             # keys are tuples of the unique values of the columns specified in `by`.
             return {
-                key: Events(frame, trial_columns=self.trial_columns)
+                key: Events(
+                    frame, trial_columns=self.trial_columns, metadata=deepcopy(self.metadata),
+                )
                 for key, frame in event_dfs.items()
             }
 
         return [
-            Events(frame, trial_columns=self.trial_columns)
+            Events(frame, trial_columns=self.trial_columns, metadata=deepcopy(self.metadata))
             for frame in event_dfs
         ]
 
@@ -989,6 +1035,179 @@ class Events:
         ):
             self.frame = self.frame.drop('location')
 
+        # The AOI-mapped events are derived from the stimulus file as well.
+        self.metadata = merge_sources(self.metadata, aoi_dataframe.metadata)
+
+    def correct_fixations(
+            self,
+            aois: TextStimulus,
+            algorithm: str | list[str] = 'wisdom_of_the_crowd',
+            *,
+            directionality: str | None = None,
+            word_locations: polars.Series | None = None,
+            algorithm_kwargs: dict[str, Any] | None = None,
+            fixation_name: str = 'fixation',
+            character_level: bool = False,
+            inplace: bool = True,
+    ) -> Events | None:
+        """Correct vertical drift of fixation locations.
+
+        Fixations are corrected per trial according to
+        :py:attr:`~pymovements.Events.trial_columns` using the specified drift correction
+        algorithm. Fixation locations
+        are replaced with their corrected values. Original locations are preserved in a
+        ``location_original`` column and the applied algorithm is recorded in a
+        ``correction_algorithm`` column. Trials with too few fixations for the requested
+        algorithms are skipped with a UserWarning and stay uncorrected. See
+        :py:func:`~pymovements.events.correction.correct_fixations` for details.
+
+        Parameters
+        ----------
+        aois: TextStimulus
+            Text stimulus used for line position extraction. Its configured column names
+            are mapped to the column names expected by the drift correction algorithms and
+            its writing system provides the default reading direction.
+        algorithm: str | list[str]
+            Name of drift algorithm or list of algorithm names.
+            (default: 'wisdom_of_the_crowd')
+        directionality: str | None
+            Reading direction of the text, either 'left-to-right' or 'right-to-left',
+            mirroring the directionality of a text stimulus writing system.
+            'top-to-bottom' is not supported and raises a ValueError. If None, the
+            reading direction is inferred from the writing system of the text stimulus.
+            (default: None)
+        word_locations: polars.Series | None
+            Series of [x, y] word center coordinates for the DTW-based algorithms
+            'compare' and 'warp'. If None, word locations are derived from the aois
+            dataframe. A user-supplied series is reused unchanged for every trial, so
+            with per-trial AOIs leave it None to derive the word locations of each trial
+            separately. (default: None)
+        algorithm_kwargs: dict[str, Any] | None
+            Additional tuning parameters passed to underlying drift correction algorithms.
+            Warning: in ensemble mode an entry fans out to every candidate algorithm whose
+            signature accepts the key, even where defaults and semantics differ. For
+            example, ``{'x_thresh': 250.0}`` reconfigures 'chain', 'compare' and 'slice'
+            at once. (default: None)
+        fixation_name: str
+            Name of the fixation events to correct. (default: 'fixation')
+        character_level: bool
+            Set to True when the stimulus AOIs are finer than words, e.g. one row per
+            character. The AOIs are then aggregated to one location per word via the
+            'word' column, which must be present. (default: False)
+        inplace: bool
+            If ``True``, mutate this object and return None. If ``False``, return a new
+            :py:class:`~pymovements.Events` object with corrected fixation locations,
+            leaving this object unchanged. (default: True)
+
+        Returns
+        -------
+        Events | None
+            None if ``inplace`` is True, otherwise a new
+            :py:class:`~pymovements.Events` object with corrected fixation locations.
+
+        Raises
+        ------
+        TypeError
+            If ``aois`` is not a :py:class:`~pymovements.stimulus.TextStimulus`.
+        ValueError
+            If the trial or page column of the stimulus holds multiple unique values
+            without being part of :py:attr:`~pymovements.Events.trial_columns`, as the
+            AOIs of all trials or pages would be pooled into a single text.
+
+        Examples
+        --------
+        Let's create fixations that drift away from three lines of text with their
+        centers at y = 100, 200 and 300:
+
+        >>> import polars
+        >>> import pymovements as pm
+        >>> events = pm.Events(
+        ...     polars.DataFrame({
+        ...         'name': ['fixation', 'fixation', 'fixation'],
+        ...         'onset': [0, 200, 400],
+        ...         'offset': [100, 300, 500],
+        ...         'location': [[100.0, 105.0], [110.0, 195.0], [120.0, 302.0]],
+        ...     }),
+        ... )
+        >>> stimulus = pm.stimulus.TextStimulus(
+        ...     aois=polars.DataFrame({
+        ...         'word': ['first', 'second', 'third'],
+        ...         'start_x': [90.0, 90.0, 90.0],
+        ...         'start_y': [80.0, 180.0, 280.0],
+        ...         'end_x': [200.0, 200.0, 200.0],
+        ...         'end_y': [120.0, 220.0, 320.0],
+        ...     }),
+        ...     aoi_column='word',
+        ...     start_x_column='start_x',
+        ...     start_y_column='start_y',
+        ...     end_x_column='end_x',
+        ...     end_y_column='end_y',
+        ... )
+
+        Correcting the fixations snaps each y-coordinate onto its line center and
+        preserves the original locations:
+
+        >>> events.correct_fixations(stimulus, algorithm='attach')
+        >>> events.frame.select(['name', 'location', 'location_original'])
+        shape: (3, 3)
+        ┌──────────┬────────────────┬───────────────────┐
+        │ name     ┆ location       ┆ location_original │
+        │ ---      ┆ ---            ┆ ---               │
+        │ str      ┆ list[f64]      ┆ list[f64]         │
+        ╞══════════╪════════════════╪═══════════════════╡
+        │ fixation ┆ [100.0, 100.0] ┆ [100.0, 105.0]    │
+        │ fixation ┆ [110.0, 200.0] ┆ [110.0, 195.0]    │
+        │ fixation ┆ [120.0, 300.0] ┆ [120.0, 302.0]    │
+        └──────────┴────────────────┴───────────────────┘
+        """
+        if not isinstance(aois, TextStimulus):
+            raise TypeError(
+                f'aois must be a TextStimulus, but is of type {type(aois).__name__}.',
+            )
+        aois_frame = _aois_frame_from_text_stimulus(aois)
+        if directionality is None:
+            directionality = aois.writing_system.directionality
+
+        for column_kind, column_name in (
+                ('trial', aois.trial_column), ('page', aois.page_column),
+        ):
+            if column_name is None:
+                continue
+            if self.trial_columns is not None and column_name in self.trial_columns:
+                continue
+            n_unique = aois.aois[column_name].n_unique()
+            if n_unique > 1:
+                raise ValueError(
+                    f"the stimulus {column_kind} column '{column_name}' holds "
+                    f'{n_unique} unique values, but is not part of Events.trial_columns '
+                    f'({self.trial_columns}), so the AOIs of all {column_kind}s would '
+                    f"be pooled into a single text. Add '{column_name}' to "
+                    'Events.trial_columns or pass a stimulus holding a single '
+                    f'{column_kind}.',
+                )
+
+        corrected_frame = fixation_correction.correct_fixations(
+            self.frame,
+            aois_frame,
+            algorithm=algorithm,
+            trial_columns=self.trial_columns,
+            directionality=directionality,
+            word_locations=word_locations,
+            algorithm_kwargs=algorithm_kwargs,
+            fixation_name=fixation_name,
+            character_level=character_level,
+        )
+        # The corrected fixations are derived from the stimulus file as well.
+        if inplace:
+            self.frame = corrected_frame
+            self.metadata = merge_sources(self.metadata, aois.metadata)
+            return None
+        return Events(
+            corrected_frame,
+            trial_columns=self.trial_columns,
+            metadata=merge_sources(deepcopy(self.metadata), aois.metadata),
+        )
+
     def __eq__(self, other: Events) -> bool:
         """Check equality between this and another :py:class:`~pymovements.Events` object."""
         frames_equal = self.frame.equals(other.frame, null_equal=True)
@@ -1002,6 +1221,35 @@ class Events:
     def __repr__(self) -> str:
         """Return string representation of event dataframe."""
         return self.__str__()
+
+    def summary(self) -> None:
+        """Print a summary of the events.
+
+        The summary shows the total number of events, followed by the event counts
+        grouped by event name in alphabetical order.
+
+        See Also
+        --------
+        pymovements.Gaze.summary : Print a summary of a gaze object.
+        pymovements.Dataset.summary : Print a summary of a dataset.
+
+        Examples
+        --------
+        >>> from pymovements import Events
+        >>> events = Events(name=['saccade', 'fixation'], onsets=[0, 1], offsets=[1, 2])
+        >>> events.summary()
+        total events: 2
+          fixation: 1
+          saccade: 1
+        """
+        lines = [f'total events: {len(self):,}']
+
+        if len(self):
+            name_counts = self.frame['name'].value_counts().sort('name')
+            for name, count in name_counts.iter_rows():
+                lines.append(f'  {name}: {count:,}')
+
+        print('\n'.join(lines))
 
     def merge_subsequent_close_events(
             self,

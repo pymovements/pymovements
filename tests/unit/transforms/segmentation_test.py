@@ -257,6 +257,12 @@ def test_events2segmentation_overlap_warning_trial_hint():
             id='int64',
         ),
         pytest.param(
+            pl.Series([0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0], dtype=pl.Float64),
+            'blink',
+            {'name': ['blink', 'blink'], 'onset': [2, 7], 'offset': [4, 8]},
+            id='float64_series',
+        ),
+        pytest.param(
             np.array([0, 0, 0], dtype=np.int32),
             'blink',
             {'name': [], 'onset': [], 'offset': []},
@@ -460,6 +466,14 @@ def test_events2segmentation_trialized_overlap_warning():
         pytest.param(
             np.array([0.0, 1.0, 0.5]), ValueError, 'binary values', {},
             id='not_binary_float_array',
+        ),
+        pytest.param(
+            pl.Series(['0', '1', '0']), ValueError, 'binary values', {},
+            id='string_series',
+        ),
+        pytest.param(
+            pl.Series(['0', '1', '0'], dtype=pl.Categorical), ValueError, 'binary values', {},
+            id='categorical_series',
         ),
         pytest.param(
             [0, 1, 0], TypeError, 'must be a polars.Series or numpy.ndarray', {},
