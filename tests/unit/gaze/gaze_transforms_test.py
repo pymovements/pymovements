@@ -98,6 +98,13 @@ def test_transform_grouped_path_non_empty_samples(trials):
 
 
 @pytest.mark.parametrize(
+    'trials',
+    [
+        pytest.param([1, 1, 2, 2], id='contiguous_trials'),
+        pytest.param([1, 2, 1, 2], id='interleaved_trials'),
+    ],
+)
+@pytest.mark.parametrize(
     ('method', 'columns_kwarg', 'x', 'y'),
     [
         pytest.param(
@@ -110,9 +117,9 @@ def test_transform_grouped_path_non_empty_samples(trials):
         ),
     ],
 )
-def test_element_wise_transform_ignores_trial_columns(method, columns_kwarg, x, y):
-    """Element-wise transforms are unaffected by grouping by trials."""
-    samples = pl.DataFrame({'trial': [1, 1, 2, 2], 'x': x, 'y': y})
+def test_element_wise_transform_ignores_trial_columns(method, columns_kwarg, x, y, trials):
+    """Element-wise transforms are unaffected by grouping by trials and keep the input order."""
+    samples = pl.DataFrame({'trial': trials, 'x': x, 'y': y})
     experiment = Experiment(1024, 768, 38, 30, 60, 'center', 1000)
 
     ungrouped = Gaze(
@@ -127,7 +134,7 @@ def test_element_wise_transform_ignores_trial_columns(method, columns_kwarg, x, 
     getattr(grouped, method)()
 
     assert_frame_equal(grouped.samples.drop('trial'), ungrouped.samples, check_row_order=True)
-    assert grouped.samples['trial'].to_list() == [1, 1, 2, 2]
+    assert grouped.samples['trial'].to_list() == trials
 
 
 def test_transform_grouped_path_empty_samples_early_return():
