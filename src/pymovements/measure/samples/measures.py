@@ -72,6 +72,22 @@ def _is_invalid_value(v: Any) -> bool:
     return False
 
 
+def _is_invalid_float(expression: pl.Expr) -> pl.Expr:
+    """Check if a floating-point value is invalid (null, NaN, or inf).
+
+    Parameters
+    ----------
+    expression: pl.Expr
+        A floating-point expression, for example a column or ``pl.element()``.
+
+    Returns
+    -------
+    pl.Expr
+        A boolean expression that is true where the value is null, NaN, or inf.
+    """
+    return expression.is_null() | expression.is_nan() | expression.is_infinite()
+
+
 def _is_invalid(column: str | pl.Expr, dtype: pl.DataType | None = None) -> pl.Expr:
     """Check if any value in a column is invalid (null, NaN, or inf).
 
@@ -90,20 +106,17 @@ def _is_invalid(column: str | pl.Expr, dtype: pl.DataType | None = None) -> pl.E
     if isinstance(column, str):
         column = pl.col(column)
 
-    if dtype in {pl.Float32, pl.Float64}:
-        return column.is_null() | column.is_nan() | column.is_infinite()
+    if dtype is not None and dtype.is_float():
+        return _is_invalid_float(column)
 
     if isinstance(dtype, pl.List):
         # Vectorized element-wise check: any null element marks the row invalid, and for
         # floating-point elements NaN/inf are invalid as well. Non-float inner dtypes (e.g.
         # int, str) can only be invalid through null elements.
-        invalid_element = pl.element().is_null()
-        if dtype.inner in {pl.Float32, pl.Float64}:
-            invalid_element = (
-                invalid_element
-                | pl.element().is_nan()
-                | pl.element().is_infinite()
-            )
+        if dtype.inner.is_float():
+            invalid_element = _is_invalid_float(pl.element())
+        else:
+            invalid_element = pl.element().is_null()
         return column.list.eval(invalid_element).list.any().fill_null(True)
 
     if dtype == pl.List:

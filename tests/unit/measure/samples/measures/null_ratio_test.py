@@ -130,6 +130,16 @@ from pymovements.measure.samples import null_ratio
         ),
 
         pytest.param(
+            pl.from_dict(
+                data={'A': [[1.0, nan], [1.0, inf], [1.0, 1.0], None]},
+                schema={'A': pl.List(pl.Float16)},
+            ),
+            {'column': 'A', 'column_dtype': pl.List(pl.Float16)},
+            pl.from_dict(data={'null_ratio': [0.75]}),
+            id='list_dtype_float16_nan_and_inf',
+        ),
+
+        pytest.param(
             pl.from_dict(data={'A': [['a', 'b'], ['a', None]]}),
             {'column': 'A', 'column_dtype': pl.List(pl.Utf8)},
             pl.from_dict(data={'null_ratio': [0.5]}),
