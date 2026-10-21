@@ -1322,13 +1322,14 @@ def test_list_path_non_list_values_create_empty_aoi_rows(
     gaze.samples = gaze.samples.with_columns(pl.lit(bad_value).alias('pixel'))
 
     # Avoid unnesting so we stay on the list-based path using the scalar 'pixel' column
-    gaze.map_to_aois(
-        aoi_dataframe=simple_stimulus_w_h,
-        eye='auto',
-        gaze_type='pixel',
-        preserve_structure=False,
-        verbose=False,
-    )
+    with pytest.warns(UserWarning, match='Invalid eye coordinates in 2 of 2 samples'):
+        gaze.map_to_aois(
+            aoi_dataframe=simple_stimulus_w_h,
+            eye='auto',
+            gaze_type='pixel',
+            preserve_structure=False,
+            verbose=False,
+        )
 
     # All AOI result columns should be appended and None for each row
     for col in simple_stimulus_w_h.aois.columns:
@@ -1406,7 +1407,27 @@ def test_map_to_aois_non_numeric_coordinates_give_no_match(
 ) -> None:
     gaze = Gaze(samples=samples)
 
-    gaze.map_to_aois(simple_stimulus_w_h, eye='mono', preserve_structure=False)
+    with pytest.warns(UserWarning, match='Invalid eye coordinates in 2 of 2 samples'):
+        gaze.map_to_aois(simple_stimulus_w_h, eye='mono', preserve_structure=False)
 
     for column in simple_stimulus_w_h.aois.columns:
         assert gaze.samples[column].null_count() == 2
+
+
+def test_map_to_aois_warns_once_with_count_of_invalid_samples(
+        simple_stimulus_w_h: TextStimulus,
+) -> None:
+    samples = pl.DataFrame({
+        'pixel_x': [5.0, None, float('nan'), 7.0],
+        'pixel_y': [5.0, 5.0, 5.0, None],
+    })
+    gaze = Gaze(samples=samples, pixel_columns=['pixel_x', 'pixel_y'])
+
+    with pytest.warns(UserWarning) as record:
+        gaze.map_to_aois(simple_stimulus_w_h, eye='mono')
+
+    assert [str(warning.message) for warning in record] == [
+        'Invalid eye coordinates in 3 of 4 samples for AOI lookup. '
+        'Returning no match for these samples.',
+    ]
+    assert gaze.samples.get_column('aoi').to_list() == ['A', None, None, None]

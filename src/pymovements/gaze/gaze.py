@@ -2011,9 +2011,18 @@ class Gaze:
 
         points = self.samples.select(
             polars.int_range(polars.len()).alias(_AOI_ROW_ID),
-            x_expr.cast(polars.Float64).alias(_AOI_X),
-            y_expr.cast(polars.Float64).alias(_AOI_Y),
+            x_expr.cast(polars.Float64).fill_nan(None).alias(_AOI_X),
+            y_expr.cast(polars.Float64).fill_nan(None).alias(_AOI_Y),
         )
+        n_invalid = points.select(
+            (polars.col(_AOI_X).is_null() | polars.col(_AOI_Y).is_null()).sum(),
+        ).item()
+        if n_invalid:
+            warn(
+                f'Invalid eye coordinates in {n_invalid} of {points.height} samples for AOI '
+                'lookup. Returning no match for these samples.',
+                UserWarning,
+            )
         aoi_df = _match_points_to_aois(aoi_dataframe, points)
         self.samples = polars.concat([self.samples, aoi_df], how='horizontal_extend')
 
