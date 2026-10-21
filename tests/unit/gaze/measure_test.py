@@ -330,6 +330,23 @@ def my_test_measure(column: str) -> pl.Expr:
             {
                 'samples': pl.from_dict(
                     data={
+                        'position': [[0.0, 0.0], [3.0, 4.0], [1.0, 1.0], [1.0, 1.0]],
+                        'trial': [1, 1, 2, 2],
+                    },
+                    schema={'position': pl.List(pl.Float64), 'trial': pl.Int64},
+                ),
+                'trial_columns': 'trial',
+            },
+            'disposition',
+            {},
+            pl.DataFrame(data={'trial': [1, 2], 'disposition': [5.0, 0.0]}),
+            id='disposition_two_trials',
+        ),
+
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    data={
                         'A': [1000, 1001, 1002, 1003],
                     }, schema={'A': pl.Int64},
                 ),

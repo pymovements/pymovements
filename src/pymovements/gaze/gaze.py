@@ -1447,19 +1447,8 @@ class Gaze:
         if self.trial_columns is None:
             return samples.select(method(**kwargs))
 
-        # Group measure values by trial columns.
-        return polars.concat(
-            [
-                df.select(
-                    [  # add trial columns first, then add column for measure.
-                        polars.lit(value).cast(samples.schema[name]).alias(name)
-                        for name, value in zip(self.trial_columns, trial_values)
-                    ] + [method(**kwargs)],
-                )
-                for trial_values, df in
-                samples.group_by(self.trial_columns, maintain_order=True)
-            ],
-        )
+        # Evaluate the measure once per trial group in a single aggregation.
+        return samples.group_by(self.trial_columns, maintain_order=True).agg(method(**kwargs))
 
     def measure_events_ratio(
         self,
