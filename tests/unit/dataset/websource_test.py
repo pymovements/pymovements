@@ -41,6 +41,11 @@ class FakeResponse(io.BytesIO):
         self.headers = headers if headers is not None else {}
 
 
+def raises_download_failed(source):
+    """Return the ``pytest.raises`` context for a failed ``source.download()`` call."""
+    return pytest.raises(RuntimeError, match=f'Downloading resource {source.url} failed')
+
+
 def test_websource_init():
     source = WebSource(url='http://example.com/file.zip', filename='file.zip', md5='123')
     assert source.url == 'http://example.com/file.zip'
@@ -311,8 +316,7 @@ def test_websource_download_os_error(verbose, tmp_path):
     )
 
     with mock.patch('urllib.request.urlopen', side_effect=OSError()):
-        message = f'Downloading resource {source.url} failed'
-        with pytest.raises(RuntimeError, match=message):
+        with raises_download_failed(source):
             source.download(tmp_path, verbose=verbose)
 
 
@@ -324,7 +328,7 @@ def test_websource_download_http_failure(tmp_path):
     )
 
     with mock.patch('urllib.request.urlopen', side_effect=OSError()):
-        with pytest.raises(RuntimeError, match=f'Downloading resource {source.url} failed'):
+        with raises_download_failed(source):
             source.download(tmp_path)
 
 
@@ -400,7 +404,7 @@ def test_websource_download_http_error_closes_response(tmp_path):
 
     with mock.patch.object(http_error, 'close', wraps=http_error.close) as mock_close:
         with mock.patch('urllib.request.urlopen', side_effect=http_error):
-            with pytest.raises(RuntimeError, match=f'Downloading resource {source.url} failed'):
+            with raises_download_failed(source):
                 source.download(tmp_path, verbose=False)
 
     mock_close.assert_called_once()
@@ -413,7 +417,7 @@ def test_websource_download_interrupted_transfer_leaves_no_file(tmp_path):
     response.read = mock.Mock(side_effect=[b'first chunk', ConnectionResetError()])
 
     with mock.patch('urllib.request.urlopen', return_value=response):
-        with pytest.raises(RuntimeError, match=f'Downloading resource {source.url} failed'):
+        with raises_download_failed(source):
             source.download(tmp_path, verbose=False)
 
     assert not list(tmp_path.iterdir())
@@ -424,11 +428,35 @@ def test_websource_download_short_transfer_leaves_no_file(tmp_path):
     response = FakeResponse(b'short', headers={'Content-Length': '100'})
 
     with mock.patch('urllib.request.urlopen', return_value=response):
-        with pytest.raises(RuntimeError, match=f'Downloading resource {source.url} failed') as exc:
+        with raises_download_failed(source) as exc:
             source.download(tmp_path, verbose=False)
 
     assert isinstance(exc.value.__cause__, ContentTooShortError)
     assert exc.value.__cause__.reason == 'retrieval incomplete: got only 5 out of 100 bytes'
+    assert not list(tmp_path.iterdir())
+
+
+def test_websource_download_failed_rename_leaves_no_file(tmp_path):
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    response = FakeResponse(b'complete content')
+
+    with mock.patch('urllib.request.urlopen', return_value=response):
+        with mock.patch('os.replace', side_effect=PermissionError('file.zip is locked')):
+            with raises_download_failed(source):
+                source.download(tmp_path, verbose=False)
+
+    assert not list(tmp_path.iterdir())
+
+
+def test_websource_download_invalid_content_length_closes_response(tmp_path):
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    response = FakeResponse(b'complete content', headers={'Content-Length': 'many'})
+
+    with mock.patch('urllib.request.urlopen', return_value=response):
+        with pytest.raises(ValueError, match=r"invalid literal for int\(\) with base 10: 'many'"):
+            source.download(tmp_path, verbose=False)
+
+    assert response.closed
     assert not list(tmp_path.iterdir())
 
 
@@ -439,7 +467,7 @@ def test_websource_download_interrupted_transfer_without_md5_redownloads(tmp_pat
     responses = [broken_response, FakeResponse(b'complete content')]
 
     with mock.patch('urllib.request.urlopen', side_effect=responses) as mock_urlopen:
-        with pytest.raises(RuntimeError, match=f'Downloading resource {source.url} failed'):
+        with raises_download_failed(source):
             source.download(tmp_path, verbose=False)
         filepath = source.download(tmp_path, verbose=False)
 

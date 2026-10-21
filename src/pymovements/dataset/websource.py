@@ -357,24 +357,25 @@ def _download_url(url: str, destination: Path, verbose: bool = True) -> None:
     part_path = destination.with_name(f'{destination.name}.part')
     completed = False
     try:
-        content_length = response.headers.get('Content-Length')
-        expected_size = int(content_length) if content_length is not None else None
+        with response:
+            content_length = response.headers.get('Content-Length')
+            expected_size = int(content_length) if content_length is not None else None
 
-        with response, open(part_path, 'wb') as part_file, _DownloadProgressBar(
-                desc=destination.name, total=expected_size, disable=not verbose,
-        ) as progress_bar:
-            bytes_read = 0
-            while chunk := response.read(_CHUNK_SIZE):
-                part_file.write(chunk)
-                bytes_read += len(chunk)
-                progress_bar.update(len(chunk))
+            with open(part_path, 'wb') as part_file, _DownloadProgressBar(
+                    desc=destination.name, total=expected_size, disable=not verbose,
+            ) as progress_bar:
+                bytes_read = 0
+                while chunk := response.read(_CHUNK_SIZE):
+                    part_file.write(chunk)
+                    bytes_read += len(chunk)
+                    progress_bar.update(len(chunk))
 
-            progress_bar.total = bytes_read
-            if expected_size is not None and bytes_read < expected_size:
-                raise ContentTooShortError(
-                    f'retrieval incomplete: got only {bytes_read} out of {expected_size} bytes',
-                    (str(destination), response.headers),
-                )
+                progress_bar.total = bytes_read
+                if expected_size is not None and bytes_read < expected_size:
+                    raise ContentTooShortError(
+                        f'retrieval incomplete: got only {bytes_read} out of {expected_size} bytes',
+                        (str(destination), response.headers),
+                    )
 
         os.replace(part_path, destination)
         completed = True
