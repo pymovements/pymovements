@@ -127,7 +127,7 @@ def data_loss_histogram(
 
     # Compute invalid mask using the same logic as data_loss measure
     invalid_mask = samples.select(
-        _is_invalid(column).alias('invalid'),
+        _is_invalid(column, dtype=samples.schema.get(column)).alias('invalid'),
     )['invalid'].to_numpy()
 
     # Compute time gap mask
