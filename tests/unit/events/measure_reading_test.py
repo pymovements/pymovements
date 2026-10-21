@@ -168,6 +168,30 @@ def test_events_measure_reading_empty_returns_empty(stimulus):
     assert result.frame.is_empty()
 
 
+def test_events_measure_reading_event_name_selects_events(fixation_events, stimulus):
+    expected = fixation_events.measure_reading(stimulus)
+    fixation_events.frame = fixation_events.frame.with_columns(
+        pl.lit('fixation_ivt').alias('name'),
+    )
+
+    result = fixation_events.measure_reading(stimulus, event_name='fixation_ivt')
+
+    assert result.frame.equals(expected.frame)
+
+
+def test_events_measure_reading_event_name_without_fixation_prefix_warns(
+        fixation_events, stimulus,
+):
+    # map_to_aois only maps rows whose name starts with 'fixation', so nothing is annotated.
+    fixation_events.frame = fixation_events.frame.with_columns(pl.lit('reading').alias('name'))
+
+    with pytest.warns(UserWarning, match='no fixations left to annotate'):
+        result = fixation_events.measure_reading(stimulus, event_name='reading')
+
+    assert result.frame['TFC'].to_list() == [0, 0, 0]
+    assert result.frame['skipped'].to_list() == [1, 1, 1]
+
+
 def test_events_measure_reading_multiple_stimuli(two_trial_events):
     stimuli = {
         'trial_1': _make_stimulus(['The', 'quick', 'brown'], trial='trial_1'),
@@ -324,11 +348,29 @@ def test_gaze_measure_reading_delegates_to_events(fixation_events, stimulus):
     assert gaze_result.metadata == {'Sources': ['raw.csv', 'aoi.tsv']}
 
 
-@pytest.mark.parametrize('events', [None, Events()], ids=['none', 'empty'])
-def test_gaze_measure_reading_without_events_raises(events, stimulus):
+def test_gaze_measure_reading_forwards_event_name(fixation_events, stimulus):
+    fixation_events.frame = fixation_events.frame.with_columns(
+        pl.lit('fixation_ivt').alias('name'),
+    )
+    gaze = Gaze(events=fixation_events)
+
+    gaze_result = gaze.measure_reading(stimulus, event_name='fixation_ivt')
+    events_result = gaze.events.measure_reading(stimulus, event_name='fixation_ivt')
+
+    assert gaze_result.frame.equals(events_result.frame)
+
+
+@pytest.mark.parametrize(
+    ('events', 'message'),
+    [
+        pytest.param(None, 'has no events', id='none'),
+        pytest.param(Events(), 'has no detected events', id='empty'),
+    ],
+)
+def test_gaze_measure_reading_without_events_raises(events, message, stimulus):
     # Gaze(events=None) creates empty events, so the events are assigned afterwards.
     gaze = Gaze()
     gaze.events = events
 
-    with pytest.raises(AttributeError, match=r'Use detect\(\) to detect events first'):
+    with pytest.raises(AttributeError, match=message):
         gaze.measure_reading(stimulus)

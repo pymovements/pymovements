@@ -1214,10 +1214,10 @@ class Events:
             self,
             stimulus: TextStimulus | dict[Any, TextStimulus],
             *,
+            group_columns: list[str] | None = None,
             word_index_column: str = 'word_idx',
             word_column: str = 'word',
             event_name: str = 'fixation',
-            group_columns: list[str] | None = None,
     ) -> ReadingMeasures:
         """Compute word-level reading measures from the fixation events.
 
@@ -1235,6 +1235,12 @@ class Events:
         stimulus : TextStimulus | dict[Any, TextStimulus]
             Text stimulus defining the AOIs. Pass a dict mapping values of the first group column
             to a separate stimulus per value when the events span several stimuli.
+        group_columns : list[str] | None
+            Column names used to partition the data into independent reading sequences. The first
+            column takes the trial role, the remaining columns take the page role. If ``None`` or
+            empty, the whole input is treated as a single reading sequence. Required if
+            ``stimulus`` is a dict, whose keys are the values of the first group column.
+            (default: None)
         word_index_column : str
             Shared column name in the mapped fixations and the stimulus AOIs that corresponds to
             the word index of the text.
@@ -1244,14 +1250,9 @@ class Events:
             (default: ``'word'``)
         event_name : str
             Name of the fixation events to compute measures from. Rows with a different ``name``
-            are dropped.
+            are dropped. The name must start with ``fixation``, because the AOI mapping only maps
+            fixation rows (see :py:meth:`~pymovements.Events.map_to_aois`).
             (default: ``'fixation'``)
-        group_columns : list[str] | None
-            Column names used to partition the data into independent reading sequences. The first
-            column takes the trial role, the remaining columns take the page role. If ``None`` or
-            empty, the whole input is treated as a single reading sequence. Required if
-            ``stimulus`` is a dict, whose keys are the values of the first group column.
-            (default: None)
 
         Returns
         -------
@@ -1272,7 +1273,9 @@ class Events:
             If ``stimulus`` is a dict with a key that matches no fixation. Its words are kept in
             the output with all measures zero and ``skipped`` set to 1. Also if a single
             ``stimulus`` has no first group column while the events do, in which case its AOIs
-            are broadcast to every value of that column.
+            are broadcast to every value of that column. Also if no fixation row carries
+            ``event_name``, for example a name without the ``fixation`` prefix, in which case all
+            measures are zero.
 
         Examples
         --------

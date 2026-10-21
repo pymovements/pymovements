@@ -1177,7 +1177,8 @@ class Dataset:
             (default: ``'word'``)
         event_name : str
             Name of the fixation events to compute measures from. Rows with a different ``name``
-            are dropped.
+            are dropped. The name must start with ``fixation``, because the AOI mapping only maps
+            fixation rows (see :py:meth:`~pymovements.Events.map_to_aois`).
             (default: ``'fixation'``)
 
         Returns

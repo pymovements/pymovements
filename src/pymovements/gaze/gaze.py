@@ -2014,10 +2014,10 @@ class Gaze:
             self,
             stimulus: TextStimulus | dict[Any, TextStimulus],
             *,
+            group_columns: list[str] | None = None,
             word_index_column: str = 'word_idx',
             word_column: str = 'word',
             event_name: str = 'fixation',
-            group_columns: list[str] | None = None,
     ) -> ReadingMeasures:
         """Compute word-level reading measures from the detected fixation events.
 
@@ -2031,6 +2031,12 @@ class Gaze:
         stimulus : TextStimulus | dict[Any, TextStimulus]
             Text stimulus defining the AOIs. Pass a dict mapping values of the first group column
             to a separate stimulus per value when the events span several stimuli.
+        group_columns : list[str] | None
+            Column names used to partition the data into independent reading sequences. The first
+            column takes the trial role, the remaining columns take the page role. If ``None`` or
+            empty, the whole input is treated as a single reading sequence. Required if
+            ``stimulus`` is a dict, whose keys are the values of the first group column.
+            (default: None)
         word_index_column : str
             Shared column name in the mapped fixations and the stimulus AOIs that corresponds to
             the word index of the text.
@@ -2040,14 +2046,9 @@ class Gaze:
             (default: ``'word'``)
         event_name : str
             Name of the fixation events to compute measures from. Rows with a different ``name``
-            are dropped.
+            are dropped. The name must start with ``fixation``, because the AOI mapping only maps
+            fixation rows (see :py:meth:`~pymovements.Events.map_to_aois`).
             (default: ``'fixation'``)
-        group_columns : list[str] | None
-            Column names used to partition the data into independent reading sequences. The first
-            column takes the trial role, the remaining columns take the page role. If ``None`` or
-            empty, the whole input is treated as a single reading sequence. Required if
-            ``stimulus`` is a dict, whose keys are the values of the first group column.
-            (default: None)
 
         Returns
         -------
@@ -2087,10 +2088,13 @@ class Gaze:
         AttributeError
             If the gaze has no events, or no detected events and ``allow_empty`` is ``False``.
         """
-        if self.events is None or (not allow_empty and self.events.frame.is_empty()):
+        if self.events is None:
             raise AttributeError(
-                'Gaze object has no events or no detected events. '
-                'Use detect() to detect events first.',
+                'Gaze object has no events. Use detect() to detect events first.',
+            )
+        if not allow_empty and self.events.frame.is_empty():
+            raise AttributeError(
+                'Gaze object has no detected events. Use detect() to detect events first.',
             )
         return self.events
 
