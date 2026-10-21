@@ -19,12 +19,13 @@
 # SOFTWARE.
 """Benchmark ``Gaze.map_to_aois``.
 
-Mapping gaze samples to AOIs used to run a Python loop over all samples, filtering the AOI
-frame and checking the spatial bounds once per sample. It is now a single vectorized spatial
-join. These benchmarks track that cost on synthetic samples and AOIs.
+Each benchmark maps 1M gaze samples to 200 AOIs on a 20 x 10 grid. It covers the list path
+(``preserve_structure=False``), the default flat path with one eye selected directly, and the
+flat path that averages the left and right eye.
 """
 import numpy as np
 import polars as pl
+import pytest
 
 from pymovements import Gaze
 from pymovements.stimulus.text import TextStimulus
@@ -54,15 +55,30 @@ def _build_stimulus() -> TextStimulus:
 
 
 def _build_samples() -> pl.DataFrame:
-    xy = _RNG.uniform(0, 2000, size=(_N_SAMPLES, 2))
-    positions = [[0.0, 0.0, float(x), float(y)] for x, y in xy]
+    """Build samples with both eyes filled, the left eye a few pixels off the right eye."""
+    right = _RNG.uniform(0, 2000, size=(_N_SAMPLES, 2))
+    left = right + _RNG.uniform(-5, 5, size=(_N_SAMPLES, 2))
+    positions = np.column_stack([left, right]).tolist()
     return pl.DataFrame({'position': positions}).with_columns(
         pl.col('position').cast(pl.List(pl.Float64)),
     )
 
 
-def test_gaze_map_to_aois_benchmark(benchmark):
-    """Benchmark mapping 1M samples against 200 AOIs via the list path."""
+@pytest.mark.parametrize(
+    ('preserve_structure', 'eye'),
+    [
+        pytest.param(False, 'right', id='list'),
+        pytest.param(True, 'right', id='flat_direct'),
+        pytest.param(
+            True, 'cyclops', id='flat_average_lr',
+            marks=pytest.mark.filterwarnings(
+                'ignore:Cyclops requested but cyclops components missing.*:UserWarning',
+            ),
+        ),
+    ],
+)
+def test_gaze_map_to_aois_benchmark(benchmark, preserve_structure, eye):
+    """Time one ``map_to_aois`` call per round, without building or resetting the samples."""
     stimulus = _build_stimulus()
     samples = _build_samples()
     gaze = Gaze(samples=samples.clone())
@@ -73,7 +89,8 @@ def test_gaze_map_to_aois_benchmark(benchmark):
 
     def _run() -> None:
         gaze.map_to_aois(
-            stimulus, eye='right', gaze_type='position', preserve_structure=False, verbose=False,
+            stimulus, eye=eye, gaze_type='position', preserve_structure=preserve_structure,
+            verbose=False,
         )
 
     benchmark.pedantic(_run, setup=_setup, iterations=1, rounds=5)
