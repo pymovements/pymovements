@@ -344,6 +344,8 @@ def _download_url(url: str, destination: Path, verbose: bool = True) -> None:
         If the server announced a content length and the response ended before reaching it.
     OSError
         If writing the temporary file or moving it into place fails.
+    ValueError
+        If the Content-Length header is not an integer.
     """
     request = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
     try:

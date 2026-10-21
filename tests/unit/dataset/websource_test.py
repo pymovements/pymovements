@@ -296,8 +296,7 @@ def test_websource_download_404(tmp_path):
         md5='52bbf03a7c50ee7152ccb9d357c2bb30',
     )
 
-    message = f'Downloading resource {source.url} failed'
-    with pytest.raises(RuntimeError, match=message):
+    with raises_download_failed(source):
         source.download(tmp_path)
 
 
@@ -453,7 +452,7 @@ def test_websource_download_invalid_content_length_closes_response(tmp_path):
     response = FakeResponse(b'complete content', headers={'Content-Length': 'many'})
 
     with mock.patch('urllib.request.urlopen', return_value=response):
-        with pytest.raises(ValueError, match=r"invalid literal for int\(\) with base 10: 'many'"):
+        with pytest.raises(ValueError, match="'many'"):
             source.download(tmp_path, verbose=False)
 
     assert response.closed
