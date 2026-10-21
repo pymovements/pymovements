@@ -66,6 +66,8 @@ def idt(
     The algorithm uses a moving window to check the dispersion of the points in the window.
     If the dispersion is below the threshold, the window represents a fixation,
     and the window is expanded until the dispersion is above threshold.
+    The window grows by elapsed time, so the interval between timesteps may be fractional
+    and need not be constant.
 
     The implementation and its default parameter values are based on the description and pseudocode
     from Salvucci and Goldberg :cite:p:`SalvucciGoldberg2000`.
@@ -80,10 +82,10 @@ def idt(
         Corresponding continuous 1D timestep time series. Fractional (float) timesteps are
         accepted. If None, sample based timesteps are assumed. (default: None)
     minimum_duration: int
-        Minimum fixation duration. The duration is specified in the units used in ``timesteps``;
-        for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
-        None, then ``minimum_duration`` is specified in numbers of samples.
-        (default: 100)
+        Minimum fixation duration, measured from the first to the last sample of a fixation.
+        The duration is specified in the units used in ``timesteps``; for a ``polars.Duration``
+        timesteps series the unit is milliseconds. If ``timesteps`` is None, then
+        ``minimum_duration`` is specified in numbers of samples. (default: 100)
     dispersion_threshold: float
         Threshold for dispersion for a group of consecutive samples to be identified as fixation.
         (default: 1.0)
@@ -101,12 +103,13 @@ def idt(
     Raises
     ------
     TypeError
-        If pixels is a polars Series and dtype not List
+        If positions is a polars Series and dtype not List
         If minimum_duration is not of type ``int``
     ValueError
         If positions is not shaped (N, 2)
+        If positions and timesteps differ in length
         If dispersion_threshold is not greater than 0
-        If duration_threshold is not greater than 0
+        If minimum_duration is not greater than 0
 
     Examples
     --------
@@ -137,7 +140,7 @@ def idt(
 
     Run fixation detection with custom parameters:
 
-    >>> idt(positions, minimum_duration = 50, dispersion_threshold = 0.5)
+    >>> idt(positions, minimum_duration = 40, dispersion_threshold = 0.5)
     shape: (2, 4)
     ┌──────────┬──────────────┬──────────────┬──────────────┐
     │ name     ┆ onset        ┆ offset       ┆ duration     │
@@ -224,7 +227,7 @@ def idt(
 
     Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
 
-    >>> gaze.detect('idt', minimum_duration = 50, dispersion_threshold = 0.5, name='fixation_idt')
+    >>> gaze.detect('idt', minimum_duration = 40, dispersion_threshold = 0.5, name='fixation_idt')
     >>> gaze.events.filter_by_name('fixation_idt')
     shape: (2, 4)
     ┌──────────────┬──────────────┬──────────────┬──────────────┐
@@ -268,31 +271,23 @@ def idt(
     onsets = []
     offsets = []
 
-    # Infer minimum duration in number of samples.
-    # This implementation is currently very restrictive.
-    # It requires that the interval between timesteps is constant.
-    # It requires that the minimum duration is divisible by the constant interval between timesteps.
-    timesteps_diff = numpy.diff(timesteps)
-    if not numpy.all(timesteps_diff == timesteps_diff[0]):
-        raise ValueError('interval between timesteps must be constant')
-    if not minimum_duration % timesteps_diff[0] == 0:
-        raise ValueError(
-            'minimum_duration must be divisible by the constant interval between timesteps',
-        )
-    if (minimum_sample_duration := int(minimum_duration // timesteps_diff[0])) < 2:
-        raise ValueError('minimum_duration must be longer than the equivalent of 2 samples')
-
-    # Initialize window over first points to cover the duration threshold
+    # The window is measured in elapsed time between its first and last sample, so the
+    # interval between timesteps may be fractional and need not be constant.
+    # A window covering minimum_duration always holds at least two samples.
     win_start = 0
-    win_end = minimum_sample_duration
+    win_end = 0
 
-    while win_start < len(timesteps) and win_end <= len(timesteps):
+    while win_start < len(timesteps):
 
-        # Initialize window over first points to cover the duration threshold.
-        # This automatically extends the window to the specified minimum event duration.
-        win_end = max(win_start + minimum_sample_duration, win_end)
-        win_end = min(win_end, len(timesteps))
-        if win_end - win_start < minimum_sample_duration:
+        # Extend the window from its start until it covers the minimum duration.
+        win_end = max(win_end, win_start + 1)
+        while (
+                win_end < len(timesteps)
+                and timesteps[win_end - 1] - timesteps[win_start] < minimum_duration
+        ):
+            win_end += 1
+        if timesteps[win_end - 1] - timesteps[win_start] < minimum_duration:
+            # The remaining samples are too short for a fixation.
             break
 
         if dispersion(positions[win_start:win_end]) <= dispersion_threshold:
@@ -321,7 +316,7 @@ def idt(
                 # Filter all candidates by minimum duration.
                 tmp_candidates = [
                     candidate for candidate in tmp_candidates
-                    if len(candidate) >= minimum_sample_duration
+                    if timesteps[candidate[-1]] - timesteps[candidate[0]] >= minimum_duration
                 ]
                 for candidate in tmp_candidates:
                     onsets.append(timesteps[candidate[0]])

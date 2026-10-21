@@ -505,10 +505,9 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[1000],
-                offsets=[1099],
+                offsets=[1009.9],
             ),
             id='constant_position_single_fixation_with_timesteps_float_with_decimal',
-            marks=pytest.mark.xfail(reason='#532'),
         ),
         pytest.param(
             {
@@ -520,10 +519,104 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[1000],
-                offsets=[1099],
+                offsets=[1009.9],
             ),
             id='constant_position_single_fixation_with_timesteps_float_with_decimal_numpy',
-            marks=pytest.mark.xfail(reason='#532'),
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'timesteps': pl.Series(np.arange(0, 10_000, 100)).cast(pl.Duration('us')),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[9.9],
+            ),
+            id='constant_position_single_fixation_with_10khz_duration_timesteps',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'timesteps': np.arange(0, 150, 1.5),
+                'dispersion_threshold': 1,
+                'minimum_duration': 100,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[148.5],
+            ),
+            id='constant_position_single_fixation_with_timesteps_interval_not_dividing_duration',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=10, steps=[0], values=[(0, 0)]),
+                'timesteps': np.concatenate([
+                    np.arange(0, 5, dtype=int), np.arange(7, 12, dtype=int),
+                ]),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[11],
+            ),
+            id='constant_position_single_fixation_with_non_constant_timesteps_interval',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=3, steps=[0], values=[(0, 0)]),
+                'timesteps': [0, 50, 100],
+                'dispersion_threshold': 1,
+                'minimum_duration': 100,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[100],
+            ),
+            id='constant_position_single_fixation_with_sparse_timesteps_covering_duration',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=3, steps=[0], values=[(0, 0)]),
+                'timesteps': [0, 50, 99],
+                'dispersion_threshold': 1,
+                'minimum_duration': 100,
+            },
+            Events(),
+            id='constant_position_no_fixation_with_timesteps_shorter_than_duration',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=10, steps=[0], values=[(0, 0)]),
+                'timesteps': np.arange(0, 30, step=3, dtype=int),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[27],
+            ),
+            id='constant_position_single_fixation_with_timesteps_interval_longer_than_duration',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'dispersion_threshold': 1,
+                'minimum_duration': 1,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[99],
+            ),
+            id='constant_position_single_fixation_with_minimum_duration_one_sample',
         ),
     ],
 )
@@ -537,51 +630,6 @@ def test_idt_detects_fixations(kwargs, expected):
 @pytest.mark.parametrize(
     ('kwargs', 'exception', 'exception_message'),
     [
-        pytest.param(
-            {
-                'positions': step_function(length=10, steps=[0], values=[(0, 0)]),
-                'timesteps': np.concatenate([
-                    np.arange(0, 5, dtype=int), np.arange(7, 12, dtype=int),
-                ]),
-                'dispersion_threshold': 1,
-                'minimum_duration': 1,
-            },
-            ValueError,
-            'interval .* timesteps .* constant',
-            id='non_constant_timesteps_interval',
-        ),
-        pytest.param(
-            {
-                'positions': step_function(length=10, steps=[0], values=[(0, 0)]),
-                'timesteps': np.arange(0, 30, step=3, dtype=int),
-                'dispersion_threshold': 1,
-                'minimum_duration': 2,
-            },
-            ValueError,
-            'minimum_duration must be divisible by the constant interval between timesteps',
-            id='minimum_duration_not_divisible_by_timesteps_interval',
-        ),
-        pytest.param(
-            {
-                'positions': step_function(length=40, steps=[0], values=[(0, 0)]),
-                'timesteps': np.arange(0, 30, 0.75),
-                'dispersion_threshold': 1,
-                'minimum_duration': 1,
-            },
-            ValueError,
-            'minimum_duration must be divisible by the constant interval between timesteps',
-            id='minimum_duration_not_divisible_by_fractional_timesteps_interval',
-        ),
-        pytest.param(
-            {
-                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
-                'dispersion_threshold': 1,
-                'minimum_duration': 1,
-            },
-            ValueError,
-            'minimum_duration .* 2',
-            id='minimum_duration_1_sample',
-        ),
         pytest.param(
             {
                 'positions': pl.repeat((1, 2), 100, eager=True),

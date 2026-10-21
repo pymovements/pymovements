@@ -170,10 +170,9 @@ from pymovements.synthetic import step_function
             pm.events.Events(
                 name='fixation',
                 onsets=[1000],
-                offsets=[1099],
+                offsets=[1009.9],
             ),
             id='idt_constant_position_single_fixation_with_timesteps_float',
-            marks=pytest.mark.xfail(reason='#532'),
         ),
 
         pytest.param(
