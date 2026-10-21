@@ -24,12 +24,21 @@ These benchmarks track the parsing cost on a sample-heavy ASC file.
 """
 import io
 
+import pytest
+
 from pymovements.gaze.io import from_asc
 
 _N_SAMPLES = 500_000
 
 
-def _build_asc_text() -> str:
+def _build_asc_text(binocular: bool) -> str:
+    if binocular:
+        tracked_eye, start_eyes, samples_eyes = 'LR', 'LEFT\tRIGHT', 'LEFT\tRIGHT'
+        sample_values = '964.3\t541.5\t288.0\t960.5\t538.8\t305.0'
+    else:
+        tracked_eye, start_eyes, samples_eyes = 'L', 'LEFT', 'LEFT'
+        sample_values = '964.3\t541.5\t288.0'
+
     lines = [
         '** DATE: Wed Mar  8 09:25:20 2023',
         '** TYPE: EDF_FILE BINARY EVENT SAMPLE TAGGED',
@@ -37,28 +46,27 @@ def _build_asc_text() -> str:
         '** EYELINK II CL v6.12 Feb  1 2018 (EyeLink Portable Duo)',
         '** RECORDED BY pymovements',
         '**',
-        'MSG\t1408659 RECCFG CR 1000 2 1 LR',
+        f'MSG\t1408659 RECCFG CR 1000 2 1 {tracked_eye}',
         'MSG\t1408659 ELCLCFG BTABLER',
         'MSG\t1408659 GAZE_COORDS 0.00 0.00 1920.00 1080.00',
-        'START\t1408660 \tLEFT\tRIGHT\tSAMPLES\tEVENTS',
-        'SAMPLES\tGAZE\tLEFT\tRIGHT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2',
+        f'START\t1408660 \t{start_eyes}\tSAMPLES\tEVENTS',
+        f'SAMPLES\tGAZE\t{samples_eyes}\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2',
     ]
     first_timestamp = 1408660
     for index in range(_N_SAMPLES):
         timestamp = first_timestamp + index
-        lines.append(
-            f'{timestamp}\t964.3\t541.5\t288.0\t960.5\t538.8\t305.0\t.....',
-        )
+        lines.append(f'{timestamp}\t{sample_values}\t.....')
         if index % 100_000 == 0:
             lines.append(f'SFIX L   {timestamp}')
             lines.append(f'EFIX L   {timestamp}\t{timestamp + 100}\t100\t960.0\t540.0\t280')
-    lines.append('END\t1408901 \tSAMPLES\tEVENTS\tRES\t47.75\t45.92')
+    lines.append(f'END\t{first_timestamp + _N_SAMPLES} \tSAMPLES\tEVENTS\tRES\t47.75\t45.92')
     return '\n'.join(lines) + '\n'
 
 
-def test_from_asc_benchmark(benchmark):
-    """Benchmark parsing a 500k-sample binocular ASC file."""
-    content = _build_asc_text()
+@pytest.mark.parametrize('binocular', [False, True], ids=['monocular', 'binocular'])
+def test_from_asc_benchmark(benchmark, binocular):
+    """Benchmark parsing a 500k-sample ASC file."""
+    content = _build_asc_text(binocular)
 
     benchmark.pedantic(
         lambda: from_asc(io.StringIO(content)),
