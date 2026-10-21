@@ -180,7 +180,8 @@ environments will have to be set up with their dependencies. Runtime should be s
 subsequent runs.
 
 If you add a new feature, please also include appropriate tests to verify its intended
-functionality. We try to keep our code coverage close to 100%.
+functionality. Our code coverage is at 100% and stays there, so every changed line needs a test
+that runs it.
 
 It is possible to limit the scope of testing to specific environments and files. For example, to
 only test event-related functionality using the Python 3.10 environment use:
@@ -269,3 +270,5 @@ pull requests for open-source projects applies.
 
 Do not squash your commits after you have submitted a pull request, as this
 erases context during review. We will squash commits when the pull request is ready to be merged.
+
+Reviewers check pull requests against our :doc:`Review Guidelines <review-guidelines>`.
