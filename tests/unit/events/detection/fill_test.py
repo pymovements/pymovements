@@ -118,6 +118,18 @@ def test_fill_raise_error(kwargs, expected_error, expected_message):
         ),
         pytest.param(
             {
+                'events': Events(name='fixation', onsets=[0], offsets=[90]),
+                'timesteps': pl.Series(np.arange(0, 100)).cast(pl.Duration('ms')),
+            },
+            Events(
+                name='unclassified',
+                onsets=[90],
+                offsets=[99],
+            ),
+            id='fixation_from_start_to_10_ms_before_end_single_fill_with_duration_timesteps',
+        ),
+        pytest.param(
+            {
                 'events': Events(name='fixation', onsets=[0, 50], offsets=[40, 100]),
                 'timesteps': pl.arange(0, 100, eager=True),
             },
@@ -174,3 +186,50 @@ def test_fill_fills_events(kwargs, expected):
     events = fill(**kwargs)
 
     assert_frame_equal(events.frame, expected.frame)
+
+
+def test_fill_with_numeric_event_frame():
+    # An events frame mutated to numeric onset/offset columns (milliseconds) must be
+    # matched against the timesteps without any Duration conversion.
+    events = Events(name='fixation', onsets=[0], offsets=[49])
+    events.frame = events.frame.with_columns(
+        pl.col('onset', 'offset', 'duration').dt.total_milliseconds(),
+    )
+
+    filled = fill(events, timesteps=np.arange(0, 100))
+
+    # The event covers timesteps 0..48 (fill treats the offset as exclusive here),
+    # so the remaining timesteps 49..99 become one unclassified event.
+    expected = Events(name='unclassified', onsets=[49], offsets=[99])
+    assert_frame_equal(filled.frame, expected.frame)
+
+
+def test_fill_matches_float_timesteps_not_representable_in_microseconds():
+    # Event boundaries taken from float timesteps that do not land on whole microseconds
+    # must still be matched by interval membership instead of exact equality.
+    timesteps = np.arange(30) / 3.0
+    events = Events(name='fixation', onsets=[timesteps[3]], offsets=[timesteps[10]])
+
+    filled = fill(events, timesteps=timesteps, minimum_duration=0)
+
+    # The event covers timesteps[3]..timesteps[9]; the samples before and from
+    # timesteps[10] onward stay unclassified in two separate segments.
+    onsets = filled.frame['onset'].dt.total_microseconds().to_list()
+    offsets = filled.frame['offset'].dt.total_microseconds().to_list()
+    assert onsets == [0, 3333]
+    assert offsets == [667, 9667]
+
+
+def test_fill_respects_sub_millisecond_sample_spacing():
+    # At 2000 Hz (0.5 ms spacing) the event [5 ms, 10 ms) must cover exactly the samples
+    # 5.0..9.5 ms; the classification must not assume a one-unit sample spacing.
+    timesteps = np.arange(40) * 0.5
+    events = Events(name='fixation', onsets=[5.0], offsets=[10.0])
+
+    filled = fill(events, timesteps=timesteps)
+
+    onsets = filled.frame['onset'].dt.total_microseconds().to_list()
+    offsets = filled.frame['offset'].dt.total_microseconds().to_list()
+    # Unclassified segments: 0..4.5 ms and 10..19.5 ms, both in microseconds.
+    assert onsets == [0, 10_000]
+    assert offsets == [4_500, 19_500]

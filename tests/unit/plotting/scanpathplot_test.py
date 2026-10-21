@@ -280,6 +280,18 @@ def test_scanpathplot_filter_events_plots_expected_circles(
     assert len(ax.patches) == expected_n_circles
 
 
+def test_scanpathplot_numeric_duration_events(make_gaze):
+    # Events mutated to numeric millisecond columns must still be plottable.
+    gaze = make_gaze('1_fixation')
+    gaze.events.frame = gaze.events.frame.with_columns(
+        pl.col('onset', 'offset', 'duration').dt.total_milliseconds(),
+    )
+
+    _, ax = scanpathplot(gaze=gaze, event_name='fixation')
+
+    assert len(ax.patches) == 1
+
+
 def test_scanpathplot_save(gaze, tmp_path):
     filepath = tmp_path / 'test.svg'
     assert not filepath.is_file()

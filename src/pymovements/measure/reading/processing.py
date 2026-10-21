@@ -25,6 +25,7 @@ from typing import Any
 
 import polars as pl
 
+from pymovements._utils._time import durations_to_ms
 from pymovements.measure.reading.annotation import annotate_fixations
 from pymovements.measure.reading.measures import first_duration
 from pymovements.measure.reading.measures import first_fixation_duration
@@ -40,6 +41,7 @@ from pymovements.measure.reading.measures import rereading_time
 from pymovements.measure.reading.measures import right_bounded_reading_time
 from pymovements.measure.reading.measures import saccade_length_in
 from pymovements.measure.reading.measures import saccade_length_out
+from pymovements.measure.reading.measures import skipped
 from pymovements.measure.reading.measures import total_fixation_count
 
 # Measure output columns, in order. Group columns and word identity are prepended on output.
@@ -280,6 +282,10 @@ def compute_reading_measures(
     }
     if reserved := reserved_columns.intersection(group_columns):
         raise ValueError(f'group_columns must not contain the reserved columns {sorted(reserved)}.')
+
+    # Convert Duration columns (onset, duration) to numeric milliseconds; the measure
+    # expressions operate on numeric time values.
+    fixations = durations_to_ms(fixations)
 
     fixations = _normalize_fixations(
         fixations, word_index_column=word_index_column, event_name=event_name,
@@ -720,8 +726,7 @@ def _assemble_word_level_measures(
     table = table.with_columns(
         [pl.col(column).fill_null(0) for column in joined_measure_columns],
     ).with_columns(
-        # total skipping: the word received no fixation at all
-        (pl.col('TFC') == 0).cast(pl.Int64).alias('skipped'),
+        skipped(),
     )
 
     if 'LP' in table.columns:
