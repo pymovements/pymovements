@@ -807,8 +807,8 @@ def data_loss(
     sampling_rate: float
         Expected sampling rate in Hz (must be > 0).
     column_dtype: pl.DataType | None
-        Data type of ``column``. If provided, a vectorized element-wise check is used
-        instead of the per-row fallback. (default: ``None``)
+        Data type of ``column``. If provided, speeds up the invalid-sample check on list
+        columns. Does not change the result. (default: ``None``)
     time_column: str
         Name of the timestamp column. (default: 'time')
     start_time: float | None
