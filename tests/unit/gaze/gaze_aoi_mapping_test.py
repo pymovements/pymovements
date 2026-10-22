@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test all Gaze functionality."""
+import math
 from typing import Any
 
 import polars as pl
@@ -1418,7 +1419,7 @@ def test_map_to_aois_warns_once_with_count_of_invalid_samples(
         simple_stimulus_w_h: TextStimulus,
 ) -> None:
     samples = pl.DataFrame({
-        'pixel_x': [5.0, None, float('nan'), 7.0],
+        'pixel_x': [5.0, None, math.nan, 7.0],
         'pixel_y': [5.0, 5.0, 5.0, None],
     })
     gaze = Gaze(samples=samples, pixel_columns=['pixel_x', 'pixel_y'])

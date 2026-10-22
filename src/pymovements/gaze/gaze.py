@@ -129,8 +129,9 @@ def _match_points_to_aois(
 ) -> polars.DataFrame:
     """Return the AOI columns for gaze points, aligned to ``points`` row order.
 
-    Points with null/NaN coordinates and points without a matching AOI receive null values.
-    Matching is done with a single vectorized spatial join.
+    Points with null coordinates and points without a matching AOI receive null values. One
+    warning reports the number of points with null coordinates. Matching is done with a single
+    vectorized spatial join.
     """
     aoi_columns = list(aoi_dataframe.aois.columns)
 
@@ -155,6 +156,16 @@ def _match_points_to_aois(
     else:
         raise ValueError(
             'either TextStimulus.width or TextStimulus.end_x_column must be defined',
+        )
+
+    n_invalid = points.select(
+        (polars.col(_AOI_X).is_null() | polars.col(_AOI_Y).is_null()).sum(),
+    ).item()
+    if n_invalid:
+        warn(
+            f'Invalid eye coordinates in {n_invalid} of {points.height} samples for AOI '
+            'lookup. Returning no match for these samples.',
+            UserWarning,
         )
 
     matches = points.join_where(
@@ -1809,16 +1820,16 @@ class Gaze:
             - If True (default), ``unnest()`` is attempted so that downstream logic can rely on
               flat component columns (e.g. ``pixel_xr``/``pixel_yr``). A few common exceptions
               from unnesting are tolerated, and mapping continues without failing.
-            - If False, no unnesting is attempted. Coordinates are extracted per-row from any
-              list columns and passed to the AOI lookup without altering the samples' schema.
+            - If False, no unnesting is attempted. Coordinates are selected from the list
+              column and passed to the AOI lookup without altering the samples' schema.
 
         verbose : bool
             If ``True``, show a progress bar. (default: True)
         """
-        # pylint: disable=unused-argument
+        # pylint: disable=unused-argument, too-many-statements
         component_suffixes = ['x', 'y', 'xl', 'yl', 'xr', 'yr', 'xa', 'ya']
         # Schema handling: preserve_structure controls whether we alter the samples schema
-        # (by unnesting) or keep list columns intact and extract per-row. By default,
+        # (by unnesting) or keep list columns intact and select from them. By default,
         # preserve_structure=True attempts to unnest.
         if preserve_structure:
             nested_columns = get_nested_columns(self.samples)
@@ -2014,15 +2025,6 @@ class Gaze:
             x_expr.cast(polars.Float64).fill_nan(None).alias(_AOI_X),
             y_expr.cast(polars.Float64).fill_nan(None).alias(_AOI_Y),
         )
-        n_invalid = points.select(
-            (polars.col(_AOI_X).is_null() | polars.col(_AOI_Y).is_null()).sum(),
-        ).item()
-        if n_invalid:
-            warn(
-                f'Invalid eye coordinates in {n_invalid} of {points.height} samples for AOI '
-                'lookup. Returning no match for these samples.',
-                UserWarning,
-            )
         aoi_df = _match_points_to_aois(aoi_dataframe, points)
         self.samples = polars.concat([self.samples, aoi_df], how='horizontal_extend')
 
