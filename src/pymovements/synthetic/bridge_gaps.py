@@ -20,13 +20,12 @@
 """Provides gap bridging for event sequences."""
 from __future__ import annotations
 
-import numbers
 from copy import deepcopy
-from typing import Any
 
 import polars as pl
 
 from pymovements.events.events import Events
+from pymovements.synthetic._utils import check_not_negative
 from pymovements.synthetic._utils import ordered_frame
 from pymovements.synthetic._utils import previous_offset
 
@@ -71,7 +70,8 @@ def bridge_gaps(events: Events, *, max_gap: float | None = None) -> Events:
     >>> bridge_gaps(fixations, max_gap=100).frame['name'].to_list()
     ['fixation', 'saccade', 'fixation', 'fixation']
     """
-    _check_max_gap(max_gap)
+    if max_gap is not None:
+        max_gap = check_not_negative(max_gap, 'max_gap')
 
     trial_columns = events.trial_columns or []
     frame = ordered_frame(events)
@@ -99,17 +99,3 @@ def bridge_gaps(events: Events, *, max_gap: float | None = None) -> Events:
         trial_columns=events.trial_columns,
         metadata=deepcopy(events.metadata),
     )
-
-
-def _check_max_gap(max_gap: Any) -> None:
-    """Reject a maximum gap that is not a non-negative number."""
-    if max_gap is None:
-        return
-
-    if isinstance(max_gap, bool) or not isinstance(max_gap, numbers.Real):
-        raise TypeError(
-            f'max_gap must be a number but is of type {type(max_gap).__name__}: {max_gap}',
-        )
-
-    if max_gap < 0:
-        raise ValueError(f'max_gap must not be negative but is: {max_gap}')
