@@ -23,6 +23,7 @@ Synthetic
     :nosignatures:
     :template: function.rst
 
+    bridge_gaps
     generate_events
     generate_gaze
     register_generator

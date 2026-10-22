@@ -32,6 +32,7 @@ from pymovements import synthetic
         pytest.param('Range', id='Range'),
         pytest.param('SampleGenerator', id='SampleGenerator'),
         pytest.param('SampleGeneratorLibrary', id='SampleGeneratorLibrary'),
+        pytest.param('bridge_gaps', id='bridge_gaps'),
         pytest.param('generate_events', id='generate_events'),
         pytest.param('generate_gaze', id='generate_gaze'),
         pytest.param('register_generator', id='register_generator'),
