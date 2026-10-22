@@ -31,6 +31,7 @@ from pymovements import synthetic
         pytest.param('SampleGenerator', id='SampleGenerator'),
         pytest.param('EventGeneratorLibrary', id='EventGeneratorLibrary'),
         pytest.param('SampleGeneratorLibrary', id='SampleGeneratorLibrary'),
+        pytest.param('Range', id='Range'),
         pytest.param('register_generator', id='register_generator'),
         pytest.param('generate_events', id='generate_events'),
         pytest.param('generate_samples', id='generate_samples'),

@@ -14,6 +14,7 @@ Synthetic
     SampleGenerator
     EventGeneratorLibrary
     SampleGeneratorLibrary
+    Range
 
 .. rubric:: Functions
 

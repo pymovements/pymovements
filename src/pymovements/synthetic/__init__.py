@@ -26,6 +26,7 @@ from pymovements.synthetic.library import EventGeneratorLibrary
 from pymovements.synthetic.library import register_generator
 from pymovements.synthetic.library import SampleGeneratorLibrary
 from pymovements.synthetic.step_function import step_function
+from pymovements.synthetic.value_range import Range
 
 
 __all__ = [
@@ -33,6 +34,7 @@ __all__ = [
     'SampleGenerator',
     'EventGeneratorLibrary',
     'SampleGeneratorLibrary',
+    'Range',
     'register_generator',
     'generate_events',
     'generate_samples',
