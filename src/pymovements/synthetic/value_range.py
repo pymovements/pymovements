@@ -22,9 +22,12 @@ from __future__ import annotations
 
 import dataclasses
 import numbers
-from typing import Any
 
 import numpy as np
+
+from pymovements.synthetic._utils import check_name
+from pymovements.synthetic._utils import check_not_negative
+from pymovements.synthetic._utils import check_number
 
 #: The distributions a value can be drawn from.
 DISTRIBUTIONS = ('normal', 'uniform')
@@ -74,25 +77,18 @@ class Range:
 
     def __post_init__(self) -> None:
         """Validate the range and cast its numbers to float."""
-        object.__setattr__(self, 'minimum', _check_number(self.minimum, 'minimum'))
-        object.__setattr__(self, 'maximum', _check_number(self.maximum, 'maximum'))
+        object.__setattr__(self, 'minimum', check_number(self.minimum, 'minimum'))
+        object.__setattr__(self, 'maximum', check_number(self.maximum, 'maximum'))
 
         if self.minimum > self.maximum:
             raise ValueError(
                 f'minimum ({self.minimum}) must not be greater than maximum ({self.maximum})',
             )
 
-        if self.distribution not in DISTRIBUTIONS:
-            raise ValueError(
-                f'distribution must be one of {list(DISTRIBUTIONS)} but is: '
-                f'{self.distribution!r}',
-            )
+        check_name(self.distribution, 'distribution', DISTRIBUTIONS)
 
         if self.std is not None:
-            object.__setattr__(self, 'std', _check_number(self.std, 'std'))
-
-            if self.std < 0:
-                raise ValueError(f'std must not be negative but is: {self.std}')
+            object.__setattr__(self, 'std', check_not_negative(self.std, 'std'))
 
     @classmethod
     def from_value(cls, value: Range | tuple[float, float] | list[float] | float) -> Range:
@@ -148,13 +144,3 @@ class Range:
         std = self.maximum - self.minimum if self.std is None else self.std
         centre = (self.minimum + self.maximum) / 2.0
         return float(np.clip(rng.normal(centre, std), self.minimum, self.maximum))
-
-
-def _check_number(value: Any, name: str) -> float:
-    """Return the value as a float, rejecting non-numbers."""
-    if isinstance(value, bool) or not isinstance(value, numbers.Real):
-        raise TypeError(
-            f'{name} must be a number but is of type {type(value).__name__}: {value}',
-        )
-
-    return float(value)

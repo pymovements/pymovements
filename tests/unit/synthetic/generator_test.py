@@ -20,6 +20,7 @@
 """Test the event and sample generator base classes."""
 import dataclasses
 
+import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
@@ -119,6 +120,13 @@ def test_sample_generator_attaches_the_events_unchanged(noise_sample_generator, 
 
     assert_frame_equal(gaze.events.frame, fixations.frame)
     assert gaze.events is not fixations
+
+
+def test_sample_generator_accepts_a_numpy_sampling_rate(noise_sample_generator):
+    gaze = noise_sample_generator().generate(sampling_rate=np.int64(500), seed=42)
+
+    assert gaze.experiment.sampling_rate == 500.0
+    assert gaze.metadata['synthetic']['run']['sampling_rate'] == 500.0
 
 
 def test_sample_generator_attaches_an_experiment_with_the_sampling_rate(noise_sample_generator):
