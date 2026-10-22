@@ -12,6 +12,7 @@ Synthetic
 
     EventGenerator
     EventGeneratorLibrary
+    Range
     SampleGenerator
     SampleGeneratorLibrary
 
