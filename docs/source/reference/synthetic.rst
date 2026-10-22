@@ -26,4 +26,5 @@ Synthetic
     register_generator
     generate_events
     generate_samples
+    bridge_gaps
     step_function

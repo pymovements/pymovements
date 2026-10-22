@@ -35,6 +35,7 @@ from pymovements import synthetic
         pytest.param('register_generator', id='register_generator'),
         pytest.param('generate_events', id='generate_events'),
         pytest.param('generate_samples', id='generate_samples'),
+        pytest.param('bridge_gaps', id='bridge_gaps'),
         pytest.param('step_function', id='step_function'),
     ],
 )
