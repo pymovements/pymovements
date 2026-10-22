@@ -21,7 +21,6 @@
 from __future__ import annotations
 
 import logging
-import warnings
 from collections.abc import Callable
 from collections.abc import Sequence
 from copy import deepcopy
@@ -47,10 +46,9 @@ from pymovements.dataset.participants import Participants
 from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze import Gaze
-from pymovements.gaze.quality import compute_measures
+from pymovements.gaze.quality import _metadata_source_path
 from pymovements.gaze.quality import DataQualityReport
-from pymovements.gaze.quality import ValidationError
-from pymovements.gaze.validation import _ALL_CHECKS
+from pymovements.gaze.quality import run_report
 from pymovements.measure.reading import compute_reading_measures
 from pymovements.measure.reading import ReadingMeasures
 from pymovements.stimulus import text
@@ -1615,10 +1613,13 @@ class Dataset:
             (default: None)
         measures : list[str] | None
             Measure identifiers to compute. ``None`` computes all four. Valid:
-            ``'data_loss'``, ``'std_rms'``, ``'rms_s2s'``, ``'bcea'``.
+            ``'data_loss'``, ``'std_rms'``, ``'rms_s2s'``, ``'bcea'``. The precision
+            measures read the first ``(x, y)`` pair of the coordinate column, which is
+            the left eye for binocular data.
             (default: None)
         levels : list[str] | None
-            Aggregation levels for measures. ``None`` uses all four. Valid:
+            Aggregation levels for measures. ``None`` uses all four, without
+            ``'session'`` if no gaze object has a ``'session_id'`` metadata entry. Valid:
             ``'dataset'``, ``'subject'``, ``'session'``, ``'trial'``.
             (default: None)
         raise_on_error : bool
@@ -1646,88 +1647,30 @@ class Dataset:
         ValidationError
             If *raise_on_error* is ``True`` and any check produces an error result.
         ValueError
-            If any name in *checks* is not a valid check identifier.
+            If any name in *checks*, *measures* or *levels* is not a valid identifier.
 
         Examples
         --------
         >>> import pymovements as pm
-        >>> # dataset = pm.Dataset('ExampleDataset', path='data/')
-        >>> # dataset.load()
-        >>> # report = dataset.report_data_quality()
-        >>> # print(report.summary())
+        >>> dataset = pm.Dataset('ToyDataset', path='data/ToyDataset')
+        >>> dataset.load()  # doctest: +SKIP
+        >>> report = dataset.report_data_quality()  # doctest: +SKIP
+        >>> print(report.summary())  # doctest: +SKIP
         """
-        checks_to_run = set(checks) if checks is not None else set(_ALL_CHECKS.keys())
-        levels_to_run = (
-            levels if levels is not None else ['dataset', 'subject', 'session', 'trial']
+        # The source file of each loaded gaze object is recorded in its metadata.
+        gaze_source_pairs = [(gaze, _metadata_source_path(gaze)) for gaze in self.gaze]
+
+        return run_report(
+            gaze_source_pairs,
+            checks=checks,
+            measures=measures,
+            levels=levels,
+            raise_on_error=raise_on_error,
+            output_path=output_path,
+            max_gap_factor=max_gap_factor,
+            max_deviation=max_deviation,
+            min_fraction=min_fraction,
         )
-
-        if checks is not None:
-            unknown = checks_to_run - set(_ALL_CHECKS.keys())
-            if unknown:
-                raise ValueError(
-                    f'Unknown check identifier(s) {sorted(unknown)!r}. '
-                    f'Valid identifiers: {list(_ALL_CHECKS.keys())!r}',
-                )
-
-        # Use real file paths from fileinfo when available; otherwise leave blank.
-        if (
-            isinstance(self.fileinfo, dict)
-            and 'gaze' in self.fileinfo
-            and 'filepath' in self.fileinfo['gaze'].columns
-        ):
-            source_paths: list[str] = self.fileinfo['gaze']['filepath'].cast(pl.Utf8).to_list()
-        else:
-            source_paths = ['' for _ in self.gaze]
-
-        check_results: list = []
-
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter('always')
-
-            for idx, gaze in enumerate(self.gaze):
-                src = source_paths[idx] if idx < len(source_paths) else ''
-                results = gaze.validate(
-                    trial_columns_exist='trial_columns_exist' in checks_to_run,
-                    trial_columns_dtype='trial_columns_dtype' in checks_to_run,
-                    time_column_exists='time_column_exists' in checks_to_run,
-                    gaze_components_defined='gaze_components_defined' in checks_to_run,
-                    time_monotone='time_monotone' in checks_to_run,
-                    max_gap='max_gap' in checks_to_run,
-                    max_gap_factor=max_gap_factor,
-                    sampling_rate_consistency='sampling_rate_consistency' in checks_to_run,
-                    max_deviation=max_deviation,
-                    gaze_range='gaze_range' in checks_to_run,
-                    min_fraction=min_fraction,
-                    source_path=src,
-                )
-                for result in results:
-                    check_results.append(result)
-                    if raise_on_error and result.severity in {'fail', 'error'}:
-                        raise ValidationError(
-                            check_id=result.code,
-                            message=str(result.message),
-                            affected_files=result.sources,
-                        )
-
-            measure_results = compute_measures(
-                gaze_list=self.gaze,
-                fileinfo=self.fileinfo,
-                levels=levels_to_run,
-                measures=measures,
-            )
-
-            captured_warnings = [str(w.message) for w in caught]
-
-        report = DataQualityReport(
-            check_results=check_results,
-            measures=measure_results,
-            warning_log=captured_warnings,
-        )
-
-        if output_path is not None:
-            report.save_bids_report(Path(output_path))
-
-        return report
 
     def download(
             self,

@@ -15,6 +15,10 @@ setup.
     :template: class.rst
 
     Gaze
+    DataQualityReport
+    CheckResult
+    ValidationError
+    DataQualityWarning
 
 .. currentmodule:: pymovements.gaze
 

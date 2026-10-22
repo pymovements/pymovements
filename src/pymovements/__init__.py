@@ -49,6 +49,7 @@ from pymovements.gaze import Gaze
 from pymovements.gaze import Screen
 from pymovements.gaze.quality import CheckResult
 from pymovements.gaze.quality import DataQualityReport
+from pymovements.gaze.quality import DataQualityWarning
 from pymovements.gaze.quality import ValidationError
 from pymovements.measure import annotate_fixations
 from pymovements.measure import EVENT_MEASURES
@@ -63,15 +64,12 @@ from pymovements.warnings import ExperimentalWarning
 
 
 __all__ = [
-    'CheckResult',
     'Dataset',
     'DatasetDefinition',
-    'DataQualityReport',
     'DatasetFile',
     'DatasetLibrary',
     'DatasetPaths',
     'datasets',
-    'ValidationError',
     'Participants',
     'Phenotype',
     'register_dataset',
@@ -89,6 +87,10 @@ __all__ = [
     'EyeTracker',
     'Screen',
     'Gaze',
+    'DataQualityReport',
+    'CheckResult',
+    'ValidationError',
+    'DataQualityWarning',
 
     'measure',
     'EVENT_MEASURES',

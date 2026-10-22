@@ -20,12 +20,15 @@
 """Data quality report classes and measure computation for Gaze objects."""
 from __future__ import annotations
 
+import contextlib
 import json
 import warnings
+from collections.abc import Iterator
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
 from typing import Any
+from typing import TextIO
 from typing import TYPE_CHECKING
 
 import polars as pl
@@ -47,7 +50,11 @@ __all__ = [
     'CheckResult',
     'DataQualityReport',
     'ValidationError',
+    'DataQualityWarning',
 ]
+
+_ALL_LEVELS = ('dataset', 'subject', 'session', 'trial')
+_ALL_MEASURES = ('data_loss', 'std_rms', 'rms_s2s', 'bcea')
 
 
 class ValidationError(Exception):
@@ -81,6 +88,18 @@ class ValidationError(Exception):
         self.check_id = check_id
         self.affected_files = affected_files
         super().__init__(message)
+
+
+class DataQualityWarning(UserWarning):
+    """Warning emitted when a quality measure is degraded, skipped, or falls back.
+
+    Raised (via :py:func:`warnings.warn`) when measure computation cannot proceed
+    as intended, for example when a Polars computation fails and a simpler
+    fallback is used, or when a requested aggregation level cannot be mapped to
+    subject/session identifiers. These warnings are captured into
+    :py:attr:`~pymovements.DataQualityReport.warning_log` in addition to being
+    emitted, so the degradation is never silent.
+    """
 
 
 @dataclass(frozen=True)
@@ -296,9 +315,49 @@ def _write_empty_tsv(path: Path, columns: list[str]) -> None:
     path.write_text('\t'.join(columns) + '\n', encoding='utf-8')
 
 
+@contextlib.contextmanager
+def _record_warnings() -> Iterator[list[str]]:
+    """Collect warnings raised within the context while still emitting them.
+
+    Yields a list that is filled with the string form of every warning raised
+    inside the context. Each warning is also forwarded to the previously
+    installed :py:func:`warnings.showwarning`, so warnings still reach the user
+    instead of being swallowed.
+
+    This temporarily replaces the process-global :py:func:`warnings.showwarning`
+    and warning filters, so it is not thread-safe: concurrent warnings from other
+    threads during the context are also captured and forwarded.
+
+    Yields
+    ------
+    list[str]
+        List populated with one message string per warning raised in the context.
+    """
+    captured: list[str] = []
+    with warnings.catch_warnings():
+        warnings.simplefilter('always')
+        original_showwarning = warnings.showwarning
+
+        def _record(
+                message: Warning | str,
+                category: type[Warning],
+                filename: str,
+                lineno: int,
+                file: TextIO | None = None,
+                line: str | None = None,
+        ) -> None:
+            captured.append(str(message))
+            original_showwarning(message, category, filename, lineno, file, line)
+
+        warnings.showwarning = _record
+        yield captured
+
+
 # ---------------------------------------------------------------------------
 # Measure computation
 # ---------------------------------------------------------------------------
+# The warnings below point at the user's call of report_data_quality: each stacklevel
+# counts the frames up to it through run_report and compute_measures.
 
 def _coord_column(gaze: Any) -> str | None:
     """Return the best available coordinate column name (``'position'`` > ``'pixel'``)."""
@@ -306,6 +365,36 @@ def _coord_column(gaze: Any) -> str | None:
         if col in gaze.samples.schema:
             return col
     return None
+
+
+def _metadata_entry(gaze: Any, key: str) -> Any:
+    """Return the *key* metadata entry of *gaze*, or ``None`` if absent."""
+    return gaze.metadata.get(key)
+
+
+def _for_subject(subject_id: Any) -> str:
+    """Return the subject clause of a warning message, empty if the subject id is unknown."""
+    return '' if subject_id is None else f' for subject {subject_id!r}'
+
+
+def _metadata_source_path(gaze: Any) -> str:
+    """Return the first ``Sources`` metadata entry of *gaze*, or ``''`` if there is none.
+
+    Loaders record the file an object was read from under ``metadata['Sources']``.
+    The entry identifies the gaze object in ``sources`` of each check result.
+
+    Parameters
+    ----------
+    gaze : Any
+        Gaze object whose metadata is read.
+
+    Returns
+    -------
+    str
+        First recorded source path, or ``''``.
+    """
+    sources = _metadata_entry(gaze, 'Sources') or []
+    return str(sources[0]) if sources else ''
 
 
 def _compute_data_loss_simple(gaze: Any, coord_col: str) -> float:
@@ -318,19 +407,35 @@ def _compute_data_loss_simple(gaze: Any, coord_col: str) -> float:
     return n_null / n_total
 
 
-def _build_precision_agg(coord_col: str) -> list[pl.Expr]:
-    """Return Polars aggregation expressions for precision measures on *coord_col*."""
+def _fall_back_to_simple_data_loss(gaze: Any, coord_col: str, cause: str) -> float:
+    """Warn that *cause* forces the simple null-ratio, then return it."""
+    warnings.warn(
+        f'{cause}; falling back to the simple null-ratio, which ignores time gaps and '
+        'per-element NaN/inf.',
+        DataQualityWarning,
+        stacklevel=7,
+    )
+    return _compute_data_loss_simple(gaze, coord_col)
+
+
+def _build_precision_agg(coord_col: str, requested: set[str]) -> list[pl.Expr]:
+    """Return Polars aggregation expressions for the requested precision measures on *coord_col*.
+
+    The measures read the first ``(x, y)`` pair of the column, which is the left
+    eye for binocular data with four or six components.
+    """
+    precision_measures = {'std_rms': std_rms, 'rms_s2s': rms_s2s, 'bcea': bcea}
     return [
-        std_rms(column=coord_col),
-        rms_s2s(column=coord_col),
-        bcea(column=coord_col),
+        measure(column=coord_col)
+        for name, measure in precision_measures.items()
+        if name in requested
     ]
 
 
 def _compute_file_row(
         gaze: Any,
-        subject_id: str,
-        session_id: str | None,
+        subject_id: Any,
+        session_id: Any,
         requested: set[str],
 ) -> dict[str, Any]:
     """Compute measure values for a single gaze file.
@@ -339,9 +444,9 @@ def _compute_file_row(
     ----------
     gaze : Any
         The gaze object for one file.
-    subject_id : str
-        Subject identifier for this file.
-    session_id : str | None
+    subject_id : Any
+        Subject identifier for this file, or None if not available.
+    session_id : Any
         Session identifier, or None if not available.
     requested : set[str]
         Which measures to compute (subset of ``{'data_loss', 'std_rms', 'rms_s2s', 'bcea'}``).
@@ -349,26 +454,24 @@ def _compute_file_row(
     Returns
     -------
     dict[str, Any]
-        Row dict with ``subject_id`` (and optionally ``session_id``) plus any
-        computed measure values.
+        Row dict with ``subject_id``, ``session_id`` and the four measure keys.
+        A measure that was not requested or could not be computed is ``None``.
     """
-    row: dict[str, Any] = {'subject_id': subject_id}
-    if session_id is not None:
-        row['session_id'] = session_id
+    row: dict[str, Any] = {'subject_id': subject_id, 'session_id': session_id}
+    row.update({measure: None for measure in _ALL_MEASURES})
 
     coord_col = _coord_column(gaze)
 
     if 'data_loss' in requested and coord_col is not None:
-        sampling_rate = (
-            gaze.experiment.sampling_rate
-            if gaze.experiment is not None
-            else None
-        )
-        if (
-            sampling_rate is not None
-            and 'time' in gaze.samples.schema
-            and len(gaze.samples) > 0
-        ):
+        reason = _data_loss_time_base_missing(gaze)
+        if reason is not None:
+            dl_val = _fall_back_to_simple_data_loss(
+                gaze,
+                coord_col,
+                f'data_loss{_for_subject(subject_id)} cannot use the time base because {reason}',
+            )
+        else:
+            sampling_rate = gaze.experiment.sampling_rate
             try:
                 # data_loss operates on a numeric millisecond time base, so convert the
                 # canonical Duration time column before computing it. A non-Duration time
@@ -378,31 +481,45 @@ def _compute_file_row(
                     data_loss(coord_col, sampling_rate=sampling_rate, unit='ratio'),
                 )
                 dl_val = result_df[0, 'data_loss_ratio']
-            except (pl.exceptions.PolarsError, ValueError, ArithmeticError):
-                dl_val = _compute_data_loss_simple(gaze, coord_col)
-        else:
-            dl_val = _compute_data_loss_simple(gaze, coord_col) if coord_col else None
+            except (pl.exceptions.PolarsError, ValueError, ArithmeticError) as exc:
+                dl_val = _fall_back_to_simple_data_loss(
+                    gaze,
+                    coord_col,
+                    f'data_loss computation failed{_for_subject(subject_id)} '
+                    f'({type(exc).__name__}: {exc})',
+                )
         row['data_loss'] = dl_val
 
     if coord_col is not None and requested & {'std_rms', 'rms_s2s', 'bcea'}:
         try:
-            agg_exprs = _build_precision_agg(coord_col)
-            prec_df = gaze.samples.select(agg_exprs)
-            if 'std_rms' in requested:
-                row['std_rms'] = prec_df[0, 'std_rms']
-            if 'rms_s2s' in requested:
-                row['rms_s2s'] = prec_df[0, 'rms_s2s']
-            if 'bcea' in requested:
-                row['bcea'] = prec_df[0, 'bcea']
-        except (pl.exceptions.PolarsError, ValueError, ArithmeticError):
-            row.update({m: None for m in ('std_rms', 'rms_s2s', 'bcea') if m in requested})
+            prec_df = gaze.samples.select(_build_precision_agg(coord_col, requested))
+            row.update(prec_df.row(0, named=True))
+        except (pl.exceptions.PolarsError, ValueError, ArithmeticError) as exc:
+            warnings.warn(
+                f'precision measures failed{_for_subject(subject_id)} '
+                f'({type(exc).__name__}: {exc}); setting them to None.',
+                DataQualityWarning,
+                stacklevel=6,
+            )
 
     return row
 
 
+def _data_loss_time_base_missing(gaze: Any) -> str | None:
+    """Return why ``data_loss`` cannot use the time base of *gaze*, or ``None`` if it can."""
+    if gaze.experiment is None:
+        return 'the gaze has no experiment'
+    if gaze.experiment.sampling_rate is None:
+        return 'the experiment defines no sampling rate'
+    if 'time' not in gaze.samples.schema:
+        return "there is no 'time' column"
+    if len(gaze.samples) == 0:
+        return 'there are no samples'
+    return None
+
+
 def _compute_trial_rows(
         gaze_list: list[Any],
-        fileinfo_rows: list[dict[str, Any]],
         requested: set[str],
 ) -> list[pl.DataFrame]:
     """Compute per-trial measure DataFrames for each gaze file.
@@ -410,9 +527,8 @@ def _compute_trial_rows(
     Parameters
     ----------
     gaze_list : list[Any]
-        All loaded gaze frames.
-    fileinfo_rows : list[dict[str, Any]]
-        Per-file metadata rows (subject_id, session_id, etc.).
+        All loaded gaze frames. The subject id of each file is read from its
+        ``metadata['subject_id']`` entry.
     requested : set[str]
         Which measures to compute.
 
@@ -423,7 +539,7 @@ def _compute_trial_rows(
         coordinate column.
     """
     trial_rows: list[pl.DataFrame] = []
-    for i, gaze in enumerate(gaze_list):
+    for gaze in gaze_list:
         if not gaze.trial_columns:
             continue
         missing_tc = [c for c in gaze.trial_columns if c not in gaze.samples.schema]
@@ -433,23 +549,27 @@ def _compute_trial_rows(
         if coord_col is None:
             continue
 
-        fi_row = fileinfo_rows[i] if i < len(fileinfo_rows) else {}
-        subject_id = fi_row.get('subject_id', str(i))
+        subject_id = _metadata_entry(gaze, 'subject_id')
 
         agg_exprs_t: list[pl.Expr] = []
         try:
             if requested & {'std_rms', 'rms_s2s', 'bcea'}:
-                agg_exprs_t.extend(_build_precision_agg(coord_col))
+                agg_exprs_t.extend(_build_precision_agg(coord_col, requested))
 
             if 'data_loss' in requested:
-                sampling_rate = (
-                    gaze.experiment.sampling_rate
-                    if gaze.experiment is not None
-                    else None
-                )
-                if sampling_rate is not None and 'time' in gaze.samples.schema:
+                reason = _data_loss_time_base_missing(gaze)
+                if reason is None:
                     agg_exprs_t.append(
-                        data_loss(coord_col, sampling_rate=sampling_rate, unit='ratio'),
+                        data_loss(
+                            coord_col, sampling_rate=gaze.experiment.sampling_rate, unit='ratio',
+                        ),
+                    )
+                else:
+                    warnings.warn(
+                        f'trial-level data_loss{_for_subject(subject_id)} cannot use the '
+                        f'time base because {reason}; data_loss is None for its trials.',
+                        DataQualityWarning,
+                        stacklevel=5,
                     )
 
             if not agg_exprs_t:
@@ -464,20 +584,129 @@ def _compute_trial_rows(
                 samples = samples.with_columns(duration_to_ms('time').alias('time'))
             trial_df = samples.group_by(
                 gaze.trial_columns,
-            ).agg(agg_exprs_t)
+            ).agg(agg_exprs_t).sort(gaze.trial_columns)
             if 'data_loss_ratio' in trial_df.columns and 'data_loss' not in trial_df.columns:
                 trial_df = trial_df.rename({'data_loss_ratio': 'data_loss'})
-            trial_df = trial_df.with_columns(pl.lit(subject_id).alias('subject_id'))
+            trial_df = trial_df.with_columns(
+                # The dtype a DataFrame infers, as for the file rows (pl.lit gives Int32
+                # for an int).
+                pl.lit(subject_id, dtype=pl.Series([subject_id]).dtype).alias('subject_id'),
+                *[
+                    pl.lit(None, dtype=pl.Float64).alias(measure)
+                    for measure in _ALL_MEASURES
+                    if measure in requested and measure not in trial_df.columns
+                ],
+            )
             trial_rows.append(trial_df)
-        except (pl.exceptions.PolarsError, ValueError, ArithmeticError):
+        except (pl.exceptions.PolarsError, ValueError, ArithmeticError) as exc:
+            warnings.warn(
+                f'trial-level measures failed{_for_subject(subject_id)} '
+                f'({type(exc).__name__}: {exc}); skipping this file at trial level.',
+                DataQualityWarning,
+                stacklevel=5,
+            )
             continue
 
     return trial_rows
 
 
+def _warn_missing_ids(gaze_list: list[Any], level: str) -> bool:
+    """Warn about gaze objects missing ``'<level>_id'``, return whether the level is omitted.
+
+    Parameters
+    ----------
+    gaze_list : list[Any]
+        All loaded gaze frames, at least one.
+    level : str
+        ``'subject'`` or ``'session'``.
+
+    Returns
+    -------
+    bool
+        ``True`` if the level is omitted, which happens only for the session
+        level when no gaze object has a session id. Otherwise the gaze objects
+        without an id are grouped under a null id.
+    """
+    key = f'{level}_id'
+    n_missing = sum(_metadata_entry(gaze, key) is None for gaze in gaze_list)
+    if not n_missing:
+        return False
+    prefix = f"{level}-level aggregation requested but '{key}' is not a metadata key of "
+    if level == 'session' and n_missing == len(gaze_list):
+        warnings.warn(
+            prefix + 'any gaze object; the session level will be omitted.',
+            DataQualityWarning,
+            stacklevel=5,
+        )
+        return True
+    warnings.warn(
+        prefix + f'{n_missing} of {len(gaze_list)} gaze objects; grouping them '
+        f'under a null {level} id.',
+        DataQualityWarning,
+        stacklevel=5,
+    )
+    return False
+
+
+def _aggregate_file_rows(
+        gaze_list: list[Any],
+        levels: set[str],
+        requested: set[str],
+) -> dict[str, pl.DataFrame]:
+    """Compute one row per gaze object and aggregate the rows to the file-based levels.
+
+    Parameters
+    ----------
+    gaze_list : list[Any]
+        All loaded gaze frames. Subject and session ids are read from each
+        gaze object's ``metadata``.
+    levels : set[str]
+        The file-based levels to compute, a subset of ``{'dataset', 'subject',
+        'session'}``.
+    requested : set[str]
+        Which measures to compute.
+
+    Returns
+    -------
+    dict[str, pl.DataFrame]
+        One DataFrame per level, if any measure is requested.
+    """
+    results: dict[str, pl.DataFrame] = {}
+    rows_all = [
+        _compute_file_row(
+            gaze,
+            _metadata_entry(gaze, 'subject_id'),
+            _metadata_entry(gaze, 'session_id'),
+            requested,
+        )
+        for gaze in gaze_list
+    ]
+
+    file_df = pl.DataFrame(rows_all)
+    measure_cols = [measure for measure in _ALL_MEASURES if measure in requested]
+
+    if 'dataset' in levels and measure_cols:
+        dataset_row: dict[str, Any] = {
+            col: file_df[col].cast(pl.Float64).mean() for col in measure_cols
+        }
+        results['dataset'] = pl.DataFrame([dataset_row])
+
+    if 'subject' in levels and measure_cols:
+        results['subject'] = file_df.group_by('subject_id').agg(
+            [pl.col(c).cast(pl.Float64).mean() for c in measure_cols],
+        ).sort('subject_id')
+
+    if 'session' in levels and measure_cols:
+        group_cols = ['subject_id', 'session_id']
+        results['session'] = file_df.group_by(group_cols).agg(
+            [pl.col(c).cast(pl.Float64).mean() for c in measure_cols],
+        ).sort(group_cols)
+
+    return results
+
+
 def compute_measures(
         gaze_list: list[Any],
-        fileinfo: Any,
         levels: list[str],
         measures: list[str] | None = None,
 ) -> dict[str, pl.DataFrame]:
@@ -486,100 +715,97 @@ def compute_measures(
     Parameters
     ----------
     gaze_list : list[Any]
-        All loaded gaze frames from the dataset.
-    fileinfo : Any
-        Dataset fileinfo for subject/session mapping.
+        All loaded gaze frames from the dataset. Subject and session aggregation
+        read the ``'subject_id'`` and ``'session_id'`` entries of each frame's
+        ``metadata``, which :py:meth:`~pymovements.Dataset.load` fills from the
+        filename pattern. A :py:class:`DataQualityWarning` is emitted if a
+        requested level's key is absent from any frame, and those frames are
+        grouped under a null id. The session level is omitted if no frame has
+        a session id.
     levels : list[str]
         Subset of ``['dataset', 'subject', 'session', 'trial']``.
     measures : list[str] | None
         Subset of ``['data_loss', 'std_rms', 'rms_s2s', 'bcea']``. None means all.
+        The precision measures read the first ``(x, y)`` pair of the coordinate
+        column, which is the left eye for binocular data.
 
     Returns
     -------
     dict[str, pl.DataFrame]
-        Keyed by level. Each DataFrame has grouping columns plus available measure
-        columns (``data_loss``, ``std_rms``, ``rms_s2s``, ``bcea``).
+        Keyed by level. Each DataFrame has grouping columns plus one column per
+        requested measure. A measure that could not be computed is null.
     """
-    all_measures = {'data_loss', 'std_rms', 'rms_s2s', 'bcea'}
-    requested = set(measures) if measures is not None else all_measures
+    requested = set(measures) if measures is not None else set(_ALL_MEASURES)
 
-    fileinfo_rows: list[dict[str, Any]] = []
-    if isinstance(fileinfo, dict) and 'gaze' in fileinfo:
-        try:
-            fileinfo_rows = fileinfo['gaze'].to_dicts()
-        except (AttributeError, pl.exceptions.PolarsError):
-            fileinfo_rows = []
+    if not gaze_list:
+        return {}
+
+    # Warn when subject/session aggregation is requested but the metadata lacks the
+    # expected identifier (datasets may name the groups differently). Those gaze objects
+    # are grouped under a null id, the session level is omitted if none has a session id.
+    file_levels = {'dataset', 'subject', 'session'} & set(levels)
+    for level in ('subject', 'session'):
+        if level in levels and _warn_missing_ids(gaze_list, level):
+            file_levels.discard(level)
 
     results: dict[str, pl.DataFrame] = {}
-    rows_all: list[dict[str, Any]] = []
-
-    for i, gaze in enumerate(gaze_list):
-        fi_row = fileinfo_rows[i] if i < len(fileinfo_rows) else {}
-        subject_id = fi_row.get('subject_id', str(i))
-        session_id = fi_row.get('session_id', None)
-        rows_all.append(_compute_file_row(gaze, subject_id, session_id, requested))
-
-    if not rows_all:
-        return results
-
-    file_df = pl.DataFrame(rows_all)
-    measure_cols = [c for c in ('data_loss', 'std_rms', 'rms_s2s', 'bcea') if c in file_df.columns]
-
-    if 'dataset' in levels and measure_cols:
-        dataset_row: dict[str, Any] = {
-            col: file_df[col].cast(pl.Float64).mean() for col in measure_cols
-        }
-        results['dataset'] = pl.DataFrame([dataset_row])
-
-    if 'subject' in levels and 'subject_id' in file_df.columns and measure_cols:
-        results['subject'] = file_df.group_by('subject_id').agg(
-            [pl.col(c).cast(pl.Float64).mean() for c in measure_cols],
-        ).sort('subject_id')
-
-    if 'session' in levels and 'session_id' in file_df.columns and measure_cols:
-        group_cols = [c for c in ('subject_id', 'session_id') if c in file_df.columns]
-        results['session'] = file_df.group_by(group_cols).agg(
-            [pl.col(c).cast(pl.Float64).mean() for c in measure_cols],
-        ).sort(group_cols)
+    if file_levels:
+        results.update(_aggregate_file_rows(gaze_list, file_levels, requested))
 
     if 'trial' in levels:
-        trial_rows = _compute_trial_rows(gaze_list, fileinfo_rows, requested)
+        trial_rows = _compute_trial_rows(gaze_list, requested)
         if trial_rows:
-            results['trial'] = pl.concat(trial_rows, how='diagonal')
+            # diagonal_relaxed: a null subject id of one file joins the typed ids of others.
+            results['trial'] = pl.concat(trial_rows, how='diagonal_relaxed')
 
     return results
 
 
+def _check_identifiers(kind: str, names: list[str], valid: list[str]) -> None:
+    """Raise a ``ValueError`` listing the valid identifiers if any name is unknown."""
+    unknown = set(names) - set(valid)
+    if unknown:
+        raise ValueError(
+            f'Unknown {kind} identifier(s) {sorted(unknown)!r}. '
+            f'Valid identifiers: {valid!r}',
+        )
+
+
 def run_report(
-        gaze: Gaze,
+        gaze_source_pairs: list[tuple[Gaze, str]],
+        *,
         checks: list[str] | None,
         measures: list[str] | None,
         levels: list[str] | None,
         raise_on_error: bool,
         output_path: Path | str | None,
-        source_path: str,
         max_gap_factor: float = 5.0,
         max_deviation: float = 0.05,
         min_fraction: float = 0.95,
 ) -> DataQualityReport:
-    """Core implementation of ``Gaze.report_data_quality()``.
+    """Run validation checks and measures for one or more gaze objects.
+
+    Shared implementation behind :py:meth:`~pymovements.Gaze.report_data_quality`
+    and :py:meth:`~pymovements.Dataset.report_data_quality`.
 
     Parameters
     ----------
-    gaze : Gaze
-        The :py:class:`~pymovements.gaze.gaze.Gaze` object to report on.
+    gaze_source_pairs : list[tuple[Gaze, str]]
+        ``(gaze, source_path)`` pairs to report on. ``source_path`` identifies the
+        gaze object in ``sources`` of each check result and in ``affected_files``
+        of a raised ``ValidationError``. Subject and session ids are read from
+        each gaze object's ``metadata``.
     checks : list[str] | None
-        Check identifiers to run; ``None`` runs all eight.
+        Check identifiers to run. ``None`` runs all eight.
     measures : list[str] | None
-        Measure identifiers to compute; ``None`` computes all four.
+        Measure identifiers to compute. ``None`` computes all four.
     levels : list[str] | None
-        Aggregation levels; ``None`` defaults to ``['dataset', 'trial']``.
+        Aggregation levels to compute. ``None`` uses all four, without ``'session'``
+        if no gaze object has a ``'session_id'`` metadata entry.
     raise_on_error : bool
         Raise :py:class:`ValidationError` on the first ``'fail'`` or ``'error'`` result.
     output_path : Path | str | None
         If given, write BIDS derivative files here.
-    source_path : str
-        Identifier for the gaze object used in ``affected_files``.
     max_gap_factor : float
         Passed to :py:func:`~pymovements.gaze.validation.check_max_gap`.
         (default: 5.0)
@@ -601,49 +827,50 @@ def run_report(
     ValidationError
         If *raise_on_error* is ``True`` and any check produces an error.
     ValueError
-        If any name in *checks* is not a valid check identifier.
+        If any name in *checks*, *measures* or *levels* is not a valid identifier.
     """
-    checks_to_run = set(checks) if checks is not None else set(_ALL_CHECKS.keys())
     if checks is not None:
-        unknown = checks_to_run - set(_ALL_CHECKS.keys())
-        if unknown:
-            raise ValueError(
-                f'Unknown check identifier(s) {sorted(unknown)!r}. '
-                f'Valid identifiers: {list(_ALL_CHECKS.keys())!r}',
-            )
-
-    levels_to_run = levels if levels is not None else ['dataset', 'trial']
+        _check_identifiers('check', checks, list(_ALL_CHECKS))
+    if measures is not None:
+        _check_identifiers('measure', measures, list(_ALL_MEASURES))
+    if levels is None:
+        has_session_ids = any(
+            _metadata_entry(gaze, 'session_id') is not None for gaze, _ in gaze_source_pairs
+        )
+        levels = [level for level in _ALL_LEVELS if level != 'session' or has_session_ids]
+    else:
+        _check_identifiers('level', levels, list(_ALL_LEVELS))
+    checks_to_run = set(checks) if checks is not None else set(_ALL_CHECKS)
 
     check_results: list[CheckResult] = []
 
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter('always')
+    with _record_warnings() as captured:
+        for gaze, source_path in gaze_source_pairs:
+            validate_results = gaze.validate(
+                trial_columns_exist='trial_columns_exist' in checks_to_run,
+                trial_columns_dtype='trial_columns_dtype' in checks_to_run,
+                time_column_exists='time_column_exists' in checks_to_run,
+                gaze_components_defined='gaze_components_defined' in checks_to_run,
+                time_monotone='time_monotone' in checks_to_run,
+                max_gap='max_gap' in checks_to_run,
+                max_gap_factor=max_gap_factor,
+                sampling_rate_consistency='sampling_rate_consistency' in checks_to_run,
+                max_deviation=max_deviation,
+                gaze_range='gaze_range' in checks_to_run,
+                min_fraction=min_fraction,
+                source_path=source_path,
+            )
+            for result in validate_results:
+                check_results.append(result)
+                if raise_on_error and result.severity in {'fail', 'error'}:
+                    raise ValidationError(
+                        check_id=result.code,
+                        message=str(result.message),
+                        affected_files=result.sources,
+                    )
 
-        validate_results = gaze.validate(
-            trial_columns_exist='trial_columns_exist' in checks_to_run,
-            trial_columns_dtype='trial_columns_dtype' in checks_to_run,
-            time_column_exists='time_column_exists' in checks_to_run,
-            gaze_components_defined='gaze_components_defined' in checks_to_run,
-            time_monotone='time_monotone' in checks_to_run,
-            max_gap='max_gap' in checks_to_run,
-            max_gap_factor=max_gap_factor,
-            sampling_rate_consistency='sampling_rate_consistency' in checks_to_run,
-            max_deviation=max_deviation,
-            gaze_range='gaze_range' in checks_to_run,
-            min_fraction=min_fraction,
-            source_path=source_path,
-        )
-        for result in validate_results:
-            check_results.append(result)
-            if raise_on_error and result.severity in {'fail', 'error'}:
-                raise ValidationError(
-                    check_id=result.code,
-                    message=str(result.message),
-                    affected_files=result.sources,
-                )
-
-        measure_results = compute_measures([gaze], None, levels_to_run, measures)
-        captured = [str(w.message) for w in caught]
+        gaze_list = [gaze for gaze, _ in gaze_source_pairs]
+        measure_results = compute_measures(gaze_list, levels, measures)
 
     report = DataQualityReport(
         check_results=check_results,
