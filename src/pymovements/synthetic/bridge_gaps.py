@@ -28,6 +28,7 @@ import polars as pl
 
 from pymovements.events.events import Events
 from pymovements.synthetic._utils import ordered_frame
+from pymovements.synthetic._utils import previous_offset
 
 
 def bridge_gaps(events: Events, *, max_gap: float | None = None) -> Events:
@@ -75,16 +76,13 @@ def bridge_gaps(events: Events, *, max_gap: float | None = None) -> Events:
     trial_columns = events.trial_columns or []
     frame = ordered_frame(events)
 
-    previous_offset = pl.col('offset').shift(1)
-    if trial_columns:
-        previous_offset = previous_offset.over(trial_columns)
-
     gap = pl.col('onset') - pl.col('previous_offset')
     bridged = gap > pl.duration(microseconds=0)
     if max_gap is not None:
         bridged = bridged & (gap <= pl.duration(microseconds=round(max_gap * 1000)))
 
-    saccades = frame.with_columns(previous_offset=previous_offset).filter(bridged).select(
+    frame_with_previous = frame.with_columns(previous_offset=previous_offset(trial_columns))
+    saccades = frame_with_previous.filter(bridged).select(
         *trial_columns,
         name=pl.lit('saccade'),
         onset=pl.col('previous_offset'),
