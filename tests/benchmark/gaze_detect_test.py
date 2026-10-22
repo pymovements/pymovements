@@ -62,3 +62,13 @@ def test_gaze_detect_benchmark(benchmark):
         gaze.detect('ivt', velocity_threshold=20.0, minimum_duration=1)
 
     benchmark.pedantic(_run, setup=_setup, iterations=1, rounds=5)
+
+
+def test_gaze_detect_fill_empty_events_benchmark(benchmark):
+    """Benchmark fill over 5k trials with 200 samples each on an empty events frame."""
+    gaze = _build_gaze()
+
+    def _run() -> None:
+        gaze.detect('fill')
+
+    benchmark.pedantic(_run, setup=gaze.clear_events, iterations=1, rounds=5)
