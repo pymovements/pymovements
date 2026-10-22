@@ -39,6 +39,7 @@ from pymovements._version import __version__
 from pymovements.events.events import Events
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
+from pymovements.synthetic._utils import check_positive
 from pymovements.warnings import ExperimentalWarning
 
 #: The key the provenance record is stored under in the metadata of the generated data.
@@ -372,7 +373,7 @@ class SampleGenerator(_Generator[Gaze]):
 
     def __post_init__(self) -> None:
         """Check the sampling rate and store it as a float."""
-        self.sampling_rate = _check_positive_number(self.sampling_rate, 'sampling_rate')
+        self.sampling_rate = check_positive(self.sampling_rate, 'sampling_rate')
 
     def _run(self, rng: np.random.Generator, run: dict[str, Any]) -> Gaze:
         """Generate from a copy of the events, and attach that copy and the experiment."""
@@ -414,19 +415,6 @@ def _warn_experimental() -> None:
         ExperimentalWarning,
         stacklevel=3,
     )
-
-
-def _check_positive_number(value: Any, name: str) -> float:
-    """Return the value as a float, rejecting non-numbers, including booleans, and values <= 0."""
-    if isinstance(value, bool) or not isinstance(value, numbers.Real):
-        raise TypeError(
-            f'{name} must be a number but is of type {type(value).__name__}: {value}',
-        )
-
-    if value <= 0:
-        raise ValueError(f'{name} must be greater than zero but is: {float(value)}')
-
-    return float(value)
 
 
 def _resolve_seed(seed: Any) -> int:
