@@ -1193,7 +1193,8 @@ class Gaze:
         Parameters
         ----------
         method: Callable[..., Events] | str
-            The event detection method to be applied.
+            The event detection method to be applied. A method that accepts an ``events``
+            argument must neither mutate nor return it.
         eye: str
             Select which eye to choose. Valid options are ``auto``, ``left``, ``right`` or ``None``.
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
