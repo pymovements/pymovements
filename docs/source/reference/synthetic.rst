@@ -3,6 +3,19 @@ Synthetic
 
 .. currentmodule:: pymovements.synthetic
 
+.. rubric:: Generation Framework
+
+.. autosummary::
+    :toctree: api
+    :nosignatures:
+    :template: class.rst
+
+    EventGenerator
+    EventGeneratorLibrary
+    Range
+    SampleGenerator
+    SampleGeneratorLibrary
+
 .. rubric:: Functions
 
 .. autosummary::
@@ -10,4 +23,8 @@ Synthetic
     :nosignatures:
     :template: function.rst
 
+    bridge_gaps
+    generate_events
+    generate_gaze
+    register_generator
     step_function
