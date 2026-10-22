@@ -1437,6 +1437,16 @@ class Gaze:
                 else None
             )
 
+            # Non-empty events are partitioned by trial once instead of being filtered per trial.
+            events_by_trial = (
+                self.events.frame.partition_by(
+                    self.trial_columns, maintain_order=True, include_key=True, as_dict=True,
+                )
+                if needs_events and shared_empty_events is None
+                else {}
+            )
+            empty_events_frame = self.events.frame.clear()
+
             new_events_grouped: list[polars.DataFrame] = []
 
             for group_identifier, group_gaze in grouped_samples.items():
@@ -1445,17 +1455,9 @@ class Gaze:
                 elif shared_empty_events is not None:
                     group_events = shared_empty_events
                 else:
-                    # Create filter expression for selecting respective group rows.
-                    group_filter_expression = polars.col(
-                        self.trial_columns[0],
-                    ) == group_identifier[0]
-                    for name, value in zip(self.trial_columns[1:], group_identifier[1:]):
-                        group_filter_expression = group_filter_expression & (
-                            polars.col(name) == value
-                        )
-
-                    # Select group events.
-                    group_events = Events(self.events.frame.filter(group_filter_expression))
+                    group_events = Events(
+                        events_by_trial.get(group_identifier, empty_events_frame),
+                    )
 
                 method_kwargs = self._fill_event_detection_kwargs(
                     method,
