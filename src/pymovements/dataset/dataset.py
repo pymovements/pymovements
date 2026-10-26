@@ -34,6 +34,8 @@ import polars as pl
 from tqdm.auto import tqdm
 
 from pymovements._utils._html import repr_html
+from pymovements._utils._sources import merge_sources
+from pymovements._utils._sources import relativize_sources
 from pymovements._version import __version__
 from pymovements.dataset import dataset_download
 from pymovements.dataset import dataset_files
@@ -146,6 +148,10 @@ class Dataset:
         The parsed file information is assigned to the :py:attr:`~pymovements.Dataset.fileinfo`
         attribute. All gaze files will be loaded as dataframes and assigned to the
         :py:attr:`~pymovements.Dataset.gaze` attribute.
+
+        Every loaded object records the file it was read from in the ``Sources`` entry of its
+        ``metadata``, as a POSIX path relative to the dataset root. Reloading files saved by
+        this dataset records the reloaded files, not the sources of the original data.
 
         Parameters
         ----------
@@ -457,6 +463,7 @@ class Dataset:
         self.precomputed_events = dataset_files.load_precomputed_event_files(
             definition=self.definition,
             files=precomputed_event_files,
+            paths=self.paths,
         )
 
     def load_precomputed_reading_measures(self) -> None:
@@ -486,6 +493,7 @@ class Dataset:
         self.precomputed_reading_measures = dataset_files.load_precomputed_reading_measures(
             definition=self.definition,
             files=reading_measure_files,
+            paths=self.paths,
         )
 
     def split_gaze_data(
@@ -526,7 +534,8 @@ class Dataset:
         if isinstance(by, str):
             by = [by]
         self.precomputed_events = [
-            PrecomputedEventDataFrame(new_frame) for _frame in self.precomputed_events
+            PrecomputedEventDataFrame(new_frame, metadata=deepcopy(_frame.metadata))
+            for _frame in self.precomputed_events
             for new_frame in _frame.frame.partition_by(by=by)
         ]
 
@@ -596,6 +605,7 @@ class Dataset:
         self._check_fileinfo()
         self.stimuli = dataset_files.load_stimuli_files(
             files=[file for file in self._files if 'stimulus' in file.definition.content.lower()],
+            paths=self.paths,
         )
 
     def apply(
@@ -628,6 +638,7 @@ class Dataset:
             >>> getfixture('doctest_tmp_cwd')
 
         Let's load in our dataset first,
+
         >>> import pymovements as pm
         >>>
         >>> dataset = pm.Dataset("ToyDataset", path='data/toy_dataset')
@@ -635,28 +646,41 @@ class Dataset:
         Downloading https://... to data...toy_dataset...downloads...
         Checking integrity of ...
         Extracting ... to data...toy_dataset...raw
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')
+          experiment: Experiment(...)
+          resources: 1 defined
+          gaze: 0 recordings
+          events: 0 recordings
         >>> dataset.load()# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')
+          experiment: Experiment(...)
+          resources: 1 defined
+          gaze: 20 recordings
+          events: 20 recordings
+
+        Each call returns the dataset itself:
 
         Use apply for your gaze transformations:
+
         >>> dataset.apply('pix2deg')# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
 
         >>> dataset.apply('pos2vel', method='neighbors')# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
 
         Use apply for your event detection:
+
         >>> dataset.apply('ivt')# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
 
         >>> dataset.apply('microsaccades', minimum_duration=8)# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
 
         Use apply for upsampling, downsampling or making the sampling rate constant
         using resample:
+
         >>> dataset.apply('resample', resampling_rate=2000)# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
         """
         self._check_gaze()
 
@@ -1155,8 +1179,12 @@ class Dataset:
         -------
         ReadingMeasures
             Returns a ReadingMeasures object containing the computed reading measures.
+            Its ``metadata['Sources']`` entry lists the event source files and AOI files
+            the measures were derived from, with paths below the dataset root recorded
+            relative to it.
         """
         reading_measures_list = []
+        reading_measures_metadata: dict[str, Any] = {}
 
         for events in tqdm(self.events):
             if events.frame.is_empty():
@@ -1175,6 +1203,12 @@ class Dataset:
             )
 
             events.map_to_aois(aoi_text_stimulus)
+
+            # The reading measures are derived from the events and their AOI stimulus files.
+            # AOI files below the dataset root are recorded relative to it, like all other
+            # dataset sources. The dataset's events stay untouched.
+            events_metadata = relativize_sources(events.metadata, self.paths.dataset)
+            reading_measures_metadata = merge_sources(reading_measures_metadata, events_metadata)
 
             fixations = events.filter_by_name('fixation')
 
@@ -1210,7 +1244,7 @@ class Dataset:
         else:
             combined_df = pl.DataFrame()
 
-        return ReadingMeasures(combined_df)
+        return ReadingMeasures(combined_df, metadata=reading_measures_metadata)
 
     def correct_fixations(
             self,
@@ -1274,6 +1308,57 @@ class Dataset:
         -------
         Dataset
             Returns self, useful for method cascading.
+
+        Examples
+        --------
+        Let's create a dataset holding fixations that drift away from three lines of
+        text with their centers at y = 100, 200 and 300:
+
+        >>> import polars as pl
+        >>> import pymovements as pm
+        >>> events = pm.Events(
+        ...     pl.DataFrame({
+        ...         'name': ['fixation', 'fixation', 'fixation'],
+        ...         'onset': [0, 200, 400],
+        ...         'offset': [100, 300, 500],
+        ...         'location': [[100.0, 105.0], [110.0, 195.0], [120.0, 302.0]],
+        ...     }),
+        ... )
+        >>> dataset = pm.Dataset(pm.DatasetDefinition(), path='data')
+        >>> dataset.gaze.append(pm.Gaze(events=events))
+        >>> stimulus = pm.stimulus.TextStimulus(
+        ...     aois=pl.DataFrame({
+        ...         'word': ['first', 'second', 'third'],
+        ...         'start_x': [90.0, 90.0, 90.0],
+        ...         'start_y': [80.0, 180.0, 280.0],
+        ...         'end_x': [200.0, 200.0, 200.0],
+        ...         'end_y': [120.0, 220.0, 320.0],
+        ...     }),
+        ...     aoi_column='word',
+        ...     start_x_column='start_x',
+        ...     start_y_column='start_y',
+        ...     end_x_column='end_x',
+        ...     end_y_column='end_y',
+        ... )
+
+        Correcting the fixations snaps each y-coordinate onto its line center and
+        preserves the original locations:
+
+        >>> dataset.correct_fixations(stimulus, algorithm='attach', verbose=False)
+        Dataset(name='.', path='data')
+          gaze: 1 recordings
+          events: 1 recordings
+        >>> dataset.events[0].frame.select(['name', 'location', 'location_original'])
+        shape: (3, 3)
+        ┌──────────┬────────────────┬───────────────────┐
+        │ name     ┆ location       ┆ location_original │
+        │ ---      ┆ ---            ┆ ---               │
+        │ str      ┆ list[f64]      ┆ list[f64]         │
+        ╞══════════╪════════════════╪═══════════════════╡
+        │ fixation ┆ [100.0, 100.0] ┆ [100.0, 105.0]    │
+        │ fixation ┆ [110.0, 200.0] ┆ [110.0, 195.0]    │
+        │ fixation ┆ [120.0, 300.0] ┆ [120.0, 302.0]    │
+        └──────────┴────────────────┴───────────────────┘
         """
         disable_progressbar = not verbose
         for events in tqdm(self.events, disable=disable_progressbar):
@@ -1690,7 +1775,7 @@ class Dataset:
         Raises
         ------
         AttributeError
-            If number of mirrors or number of resources specified for dataset is zero.
+            If no downloadable sources are found in the dataset definition.
         RuntimeError
             If downloading a resource failed for all given mirrors.
         """
@@ -1735,6 +1820,15 @@ class Dataset:
         -------
         Dataset
             Returns self, useful for method cascading.
+
+        Raises
+        ------
+        AttributeError
+            If a resource resolves to a source without a filename, since such a file can never
+            have been downloaded.
+        ValueError
+            If the resolved sources of the resources conflict (see
+            :py:meth:`~pymovements.DatasetDefinition.resolved_sources`).
         """
         dataset_download.extract_dataset(
             definition=self.definition,
@@ -1763,23 +1857,26 @@ class Dataset:
         -------
         By passing a `str` or a `Path` as `path` during initialization, you can explicitly set the
         directory path of the dataset:
+
         >>> import pymovements as pm
         >>>
         >>> dataset = pm.Dataset("ToyDataset", path='/path/to/your/dataset')
-        >>> dataset.path# doctest: +SKIP
+        >>> dataset.path  # doctest: +SKIP
         Path('/path/to/your/dataset')
 
         If you just want to specify the root directory path which holds all your local datasets, you
-        can create pass a :py:class:`~pymovements.DatasetPaths` object and set the `root`:
+        can pass a :py:class:`~pymovements.DatasetPaths` object and set the `root`:
+
         >>> paths = pm.DatasetPaths(root='/path/to/your/common/root/')
         >>> dataset = pm.Dataset("ToyDataset", path=paths)
-        >>> dataset.path# doctest: +SKIP
+        >>> dataset.path  # doctest: +SKIP
         Path('/path/to/your/common/root/ToyDataset')
 
         You can also specify an alternative dataset directory name:
+
         >>> paths = pm.DatasetPaths(root='/path/to/your/common/root/', dataset='my_dataset')
         >>> dataset = pm.Dataset("ToyDataset", path=paths)
-        >>> dataset.path# doctest: +SKIP
+        >>> dataset.path  # doctest: +SKIP
         Path('/path/to/your/common/root/my_dataset')
         """
         return self.paths.dataset
@@ -1799,6 +1896,84 @@ class Dataset:
             raise AttributeError('gaze files were not loaded yet. please run load() beforehand')
         if len(self.gaze) == 0:
             raise AttributeError('no files present in gaze attribute')
+
+    def summary(self) -> None:
+        """Print a summary of the dataset.
+
+        The summary extends the string representation with the total number of loaded gaze
+        samples, their estimated in-memory size and the total number of detected events,
+        including the event counts grouped by event name across all recordings.
+
+        See Also
+        --------
+        pymovements.Events.summary : Print a summary of the events.
+        pymovements.Dataset.report_data_quality :
+            Check dataset configuration and compute data quality measures.
+
+        Examples
+        --------
+        Initialize your :py:class:`~pymovements.Dataset` object and load the data first:
+
+        >>> import pymovements as pm
+        >>>
+        >>> dataset = pm.Dataset("ToyDataset", path='data/ToyDataset')# doctest: +SKIP
+        >>> dataset.load()# doctest: +SKIP
+
+        Print the dataset summary:
+
+        >>> dataset.summary()# doctest: +SKIP
+        Dataset(name='ToyDataset', path='data/ToyDataset')
+          experiment: Experiment(screen=Screen(...), eyetracker=EyeTracker(...))
+          resources: 1 defined
+          gaze: 20 recordings
+          events: 20 recordings
+          total samples: 566,715 (26.1 MB in memory)
+          total events: 0
+        """
+        lines = [str(self)]
+
+        total_samples = sum(
+            len(gaze.samples) for gaze in self.gaze if gaze.samples is not None
+        )
+        estimated_size_mb = sum(
+            gaze.samples.estimated_size() for gaze in self.gaze if gaze.samples is not None
+        ) / (1024 * 1024)
+        lines.append(f'  total samples: {total_samples:,} ({estimated_size_mb:.1f} MB in memory)')
+
+        total_events = sum(len(events) for events in self.events)
+        lines.append(f'  total events: {total_events:,}')
+
+        if total_events:
+            name_counts = pl.concat(
+                [events.frame.select('name') for events in self.events],
+            )['name'].value_counts().sort('name')
+            for name, count in name_counts.iter_rows():
+                lines.append(f'    {name}: {count:,}')
+
+        print('\n'.join(lines))
+
+    def __str__(self) -> str:
+        """Return string representation of Dataset.
+
+        The representation includes the dataset name and path, the experiment definition, the
+        number of defined resources and the number of loaded gaze and event recordings.
+        """
+        lines = [f'{type(self).__name__}(name={self.definition.name!r}, path={str(self.path)!r})']
+
+        if self.definition.experiment:
+            lines.append(f'  experiment: {self.definition.experiment}')
+
+        if self.definition.resources:
+            lines.append(f'  resources: {len(self.definition.resources)} defined')
+
+        lines.append(f'  gaze: {len(self.gaze)} recordings')
+        lines.append(f'  events: {len(self.events)} recordings')
+
+        return '\n'.join(lines)
+
+    def __repr__(self) -> str:
+        """Return string representation of Dataset."""
+        return self.__str__()
 
     def _disclaimer(self) -> str:
         """Return string for dataset download disclaimer."""

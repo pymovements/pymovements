@@ -313,6 +313,16 @@ def test_from_csv_accepts_file_object(buffer_class, mode, encoding, make_example
 
 
 @pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
+def test_from_csv_columns_keep_order_of_read_csv_kwargs(make_example_file):
+    filepath = make_example_file('monocular_example.csv')
+    columns = ['y_left_pix', 'x_left_pix', 'time']
+
+    gaze = from_csv(file=filepath, read_csv_kwargs={'columns': columns})
+
+    assert gaze.samples.columns == columns
+
+
+@pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
 def test_from_csv_decimal_overrides_with_precision_and_scale(tmp_path):
     p = tmp_path / 'mini.csv'
     p.write_text('time,pupil\n0,1.23\n1,4.56\n')
@@ -345,3 +355,43 @@ def test_from_csv_deprecated_schema_overrides_merged_with_column_schema_override
     # while non-conflicting deprecated overrides are still applied.
     assert gaze.samples.schema['pupil'] == pl.Float32
     assert gaze.samples.schema['extra'] == pl.Float64
+
+
+def test_from_csv_adds_no_source_for_file_object(make_example_file):
+    filepath = make_example_file('monocular_example.csv')
+    with open(filepath, encoding='utf-8') as csv_file:
+        buffer = io.StringIO(csv_file.read())
+
+    gaze = from_csv(buffer, pixel_columns=['x_left_pix', 'y_left_pix'])
+
+    assert 'Sources' not in gaze.metadata
+    assert 'Sources' not in gaze.events.metadata
+
+
+def test_from_csv_respects_user_provided_sources(make_example_file):
+    filepath = make_example_file('monocular_example.csv')
+
+    gaze = from_csv(
+        filepath,
+        metadata={'Sources': ['my/custom/source.csv']},
+        pixel_columns=['x_left_pix', 'y_left_pix'],
+    )
+
+    assert gaze.metadata['Sources'] == ['my/custom/source.csv']
+
+
+def test_from_csv_does_not_mutate_passed_metadata(make_example_file):
+    filepath = make_example_file('monocular_example.csv')
+    metadata = {'subject_id': 42}
+
+    gaze = from_csv(
+        filepath,
+        metadata=metadata,
+        pixel_columns=['x_left_pix', 'y_left_pix'],
+    )
+
+    assert metadata == {'subject_id': 42}
+    assert gaze.metadata == {
+        'subject_id': 42,
+        'Sources': [filepath.as_posix()],
+    }
