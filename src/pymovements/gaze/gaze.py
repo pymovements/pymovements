@@ -1401,12 +1401,13 @@ class Gaze:
         """Calculate eye movement measure on :py:attr:`~.Gaze.samples`.
 
         If :py:class:``Gaze`` has :py:attr:``trial_columns``, measures will be grouped by
-        trials.
+        trials. The result then holds one row per trial, with the trial columns first.
 
         Parameters
         ----------
         method: str | Callable[..., polars.Expr]
-            Measure to be calculated.
+            Measure to be calculated. With trial columns, its expression runs per trial and
+            should aggregate to one value.
         **kwargs: Any
             Keyword arguments to be passed to the respective measure function.
 
@@ -1462,19 +1463,8 @@ class Gaze:
         if self.trial_columns is None:
             return samples.select(method(**kwargs))
 
-        # Group measure values by trial columns.
-        return polars.concat(
-            [
-                df.select(
-                    [  # add trial columns first, then add column for measure.
-                        polars.lit(value).cast(samples.schema[name]).alias(name)
-                        for name, value in zip(self.trial_columns, trial_values)
-                    ] + [method(**kwargs)],
-                )
-                for trial_values, df in
-                samples.group_by(self.trial_columns, maintain_order=True)
-            ],
-        )
+        # Evaluate the measure once per trial group in a single aggregation.
+        return samples.group_by(self.trial_columns, maintain_order=True).agg(method(**kwargs))
 
     def measure_events_ratio(
         self,

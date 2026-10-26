@@ -294,8 +294,8 @@ def disposition(
     y_position = pl.col(position_column).list.get(1)
 
     result = (
-        (x_position.head(n=1) - x_position.reverse().head(n=1)).pow(2)
-        + (y_position.head(n=1) - y_position.reverse().head(n=1)).pow(2)
+        (x_position.first() - x_position.last()).pow(2)
+        + (y_position.first() - y_position.last()).pow(2)
     ).sqrt()
 
     return result.alias('disposition')
