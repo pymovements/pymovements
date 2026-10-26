@@ -1444,3 +1444,48 @@ def test_map_to_aois_empty_samples_returns_empty_aoi_columns(
 
     assert gaze.samples.height == 0
     assert gaze.samples.columns == ['pixel', 'aoi', 'x', 'y', 'width', 'height']
+
+
+@pytest.fixture(name='gaze_with_sources')
+def fixture_gaze_with_sources():
+    return Gaze(
+        samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+        metadata={'Sources': ['raw/sub_1.csv']},
+    )
+
+
+@pytest.fixture(name='text_stimulus_with_sources')
+def fixture_text_stimulus_with_sources():
+    return TextStimulus(
+        aois=pl.DataFrame({
+            'char': ['a'],
+            'sx': [0.0],
+            'sy': [0.0],
+            'ex': [1.0],
+            'ey': [1.0],
+        }),
+        aoi_column='char',
+        start_x_column='sx',
+        start_y_column='sy',
+        end_x_column='ex',
+        end_y_column='ey',
+        metadata={'Sources': ['stimuli/text_1_aoi.csv']},
+    )
+
+
+def test_gaze_map_to_aois_merges_stimulus_sources(gaze_with_sources, text_stimulus_with_sources):
+    gaze_with_sources.map_to_aois(text_stimulus_with_sources, verbose=False)
+
+    assert gaze_with_sources.metadata['Sources'] == ['raw/sub_1.csv', 'stimuli/text_1_aoi.csv']
+
+
+def test_gaze_map_to_aois_with_none_metadata_adopts_stimulus_sources(
+        gaze_with_sources, text_stimulus_with_sources,
+):
+    gaze_with_sources.metadata = None
+
+    gaze_with_sources.map_to_aois(text_stimulus_with_sources, verbose=False)
+
+    assert gaze_with_sources.metadata == {'Sources': ['stimuli/text_1_aoi.csv']}

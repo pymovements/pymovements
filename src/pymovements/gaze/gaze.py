@@ -40,6 +40,7 @@ from pymovements._utils._column_nesting import get_nested_columns
 from pymovements._utils._column_nesting import unnest_list_columns
 from pymovements._utils._html import repr_html
 from pymovements._utils._nulls import row_is_null
+from pymovements._utils._sources import merge_sources
 from pymovements._utils._time import duration_to_ms
 from pymovements._utils._time import durations_to_ms
 from pymovements._utils._time import time_column_to_duration_us
@@ -219,21 +220,30 @@ class Gaze:
     events: Events | None
         A dataframe of events in the gaze signal. (default: None)
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. (default: None)
+        Dictionary containing additional metadata. A ``Sources`` entry lists the files the
+        gaze data was loaded from and is propagated to the events. Reloading a file saved
+        with :py:meth:`save` records the reloaded file, not the sources of the original
+        data. (default: None)
     messages: polars.DataFrame | None
         DataFrame containing messages from the experiment.
-        The required columns are 'time' and 'content'. (default: None)
+        The required columns are 'time' and 'content'. The ``time`` column is converted to a
+        ``polars.Duration`` column with microsecond precision. Numeric input is interpreted
+        as milliseconds. (default: None)
     trial_columns: str | list[str] | None
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
         the input data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
     calibrations: polars.DataFrame | None
-        The calibrations from the data: timestamp, num_points, tracked eye, tracking_mode.
+        The calibrations from the data: time, num_points, eye, tracking_mode.
+        A ``time`` column, if present, is converted to a ``polars.Duration`` column with
+        microsecond precision. Numeric input is interpreted as milliseconds.
         None by default, to be populated by I/O helpers (e.g. from_asc). (default: None)
     validations: polars.DataFrame | None
-        The validations from the data: timestamp, num_points, tracked eye, accuracy_avg,
-        accuracy_max. None by default, to be populated by I/O helpers (e.g. from_asc).
+        The validations from the data: time, num_points, eye, accuracy_avg,
+        accuracy_max. A ``time`` column, if present, is converted to a ``polars.Duration``
+        column with microsecond precision. Numeric input is interpreted as milliseconds.
+        None by default, to be populated by I/O helpers (e.g. from_asc).
         (default: None)
     time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
@@ -278,20 +288,26 @@ class Gaze:
     experiment : Experiment | None
         The experiment definition.
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata.
+        Dictionary containing additional metadata. A ``Sources`` entry lists the files the
+        gaze data was loaded from. Reloading a file saved with :py:meth:`save` records the
+        reloaded file, not the sources of the original data.
     messages: polars.DataFrame | None
-        DataFrame containing messages from the experiment session.
+        DataFrame containing messages from the experiment session. The ``time`` column is
+        stored as a ``polars.Duration`` column with microsecond precision.
     trial_columns: list[str] | None
         The name of the trial columns in the samples data frame. If not None, the transformation
         methods will be applied to each trial separately.
     n_components: int | None
         The number of components in the pixel, position, velocity and acceleration columns.
     calibrations: polars.DataFrame | None
-        The calibrations from the data: timestamp, num_points, tracked eye, tracking_mode.
+        The calibrations from the data: time, num_points, eye, tracking_mode.
+        A ``time`` column, if present, is stored as a ``polars.Duration`` column with
+        microsecond precision.
         None by default, to be populated by I/O helpers (e.g. from_asc).
     validations: polars.DataFrame | None
-        The validations from the data: timestamp, num_points, tracked eye, accuracy_avg,
-        accuracy_max.
+        The validations from the data: time, num_points, eye, accuracy_avg,
+        accuracy_max. A ``time`` column, if present, is stored as a ``polars.Duration``
+        column with microsecond precision.
         None by default, to be populated by I/O helpers (e.g. from_asc).
     schema: polars.type_aliases.SchemaDict
         Schema of the samples dataframe.
@@ -462,6 +478,9 @@ class Gaze:
             self.metadata = {}
         else:
             self.metadata = metadata
+
+        # Events derived from this gaze object share its source files.
+        self.events.metadata = merge_sources(self.events.metadata, self.metadata)
 
         # The auxiliary frames' time column is migrated to Duration('us') before being stored,
         # consistent with the samples time column. Numeric values are interpreted as
@@ -1348,6 +1367,12 @@ class Gaze:
         if isinstance(method, str):
             method = EventDetectionLibrary.get(method)
 
+        # Events detected from this gaze object share its source files. This also covers
+        # events containers replaced after construction, e.g. by Dataset.clear_events().
+        # Merging after method resolution keeps detect free of side effects when the
+        # method name is invalid.
+        self.events.metadata = merge_sources(self.events.metadata, self.metadata)
+
         if self.n_components is not None:
             eye_components = self._infer_eye_components(eye)
         else:
@@ -1514,12 +1539,13 @@ class Gaze:
         """Calculate eye movement measure on :py:attr:`~.Gaze.samples`.
 
         If :py:class:``Gaze`` has :py:attr:``trial_columns``, measures will be grouped by
-        trials.
+        trials. The result then holds one row per trial, with the trial columns first.
 
         Parameters
         ----------
         method: str | Callable[..., polars.Expr]
-            Measure to be calculated.
+            Measure to be calculated. With trial columns, its expression runs per trial and
+            should aggregate to one value.
         **kwargs: Any
             Keyword arguments to be passed to the respective measure function.
 
@@ -1575,19 +1601,8 @@ class Gaze:
         if self.trial_columns is None:
             return samples.select(method(**kwargs))
 
-        # Group measure values by trial columns.
-        return polars.concat(
-            [
-                df.select(
-                    [  # add trial columns first, then add column for measure.
-                        polars.lit(value).cast(samples.schema[name]).alias(name)
-                        for name, value in zip(self.trial_columns, trial_values)
-                    ] + [method(**kwargs)],
-                )
-                for trial_values, df in
-                samples.group_by(self.trial_columns, maintain_order=True)
-            ],
-        )
+        # Evaluate the measure once per trial group in a single aggregation.
+        return samples.group_by(self.trial_columns, maintain_order=True).agg(method(**kwargs))
 
     def measure_events_ratio(
         self,
@@ -1804,6 +1819,8 @@ class Gaze:
 
         This maps each gaze point to an AOI label based on the configured stimulus rectangles.
         The mapping uses half-open intervals [start, end) for spatial bounds.
+        The source files of the stimulus are merged into the ``Sources`` entry of
+        :py:attr:`~.Gaze.metadata`.
 
         Parameters
         ----------
@@ -2027,6 +2044,9 @@ class Gaze:
         )
         aoi_df = _match_points_to_aois(aoi_dataframe, points)
         self.samples = polars.concat([self.samples, aoi_df], how='horizontal_extend')
+
+        # The AOI-mapped samples are derived from the stimulus file as well.
+        self.metadata = merge_sources(self.metadata, aoi_dataframe.metadata)
 
     def nest(
             self,
@@ -2842,10 +2862,10 @@ class Gaze:
 
     def _convert_time_units(self, time_unit: str | None) -> None:
         """Convert the time column to ``polars.Duration('us')``."""
-        # Reject an invalid unit up front: the branches below dispatch on the exact unit and the
-        # final `else` assumes 'step', so without this a typo like 'sec' would be silently handled
-        # as a step conversion. For a Duration time column the unit is ignored, but an invalid
-        # string still raises here so the same bad call fails regardless of the time column dtype.
+        # Reject an invalid unit up front: without this a typo like 'sec' would surface as an
+        # opaque KeyError from the unit lookup deep in the numeric conversion instead of a clear
+        # error. For a Duration time column the unit is ignored, but an invalid string still
+        # raises here so the same bad call fails regardless of the time column dtype.
         if time_unit not in {'s', 'ms', 'us', 'step'}:
             raise ValueError(
                 f"unsupported time unit '{time_unit}'. "
@@ -2905,6 +2925,48 @@ class Gaze:
         where ``N`` is the number of rows.
         """
         return self.__str__()
+
+    def summary(self) -> None:
+        """Print a summary of the gaze object.
+
+        The summary includes the total number of samples with their estimated in-memory size,
+        the sample column names with their datatypes, and an overview of the detected events
+        grouped by event name.
+
+        See Also
+        --------
+        pymovements.Events.summary : Print a summary of the events.
+        pymovements.Gaze.report_data_quality :
+            Check gaze configuration and compute data quality measures.
+
+        Examples
+        --------
+        >>> import polars as pl
+        >>> from pymovements import Events
+        >>> from pymovements import Gaze
+        >>> gaze = Gaze(
+        ...     samples=pl.DataFrame(
+        ...         {'time': [0, 1, 2], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}
+        ...     ),
+        ...     pixel_columns=['x', 'y'],
+        ...     events=Events(name=['saccade', 'fixation'], onsets=[0, 1], offsets=[1, 2]),
+        ... )
+        >>> gaze.summary()
+        total samples: 3 (0.0 MB in memory)
+        columns: time (Duration(time_unit='us')), pixel (List(Float64))
+        total events: 2
+          fixation: 1
+          saccade: 1
+        """
+        estimated_size_mb = self.samples.estimated_size() / (1024 * 1024)
+        print(f'total samples: {len(self.samples):,} ({estimated_size_mb:.1f} MB in memory)')
+
+        columns = ', '.join(
+            f'{name} ({dtype})' for name, dtype in self.samples.schema.items()
+        )
+        print(f'columns: {columns}'.rstrip())
+
+        self.events.summary()
 
     def save(
             self,

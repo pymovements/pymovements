@@ -72,6 +72,14 @@ def test_is_invalid_value_parametrized(value, expected):
             [False, True, True, True, True], id='list_float',
         ),
         pytest.param(
+            [[1, 2], [1, None], None], pl.List(pl.Int64),
+            [False, True, True], id='list_int',
+        ),
+        pytest.param(
+            [['a', 'b'], ['a', None], ['inf', 'x'], None], pl.List(pl.Utf8),
+            [False, True, False, True], id='list_utf8',
+        ),
+        pytest.param(
             [1.0, None, nan, inf, 2.0], None,
             [False, True, True, True, False], id='no_dtype',
         ),
