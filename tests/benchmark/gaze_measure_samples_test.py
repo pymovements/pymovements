@@ -19,33 +19,48 @@
 # SOFTWARE.
 """Benchmark ``Gaze.measure_samples`` grouped by trial.
 
-Each measure runs over one million synthetic samples split into many short trials (20000 x 50)
-or few long ones (2000 x 500).
+Each measure runs over one million synthetic samples at 1 kHz with one missing position sample in
+1000, split into many short trials (20000 x 50) or few long ones (2000 x 500).
 """
 import numpy as np
 import polars as pl
 import pytest
 
+from pymovements import Experiment
 from pymovements import Gaze
 
 _RNG = np.random.default_rng(42)
 
 
 def _build_gaze(n_trials: int, samples_per_trial: int) -> Gaze:
+    """Build a 1 kHz gaze with one missing position sample in 1000."""
     n_samples = n_trials * samples_per_trial
+    position = _RNG.normal(size=(n_samples, 2)).tolist()
+    position[::1000] = [None] * len(position[::1000])
     samples = pl.DataFrame(
         {
             'trial': np.repeat(np.arange(n_trials), samples_per_trial),
             'time': list(range(n_samples)),
-            'position': _RNG.normal(size=(n_samples, 2)).tolist(),
+            'position': position,
         },
     ).with_columns(
         pl.col('trial').cast(pl.Int64),
         pl.col('position').cast(pl.List(pl.Float64)),
     )
-    return Gaze(samples, trial_columns=['trial'])
+    return Gaze(
+        samples,
+        experiment=Experiment(1024, 768, 38, 30, 60, 'upper left', 1000),
+        trial_columns=['trial'],
+    )
 
 
+@pytest.mark.parametrize(
+    ('measure', 'kwargs'),
+    [
+        pytest.param('location', {}, id='location'),
+        pytest.param('data_loss', {'column': 'position'}, id='data_loss'),
+    ],
+)
 @pytest.mark.parametrize(
     ('n_trials', 'samples_per_trial'),
     [
@@ -53,12 +68,12 @@ def _build_gaze(n_trials: int, samples_per_trial: int) -> Gaze:
         pytest.param(2000, 500, id='few_long_trials'),
     ],
 )
-def test_gaze_measure_samples_benchmark(benchmark, n_trials, samples_per_trial):
-    """Benchmark location over one million samples split into trials."""
+def test_gaze_measure_samples_benchmark(benchmark, measure, kwargs, n_trials, samples_per_trial):
+    """Benchmark a measure over one million samples split into trials."""
     gaze = _build_gaze(n_trials, samples_per_trial)
 
     benchmark.pedantic(
-        lambda: gaze.measure_samples('location'),
+        lambda: gaze.measure_samples(measure, **kwargs),
         iterations=1,
         rounds=5,
     )
