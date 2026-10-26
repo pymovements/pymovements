@@ -575,6 +575,54 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
             id='cal_timestamp_with_space',
         ),
         pytest.param(
+            'MSG	7045618 !CAL VALIDATION HV9 R RIGHT GOOD ERROR 0.5 avg. 0.9 max  '
+            'OFFSET 0.19 deg. 4.2,6.3 pix.\n',
+            [{
+                'error': 'GOOD ERROR',
+                'quality': 'GOOD',
+                'tracked_eye': 'RIGHT',
+                'num_points': '9',
+                'timestamp': '7045618',
+                'validation_score_avg': '0.5',
+                'validation_score_max': '0.9',
+            }],
+            [],
+            id='validation_single_decimal_scores',
+        ),
+        pytest.param(
+            'MSG	1076158 !CAL VALIDATION HV9 R RIGHT POOR ERROR 12.37 avg. 25.25 max  '
+            'OFFSET 0.19 deg. 4.2,6.3 pix.\n',
+            [{
+                'error': 'POOR ERROR',
+                'quality': 'POOR',
+                'tracked_eye': 'RIGHT',
+                'num_points': '9',
+                'timestamp': '1076158',
+                'validation_score_avg': '12.37',
+                'validation_score_max': '25.25',
+            }],
+            [],
+            id='validation_multi_digit_scores',
+        ),
+        pytest.param(
+            'MSG	1076158 !CAL VALIDATION L ABORTED\n'
+            'MSG	1076160 !CAL VALIDATION R ABORTED\n',
+            [
+                {
+                    'timestamp': '1076158',
+                    'tracked_eye': 'LEFT',
+                    'quality': 'ABORTED',
+                },
+                {
+                    'timestamp': '1076160',
+                    'tracked_eye': 'RIGHT',
+                    'quality': 'ABORTED',
+                },
+            ],
+            [],
+            id='validation_aborted',
+        ),
+        pytest.param(
             'MSG	7045618 !CAL\n'
             '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n',
             [],

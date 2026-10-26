@@ -85,9 +85,14 @@ VALIDATION_REGEX = (
     r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+!CAL\s+VALIDATION\s+HV'
     r'(?P<num_points>\d\d?).*'
     r'(?P<tracked_eye>LEFT|RIGHT)\s+'
-    r'(?P<error>(?:(?P<quality>GOOD|FAIR|POOR|FAILED|ABORTED)\s+)?\D*)\s+'
-    r'(?P<validation_score_avg>\d.\d\d)\s+avg\.\s+'
-    r'(?P<validation_score_max>\d.\d\d)\s+max'
+    r'(?P<error>(?:(?P<quality>GOOD|FAIR|POOR)\s+)?\D*)\s+'
+    r'(?P<validation_score_avg>\d+\.\d+)\s+avg\.\s+'
+    r'(?P<validation_score_max>\d+\.\d+)\s+max'
+)
+
+VALIDATION_ABORTED_REGEX = (
+    r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+!CAL\s+VALIDATION\s+'
+    r'(?P<tracked_eye>L|R)\s+ABORTED\b'
 )
 
 FIXATION_START_REGEX = r'SFIX\s+(?P<eye>R|L)\s+(?P<timestamp>(\d+[.]?\d*))\s*'
@@ -792,6 +797,14 @@ def parse_eyelink(
 
         elif match := _match_regex(VALIDATION_REGEX, line):
             validations.append(match.groupdict())
+
+        elif match := _match_regex(VALIDATION_ABORTED_REGEX, line):
+            validation = match.groupdict()
+            validation['tracked_eye'] = (
+                'LEFT' if validation['tracked_eye'] == 'L' else 'RIGHT'
+            )
+            validation['quality'] = 'ABORTED'
+            validations.append(validation)
 
         elif match := _match_regex(CALIBRATION_QUALITY_REGEX, line):
             # The calibration quality flag is logged after the calibration points block,
