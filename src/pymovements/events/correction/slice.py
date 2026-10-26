@@ -45,6 +45,10 @@ def slice(
 ) -> pl.Expr:
     """Slice algorithm to assign fixations in multi-line reading tasks.
 
+    The fixation sequence is sliced into proto lines based on vertical drift
+    thresholds. The proto lines are grown and merged until they map to the text lines
+    top to bottom.
+
     Reference: :cite:p:`Glandorf2021`.
 
     Parameters
