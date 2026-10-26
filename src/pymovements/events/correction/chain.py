@@ -39,6 +39,10 @@ def chain(
 ) -> pl.Expr:
     """Group fixations into reading chains based on distance thresholds and align to lines.
 
+    Consecutive fixations within the horizontal and vertical distance thresholds form a
+    chain. Each chain is aligned as a whole to the text line closest to its mean
+    y-coordinate.
+
     Reference: :cite:p:`Carr2022`.
 
     Parameters
