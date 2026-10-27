@@ -62,6 +62,11 @@ from pymovements.measure.events.processing import EventSamplesProcessor
 from pymovements.measure.samples.library import SampleMeasureLibrary
 from pymovements.stimulus import TextStimulus
 
+# Transforms whose output for a sample only depends on that sample's own values. They can be
+# applied to the whole frame at once and do not need the per-trial grouping that windowed
+# transforms (e.g. pos2vel, smooth) require.
+_ELEMENT_WISE_TRANSFORMS = frozenset({'pix2deg', 'deg2pix'})
+
 _AOI_ROW_ID = '__pymovements_aoi_row_id'
 _AOI_MATCH_ORDER = '__pymovements_aoi_match_order'
 _AOI_X = '__pymovements_aoi_x'
@@ -899,7 +904,9 @@ class Gaze:
                         f'Available columns in samples dataframe are: {self.samples.columns}',
                     )
 
-            if self.trial_columns is None:
+            if self.trial_columns is None or transform_method.__name__ in _ELEMENT_WISE_TRANSFORMS:
+                # Element-wise transforms produce the same result grouped or ungrouped, so apply
+                # them to the whole frame in a single pass instead of once per trial.
                 self.samples = self.samples.with_columns(transform_method(**kwargs))
             else:
                 # If samples are empty, grouping yields no groups – return without changes.
