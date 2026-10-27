@@ -1350,7 +1350,8 @@ class Gaze:
         Parameters
         ----------
         method: Callable[..., Events] | str
-            The event detection method to be applied.
+            The event detection method to be applied. A method that accepts an ``events``
+            argument must neither mutate nor return it.
         eye: str
             Select which eye to choose. Valid options are ``auto``, ``left``, ``right`` or ``None``.
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
@@ -1373,6 +1374,9 @@ class Gaze:
         # method name is invalid.
         self.events.metadata = merge_sources(self.events.metadata, self.metadata)
 
+        method_argspec = inspect.getfullargspec(method)
+        method_args = method_argspec.args + method_argspec.kwonlyargs
+
         if self.n_components is not None:
             eye_components = self._infer_eye_components(eye)
         else:
@@ -1381,6 +1385,7 @@ class Gaze:
         if self.trial_columns is None:
             method_kwargs = self._fill_event_detection_kwargs(
                 method,
+                method_args=method_args,
                 samples=self.samples,
                 events=self.events,
                 eye_components=eye_components,
@@ -1415,15 +1420,25 @@ class Gaze:
                     f'available columns: {self.events.frame.columns}',
                 )
 
+            # Only detectors that accept an ``events`` argument look at previously detected
+            # events. For all others the per-trial events selection can be skipped, and an empty
+            # events frame can be shared across trials instead of being filtered once per trial.
+            needs_events = 'events' in method_args
+            shared_empty_events = (
+                Events(self.events.frame)
+                if needs_events and self.events.frame.height == 0
+                else None
+            )
+
             new_events_grouped: list[polars.DataFrame] = []
 
             for group_identifier, group_gaze in grouped_samples.items():
-                # Create filter expression for selecting respective group rows.
-                if len(self.trial_columns) == 1:
-                    group_filter_expression = polars.col(
-                        self.trial_columns[0],
-                    ) == group_identifier[0]
+                if not needs_events:
+                    group_events = self.events
+                elif shared_empty_events is not None:
+                    group_events = shared_empty_events
                 else:
+                    # Create filter expression for selecting respective group rows.
                     group_filter_expression = polars.col(
                         self.trial_columns[0],
                     ) == group_identifier[0]
@@ -1432,11 +1447,12 @@ class Gaze:
                             polars.col(name) == value
                         )
 
-                # Select group events
-                group_events = Events(self.events.frame.filter(group_filter_expression))
+                    # Select group events.
+                    group_events = Events(self.events.frame.filter(group_filter_expression))
 
                 method_kwargs = self._fill_event_detection_kwargs(
                     method,
+                    method_args=method_args,
                     samples=group_gaze,
                     events=group_events,
                     eye_components=eye_components,
@@ -2637,6 +2653,7 @@ class Gaze:
     def _fill_event_detection_kwargs(
             self,
             method: Callable[..., Events],
+            method_args: list[str],
             samples: polars.DataFrame,
             events: Events,
             eye_components: tuple[int, int] | None,
@@ -2648,6 +2665,8 @@ class Gaze:
         ----------
         method: Callable[..., Events]
             The method for which the keyword argument dictionary will be filled.
+        method_args: list[str]
+            The positional and keyword-only argument names of ``method``.
         samples: polars.DataFrame
             The samples to be used for filling event detection keyword arguments.
         events: Events
@@ -2663,11 +2682,6 @@ class Gaze:
             The filled keyword argument dictionary.
         """
         # Automatically infer eye to use for event detection.
-        method_args = (
-            inspect.getfullargspec(method).args
-            + inspect.getfullargspec(method).kwonlyargs
-        )
-
         if 'positions' in method_args:
             if 'position' not in samples.columns:
                 raise polars.exceptions.ColumnNotFoundError(
