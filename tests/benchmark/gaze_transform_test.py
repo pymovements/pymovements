@@ -21,8 +21,8 @@
 
 When ``trial_columns`` is set, ``Gaze.transform`` used to apply *every* transform once per
 trial group and concatenate the results. For element-wise transforms such as ``pix2deg`` this
-is pure overhead that grows with the number of trials. These benchmarks track that cost at a
-fixed number of samples, so the runtime should stay flat across trial counts.
+is pure overhead that grows with the number of trials. Every case below holds the same total of
+2.66M samples, so the runtime should stay flat across trial counts.
 """
 import numpy as np
 import polars as pl
@@ -32,11 +32,9 @@ from pymovements import Experiment
 from pymovements import Gaze
 
 _RNG = np.random.default_rng(42)
-_N_SAMPLES = 2_660_000
 
 
-def _build_gaze(n_trials: int, columns_kwarg: str) -> Gaze:
-    samples_per_trial = _N_SAMPLES // n_trials
+def _build_gaze(n_trials: int, samples_per_trial: int, columns_kwarg: str) -> Gaze:
     n_samples = n_trials * samples_per_trial
     samples = pl.DataFrame(
         {
@@ -60,10 +58,19 @@ def _build_gaze(n_trials: int, columns_kwarg: str) -> Gaze:
         pytest.param('deg2pix', 'position_columns', id='deg2pix'),
     ],
 )
-@pytest.mark.parametrize('n_trials', [1, 200, 2660])
-def test_gaze_element_wise_transform_benchmark(benchmark, method, columns_kwarg, n_trials):
+@pytest.mark.parametrize(
+    ('n_trials', 'samples_per_trial'),
+    [
+        pytest.param(1, 2_660_000, id='1_trial'),
+        pytest.param(200, 13_300, id='200_trials'),
+        pytest.param(2660, 1000, id='2660_trials'),
+    ],
+)
+def test_gaze_element_wise_transform_benchmark(
+        benchmark, method, columns_kwarg, n_trials, samples_per_trial,
+):
     """Benchmark an element-wise transform over 2.66M samples split into ``n_trials`` trials."""
-    gaze = _build_gaze(n_trials, columns_kwarg)
+    gaze = _build_gaze(n_trials, samples_per_trial, columns_kwarg)
     pristine = gaze.samples.clone()
 
     def _setup() -> None:
