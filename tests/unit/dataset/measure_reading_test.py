@@ -200,7 +200,7 @@ def test_measure_reading_default_warns_and_annotates_events(
     assert len(reading_measures.frame) > 0
     assert {'aoi', 'character'} <= set(events.frame.columns)
     # Annotating in place records the AOI file as the events read it, not relative to the root.
-    assert events.metadata['Sources'] == ['raw/sub_5.csv', str(aoi_path)]
+    assert events.metadata['Sources'] == ['raw/sub_5.csv', aoi_path.as_posix()]
 
 
 def test_measure_reading_annotate_events_true_annotates_without_warning(
@@ -221,7 +221,7 @@ def test_measure_reading_annotate_events_true_annotates_without_warning(
     assert len(reading_measures.frame) > 0
     assert {'aoi', 'character'} <= set(events.frame.columns)
     # Annotating in place records the AOI file as the events read it, not relative to the root.
-    assert events.metadata['Sources'] == ['raw/sub_5.csv', str(aoi_path)]
+    assert events.metadata['Sources'] == ['raw/sub_5.csv', aoi_path.as_posix()]
 
 
 def test_measure_reading_annotate_events_false_keeps_events(dummy_dataset, make_example_file):
