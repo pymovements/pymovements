@@ -17,6 +17,7 @@ Transforms
     clip
     downsample
     norm
+    nullify_out_of_bounds
     pix2deg
     deg2pix
     pos2acc
