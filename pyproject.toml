@@ -160,7 +160,7 @@ max-module-lines = 2000
 [tool.pylint.main]
 py-version = "3.10"
 
-# Only the checks ruff lacks; the rest of the linting runs in ruff.
+# Only the checks ruff has no rule for.
 [tool.pylint."messages control"]
 disable = ["all"]
 enable = [
@@ -209,7 +209,7 @@ xfail_strict = true
 [tool.ruff]
 line-length = 100
 target-version = "py310"
-builtins = ["display"] # notebooks, linted natively (drop nbqa)
+builtins = ["display"] # defined in notebooks
 
 [tool.ruff.lint]
 preview = true
