@@ -23,7 +23,6 @@ from __future__ import annotations
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
-from polars.testing import assert_series_equal
 
 from pymovements import Experiment
 from pymovements import Gaze
@@ -43,24 +42,6 @@ def test_transform_early_return_on_empty_grouped_frames():
     # Ensure samples are unchanged (no new columns, still empty)
     assert before.schema == after.schema
     assert before.shape == after.shape
-
-
-def test_nullify_out_of_bounds_nulls_whole_sample():
-    samples = pl.DataFrame(
-        {
-            'time': [1000, 1001, 1002],
-            'x_pix': [1., 50., 5.],
-            'y_pix': [4., 5., 6.],
-        },
-    )
-    gaze = Gaze(samples=samples, pixel_columns=['x_pix', 'y_pix'])
-
-    gaze.nullify_out_of_bounds(
-        lower_bound=0, upper_bound=10, input_column='pixel', output_column='pixel',
-    )
-
-    expected = pl.Series('pixel', [[1., 4.], None, [5., 6.]], pl.List(pl.Float64))
-    assert_series_equal(gaze.samples['pixel'], expected)
 
 
 def test_transform_returns_early_when_groupby_yields_no_groups(monkeypatch):
@@ -173,3 +154,27 @@ def test_transform_grouped_path_empty_samples_early_return():
     # Ensure samples are unchanged (no new columns, still empty)
     assert before.schema == after.schema
     assert before.shape == after.shape
+
+
+def test_nullify_out_of_bounds_nulls_whole_sample():
+    samples = pl.DataFrame(
+        {
+            'time': [1000, 1001, 1002, 1003],
+            'x_pix': [1., 50., 5., -2.],
+            'y_pix': [4., 5., 6., 7.],
+        },
+    )
+    gaze = Gaze(samples=samples, pixel_columns=['x_pix', 'y_pix'])
+
+    gaze.nullify_out_of_bounds(
+        lower_bound=0, upper_bound=10, input_column='pixel', output_column='pixel',
+    )
+
+    expected = pl.DataFrame(
+        {
+            'time': [1000000, 1001000, 1002000, 1003000],
+            'pixel': [[1., 4.], None, [5., 6.], None],
+        },
+        schema={'time': pl.Duration('us'), 'pixel': pl.List(pl.Float64)},
+    )
+    assert_frame_equal(gaze.samples, expected)

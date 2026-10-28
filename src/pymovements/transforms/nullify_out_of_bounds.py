@@ -38,7 +38,9 @@ def nullify_out_of_bounds(
 
     In contrast to :func:`~pymovements.transforms.clip`, which replaces out-of-bound components by
     the bound, a sample with any component outside the bounds is set to null as a whole.
-    Samples with null components keep their existing nulls.
+    Samples with null components keep their existing nulls. Only ``output_column`` is affected.
+    Other signal columns of the same sample are untouched, see
+    :py:meth:`~pymovements.Gaze.nullify_event_samples` for nulling every signal column.
 
     Parameters
     ----------

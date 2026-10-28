@@ -977,6 +977,9 @@ class Gaze:
 
         In contrast to :py:meth:`~.Gaze.clip`, which replaces out-of-bound components by the
         bound, a sample with any component outside the bounds is set to null as a whole.
+        Samples with null components keep their existing nulls. Only ``output_column`` is
+        affected. Other signal columns of the same sample are untouched, see
+        :py:meth:`~.Gaze.nullify_event_samples` for nulling every signal column.
 
         After success, the out-of-bound samples in :py:attr:`~.Gaze.samples` are null.
 
