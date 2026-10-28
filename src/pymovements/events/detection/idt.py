@@ -106,10 +106,11 @@ def idt(
     ------
     TypeError
         If positions is a polars Series and dtype not List
-        If timesteps is a polars Series and dtype neither numeric nor Duration
+        If timesteps is neither a Duration series nor of a numeric dtype
     ValueError
         If positions is not shaped (N, 2)
         If positions and timesteps differ in length
+        If timesteps are not in ascending order
         If dispersion_threshold is not greater than 0
         If minimum_duration is not greater than 0
 

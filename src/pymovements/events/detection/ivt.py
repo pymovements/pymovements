@@ -82,9 +82,11 @@ def ivt(
     ------
     TypeError
         If velocities is a polars Series and dtype not List
+        If timesteps is neither a Duration series nor of a numeric dtype
     ValueError
         If velocities is None
         If velocities does not have shape (N, 2)
+        If timesteps are not in ascending order
         If velocity threshold is None.
         If velocity threshold is not greater than 0.
 

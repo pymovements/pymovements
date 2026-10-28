@@ -92,7 +92,9 @@ def microsaccades(
     ------
     TypeError
         If velocities is a polars Series and dtype not List
+        If timesteps is neither a Duration series nor of a numeric dtype
     ValueError
+        If timesteps are not in ascending order.
         If `threshold` value is below `min_threshold` value.
         If passed `threshold` is either not two-dimensional or not a supported method.
 
