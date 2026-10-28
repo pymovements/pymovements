@@ -132,13 +132,12 @@ https://peps.python.org/pep-0484). For docstrings we use the [numpydoc](
 https://numpydoc.readthedocs.io/en/latest/format.html) formatting standard.
 
 We use [`ruff`](https://docs.astral.sh/ruff/) for style checks, import sorting and docstring
-formatting, [`pydoclint`](https://pypi.org/project/pydoclint/) for checking docstrings against
+style, [`pydoclint`](https://pypi.org/project/pydoclint/) for checking docstrings against
 signatures and [`mypy`](https://pypi.org/project/mypy/) for checking type annotations.
 [`pylint`](https://pypi.org/project/pylint/) runs the few checks that need the installed package,
 such as attribute and call checks against the polars and numpy APIs.
 
 You can check your code style by using [pre-commit](https://www.pre-commit.com).
-You can install `pre-commit`, `ruff` and `pylint` via pip.
 
 **Note**: Quoting '.[dev]' ensures the command works in both bash and zsh.
 
