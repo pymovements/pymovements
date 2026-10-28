@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 SUPPORTED_ORIGINS = ('upper left', 'center')
 
 
-def screen(
+def make_screen_axes(
     width_px: int | None,
     height_px: int | None,
     *,
@@ -77,7 +77,7 @@ def screen(
 
     Examples
     --------
-    >>> fig, ax = screen(1280, 1024)
+    >>> fig, ax = make_screen_axes(1280, 1024)
     >>> tuple(float(value) for value in ax.get_xlim())
     (0.0, 1280.0)
     >>> tuple(float(value) for value in ax.get_ylim())
@@ -86,7 +86,7 @@ def screen(
     The ``'center'`` origin puts the coordinate origin at the display center,
     keeping screen y increasing downward:
 
-    >>> fig, ax = screen(1280, 1024, origin='center')
+    >>> fig, ax = make_screen_axes(1280, 1024, origin='center')
     >>> tuple(float(value) for value in ax.get_xlim())
     (-640.0, 640.0)
     >>> tuple(float(value) for value in ax.get_ylim())
