@@ -296,11 +296,9 @@ known-first-party = ["pymovements"]
 force-sort-within-sections = false
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]
-"tests/**" = ["D101", "D102", "D103", "SLF001", "ARG", "PLR2004"]
-"tests/**/*_fixtures.py" = ["D", "ARG"]
-"docs/**" = ["A001", "ARG001", "BLE001", "D", "E402"]
-"docs/source/tutorials/parsing-dataset.ipynb" = ["E501"]
+"tests/**" = ["D101", "D102", "D103", "SLF001", "ARG"]
+"docs/source/conf.py" = ["A001", "ARG001", "BLE001", "D"]
+"docs/**/*.ipynb" = ["BLE001"]
 
 [tool.ruff.lint.pylint]
 max-args = 10
