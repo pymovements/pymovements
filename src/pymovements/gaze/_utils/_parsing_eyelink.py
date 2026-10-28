@@ -703,6 +703,73 @@ def parse_eyelink(
 
     # Single pass: collect events, patterns, samples, samples config, and metadata
     for line in lines:
+        # Gaze sample lines start with a digit (their timestamp); every other line is an event,
+        # config or metadata line. Dispatch on the first character so the many non-sample regexes
+        # are not evaluated for every sample line.
+        if line[:1].isdigit():
+            # Parse the current block with the binocular regex only if the current SAMPLES
+            # config is itself binocular. A monocular block within a promoted binocular file is
+            # still parsed with the monocular regex and routed to its tracked eye.
+            current_block_binocular = current_layout == 'both'
+            eye_tracking_sample_match = (
+                _match_regex(EYE_TRACKING_SAMPLE_BINOCULAR, line)
+                if current_block_binocular else
+                _match_regex(EYE_TRACKING_SAMPLE_MONOCULAR, line)
+            )
+
+            if eye_tracking_sample_match:
+                timestamp_s = eye_tracking_sample_match.group('time')
+
+                for additional_column in additional_columns:
+                    samples[additional_column].append(current_additional[additional_column])
+
+                if current_block_binocular:
+                    # Binocular block: both eyes present in the sample line.
+                    x_left_pix = check_nan(eye_tracking_sample_match.group('x_pix_left'))
+                    y_left_pix = check_nan(eye_tracking_sample_match.group('y_pix_left'))
+                    pupil_left = check_nan(eye_tracking_sample_match.group('pupil_left'))
+                    x_right_pix = check_nan(eye_tracking_sample_match.group('x_pix_right'))
+                    y_right_pix = check_nan(eye_tracking_sample_match.group('y_pix_right'))
+                    pupil_right = check_nan(eye_tracking_sample_match.group('pupil_right'))
+
+                    samples['x_left_pix'].append(x_left_pix)
+                    samples['y_left_pix'].append(y_left_pix)
+                    samples['pupil_left'].append(pupil_left)
+                    samples['x_right_pix'].append(x_right_pix)
+                    samples['y_right_pix'].append(y_right_pix)
+                    samples['pupil_right'].append(pupil_right)
+                else:
+                    # Monocular sample line: one tracked eye in this block.
+                    x_pix = check_nan(eye_tracking_sample_match.group('x_pix'))
+                    y_pix = check_nan(eye_tracking_sample_match.group('y_pix'))
+                    pupil = check_nan(eye_tracking_sample_match.group('pupil'))
+
+                    if not is_binocular:
+                        # Monocular file: a single tracked eye throughout, three channels.
+                        samples['x_pix'].append(x_pix)
+                        samples['y_pix'].append(y_pix)
+                        samples['pupil'].append(pupil)
+                    else:
+                        # Monocular block within a promoted binocular file: route the sample to
+                        # its tracked eye and fill the other eye with null.
+                        own_channels, other_channels = _eye_channels(
+                            'right' if current_layout == 'right' else 'left',
+                        )
+                        for channel, value in zip(own_channels, (x_pix, y_pix, pupil)):
+                            samples[channel].append(value)
+                        for channel in other_channels:
+                            samples[channel].append(None)
+
+                timestamp = float(timestamp_s)
+                samples['time'].append(timestamp)
+
+            # A sample line directly after !CAL ends the calibration entry with its timestamp only.
+            if cal_timestamp:
+                calibrations.append({'timestamp': cal_timestamp})
+                cal_timestamp = ''
+
+            continue
+
         # Collect event starts/ends for deterministic matching
         # Store context BEFORE processing this line's patterns (context is from previous lines)
         if start_event := parse_eyelink_event_start(line):
@@ -801,63 +868,7 @@ def parse_eyelink(
         if messages and (match := _match_regex(MSG_REGEX, line)):
             messages_list.append([match.groupdict()['timestamp'], match.groupdict()['content']])
 
-        # Parse the current block with the binocular regex only if the current SAMPLES
-        # config is itself binocular. A monocular block within a promoted binocular file is
-        # still parsed with the monocular regex and routed to its tracked eye.
-        current_block_binocular = current_layout == 'both'
-        eye_tracking_sample_match = (
-            _match_regex(EYE_TRACKING_SAMPLE_BINOCULAR, line)
-            if current_block_binocular else
-            _match_regex(EYE_TRACKING_SAMPLE_MONOCULAR, line)
-        )
-
-        if eye_tracking_sample_match:
-            timestamp_s = eye_tracking_sample_match.group('time')
-
-            for additional_column in additional_columns:
-                samples[additional_column].append(current_additional[additional_column])
-
-            if current_block_binocular:
-                # Binocular block: both eyes present in the sample line.
-                x_left_pix = check_nan(eye_tracking_sample_match.group('x_pix_left'))
-                y_left_pix = check_nan(eye_tracking_sample_match.group('y_pix_left'))
-                pupil_left = check_nan(eye_tracking_sample_match.group('pupil_left'))
-                x_right_pix = check_nan(eye_tracking_sample_match.group('x_pix_right'))
-                y_right_pix = check_nan(eye_tracking_sample_match.group('y_pix_right'))
-                pupil_right = check_nan(eye_tracking_sample_match.group('pupil_right'))
-
-                samples['x_left_pix'].append(x_left_pix)
-                samples['y_left_pix'].append(y_left_pix)
-                samples['pupil_left'].append(pupil_left)
-                samples['x_right_pix'].append(x_right_pix)
-                samples['y_right_pix'].append(y_right_pix)
-                samples['pupil_right'].append(pupil_right)
-            else:
-                # Monocular sample line: one tracked eye in this block.
-                x_pix = check_nan(eye_tracking_sample_match.group('x_pix'))
-                y_pix = check_nan(eye_tracking_sample_match.group('y_pix'))
-                pupil = check_nan(eye_tracking_sample_match.group('pupil'))
-
-                if not is_binocular:
-                    # Monocular file: a single tracked eye throughout, three channels.
-                    samples['x_pix'].append(x_pix)
-                    samples['y_pix'].append(y_pix)
-                    samples['pupil'].append(pupil)
-                else:
-                    # Monocular block within a promoted binocular file: route the sample to
-                    # its tracked eye and fill the other eye with null.
-                    own_channels, other_channels = _eye_channels(
-                        'right' if current_layout == 'right' else 'left',
-                    )
-                    for channel, value in zip(own_channels, (x_pix, y_pix, pupil)):
-                        samples[channel].append(value)
-                    for channel in other_channels:
-                        samples[channel].append(None)
-
-            timestamp = float(timestamp_s)
-            samples['time'].append(timestamp)
-
-        elif match := _match_regex(CALIBRATION_TIMESTAMP_REGEX, line):
+        if match := _match_regex(CALIBRATION_TIMESTAMP_REGEX, line):
             cal_timestamp = match.groupdict()['timestamp']
 
         elif match := _match_regex(VALIDATION_REGEX, line):

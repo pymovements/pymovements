@@ -511,7 +511,8 @@ def test_list_values_empty_returns_none_row(simple_stimulus: TextStimulus, src_c
     # Use uniformly empty lists (n == 0) to hit the (None, None) path without inference errors
     df = pl.DataFrame({src_col: [[], []]})
     gaze = pm.Gaze(samples=df)
-    gaze.map_to_aois(simple_stimulus, eye='auto', gaze_type=src_col, preserve_structure=False)
+    with pytest.warns(UserWarning, match='Invalid eye coordinates in 2 of 2 samples'):
+        gaze.map_to_aois(simple_stimulus, eye='auto', gaze_type=src_col, preserve_structure=False)
     assert gaze.samples.get_column('label').to_list() == [None, None]
 
 
