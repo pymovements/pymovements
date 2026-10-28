@@ -1,15 +1,26 @@
 Measures
 ========
 
-.. currentmodule:: pymovements.measure
+.. currentmodule:: pymovements.measure.samples
 
-.. rubric:: Measures
+.. rubric:: Sample Measures
+    :name: sample-measures
 
 .. autosummary::
     :toctree: api
     :template: function.rst
 
+    amplitude
+    bcea
+    data_loss
+    dispersion
+    disposition
+    duration
+    location
     null_ratio
+    peak_velocity
+    rms_s2s
+    std_rms
 
 .. rubric:: Classes
 
@@ -19,12 +30,74 @@ Measures
 
     SampleMeasureLibrary
 
-.. currentmodule:: pymovements.reading_measures
+.. currentmodule:: pymovements.measure.events
 
-.. rubric:: Classes
+.. rubric:: Event Measures
+    :name: event-measures
+
+.. autosummary::
+    :toctree: api
+    :nosignatures:
+    :template: function.rst
+
+    duration
+
+.. autosummary::
+    :toctree: api
+    :nosignatures:
+    :template: class.rst
+
+    EventProcessor
+    EventSamplesProcessor
+
+.. currentmodule:: pymovements.measure.reading
+
+.. rubric:: Reading Measures
 
 .. autosummary::
     :toctree: api
     :template: class.rst
 
     ReadingMeasures
+
+.. autosummary::
+    :toctree: api
+    :template: function.rst
+
+    compute_reading_measures
+    first_duration
+    first_fixation_duration
+    first_pass_fixation_count
+    first_pass_reading_time
+    first_reading_time
+    landing_position
+    rereading_time
+    regression_count_in
+    regression_count_out
+    regression_path_duration_exclusive
+    regression_path_duration_inclusive
+    right_bounded_reading_time
+    saccade_length_in
+    saccade_length_out
+    skipped
+    total_fixation_count
+    non_aoi_fixation_count_ratio
+    non_aoi_fixation_duration_ratio
+
+.. rubric:: Annotations
+
+.. autosummary::
+    :toctree: api
+    :template: function.rst
+
+    annotate_fixations
+    run_id
+    prev_word_idx
+    next_word_idx
+    delta_in
+    delta_out
+    is_reg_in
+    is_reg_out
+    is_first_fixation
+    is_first_pass
+    regression_path_word

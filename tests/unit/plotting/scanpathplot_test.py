@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,52 +25,130 @@ import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 import pytest
-from matplotlib import figure
 
-import pymovements as pm
-
-
-@pytest.fixture(name='events', scope='session')
-def event_fixture():
-    return pm.Events(
-        pl.DataFrame(
-            data={
-                'trial': [1, 1],
-                'name': ['foo', 'foo'],
-                'onset': [0, 2],
-                'offset': [1, 3],
-                'duration': [1, 1],
-                'location': [(1, 2), (2, 3)],
-            },
-        ),
-    )
+from pymovements import Events
+from pymovements import Experiment
+from pymovements import Gaze
+from pymovements.gaze import from_numpy
+from pymovements.plotting import scanpathplot
+from pymovements.stimulus.image import from_file
 
 
-@pytest.fixture(name='gaze', scope='session')
-def gaze_fixture():
-    experiment = pm.Experiment(
-        screen_width_px=1280,
-        screen_height_px=1024,
-        screen_width_cm=38,
-        screen_height_cm=30,
-        distance_cm=68,
-        origin='upper left',
-        sampling_rate=1000.0,
-    )
-    x = np.arange(-100, 100)
-    y = np.arange(-100, 100)
-    arr = np.column_stack((x, y)).transpose()
-    gaze = pm.gaze.from_numpy(
-        samples=arr,
-        schema=['x_pix', 'y_pix'],
-        experiment=experiment,
-        pixel_columns=['x_pix', 'y_pix'],
-    )
+@pytest.fixture(name='make_events', scope='function')
+def make_events_fixture():
+    def _make_events_fixture(name: str) -> Events:
+        if name == '0_events':
+            events = pl.DataFrame(
+                schema={
+                    'trial': pl.Int64,
+                    'name': pl.String,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'duration': pl.Int64,
+                    'location': pl.List(pl.Int64),
+                },
+            )
+        elif name == '1_fixation':
+            events = pl.DataFrame(
+                data={
+                    'trial': [1],
+                    'name': ['fixation'],
+                    'onset': [0],
+                    'offset': [1],
+                    'duration': [1],
+                    'location': [(1, 2)],
+                },
+            )
+        elif name == '2_fixations':
+            events = pl.DataFrame(
+                data={
+                    'trial': [1, 1],
+                    'name': ['fixation', 'fixation'],
+                    'onset': [0, 2],
+                    'offset': [1, 3],
+                    'duration': [1, 1],
+                    'location': [(1, 2), (2, 3)],
+                },
+            )
+        elif name == '3_events':
+            events = pl.DataFrame(
+                data={
+                    'trial': [1, 1, 1],
+                    'name': ['fixation', 'saccade', 'foo'],
+                    'onset': [0, 2, 5],
+                    'offset': [1, 3, 9],
+                    'duration': [1, 1, 4],
+                    'location': [(1, 2), (2, 3), (5, 5)],
+                },
+            )
+        else:
+            raise ValueError(f'{name} not supported as events fixture name')
 
-    gaze.pix2deg()
-    gaze.pos2vel()
+        return Events(events)
 
-    return gaze
+    return _make_events_fixture
+
+
+@pytest.fixture(
+    name='events',
+    params=[
+        '0_events',
+        '1_fixation',
+        '2_fixations',
+        '3_events',
+    ],
+    scope='function',
+)
+def event_fixture(request, make_events):
+    yield make_events(request.param)
+
+
+@pytest.fixture(name='make_gaze', scope='function')
+def make_gaze_fixture(make_events):
+    def _make_gaze_fixture(name: str) -> Gaze:
+        events = make_events(name)
+
+        experiment = Experiment(
+            screen_width_px=1280,
+            screen_height_px=1024,
+            screen_width_cm=38,
+            screen_height_cm=30,
+            distance_cm=68,
+            origin='upper left',
+            sampling_rate=1000.0,
+        )
+        x = np.arange(-100, 100)
+        y = np.arange(-100, 100)
+        arr = np.column_stack((x, y)).transpose()
+        gaze = from_numpy(
+            samples=arr,
+            schema=['x_pix', 'y_pix'],
+            experiment=experiment,
+            pixel_columns=['x_pix', 'y_pix'],
+        )
+
+        gaze.events = events
+
+        gaze.pix2deg()
+        gaze.pos2vel()
+
+        return gaze
+
+    return _make_gaze_fixture
+
+
+@pytest.fixture(
+    name='gaze',
+    params=[
+        '0_events',
+        '1_fixation',
+        '2_fixations',
+        '3_events',
+    ],
+    scope='function',
+)
+def gaze_fixture(request, make_gaze):
+    yield make_gaze(request.param)
 
 
 @pytest.mark.parametrize(
@@ -130,43 +208,100 @@ def gaze_fixture():
         ),
         pytest.param(
             {
-                'add_stimulus': True,
-                'path_to_image_stimulus': './tests/files/pexels-zoorg-1000498.jpg',
+                'add_traceplot': True,
+                'add_arrows': False,
             },
-            id='set_stimulus',
+            id='set_traceplot',
+        ),
+        pytest.param(
+            {
+                'add_traceplot': True,
+                'add_arrows': False,
+                'cval': np.arange(0, 200),
+                'show_cbar': True,
+            },
+            id='set_traceplot_and_cbar',
+        ),
+        pytest.param(
+            {
+                'add_stimulus': True,
+                'path_to_image_stimulus': './tests/files/stimuli/pexels-zoorg-1000498.jpg',
+                'stimulus_origin': 'lower',  # This will trigger the warning
+            },
+            id='set_stimulus_with_origin',
+            marks=pytest.mark.filterwarnings('ignore::DeprecationWarning'),
+        ),
+        pytest.param(
+            {
+                'add_arrows': True,
+                'arrow_color': 'blue',
+                'arrow_rad': 0.0,
+                'arrow_style': '->',
+            },
+            id='param_arrows',
         ),
     ],
 )
-def test_scanpathplot_show(events, gaze, kwargs, monkeypatch):
-    mock = Mock()
-    monkeypatch.setattr(plt, 'show', mock)
-    pm.plotting.scanpathplot(events=events, gaze=gaze, **kwargs)
-    plt.close()
-    mock.assert_called_once()
+def test_scanpathplot_returns_fig_and_axes(gaze, kwargs):
+    fig, ax = scanpathplot(gaze=gaze, **kwargs)
+
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
 
 
-def test_scanpathplot_noshow(events, gaze, monkeypatch):
+def test_scanpathplot_noshow(gaze, monkeypatch):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
-    pm.plotting.scanpathplot(events=events, gaze=gaze, show=False)
-    plt.close()
+    scanpathplot(gaze=gaze)
+
     mock.assert_not_called()
 
 
-def test_scanpathplot_save(events, gaze, monkeypatch, tmp_path):
-    mock = Mock()
-    monkeypatch.setattr(figure.Figure, 'savefig', mock)
-    pm.plotting.scanpathplot(
-        events=events,
-        gaze=gaze,
-        show=False,
-        savepath=str(
-            tmp_path /
-            'test.svg',
-        ),
+@pytest.mark.parametrize(
+    ('make_gaze_param', 'event_name', 'expected_n_circles'),
+    [
+        pytest.param('0_events', 'fixation', 0, id='fixation'),
+        pytest.param('0_events', 'saccade', 0, id='fixation'),
+        pytest.param('1_fixation', 'fixation', 1, id='fixation'),
+        pytest.param('1_fixation', 'saccade', 0, id='fixation'),
+        pytest.param('2_fixations', 'fixation', 2, id='fixation'),
+        pytest.param('3_events', 'fixation', 1, id='fixation'),
+        pytest.param('3_events', 'saccade', 1, id='saccade'),
+        pytest.param('3_events', 'foo', 1, id='foo'),
+    ],
+)
+def test_scanpathplot_filter_events_plots_expected_circles(
+        make_gaze_param, event_name, expected_n_circles, make_gaze,
+):
+    gaze = make_gaze(make_gaze_param)
+    _, ax = scanpathplot(gaze=gaze, event_name=event_name)
+
+    assert all(isinstance(patch, plt.Circle) for patch in ax.patches)
+    assert len(ax.patches) == expected_n_circles
+
+
+def test_scanpathplot_numeric_duration_events(make_gaze):
+    # Events mutated to numeric millisecond columns must still be plottable.
+    gaze = make_gaze('1_fixation')
+    gaze.events.frame = gaze.events.frame.with_columns(
+        pl.col('onset', 'offset', 'duration').dt.total_milliseconds(),
     )
-    plt.close()
-    mock.assert_called_once()
+
+    _, ax = scanpathplot(gaze=gaze, event_name='fixation')
+
+    assert len(ax.patches) == 1
+
+
+def test_scanpathplot_save(gaze, tmp_path):
+    filepath = tmp_path / 'test.svg'
+    assert not filepath.is_file()
+
+    scanpathplot(
+        gaze=gaze,
+        savepath=str(filepath),
+    )
+
+    assert filepath.is_file()
 
 
 @pytest.mark.parametrize(
@@ -182,9 +317,131 @@ def test_scanpathplot_save(events, gaze, monkeypatch, tmp_path):
         ),
     ],
 )
-def test_scanpathplot_exceptions(events, gaze, kwargs, exception, monkeypatch):
-    mock = Mock()
-    monkeypatch.setattr(plt, 'show', mock)
-
+def test_scanpathplot_exceptions(gaze, kwargs, exception):
     with pytest.raises(exception):
-        pm.plotting.scanpathplot(events=events, gaze=gaze, **kwargs)
+        scanpathplot(gaze=gaze, **kwargs)
+
+
+def test_scanpathplot_gaze_none_exception():
+    with pytest.raises(TypeError, match='must not be None'):
+        scanpathplot()
+
+
+def test_scanpathplot_traceplot_gaze_samples_none_exception(gaze):
+    gaze.samples = None
+    with pytest.raises(TypeError, match='must not be None'):
+        scanpathplot(gaze=gaze, add_traceplot=True)
+
+
+def test_scanpathplot_gaze_events_none_exception(gaze):
+    gaze.events = None
+    with pytest.raises(TypeError, match='must not be None'):
+        scanpathplot(gaze=gaze)
+
+
+def test_scanpathplot_no_experiment(gaze):
+    # test if gaze is not None and gaze.experiment is not None:
+    gaze.experiment = None
+    # Should not raise any exception
+    scanpathplot(gaze=gaze)
+
+
+def test_set_screen_axes_valid(gaze):
+    _, ax = scanpathplot(gaze=gaze)
+
+    assert ax.get_xlim() == (0, gaze.experiment.screen.width_px)
+    assert ax.get_ylim() == (gaze.experiment.screen.height_px, 0)
+    assert ax.get_aspect() == 1
+
+
+@pytest.mark.parametrize('origin', ['lower left', 'center'])
+def test_set_screen_axes_invalid_origin(origin, gaze):
+    gaze.experiment.screen.origin = origin
+    with pytest.raises(ValueError, match='screen origin must be "upper left"'):
+        scanpathplot(gaze=gaze)
+
+
+@pytest.mark.parametrize(
+    'width,height',
+    [
+        (None, None),
+        (None, 768),
+        (1024, None),
+    ],
+)
+def test_set_screen_axes_none_dimensions_returns(width, height, gaze):
+    """Should not raise or override axes when screen dimensions are None."""
+    gaze.experiment.screen.width_px = width
+    gaze.experiment.screen.height_px = height
+
+    _, ax = plt.subplots()
+
+    # Call scanpathplot; should return silently, without ValueError
+    # _set_screen_axes() should return early without modifying axes
+    scanpathplot(gaze=gaze, ax=ax, figsize=None)
+
+    # Axes limits should be finite numbers, not NaN/None
+    xlim, ylim = ax.get_xlim(), ax.get_ylim()
+    assert np.isfinite(xlim).all()
+    assert np.isfinite(ylim).all()
+
+    # Aspect ratio should not be 'equal' (not forced by _set_screen_axes)
+    assert ax.get_aspect() != 'equal'
+
+
+def test_scanpathplot_with_image_stimulus(gaze, tmp_path):
+    """Test that scanpathplot correctly plots with an ImageStimulus."""
+    image_path = './tests/files/stimuli/pexels-zoorg-1000498.jpg'
+    image_stimulus = from_file(image_path)
+
+    image_stimulus.origin = 'upper'
+
+    fig, ax = plt.subplots(figsize=(15, 5))
+
+    image_stimulus.plot(0, ax=ax)
+
+    with pytest.warns(
+        UserWarning, match='figsize is ignored '
+        'because an external Axes was provided.',
+    ):
+        returned_fig, returned_ax = scanpathplot(
+            gaze=gaze,
+            ax=ax,
+            savepath=str(tmp_path / 'scanpathplot_with_stimulus.svg'),
+        )
+
+    assert returned_fig is fig
+    assert returned_ax is ax
+
+    assert len(ax.images) >= 1  # At least the stimulus image
+
+    assert (tmp_path / 'scanpathplot_with_stimulus.svg').is_file()
+
+    plt.close(fig)
+
+
+@pytest.mark.parametrize('gaze', ['1_fixation'], indirect=True)
+@pytest.mark.parametrize(
+    ('deprecated_argument', 'value'),
+    (
+        pytest.param('add_stimulus', True, id='add_stimulus'),
+        pytest.param(
+            'path_to_image_stimulus',
+            './tests/files/stimuli/pexels-zoorg-1000498.jpg',
+            id='path_to_image_stimulus',
+        ),
+        pytest.param('stimulus_origin', 'lower', id='stimulus_origin'),
+    ),
+)
+def test_scanpathplot_deprecated_parameters(
+        gaze, deprecated_argument, value, assert_deprecation_is_removed,
+):
+    """Test that a deprecated stimulus parameter triggers a warning scheduled for removal."""
+    with pytest.raises(DeprecationWarning) as info:
+        scanpathplot(gaze=gaze, **{deprecated_argument: value})
+
+    assert_deprecation_is_removed(
+        function_name=f"scanpathplot argument '{deprecated_argument}'",
+        warning_message=info.value.args[0],
+        scheduled_version='0.33.0',
+    )

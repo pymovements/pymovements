@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,6 +20,8 @@
 """Module for the precomputed events dataframe."""
 from __future__ import annotations
 
+from typing import Any
+
 import polars as pl
 
 from pymovements._utils._html import repr_html
@@ -33,8 +35,23 @@ class PrecomputedEventDataFrame:
     ----------
     data: pl.DataFrame
         A precomputed event dataframe.
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. A ``Sources`` entry lists the files the
+        event data was loaded from. (default: None)
+
+    Attributes
+    ----------
+    frame: pl.DataFrame
+        A dataframe of precomputed events.
+    metadata: dict[str, Any]
+        Dictionary containing additional metadata.
     """
 
-    def __init__(self, data: pl.DataFrame) -> None:
+    frame: pl.DataFrame
+
+    metadata: dict[str, Any]
+
+    def __init__(self, data: pl.DataFrame, metadata: dict[str, Any] | None = None) -> None:
 
         self.frame = data.clone()
+        self.metadata = metadata if metadata is not None else {}

@@ -12,14 +12,15 @@ Stimulus
 
     ImageStimulus
     TextStimulus
+    WritingSystem
 
 .. rubric:: Input / Output
-
-.. currentmodule:: pymovements.stimulus.text
 
 .. autosummary::
     :toctree: api
     :nosignatures:
     :template: function.rst
 
-    from_file
+    image.from_file
+    image.from_files
+    text.from_file

@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,46 +18,34 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from csv."""
+import io
+
 import polars as pl
 import pytest
+from polars.testing import assert_frame_equal
 
-from pymovements import DatasetDefinition
-from pymovements import datasets
+from pymovements import DatasetLibrary
 from pymovements.gaze import from_csv
 
 
 @pytest.mark.parametrize(
-    ('kwargs', 'expected_shape', 'expected_schema'),
+    ('filename', 'kwargs', 'expected_shape', 'expected_schema'),
     [
         pytest.param(
+            'monocular_example.csv',
             {
-                'file': 'tests/files/monocular_example.csv',
                 'time_column': 'time',
                 'time_unit': 'ms',
                 'pixel_columns': ['x_left_pix', 'y_left_pix'],
             },
             (10, 2),
-            {'time': pl.Int64, 'pixel': pl.List(pl.Int64)},
+            {'time': pl.Duration('us'), 'pixel': pl.List(pl.Int64)},
             id='csv_mono_shape',
         ),
 
         pytest.param(
+            'monocular_example.csv',
             {
-                'file': 'tests/files/monocular_example.csv',
-                'definition': DatasetDefinition(
-                    time_column='time',
-                    time_unit='ms',
-                    pixel_columns=['x_left_pix', 'y_left_pix'],
-                ),
-            },
-            (10, 2),
-            {'time': pl.Int64, 'pixel': pl.List(pl.Int64)},
-            id='csv_mono_shape_definition',
-        ),
-
-        pytest.param(
-            {
-                'file': 'tests/files/monocular_example.csv',
                 'column_map': {
                     'x_left_pix': 'pixel_xl',
                     'y_left_pix': 'pixel_yl',
@@ -65,26 +53,43 @@ from pymovements.gaze import from_csv
                 'auto_column_detect': True,
             },
             (10, 2),
-            {'time': pl.Int64, 'pixel': pl.List(pl.Int64)},
+            {'time': pl.Duration('us'), 'pixel': pl.List(pl.Int64)},
             id='csv_mono_shape_auto_column_detect',
         ),
 
         pytest.param(
+            'monocular_example.csv',
             {
-                'file': 'tests/files/binocular_example.csv',
+                'time_column': 'time',
+                'time_unit': 'ms',
+                'pixel_columns': ['x_left_pix', 'y_left_pix'],
+                'add_columns': {'test': 1},
+                'column_schema_overrides': {'test': pl.Float64},
+            },
+            (10, 3),
+            {'time': pl.Duration('us'), 'test': pl.Float64, 'pixel': pl.List(pl.Int64)},
+            id='csv_mono_shape_add_columns',
+        ),
+
+        pytest.param(
+            'binocular_example.csv',
+            {
                 'time_column': 'time',
                 'time_unit': 'ms',
                 'pixel_columns': ['x_left_pix', 'y_left_pix', 'x_right_pix', 'y_right_pix'],
                 'position_columns': ['x_left_pos', 'y_left_pos', 'x_right_pos', 'y_right_pos'],
             },
             (10, 3),
-            {'time': pl.Int64, 'pixel': pl.List(pl.Int64), 'position': pl.List(pl.Float64)},
+            {
+                'time': pl.Duration('us'), 'pixel': pl.List(pl.Int64),
+                'position': pl.List(pl.Float64),
+            },
             id='csv_bino_shape',
         ),
 
         pytest.param(
+            'binocular_example.csv',
             {
-                'file': 'tests/files/binocular_example.csv',
                 'column_map': {
                     'x_left_pix': 'pixel_xl',
                     'y_left_pix': 'pixel_yl',
@@ -98,219 +103,295 @@ from pymovements.gaze import from_csv
                 'auto_column_detect': True,
             },
             (10, 3),
-            {'time': pl.Int64, 'pixel': pl.List(pl.Int64), 'position': pl.List(pl.Float64)},
+            {
+                'time': pl.Duration('us'), 'pixel': pl.List(pl.Int64),
+                'position': pl.List(pl.Float64),
+            },
             id='csv_bino_shape_auto_column_detect',
         ),
 
         pytest.param(
+            'missing_values_example.csv',
             {
-                'file': 'tests/files/missing_values_example.csv',
                 'time_column': 'time',
                 'time_unit': 'ms',
                 'pixel_columns': ['pixel_x', 'pixel_y'],
                 'position_columns': ['position_x', 'position_y'],
             },
             (103, 3),
-            {'time': pl.Int64, 'pixel': pl.List(pl.Float64), 'position': pl.List(pl.Float64)},
+            {
+                'time': pl.Duration('us'), 'pixel': pl.List(pl.Float64),
+                'position': pl.List(pl.Float64),
+            },
             id='csv_missing_values',
         ),
 
         pytest.param(
+            'gaze_on_faces_example.csv',
             {
-                'file': 'tests/files/gaze_on_faces_example.csv',
-                'definition': datasets.GazeOnFaces(),
+                'experiment': DatasetLibrary.get('GazeOnFaces').experiment,
+                **DatasetLibrary.get('GazeOnFaces').resources[0].load_kwargs,
             },
             (10, 2),
-            {'time': pl.Float64, 'pixel': pl.List(pl.Float32)},
+            {'time': pl.Duration('us'), 'pixel': pl.List(pl.Float32)},
+            id='gaze_on_faces_example',
         ),
 
         pytest.param(
+            'gazebase_example.csv',
             {
-                'file': 'tests/files/gaze_on_faces_example.csv',
-                'definition': datasets.GazeOnFaces(),
-                'pixel_columns': ['foo', 'bar'],
-                **{
-                    'separator': ',',
-                    'has_header': False,
-                    'new_columns': ['foo', 'bar'],
-                    'schema_overrides': [pl.Float32, pl.Float32],
-                },
-            },
-            (10, 2),
-            {'time': pl.Float64, 'pixel': pl.List(pl.Float32)},
-            id='gaze_on_faces_dataset_explicit_read_kwargs_and_columns',
-        ),
-
-        pytest.param(
-            {
-                'file': 'tests/files/gazebase_example.csv',
-                'definition': datasets.GazeBase(),
+                'experiment': DatasetLibrary.get('GazeBase').experiment,
+                **DatasetLibrary.get('GazeBase').resources[0].load_kwargs,
             },
             (10, 7),
             {
-                'time': pl.Int64, 'validity': pl.Int64, 'dP': pl.Float32, 'lab': pl.Int64,
+                'time': pl.Duration('us'), 'validity': pl.Int64, 'dP': pl.Float32, 'lab': pl.Int64,
                 'x_target_pos': pl.Float32, 'y_target_pos': pl.Float32,
                 'position': pl.List(pl.Float32),
             },
-            id='gazebase_dataset_example',
+            id='gazebase_example',
         ),
 
         pytest.param(
+            'gazebase_vr_example.csv',
             {
-                'file': 'tests/files/gazebase_example.csv',
-                'definition': datasets.GazeBase(),
-                'column_map': {'dP': 'test'},
-            },
-            (10, 7),
-            {
-                'time': pl.Int64, 'val': pl.Int64, 'test': pl.Float32, 'lab': pl.Int64,
-                'xT': pl.Float32, 'yT': pl.Float32,
-                'position': pl.List(pl.Float32),
-            },
-            id='gazebase_dataset_example_column_map_overrides_definition',
-        ),
-
-        pytest.param(
-            {
-                'file': 'tests/files/gazebase_vr_example.csv',
-                'definition': datasets.GazeBaseVR(),
+                'experiment': DatasetLibrary.get('GazeBaseVR').experiment,
+                **DatasetLibrary.get('GazeBaseVR').resources[0].load_kwargs,
             },
             (10, 11),
             {
-                'time': pl.Float32,
+                'time': pl.Duration('us'),
                 'x_target_pos': pl.Float32, 'y_target_pos': pl.Float32, 'z_target_pos': pl.Float32,
                 'clx': pl.Float32, 'cly': pl.Float32, 'clz': pl.Float32,
                 'crx': pl.Float32, 'cry': pl.Float32, 'crz': pl.Float32,
                 'position': pl.List(pl.Float32),
             },
-            id='gazebase_vr_dataset_example',
+            id='gazebase_vr_example',
         ),
 
         pytest.param(
+            'hbn_example.csv',
             {
-                'file': 'tests/files/hbn_example.csv',
-                'definition': datasets.HBN(),
+                'experiment': DatasetLibrary.get('HBN').experiment,
+                **DatasetLibrary.get('HBN').resources[0].load_kwargs,
             },
             (10, 2),
-            {'time': pl.Float64, 'pixel': pl.List(pl.Float32)},
-            id='hbn_dataset_example',
+            {'time': pl.Duration('us'), 'pixel': pl.List(pl.Float32)},
+            id='hbn_example',
         ),
 
         pytest.param(
+            'judo1000_example.csv',
             {
-                'file': 'tests/files/hbn_example.csv',
-                'definition': datasets.HBN(),
-                'pixel_columns': [],
-                'position_columns': ['x_pix', 'y_pix'],
-            },
-            (10, 2),
-            {'time': pl.Float64, 'position': pl.List(pl.Float32)},
-            id='hbn_dataset_example_columns_override_definition',
-        ),
-
-        pytest.param(
-            {
-                'file': 'tests/files/judo1000_example.csv',
-                'definition': datasets.JuDo1000(),
+                'experiment': DatasetLibrary.get('JuDo1000').experiment,
+                **DatasetLibrary.get('JuDo1000').resources[0].load_kwargs,
             },
             (10, 4),
             {
                 'trial_id': pl.Int64, 'point_id': pl.Int64,
-                'time': pl.Int64, 'pixel': pl.List(pl.Float32),
+                'time': pl.Duration('us'), 'pixel': pl.List(pl.Float32),
             },
-            id='judo1000_dataset_example',
+            id='judo1000_example',
         ),
 
         pytest.param(
+            'potec_example.tsv',
             {
-                'file': 'tests/files/judo1000_example.csv',
-                'definition': datasets.JuDo1000(),
-                'column_schema_overrides': {'trial_id': pl.String},
+                'experiment': DatasetLibrary.get('PoTeC').experiment,
+                **DatasetLibrary.get('PoTeC').resources[0].load_kwargs,
             },
-            (10, 4),
+            (10, 3),
             {
-                'trial_id': pl.String, 'point_id': pl.Int64,
-                'time': pl.Int64, 'pixel': pl.List(pl.Float32),
+                'time': pl.Duration('us'),
+                'pupil_diameter': pl.Float32,
+                'pixel': pl.List(pl.Float32),
             },
-            id='judo1000_dataset_example_column_schema_overrides',
+            id='potec_example',
         ),
 
         pytest.param(
+            'potec_example.tsv',
             {
-                'file': 'tests/files/judo1000_example.csv',
-                'definition': datasets.JuDo1000(
-                    custom_read_kwargs={
-                        'gaze': {
-                            'schema_overrides': {
-                                'trialId': pl.String,
-                                'pointId': pl.String,
-                                'time': pl.Int64,
-                                'x_left': pl.Float32,
-                                'y_left': pl.Float32,
-                                'x_right': pl.Float32,
-                                'y_right': pl.Float32,
-                            },
-                            'separator': '\t',
-                        },
-                    },
-                ),
-            },
-            (10, 4),
-            {
-                'trial_id': pl.String, 'point_id': pl.String,
-                'time': pl.Int64, 'pixel': pl.List(pl.Float32),
-            },
-            id='judo1000_dataset_example_schema_overrides_from_definition',
-        ),
-
-        pytest.param(
-            {
-                'file': 'tests/files/judo1000_example.csv',
-                'definition': datasets.JuDo1000(
-                    custom_read_kwargs={
-                        'gaze': {
-                            'schema_overrides': {
-                                'trialId': pl.String,
-                                'pointId': pl.String,
-                                'time': pl.Int64,
-                                'x_left': pl.Float32,
-                                'y_left': pl.Float32,
-                                'x_right': pl.Float32,
-                                'y_right': pl.Float32,
-                            },
-                            'separator': '\t',
-                        },
-                    },
-                ),
-                'column_schema_overrides': {
-                    'trial_id': pl.Int64,
-                    'point_id': pl.Int64,
+                'experiment': DatasetLibrary.get('PoTeC').experiment,
+                'time_column': 'time',
+                'time_unit': 'ms',
+                'pixel_columns': ['x', 'y'],
+                'schema_overrides': {
+                    'time': pl.Duration('ms'),
+                    'x': pl.Float64,
+                    'y': pl.Float64,
+                    'pupil_diameter': pl.Float64,
                 },
+                'separator': '\t',
             },
-            (10, 4),
+            (10, 3),
             {
-                'trial_id': pl.Int64, 'point_id': pl.Int64,
-                'time': pl.Int64, 'pixel': pl.List(pl.Float32),
+                'time': pl.Duration('us'),
+                'pupil_diameter': pl.Float64,
+                'pixel': pl.List(pl.Float64),
             },
-            id='judo1000_dataset_example_column_schema_overrides_overrides_definition',
+            marks=pytest.mark.filterwarnings('ignore:from_csv.*kwargs.*:DeprecationWarning'),
+            id='potec_example_deprecated_kwargs',
         ),
 
         pytest.param(
+            'sbsat_example.csv',
             {
-                'file': 'tests/files/sbsat_example.csv',
-                'definition': datasets.SBSAT(),
+                'experiment': DatasetLibrary.get('SBSAT').experiment,
+                **DatasetLibrary.get('SBSAT').resources[0].load_kwargs,
             },
             (10, 5),
             {
-                'book_name': pl.String, 'screen_id': pl.Int64, 'time': pl.Int64,
+                'book_name': pl.String, 'screen_id': pl.Int64, 'time': pl.Duration('us'),
                 'pupil_left': pl.Float32, 'pixel': pl.List(pl.Float32),
             },
-            id='sbsat_dataset_example',
+            id='sbsat_example',
         ),
     ],
 )
-def test_from_csv_gaze_has_expected_shape_and_columns(kwargs, expected_shape, expected_schema):
-    gaze = from_csv(**kwargs)
+def test_from_csv_gaze_has_expected_shape_and_columns(
+        filename, kwargs, expected_shape, expected_schema, make_example_file,
+):
+    filepath = make_example_file(filename)
+    gaze = from_csv(file=filepath, **kwargs)
 
     assert gaze.samples.shape == expected_shape
     assert gaze.samples.schema == expected_schema
+
+
+@pytest.mark.parametrize(
+    ('filename', 'kwargs'),
+    [
+        pytest.param(
+            'monocular_example.csv',
+            {
+                'pixel_columns': ['x_left_pix', 'y_left_pix'],
+                'skip_lines': 0,
+            },
+            id='**kwargs',
+        ),
+    ],
+)
+def test_from_asc_parameter_is_deprecated(
+        filename, kwargs, make_example_file, assert_deprecation_is_removed,
+):
+    filepath = make_example_file(filename)
+
+    with pytest.raises(DeprecationWarning) as info:
+        from_csv(filepath, **kwargs)
+
+    assert_deprecation_is_removed(
+        function_name=f'keyword argument {list(kwargs.keys())[0]}',
+        warning_message=info.value.args[0],
+        scheduled_version='0.29.0',
+
+    )
+
+
+@pytest.mark.parametrize(
+    ('buffer_class', 'mode', 'encoding'), [
+        pytest.param(io.StringIO, 'r', 'utf-8', id='io_stringio'),
+        pytest.param(io.BytesIO, 'rb', None, id='io_bytesio'),
+    ],
+)
+def test_from_csv_accepts_file_object(buffer_class, mode, encoding, make_example_file):
+    """Test that from_csv reads a file object equivalently to a path and keeps it open."""
+    filepath = make_example_file('monocular_example.csv')
+    kwargs = {
+        'time_column': 'time',
+        'time_unit': 'ms',
+        'pixel_columns': ['x_left_pix', 'y_left_pix'],
+    }
+    expected_gaze = from_csv(file=filepath, **kwargs)
+
+    with open(filepath, mode, encoding=encoding) as csv_file:
+        buffer = buffer_class(csv_file.read())
+    gaze = from_csv(file=buffer, **kwargs)
+
+    assert not buffer.closed
+    assert_frame_equal(gaze.samples, expected_gaze.samples)
+
+
+@pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
+def test_from_csv_columns_keep_order_of_read_csv_kwargs(make_example_file):
+    filepath = make_example_file('monocular_example.csv')
+    columns = ['y_left_pix', 'x_left_pix', 'time']
+
+    gaze = from_csv(file=filepath, read_csv_kwargs={'columns': columns})
+
+    assert gaze.samples.columns == columns
+
+
+@pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
+def test_from_csv_decimal_overrides_with_precision_and_scale(tmp_path):
+    p = tmp_path / 'mini.csv'
+    p.write_text('time,pupil\n0,1.23\n1,4.56\n')
+
+    gaze = from_csv(
+        file=str(p),
+        time_column='time',
+        time_unit='ms',
+        column_schema_overrides={'pupil': pl.Decimal(38, 10)},
+    )
+
+    assert gaze.samples.schema['pupil'] == pl.Decimal(38, 10)
+
+
+@pytest.mark.filterwarnings('ignore:from_csv.*kwargs.*:DeprecationWarning')
+@pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
+def test_from_csv_deprecated_schema_overrides_merged_with_column_schema_overrides(tmp_path):
+    p = tmp_path / 'mini.csv'
+    p.write_text('time,pupil,extra\n0,1.23,1\n1,4.56,2\n')
+
+    gaze = from_csv(
+        file=str(p),
+        time_column='time',
+        time_unit='ms',
+        column_schema_overrides={'pupil': pl.Float32},
+        schema_overrides={'pupil': pl.Float64, 'extra': pl.Float64},
+    )
+
+    # The explicit argument wins over the deprecated kwarg on conflicts,
+    # while non-conflicting deprecated overrides are still applied.
+    assert gaze.samples.schema['pupil'] == pl.Float32
+    assert gaze.samples.schema['extra'] == pl.Float64
+
+
+def test_from_csv_adds_no_source_for_file_object(make_example_file):
+    filepath = make_example_file('monocular_example.csv')
+    with open(filepath, encoding='utf-8') as csv_file:
+        buffer = io.StringIO(csv_file.read())
+
+    gaze = from_csv(buffer, pixel_columns=['x_left_pix', 'y_left_pix'])
+
+    assert 'Sources' not in gaze.metadata
+    assert 'Sources' not in gaze.events.metadata
+
+
+def test_from_csv_respects_user_provided_sources(make_example_file):
+    filepath = make_example_file('monocular_example.csv')
+
+    gaze = from_csv(
+        filepath,
+        metadata={'Sources': ['my/custom/source.csv']},
+        pixel_columns=['x_left_pix', 'y_left_pix'],
+    )
+
+    assert gaze.metadata['Sources'] == ['my/custom/source.csv']
+
+
+def test_from_csv_does_not_mutate_passed_metadata(make_example_file):
+    filepath = make_example_file('monocular_example.csv')
+    metadata = {'subject_id': 42}
+
+    gaze = from_csv(
+        filepath,
+        metadata=metadata,
+        pixel_columns=['x_left_pix', 'y_left_pix'],
+    )
+
+    assert metadata == {'subject_id': 42}
+    assert gaze.metadata == {
+        'subject_id': 42,
+        'Sources': [filepath.as_posix()],
+    }

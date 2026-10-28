@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -21,25 +21,42 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from collections.abc import Callable
 from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
+from typing import Literal
+from warnings import warn
 
 import polars as pl
 from tqdm.auto import tqdm
 
 from pymovements._utils._html import repr_html
+from pymovements._utils._sources import merge_sources
+from pymovements._utils._sources import relativize_sources
+from pymovements._version import __version__
 from pymovements.dataset import dataset_download
 from pymovements.dataset import dataset_files
 from pymovements.dataset.dataset_definition import DatasetDefinition
+from pymovements.dataset.dataset_files import DatasetFile
 from pymovements.dataset.dataset_library import DatasetLibrary
 from pymovements.dataset.dataset_paths import DatasetPaths
+from pymovements.dataset.participants import Participants
 from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze import Gaze
-from pymovements.reading_measures import ReadingMeasures
+from pymovements.gaze.quality import compute_measures
+from pymovements.gaze.quality import DataQualityReport
+from pymovements.gaze.quality import ValidationError
+from pymovements.gaze.validation import _ALL_CHECKS
+from pymovements.measure.reading import compute_reading_measures
+from pymovements.measure.reading import ReadingMeasures
+from pymovements.stimulus import text
+from pymovements.stimulus.image import ImageStimulus
+from pymovements.stimulus.text import TextStimulus
+from pymovements.warnings import ExperimentalWarning
 
 
 logging.basicConfig(level=logging.INFO)
@@ -52,25 +69,44 @@ class Dataset:
 
     Initialize the dataset object.
 
+    Attributes
+    ----------
+    participants: Participants
+        Participant data.
+    fileinfo: dict[str, pl.DataFrame]
+        Parsed file information, keyed by content type (e.g. ``'gaze'``).
+    gaze: list[Gaze]
+        Gaze objects containing loaded samples.
+    events: tuple[Events, ...]
+        Event dataframes for all gaze objects.
+    path: Path
+        Path to the dataset directory.
+
     Parameters
     ----------
     definition: str | Path | DatasetDefinition | type[DatasetDefinition]
         Dataset definition to initialize dataset with.
     path : str | Path | DatasetPaths
         Path to the dataset directory. You can set up a custom directory structure by passing a
-        :py:class:`~pymovements.dataset.DatasetPaths` instance.
+        :py:class:`~pymovements.DatasetPaths` instance.
     """
+
+    participants: Participants
+    fileinfo: dict[str, pl.DataFrame]
+    gaze: list[Gaze]
 
     def __init__(
             self,
             definition: str | Path | DatasetDefinition | type[DatasetDefinition],
             path: str | Path | DatasetPaths,
     ):
-        self.fileinfo: pl.DataFrame = pl.DataFrame()
+        self.fileinfo = {}
+        self._files: list[DatasetFile] = []
+        self.participants = Participants()
         self.gaze: list[Gaze] = []
-        self.events: list[Events] = []
         self.precomputed_events: list[PrecomputedEventDataFrame] = []
         self.precomputed_reading_measures: list[ReadingMeasures] = []
+        self.stimuli: list[ImageStimulus | TextStimulus] = []
 
         # Handle different definition input types
         if isinstance(definition, (str, Path)):
@@ -98,8 +134,10 @@ class Dataset:
     def load(
             self,
             *,
+            participants: bool | None = None,
             events: bool | None = None,
             preprocessed: bool = False,
+            stimuli: bool | None = None,
             subset: dict[str, float | int | str | list[float | int | str]] | None = None,
             events_dirname: str | None = None,
             preprocessed_dirname: str | None = None,
@@ -107,30 +145,38 @@ class Dataset:
     ) -> Dataset:
         """Parse file information and load all gaze files.
 
-        The parsed file information is assigned to the `fileinfo` attribute.
-        All gaze files will be loaded as dataframes and assigned to the `gaze` attribute.
+        The parsed file information is assigned to the :py:attr:`~pymovements.Dataset.fileinfo`
+        attribute. All gaze files will be loaded as dataframes and assigned to the
+        :py:attr:`~pymovements.Dataset.gaze` attribute.
+
+        Every loaded object records the file it was read from in the ``Sources`` entry of its
+        ``metadata``, as a POSIX path relative to the dataset root. Reloading files saved by
+        this dataset records the reloaded files, not the sources of the original data.
 
         Parameters
         ----------
+        participants: bool | None
+            If ``True``, load participants data. If ``None``, load participants data only if
+            available.
+            (default: None)
         events: bool | None
             If ``True``, load previously saved event data. (default: None)
         preprocessed: bool
             If ``True``, load previously saved preprocessed data, otherwise load raw data.
             (default: False)
+        stimuli: bool | None
+            If ``True``, load stimulus data. If ``None``, load stimulus data only if available.
+            (default: None)
         subset:  dict[str, float | int | str | list[float | int | str]] | None
             If specified, load only a subset of the dataset. All keys in the dictionary must be
             present in the fileinfo dataframe inferred by `scan()`. Values can be either
             float, int , str or a list of these. (default: None)
         events_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to
-            :py:meth:`pymovements.Dataset.path`.
-            This argument is used only for this single call and does not alter
-            :py:meth:`pymovements.Dataset.events_rootpath`. (default: None)
+            One-time usage of an alternative directory name to load data relative to
+            :py:attr:`~pymovements.Dataset.path`. (default: None)
         preprocessed_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to
-            :py:meth:`pymovements.Dataset.path`.
-            This argument is used only for this single call and does not alter
-            :py:meth:`pymovements.Dataset.preprocessed_rootpath`. (default: None)
+            One-time usage of an alternative directory name to load data relative to
+            :py:attr:`~pymovements.Dataset.path`. (default: None)
         extension: str
             Specifies the file format for loading data. Valid options are: `csv`, `feather`,
             `tsv`, `txt`, `asc`.
@@ -142,7 +188,20 @@ class Dataset:
             Returns self, useful for method cascading.
         """
         self.scan()
-        self.fileinfo = dataset_files.take_subset(fileinfo=self.fileinfo, subset=subset)
+        self.fileinfo, self._files = dataset_files.take_subset(
+            fileinfo=self.fileinfo,
+            files=self._files,
+            subset=subset,
+        )
+
+        # Load participants data if desired and if present.
+        if participants is not False:
+            participant_files = any(
+                file.definition is not None and file.definition.content == 'participants'
+                for file in self._files
+            )
+            if participant_files:
+                self.load_participants()
 
         if self.definition.resources.has_content('gaze'):
             self.load_gaze_files(
@@ -165,13 +224,85 @@ class Dataset:
                 events_dirname=events_dirname,
                 extension=extension,
             )
-            for loaded_gaze, loaded_events in zip(self.gaze, self.events):
-                loaded_gaze.events = loaded_events
+
+        # Load stimulus files if desired and if present
+        if stimuli is not False:
+            has_stimuli = any(
+                'stimulus' in file.content.lower() for file in self.definition.resources
+            )
+            if stimuli is True or has_stimuli:
+                self.load_stimuli()
 
         return self
 
-    def scan(self) -> Dataset:
+    @property
+    def events(self) -> tuple[Events, ...]:
+        """Return ``Events`` for all ``Gaze`` objects in the ``Dataset``.
+
+        Each element in the returned tuple references :py:attr:`~pymovements.Gaze.events` of the
+        corresponding :py:class:`~pymovements.Gaze` in :py:attr:`~pymovements.Dataset.gaze`.
+
+        Returns
+        -------
+        tuple[Events, ...]
+            Tuple mapping ``Dataset.events[i]`` to ``Dataset.gaze[i].events``.
+
+        Notes
+        -----
+        Changes to ``Dataset.events[i]`` are also reflected in ``Dataset.gaze[i].events`` and vice
+        versa as they both reference the same :py:class:`~pymovements.Events` object.
+        """
+        return tuple(gaze.events for gaze in self.gaze)
+
+    @events.setter
+    def events(self, data: Sequence[Events]) -> None:
+        """Assign ``Events`` to each ``Gaze`` object in the ``Dataset``.
+
+        Each :py:class:`~pymovements.Gaze` in :py:attr:`~pymovements.Dataset.gaze` is updated with
+        the corresponding :py:class:`~pymovements.Events` of the input.
+
+        Parameters
+        ----------
+        data: Sequence[Events]
+            Must have the same length as :py:attr:`~pymovements.Dataset.gaze`.
+
+        Raises
+        ------
+        ValueError
+            If the lengths of ``data`` and :py:attr:`~pymovements.Dataset.gaze` do not match.
+
+        Notes
+        -----
+        Assigning to a single element of :py:attr:`~pymovements.Dataset.events` raises a
+        ``TypeError`` as :py:attr:`~pymovements.Dataset.events` returns an immutable tuple.
+
+        To assign to a single element, assign directly via ``Dataset.gaze[i].events = new_events``
+        instead.
+        """
+        if len(data) != len(self.gaze):
+            raise ValueError(
+                f'Number of events ({len(data)}) does not match '
+                f'number of gazes ({len(self.gaze)}).',
+            )
+        for gaze, ev in zip(self.gaze, data):
+            gaze.events = ev
+
+    def scan(
+            self,
+            *,
+            participant_key: str = 'participant_id',
+    ) -> Dataset:
         """Infer information from filepaths and filenames.
+
+        Sets :py:attr:`~pymovements.Dataset.fileinfo` and
+        :py:attr:`~pymovements.Dataset.participants`.
+
+        Parameters
+        ----------
+        participant_key: str
+            The participant key used for identifying a participant. See
+            :py:meth:`~pymovements.Dataset.scan_participants` for more details.
+            (default: `'participant_id'`)
 
         Returns
         -------
@@ -185,8 +316,81 @@ class Dataset:
         RuntimeError
             If an error occurred during matching filenames or no files have been found.
         """
-        self.fileinfo = dataset_files.scan_dataset(definition=self.definition, paths=self.paths)
+        self.fileinfo, self._files = dataset_files.scan_dataset(
+            definition=self.definition, paths=self.paths,
+        )
+        self.scan_participants(participant_key=participant_key)
         return self
+
+    def scan_participants(
+            self,
+            *,
+            participant_key: str = 'participant_id',
+    ) -> None:
+        """Scan files for participant metadata.
+
+        Currently only scans file metadata for participant id.
+
+        Parameters
+        ----------
+        participant_key: str
+            The participant key used for identifying a participant. This corresponds to the group
+            name specified in :py:attr:`~pymovements.ResourceDefinition.filename_pattern`. Usually
+            this is `'participant_id'` or `'subject_id'`. Values will be used to fill the
+            `participant_id` column of :py:attr:`~pymovements.Dataset.participants`.
+            (default: `'participant_id'`)
+        """
+        participant_ids = set()
+        for file in self._files:
+            if participant_key in file.metadata:
+                participant_ids.add(file.metadata[participant_key])
+
+        participant_data = pl.from_dict(
+            {'participant_id': list(participant_ids)},
+        ).sort('participant_id')
+
+        if len(participant_data):
+            self.participants.update(participant_data)
+
+    def load_participants(
+            self,
+            *,
+            replace: bool = False,
+    ) -> None:
+        """Load participants file from resources.
+
+        Parameters
+        ----------
+        replace: bool
+            If `True` this will replace :py:attr:`~pymovements.Dataset.participants` with the loaded
+            data. If `False` this will update the existing data in
+            :py:attr:`~pymovements.Dataset.participants` with the loaded data.
+        """
+        participants_files = [
+            file
+            for file in self._files
+            if file.definition and file.definition.content == 'participants'
+        ]
+
+        if len(participants_files) > 1:
+            raise AttributeError('there may be only a single participants resource per dataset')
+        if not participants_files:
+            raise AttributeError('no participant file defined in dataset resources')
+        participants_file = participants_files[0]
+        participants_definition = participants_file.definition
+
+        loaded_participants = Participants.load(
+            path=participants_file.path,
+            **participants_definition.load_kwargs,
+        )
+
+        if replace:
+            self.participants = loaded_participants
+        else:
+            self.participants.update(
+                data=loaded_participants.data,
+                metadata=loaded_participants.metadata,
+            )
 
     def load_gaze_files(
             self,
@@ -203,9 +407,7 @@ class Dataset:
             (default: False)
         preprocessed_dirname: str | None
             One-time usage of an alternative directory name to save data relative to
-            :py:meth:`pymovements.Dataset.path`.
-            This argument is used only for this single call and does not alter
-            :py:meth:`pymovements.Dataset.preprocessed_rootpath`. (default: None)
+            :py:attr:`~pymovements.Dataset.path`. (default: None)
         extension: str
             Specifies the file format for loading data. Valid options are: `csv`, `feather`,
             `tsv`, `txt`, `asc`.
@@ -226,7 +428,7 @@ class Dataset:
         self._check_fileinfo()
         self.gaze = dataset_files.load_gaze_files(
             definition=self.definition,
-            fileinfo=self.fileinfo['gaze'],
+            files=[file for file in self._files if file.definition.content == 'gaze'],
             paths=self.paths,
             preprocessed=preprocessed,
             preprocessed_dirname=preprocessed_dirname,
@@ -254,16 +456,20 @@ class Dataset:
             If the file info is missing or improperly formatted.
         """
         self._check_fileinfo()
+        precomputed_event_files = [
+            file for file in self._files
+            if file.definition.content == 'precomputed_events'
+        ]
         self.precomputed_events = dataset_files.load_precomputed_event_files(
-            self.definition,
-            self.fileinfo['precomputed_events'],
-            self.paths,
+            definition=self.definition,
+            files=precomputed_event_files,
+            paths=self.paths,
         )
 
     def load_precomputed_reading_measures(self) -> None:
         """Load precomputed reading measures.
 
-        This method checks that the file information for precomputed reading measures are
+        This method checks that the file information for precomputed reading measures is
         available, then loads each event file listed in
         `self.fileinfo['precomputed_reading_measures']` using the dataset definition and
         path settings. The resulting list of `ReadingMeasures` objects is assigned to
@@ -280,10 +486,14 @@ class Dataset:
             If the file info is missing or improperly formatted.
         """
         self._check_fileinfo()
+        reading_measure_files = [
+            file for file in self._files
+            if file.definition.content == 'precomputed_reading_measures'
+        ]
         self.precomputed_reading_measures = dataset_files.load_precomputed_reading_measures(
-            self.definition,
-            self.fileinfo['precomputed_reading_measures'],
-            self.paths,
+            definition=self.definition,
+            files=reading_measure_files,
+            paths=self.paths,
         )
 
     def split_gaze_data(
@@ -303,7 +513,7 @@ class Dataset:
         all_fileinfo_rows = []
 
         for frame, fileinfo_row in zip(self.gaze, fileinfo_dicts):
-            split_frames = frame.split(by=by)
+            split_frames = frame.split(by=by, as_dict=False)
             all_gaze_frames.extend(split_frames)
             all_fileinfo_rows.extend([fileinfo_row] * len(split_frames))
 
@@ -314,7 +524,7 @@ class Dataset:
             self,
             by: list[str] | str,
     ) -> None:
-        """Split precomputed event data into separated PrecomputedEventDataFrame's.
+        """Split precomputed event data into separated ``PrecomputedEventDataFrame``.
 
         Parameters
         ----------
@@ -324,7 +534,8 @@ class Dataset:
         if isinstance(by, str):
             by = [by]
         self.precomputed_events = [
-            PrecomputedEventDataFrame(new_frame) for _frame in self.precomputed_events
+            PrecomputedEventDataFrame(new_frame, metadata=deepcopy(_frame.metadata))
+            for _frame in self.precomputed_events
             for new_frame in _frame.frame.partition_by(by=by)
         ]
 
@@ -339,9 +550,7 @@ class Dataset:
         ----------
         events_dirname: str | None
             One-time usage of an alternative directory name to save data relative to
-            :py:meth:`pymovements.Dataset.path`.
-            This argument is used only for this single call and does not alter
-            :py:meth:`pymovements.Dataset.events_rootpath`. (default: None)
+            :py:attr:`~pymovements.Dataset.path`. (default: None)
         extension: str
             Specifies the file format for loading data. Valid options are: `csv`, `feather`.
             (default: 'feather')
@@ -359,14 +568,45 @@ class Dataset:
             If extension is not in list of valid extensions.
         """
         self._check_fileinfo()
-        self.events = dataset_files.load_event_files(
-            definition=self.definition,
-            fileinfo=self.fileinfo['gaze'],
+        events = dataset_files.load_event_files(
+            files=[file for file in self._files if file.definition.content == 'gaze'],
             paths=self.paths,
             events_dirname=events_dirname,
             extension=extension,
         )
+        self.events = events
         return self
+
+    def load_stimuli(self) -> None:
+        """Load text stimuli.
+
+        This method checks that the file information for stimuli is available,
+        then loads each text stimulus file listed in ``Dataset.fileinfo['stimuli']`` using
+        the dataset definition and path settings. The resulting list of
+        stimulus objects is assigned to ``Dataset.stimuli``.
+
+        Supported file extensions:
+
+        - CSV-like: .csv, .tsv, .txt, .ias
+
+        Raises
+        ------
+        ValueError
+            If the file info is missing or improperly formatted.
+        """
+        warn(
+            'Stimulus support is experimental. '
+            'Names and behavior may change without being considered a breaking change. '
+            'Please set the used pymovements version explicitly to prevent unexptected changes. '
+            f'The used pymovements version is v{__version__}.',
+            ExperimentalWarning,
+        )
+
+        self._check_fileinfo()
+        self.stimuli = dataset_files.load_stimuli_files(
+            files=[file for file in self._files if 'stimulus' in file.definition.content.lower()],
+            paths=self.paths,
+        )
 
     def apply(
             self,
@@ -382,7 +622,7 @@ class Dataset:
         function: str
             Name of the preprocessing function to apply.
         verbose : bool
-            If True, show progress bar of computation. (default: True)
+            If True, show a progress bar of computation. (default: True)
         **kwargs: Any
             kwargs that will be forwarded when calling the preprocessing method.
 
@@ -393,41 +633,65 @@ class Dataset:
 
         Examples
         --------
+        .. testsetup::
+
+            >>> getfixture('doctest_tmp_cwd')
+
         Let's load in our dataset first,
+
         >>> import pymovements as pm
         >>>
-        >>> dataset = pm.Dataset("ToyDataset", path='toy_dataset')
-        >>> dataset.download()# doctest:+ELLIPSIS
-        Downloading ... to toy_dataset...downloads...
+        >>> dataset = pm.Dataset("ToyDataset", path='data/toy_dataset')
+        >>> dataset.download()# doctest:+ELLIPSIS,+REMOTE_DATA
+        Downloading https://... to data...toy_dataset...downloads...
         Checking integrity of ...
-        Extracting ... to toy_dataset...raw
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Extracting ... to data...toy_dataset...raw
+        Dataset(name='ToyDataset', path='data...toy_dataset')
+          experiment: Experiment(...)
+          resources: 1 defined
+          gaze: 0 recordings
+          events: 0 recordings
         >>> dataset.load()# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')
+          experiment: Experiment(...)
+          resources: 1 defined
+          gaze: 20 recordings
+          events: 20 recordings
+
+        Each call returns the dataset itself:
 
         Use apply for your gaze transformations:
+
         >>> dataset.apply('pix2deg')# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
 
         >>> dataset.apply('pos2vel', method='neighbors')# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
 
         Use apply for your event detection:
+
         >>> dataset.apply('ivt')# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
 
         >>> dataset.apply('microsaccades', minimum_duration=8)# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
 
         Use apply for upsampling, downsampling or making the sampling rate constant
         using resample:
+
         >>> dataset.apply('resample', resampling_rate=2000)# doctest:+ELLIPSIS
-        <pymovements.dataset.dataset.Dataset object at ...>
+        Dataset(name='ToyDataset', path='data...toy_dataset')...
         """
         self._check_gaze()
 
         disable_progressbar = not verbose
-        for gaze in tqdm(self.gaze, disable=disable_progressbar):
+        for gaze in tqdm(
+                self.gaze,
+                total=len(self.gaze),
+                desc=f'Applying {function}',
+                unit='file',
+                disable=disable_progressbar,
+        ):
             gaze.apply(function, **kwargs)
 
         return self
@@ -444,7 +708,7 @@ class Dataset:
     ) -> Dataset:
         """Clip gaze signal values.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is clipped.
 
@@ -459,9 +723,10 @@ class Dataset:
         output_column : str
             Name of the output column.
         verbose : bool
-            If True, show progress of computation. (default: True)
+            If True, show a progress of computation. (default: True)
         **kwargs: Any
-            Additional keyword arguments to be passed to the :func:`~transforms.clip()` method.
+            Additional keyword arguments to be passed to the
+            :func:`~pymovements.transforms.clip()` method.
 
         Returns
         -------
@@ -471,8 +736,9 @@ class Dataset:
         Raises
         ------
         AttributeError
-            If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if experiment is None.
+            If :py:attr:`~pymovements.Dataset.gaze` is ``None`` or there are no gaze dataframes
+            present in the :py:attr:`~pymovements.Dataset.gaze` attribute, or if the
+            ``experiment`` is ``None``.
         """
         return self.apply(
             'clip',
@@ -491,7 +757,7 @@ class Dataset:
             fill_null_strategy: str = 'interpolate_linear',
             verbose: bool = True,
     ) -> Dataset:
-        """Resample a DataFrame to a new sampling rate by timestamps in time column.
+        """Resample a DataFrame to a new sampling rate by timestamps in the time column.
 
         The DataFrame is resampled by upsampling or downsampling the data to the new sampling rate.
         Can also be used to achieve a constant sampling rate for inconsistent data.
@@ -509,7 +775,7 @@ class Dataset:
             are: 'forward', 'backward', 'interpolate_linear', 'interpolate_nearest'.
             (default: 'interpolate_linear')
         verbose: bool
-            If True, show progress of computation. (default: True)
+            If True, show a progress of computation. (default: True)
 
         Returns
         -------
@@ -526,7 +792,7 @@ class Dataset:
     def pix2deg(self, verbose: bool = True) -> Dataset:
         """Compute gaze positions in degrees of visual angle from pixel coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is extended by the resulting dva columns.
 
@@ -543,8 +809,8 @@ class Dataset:
         Raises
         ------
         AttributeError
-            If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if experiment is None.
+            If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
+            :py:attr:`~.Dataset.gaze` attribute, or if ``experiment`` is None.
         """
         return self.apply('pix2deg', verbose=verbose)
 
@@ -557,7 +823,7 @@ class Dataset:
     ) -> Dataset:
         """Compute gaze positions in pixel coordinates from degrees of visual angle.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is extended by the resulting dva columns.
 
@@ -581,8 +847,8 @@ class Dataset:
         Raises
         ------
         AttributeError
-            If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if experiment is None.
+            If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
+            :py:attr:`~.Dataset.gaze` attribute, or if ``experiment`` is None.
         """
         return self.apply(
             'deg2pix',
@@ -602,7 +868,7 @@ class Dataset:
     ) -> Dataset:
         """Compute gaze accelerations in dva/s^2 from dva coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is extended by the resulting acceleration columns.
 
@@ -625,8 +891,8 @@ class Dataset:
         Raises
         ------
         AttributeError
-            If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if experiment is None.
+            If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
+            :py:attr:`~.Dataset.gaze` attribute, or if ``experiment`` is None.
         """
         return self.apply(
             'pos2acc',
@@ -645,19 +911,20 @@ class Dataset:
     ) -> Dataset:
         """Compute gaze velocities in dva/s from dva coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is extended by the resulting velocity columns.
 
         Parameters
         ----------
         method: str
-            Computation method. See :func:`~transforms.pos2vel()` for details.
+            Computation method. See :func:`~pymovements.transforms.pos2vel()` for details.
             (default: 'fivepoint')
         verbose: bool
             If True, show progress of computation. (default: True)
         **kwargs: Any
-            Additional keyword arguments to be passed to the :func:`~transforms.pos2vel()` method.
+            Additional keyword arguments to be passed to the
+            :func:`~pymovements.transforms.pos2vel()` method.
 
         Returns
         -------
@@ -667,8 +934,8 @@ class Dataset:
         Raises
         ------
         AttributeError
-            If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if experiment is None.
+            If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
+            :py:attr:`~.Dataset.gaze` attribute, or if ``experiment`` is None.
         """
         return self.apply('pos2vel', method=method, verbose=verbose, **kwargs)
 
@@ -690,12 +957,12 @@ class Dataset:
         eye: str
             Select which eye to choose. Valid options are ``auto``, ``left``, ``right`` or ``None``.
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
-            the available :py:attr:`~.Dataset.gaze` dataframe columns. (default: 'auto')
+            the available :py:attr:`~pymovements.Dataset.gaze` dataframe columns. (default: 'auto')
         clear: bool
-            If ``True``, event DataFrame will be overwritten with new DataFrame instead of being
+            If ``True``, event DataFrame will be overwritten with a new DataFrame instead of being
              merged into the existing one. (default: False)
         verbose: bool
-            If ``True``, show progress bar. (default: True)
+            If ``True``, show a progress bar. (default: True)
         **kwargs: Any
             Additional keyword arguments to be passed to the event detection method.
 
@@ -737,12 +1004,12 @@ class Dataset:
         eye: str
             Select which eye to choose. Valid options are ``auto``, ``left``, ``right`` or ``None``.
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
-            the available :py:attr:`~.Dataset.gaze` dataframe columns. (default: 'auto')
+            the available :py:attr:`~pymovements.Dataset.gaze` dataframe columns. (default: 'auto')
         clear: bool
-            If ``True``, event DataFrame will be overwritten with new DataFrame instead of being
+            If ``True``, event DataFrame will be overwritten with a new DataFrame instead of being
              merged into the existing one. (default: False)
         verbose: bool
-            If ``True``, show progress bar. (default: True)
+            If ``True``, show a progress bar. (default: True)
         **kwargs: Any
             Additional keyword arguments to be passed to the event detection method.
 
@@ -758,22 +1025,40 @@ class Dataset:
         """
         self._check_gaze()
 
-        if not self.events:
-            self.events = [gaze.events for gaze in self.gaze]
-
         disable_progressbar = not verbose
-        for file_id, (gaze, fileinfo_row) in tqdm(
-                enumerate(zip(self.gaze, self.fileinfo['gaze'].to_dicts())),
+        for gaze in tqdm(
+                self.gaze,
+                total=len(self.gaze),
+                desc='Detecting events',
+                unit='file',
                 disable=disable_progressbar,
         ):
             gaze.detect(method, eye=eye, clear=clear, **kwargs)
-            # workaround until events are fully part of the Gaze
-            gaze.events.frame = dataset_files.add_fileinfo(
-                definition=self.definition,
-                df=gaze.events.frame,
-                fileinfo=fileinfo_row,
-            )
-            self.events[file_id] = gaze.events
+        return self
+
+    def drop_event_properties(
+            self,
+            event_properties: str | list[str],
+    ) -> Dataset:
+        """Remove event properties from the event dataframe.
+
+        Parameters
+        ----------
+        event_properties: str | list[str]
+            The event properties to remove.
+
+        Raises
+        ------
+        UnknownMeasure
+            If ``event_properties`` does not exist in the event dataframe
+
+        Returns
+        -------
+        Dataset
+            Returns self, useful for method cascading.
+        """
+        for gaze in self.gaze:
+            gaze.drop_event_properties(event_properties)
         return self
 
     def compute_event_properties(
@@ -792,13 +1077,13 @@ class Dataset:
         name: str | None
             Process only events that match the name. (default: None)
         verbose : bool
-            If ``True``, show progress bar. (default: True)
+            If ``True``, show a progress bar. (default: True)
 
         Raises
         ------
-        InvalidProperty
-            If ``property_name`` is not a valid property. See
-            :py:mod:`pymovements.events` for an overview of supported properties.
+        UnknownMeasure
+            If ``event_properties`` includes an unknown measure. See :ref:`sample-measures` and
+            :ref:`event-measures` for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
         ValueError
@@ -809,7 +1094,13 @@ class Dataset:
         Dataset
             Returns self, useful for method cascading.
         """
-        for gaze in tqdm(self.gaze, disable=not verbose):
+        for gaze in tqdm(
+                self.gaze,
+                total=len(self.gaze),
+                desc='Computing event properties',
+                unit='file',
+                disable=not verbose,
+        ):
             gaze.compute_event_properties(event_properties, name=name)
         return self
 
@@ -831,7 +1122,7 @@ class Dataset:
         name: str | None
             Process only events that match the name. (default: None)
         verbose: bool
-            If ``True``, show progress bar. (default: True)
+            If ``True``, show a progress bar. (default: True)
 
         Returns
         -------
@@ -840,9 +1131,9 @@ class Dataset:
 
         Raises
         ------
-        InvalidProperty
-            If ``property_name`` is not a valid property. See
-            :py:mod:`pymovements.events` for an overview of supported properties.
+        UnknownMeasure
+            If ``event_properties`` includes an unknown measure. See :ref:`sample-measures` and
+            :ref:`event-measures` for an overview of supported measures.
         """
         return self.compute_event_properties(
             event_properties=event_properties,
@@ -850,8 +1141,245 @@ class Dataset:
             verbose=verbose,
         )
 
+    def measure_reading(
+            self,
+            aoi_dict: dict[str, str | Path],
+            *,
+            save_path: str | Path | None = None,
+            group_columns: list[str] | None = None,
+            word_index_column: str = 'word_idx',
+            word_column: str = 'word',
+    ) -> ReadingMeasures:
+        """Map fixations to AOIs and compute reading measures for an entire dataset.
+
+        This method implicitly annotates fixations with AOI data. See
+        :py:meth:`~pymovements.Events.map_to_aois` for further details.
+
+        Parameters
+        ----------
+        aoi_dict : dict[str, str | Path]
+            A dictionary mapping text IDs to their corresponding AOI file paths.
+        save_path : str | Path | None
+            The directory path where the computed reading measures CSV files will be saved.
+            If ``None``, no files are saved to disk. (default: None)
+        group_columns : list[str] | None
+            Columns that partition each subject-text's fixations into independent reading
+            sequences. If ``None``, the fixations of a subject-text are treated as a single
+            sequence, matching the flat per-text AOI table. Pass e.g. ``['trial', 'page']`` to
+            split them further. (default: None)
+        word_index_column : str
+            Shared column name in fixations and AOIs that corresponds to the word index of
+            the text.
+            (default: ``'word_idx'``)
+        word_column : str
+            Column in AOIs with the content within each AOI.
+            (default: ``'word'``)
+
+        Returns
+        -------
+        ReadingMeasures
+            Returns a ReadingMeasures object containing the computed reading measures.
+            Its ``metadata['Sources']`` entry lists the event source files and AOI files
+            the measures were derived from, with paths below the dataset root recorded
+            relative to it.
+        """
+        reading_measures_list = []
+        reading_measures_metadata: dict[str, Any] = {}
+
+        for events in tqdm(self.events):
+            if events.frame.is_empty():
+                print('+ skip due to empty DF')
+                continue
+            text_id = events.frame['text_id'][0]
+            aoi_text_stimulus = text.from_file(
+                aoi_dict[text_id],
+                aoi_column='character',
+                start_x_column='start_x',
+                start_y_column='start_y',
+                end_x_column='end_x',
+                end_y_column='end_y',
+                page_column='page',
+                custom_read_kwargs={'separator': '\t'},
+            )
+
+            events.map_to_aois(aoi_text_stimulus)
+
+            # The reading measures are derived from the events and their AOI stimulus files.
+            # AOI files below the dataset root are recorded relative to it, like all other
+            # dataset sources. The dataset's events stay untouched.
+            events_metadata = relativize_sources(events.metadata, self.paths.dataset)
+            reading_measures_metadata = merge_sources(reading_measures_metadata, events_metadata)
+
+            fixations = events.filter_by_name('fixation')
+
+            text_id = fixations['text_id'][0]
+            subject_id = int(fixations['subject_id'][0])
+
+            aoi_df = pl.read_csv(aoi_dict[text_id], separator='\t')
+
+            rm_df = compute_reading_measures(
+                fixations=fixations,
+                aois=aoi_df,
+                group_columns=group_columns,
+                word_index_column=word_index_column,
+                word_column=word_column,
+            )
+
+            rm_df = rm_df.with_columns([
+                pl.lit(subject_id).alias('subject_id'),
+                pl.lit(text_id).alias('text_id'),
+            ])
+
+            # Append the computed reading measures DataFrame to the list
+            reading_measures_list.append(rm_df)
+
+            # Save to CSV if save_path is provided
+            if save_path is not None:
+                rm_filename = f'{subject_id}-{text_id}-reading_measures.csv'
+                path_save_rm_file = Path(save_path) / rm_filename
+                rm_df.write_csv(path_save_rm_file)
+
+        if reading_measures_list:
+            combined_df = pl.concat(reading_measures_list)
+        else:
+            combined_df = pl.DataFrame()
+
+        return ReadingMeasures(combined_df, metadata=reading_measures_metadata)
+
+    def correct_fixations(
+            self,
+            aois: TextStimulus,
+            algorithm: str | list[str] = 'wisdom_of_the_crowd',
+            *,
+            directionality: str | None = None,
+            word_locations: pl.Series | None = None,
+            algorithm_kwargs: dict[str, Any] | None = None,
+            fixation_name: str = 'fixation',
+            character_level: bool = False,
+            verbose: bool = True,
+    ) -> Dataset:
+        """Correct vertical drift of fixations for all events in the dataset.
+
+        Fixations of each :py:class:`~pymovements.Events` object are corrected per trial
+        using the specified drift correction algorithm. Fixation locations are replaced
+        with their corrected values. Original locations are preserved in a
+        ``location_original`` column and the applied algorithm is recorded in a
+        ``correction_algorithm`` column. Trials with too few fixations for the requested
+        algorithms are skipped with a UserWarning and stay uncorrected. See
+        :py:meth:`~pymovements.Events.correct_fixations` for details.
+
+        Parameters
+        ----------
+        aois: TextStimulus
+            Text stimulus used for line position extraction. Its configured column names
+            are mapped to the column names expected by the drift correction algorithms and
+            its writing system provides the default reading direction.
+        algorithm: str | list[str]
+            Name of drift algorithm or list of algorithm names.
+            (default: 'wisdom_of_the_crowd')
+        directionality: str | None
+            Reading direction of the text, either 'left-to-right' or 'right-to-left',
+            mirroring the directionality of a text stimulus writing system.
+            'top-to-bottom' is not supported and raises a ValueError. If None, the
+            reading direction is inferred from the writing system of the text stimulus.
+            (default: None)
+        word_locations: pl.Series | None
+            Series of [x, y] word center coordinates for the DTW-based algorithms
+            'compare' and 'warp'. If None, word locations are derived from the aois
+            dataframe. A user-supplied series is reused unchanged for every trial, so
+            with per-trial AOIs leave it None to derive the word locations of each trial
+            separately. (default: None)
+        algorithm_kwargs: dict[str, Any] | None
+            Additional tuning parameters passed to underlying drift correction algorithms.
+            Warning: in ensemble mode an entry fans out to every candidate algorithm whose
+            signature accepts the key, even where defaults and semantics differ. For
+            example, ``{'x_thresh': 250.0}`` reconfigures 'chain', 'compare' and 'slice'
+            at once. (default: None)
+        fixation_name: str
+            Name of the fixation events to correct. (default: 'fixation')
+        character_level: bool
+            Set to True when the stimulus AOIs are finer than words, e.g. one row per
+            character. The AOIs are then aggregated to one location per word via the
+            'word' column, which must be present. (default: False)
+        verbose: bool
+            If ``True``, show a progress bar. (default: True)
+
+        Returns
+        -------
+        Dataset
+            Returns self, useful for method cascading.
+
+        Examples
+        --------
+        Let's create a dataset holding fixations that drift away from three lines of
+        text with their centers at y = 100, 200 and 300:
+
+        >>> import polars as pl
+        >>> import pymovements as pm
+        >>> events = pm.Events(
+        ...     pl.DataFrame({
+        ...         'name': ['fixation', 'fixation', 'fixation'],
+        ...         'onset': [0, 200, 400],
+        ...         'offset': [100, 300, 500],
+        ...         'location': [[100.0, 105.0], [110.0, 195.0], [120.0, 302.0]],
+        ...     }),
+        ... )
+        >>> dataset = pm.Dataset(pm.DatasetDefinition(), path='data')
+        >>> dataset.gaze.append(pm.Gaze(events=events))
+        >>> stimulus = pm.stimulus.TextStimulus(
+        ...     aois=pl.DataFrame({
+        ...         'word': ['first', 'second', 'third'],
+        ...         'start_x': [90.0, 90.0, 90.0],
+        ...         'start_y': [80.0, 180.0, 280.0],
+        ...         'end_x': [200.0, 200.0, 200.0],
+        ...         'end_y': [120.0, 220.0, 320.0],
+        ...     }),
+        ...     aoi_column='word',
+        ...     start_x_column='start_x',
+        ...     start_y_column='start_y',
+        ...     end_x_column='end_x',
+        ...     end_y_column='end_y',
+        ... )
+
+        Correcting the fixations snaps each y-coordinate onto its line center and
+        preserves the original locations:
+
+        >>> dataset.correct_fixations(stimulus, algorithm='attach', verbose=False)
+        Dataset(name='.', path='data')
+          gaze: 1 recordings
+          events: 1 recordings
+        >>> dataset.events[0].frame.select(['name', 'location', 'location_original'])
+        shape: (3, 3)
+        ┌──────────┬────────────────┬───────────────────┐
+        │ name     ┆ location       ┆ location_original │
+        │ ---      ┆ ---            ┆ ---               │
+        │ str      ┆ list[f64]      ┆ list[f64]         │
+        ╞══════════╪════════════════╪═══════════════════╡
+        │ fixation ┆ [100.0, 100.0] ┆ [100.0, 105.0]    │
+        │ fixation ┆ [110.0, 200.0] ┆ [110.0, 195.0]    │
+        │ fixation ┆ [120.0, 300.0] ┆ [120.0, 302.0]    │
+        └──────────┴────────────────┴───────────────────┘
+        """
+        disable_progressbar = not verbose
+        for events in tqdm(self.events, disable=disable_progressbar):
+            if events.frame.is_empty():
+                continue
+            events.correct_fixations(
+                aois,
+                algorithm=algorithm,
+                directionality=directionality,
+                word_locations=word_locations,
+                algorithm_kwargs=algorithm_kwargs,
+                fixation_name=fixation_name,
+                character_level=character_level,
+            )
+        return self
+
     def clear_events(self) -> Dataset:
         """Clear event DataFrame.
+
+        Clears the event DataFrame of each gaze object via :py:meth:`~.Gaze.clear_events`,
+        which preserves trial columns in the emptied event DataFrames.
 
         Returns
         -------
@@ -861,8 +1389,71 @@ class Dataset:
         if len(self.events) == 0:
             return self
 
-        for file_id, _ in enumerate(self.events):
-            self.events[file_id] = Events()
+        for gaze in self.gaze:
+            gaze.clear_events()
+
+        return self
+
+    def drop_nulls(
+            self,
+            subset: list[str] | None = None,
+            how: Literal['all', 'any'] = 'any',
+            samples: bool = True,
+            events: bool = True,
+    ) -> Dataset:
+        """Drop samples and events with null values.
+
+        Parameters
+        ----------
+        subset: list[str] | None
+            List of column names to check for null values. If None, each frame is checked on its
+            own columns: sample frames on all sample columns, event frames on all event columns.
+            If a list is given, all named columns must exist in every targeted frame.
+            (default: None)
+        how: Literal['all', 'any']
+            If 'any', drop rows where *any* of the specified columns are null. If 'all', drop rows
+            where *all* of the specified columns are null. A nested list column like ``pixel`` or
+            ``position`` counts as null if any of its components is null under 'any', and only if
+            all of its components are null under 'all'. (default: 'any')
+        samples: bool
+            If True, drop samples with null values. (default: True)
+        events: bool
+            If True, drop events with null values. (default: True)
+
+        Returns
+        -------
+        Dataset
+            Returns self, useful for method cascading.
+
+        Raises
+        ------
+        ValueError
+            If `how` is neither 'any' nor 'all', or if `subset` contains columns that do not
+            exist in a targeted frame.
+
+        Examples
+        --------
+        Initialize your :py:class:`~pymovements.Dataset` object and load the data first:
+
+        >>> import pymovements as pm
+        >>>
+        >>> dataset = pm.Dataset("ToyDataset", path='data/ToyDataset')# doctest: +SKIP
+        >>> dataset.load()# doctest: +SKIP
+
+        Drop all samples and events with null values:
+
+        >>> dataset.drop_nulls()# doctest: +SKIP
+
+        Drop only samples where any pixel component is null:
+
+        >>> dataset.drop_nulls(subset=['pixel'], events=False)# doctest: +SKIP
+        """
+        if samples:
+            for gaze in self.gaze:
+                gaze.drop_nulls(subset, how=how, events=events)
+        elif events:
+            for events_ in self.events:
+                events_.drop_nulls(subset, how=how)
 
         return self
 
@@ -886,18 +1477,16 @@ class Dataset:
         Parameters
         ----------
         events_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to dataset path.
-            This argument is used only for this single call and does not alter
-            :py:meth:`pymovements.Dataset.events_rootpath`. (default: None)
+            One-time usage of an alternative directory name to save data relative to
+            dataset path. (default: None)
         preprocessed_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to dataset path.
-            This argument is used only for this single call and does not alter
-            :py:meth:`pymovements.Dataset.preprocessed_rootpath`. (default: None)
+            One-time usage of an alternative directory name to save data relative to
+            dataset path. (default: None)
         verbose: int
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)
         extension: str
-            Extension specifies the fileformat to store the data. (default: 'feather')
+            Extension specifies the file format to store the data. (default: 'feather')
         """
         self.save_events(events_dirname, verbose=verbose, extension=extension)
         self.save_preprocessed(preprocessed_dirname, verbose=verbose, extension=extension)
@@ -917,9 +1506,8 @@ class Dataset:
         Parameters
         ----------
         events_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to dataset path.
-            This argument is used only for this single call and does not alter
-            :py:meth:`pymovements.Dataset.events_rootpath`. (default: None)
+            One-time usage of an alternative directory name to save data relative to
+            dataset path. (default: None)
         verbose: int
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)
@@ -961,9 +1549,8 @@ class Dataset:
         Parameters
         ----------
         preprocessed_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to dataset path.
-            This argument is used only for this single call and does not alter
-            :py:meth:`pymovements.Dataset.preprocessed_rootpath`. (default: None)
+            One-time usage of an alternative directory name to save data relative to
+            dataset path. (default: None)
         verbose: int
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)
@@ -991,25 +1578,177 @@ class Dataset:
         )
         return self
 
+    def report_data_quality(
+            self,
+            *,
+            output_path: Path | str | None = None,
+            checks: list[str] | None = None,
+            measures: list[str] | None = None,
+            levels: list[str] | None = None,
+            raise_on_error: bool = False,
+            max_gap_factor: float = 5.0,
+            max_deviation: float = 0.05,
+            min_fraction: float = 0.95,
+    ) -> DataQualityReport:
+        """Run sanity checks and compute data quality measures for all loaded gaze data.
+
+        Three processing stages are executed in sequence:
+
+        1. **Validation checks** — eight stimulus-agnostic checks (see *checks* parameter)
+           that verify column presence, dtypes, temporal continuity, and gaze range.
+        2. **Quality measures** — ``data_loss``, ``std_rms``, ``rms_s2s``, and ``bcea``
+           aggregated at dataset, subject, session, and trial level.
+        3. **BIDS output** (optional) — writes derivative TSV/JSON files and a
+           ``warnings.log`` under ``output_path / 'derivatives' / 'pymovements' /``.
+
+        Parameters
+        ----------
+        output_path : Path | str | None
+            If provided, write BIDS-conformant derivative report files here.
+            (default: None)
+        checks : list[str] | None
+            Check identifiers to run. ``None`` runs all eight checks. Valid identifiers:
+            ``'trial_columns_exist'``, ``'trial_columns_dtype'``,
+            ``'time_column_exists'``, ``'gaze_components_defined'``,
+            ``'time_monotone'``, ``'max_gap'``, ``'sampling_rate_consistency'``,
+            ``'gaze_range'``.
+            (default: None)
+        measures : list[str] | None
+            Measure identifiers to compute. ``None`` computes all four. Valid:
+            ``'data_loss'``, ``'std_rms'``, ``'rms_s2s'``, ``'bcea'``.
+            (default: None)
+        levels : list[str] | None
+            Aggregation levels for measures. ``None`` uses all four. Valid:
+            ``'dataset'``, ``'subject'``, ``'session'``, ``'trial'``.
+            (default: None)
+        raise_on_error : bool
+            If ``True``, raise :py:exc:`~pymovements.ValidationError`
+            on the first check result with severity ``'fail'`` or ``'error'``. (default: False)
+        max_gap_factor : float
+            Maximum allowed inter-sample gap as a multiple of the expected ISI.
+            Passed to the ``'max_gap'`` check. (default: 5.0)
+        max_deviation : float
+            Maximum allowed relative deviation between empirical and declared
+            sampling rate. Passed to the ``'sampling_rate_consistency'`` check.
+            (default: 0.05, i.e. 5%)
+        min_fraction : float
+            Minimum fraction of non-null samples that must lie within screen bounds.
+            Passed to the ``'gaze_range'`` check. (default: 0.95, i.e. 95%)
+
+        Returns
+        -------
+        DataQualityReport
+            An object containing all :py:class:`~pymovements.CheckResult` objects
+            and per-level measure :py:class:`polars.DataFrame` tables.
+
+        Raises
+        ------
+        ValidationError
+            If *raise_on_error* is ``True`` and any check produces an error result.
+        ValueError
+            If any name in *checks* is not a valid check identifier.
+
+        Examples
+        --------
+        >>> import pymovements as pm
+        >>> # dataset = pm.Dataset('ExampleDataset', path='data/')
+        >>> # dataset.load()
+        >>> # report = dataset.report_data_quality()
+        >>> # print(report.summary())
+        """
+        checks_to_run = set(checks) if checks is not None else set(_ALL_CHECKS.keys())
+        levels_to_run = (
+            levels if levels is not None else ['dataset', 'subject', 'session', 'trial']
+        )
+
+        if checks is not None:
+            unknown = checks_to_run - set(_ALL_CHECKS.keys())
+            if unknown:
+                raise ValueError(
+                    f'Unknown check identifier(s) {sorted(unknown)!r}. '
+                    f'Valid identifiers: {list(_ALL_CHECKS.keys())!r}',
+                )
+
+        # Use real file paths from fileinfo when available; otherwise leave blank.
+        if (
+            isinstance(self.fileinfo, dict)
+            and 'gaze' in self.fileinfo
+            and 'filepath' in self.fileinfo['gaze'].columns
+        ):
+            source_paths: list[str] = self.fileinfo['gaze']['filepath'].cast(pl.Utf8).to_list()
+        else:
+            source_paths = ['' for _ in self.gaze]
+
+        check_results: list = []
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+
+            for idx, gaze in enumerate(self.gaze):
+                src = source_paths[idx] if idx < len(source_paths) else ''
+                results = gaze.validate(
+                    trial_columns_exist='trial_columns_exist' in checks_to_run,
+                    trial_columns_dtype='trial_columns_dtype' in checks_to_run,
+                    time_column_exists='time_column_exists' in checks_to_run,
+                    gaze_components_defined='gaze_components_defined' in checks_to_run,
+                    time_monotone='time_monotone' in checks_to_run,
+                    max_gap='max_gap' in checks_to_run,
+                    max_gap_factor=max_gap_factor,
+                    sampling_rate_consistency='sampling_rate_consistency' in checks_to_run,
+                    max_deviation=max_deviation,
+                    gaze_range='gaze_range' in checks_to_run,
+                    min_fraction=min_fraction,
+                    source_path=src,
+                )
+                for result in results:
+                    check_results.append(result)
+                    if raise_on_error and result.severity in {'fail', 'error'}:
+                        raise ValidationError(
+                            check_id=result.code,
+                            message=str(result.message),
+                            affected_files=result.sources,
+                        )
+
+            measure_results = compute_measures(
+                gaze_list=self.gaze,
+                fileinfo=self.fileinfo,
+                levels=levels_to_run,
+                measures=measures,
+            )
+
+            captured_warnings = [str(w.message) for w in caught]
+
+        report = DataQualityReport(
+            check_results=check_results,
+            measures=measure_results,
+            warning_log=captured_warnings,
+        )
+
+        if output_path is not None:
+            report.save_bids_report(Path(output_path))
+
+        return report
+
     def download(
             self,
             *,
             extract: bool = True,
             remove_finished: bool = False,
             resume: bool = True,
+            verify_checksum: bool = True,
             verbose: int = 1,
     ) -> Dataset:
         """Download dataset resources.
 
         This downloads all resources of the dataset. Per default this also extracts all archives
-        into :py:meth:`Dataset.paths.raw`,
-        To save space on your device you can remove the archive files after
+        into :py:attr:`~pymovements.DatasetPaths.raw`,
+        To save space on your device, you can remove the archive files after
         successful extraction with ``remove_finished=True``.
 
         If a corresponding file already exists in the local system, its checksum is calculated and
         checked against the expected checksum.
         Downloading will be evaded if the integrity of the existing file can be verified.
-        If the existing file does not match the expected checksum it is overwritten with the
+        If the existing file does not match the expected checksum, it is overwritten with the
         downloaded new file.
 
         Parameters
@@ -1020,7 +1759,9 @@ class Dataset:
             Remove archive files after extraction. (default: False)
         resume: bool
             Resume previous extraction by skipping existing files.
-            Checks for correct size of existing files but not integrity. (default: True)
+            Checks for the correct size of existing files but not integrity. (default: True)
+        verify_checksum : bool
+            If True, check integrity by using the MD5 checksum. (default: True)
         verbose: int
             Verbosity levels: (1) Show download progress bar and print info messages on downloading
             and extracting archive files without printing messages for recursive archive extraction.
@@ -1034,7 +1775,7 @@ class Dataset:
         Raises
         ------
         AttributeError
-            If number of mirrors or number of resources specified for dataset is zero.
+            If no downloadable sources are found in the dataset definition.
         RuntimeError
             If downloading a resource failed for all given mirrors.
         """
@@ -1046,6 +1787,7 @@ class Dataset:
             extract=extract,
             remove_finished=remove_finished,
             resume=resume,
+            verify_checksum=verify_checksum,
             verbose=bool(verbose),
         )
         return self
@@ -1068,7 +1810,7 @@ class Dataset:
             If ``True``, remove the top-level directory if it has only one child. (default: True)
         resume: bool
             Resume previous extraction by skipping existing files.
-            Checks for correct size of existing files but not integrity. (default: True)
+            Checks for the correct size of existing files but not integrity. (default: True)
         verbose: int
             Verbosity levels: (1) Print messages for extracting each dataset resource without
             printing messages for recursive archives. (2) Print additional messages for each
@@ -1078,6 +1820,15 @@ class Dataset:
         -------
         Dataset
             Returns self, useful for method cascading.
+
+        Raises
+        ------
+        AttributeError
+            If a resource resolves to a source without a filename, since such a file can never
+            have been downloaded.
+        ValueError
+            If the resolved sources of the resources conflict (see
+            :py:meth:`~pymovements.DatasetDefinition.resolved_sources`).
         """
         dataset_download.extract_dataset(
             definition=self.definition,
@@ -1093,7 +1844,7 @@ class Dataset:
     def path(self) -> Path:
         """The path to the dataset directory.
 
-        The dataset path points to the dataset directory under the root path. Per default the
+        The dataset path points to the dataset directory under the root path. Per default, the
         dataset path points to the exact same directory as the root path. Add ``dataset_dirname``
         to your initialization call to specify an explicit dataset directory in your root path.
 
@@ -1104,25 +1855,28 @@ class Dataset:
 
         Example
         -------
-        By passing a `str` or a `Path` as `path` during initialization you can explicitly set the
+        By passing a `str` or a `Path` as `path` during initialization, you can explicitly set the
         directory path of the dataset:
+
         >>> import pymovements as pm
         >>>
         >>> dataset = pm.Dataset("ToyDataset", path='/path/to/your/dataset')
-        >>> dataset.path# doctest: +SKIP
+        >>> dataset.path  # doctest: +SKIP
         Path('/path/to/your/dataset')
 
         If you just want to specify the root directory path which holds all your local datasets, you
-        can create pass a :py:class:`~pymovements.dataset.DatasetPaths` object and set the `root`:
+        can pass a :py:class:`~pymovements.DatasetPaths` object and set the `root`:
+
         >>> paths = pm.DatasetPaths(root='/path/to/your/common/root/')
         >>> dataset = pm.Dataset("ToyDataset", path=paths)
-        >>> dataset.path# doctest: +SKIP
+        >>> dataset.path  # doctest: +SKIP
         Path('/path/to/your/common/root/ToyDataset')
 
         You can also specify an alternative dataset directory name:
+
         >>> paths = pm.DatasetPaths(root='/path/to/your/common/root/', dataset='my_dataset')
         >>> dataset = pm.Dataset("ToyDataset", path=paths)
-        >>> dataset.path# doctest: +SKIP
+        >>> dataset.path  # doctest: +SKIP
         Path('/path/to/your/common/root/my_dataset')
         """
         return self.paths.dataset
@@ -1142,6 +1896,84 @@ class Dataset:
             raise AttributeError('gaze files were not loaded yet. please run load() beforehand')
         if len(self.gaze) == 0:
             raise AttributeError('no files present in gaze attribute')
+
+    def summary(self) -> None:
+        """Print a summary of the dataset.
+
+        The summary extends the string representation with the total number of loaded gaze
+        samples, their estimated in-memory size and the total number of detected events,
+        including the event counts grouped by event name across all recordings.
+
+        See Also
+        --------
+        pymovements.Events.summary : Print a summary of the events.
+        pymovements.Dataset.report_data_quality :
+            Check dataset configuration and compute data quality measures.
+
+        Examples
+        --------
+        Initialize your :py:class:`~pymovements.Dataset` object and load the data first:
+
+        >>> import pymovements as pm
+        >>>
+        >>> dataset = pm.Dataset("ToyDataset", path='data/ToyDataset')# doctest: +SKIP
+        >>> dataset.load()# doctest: +SKIP
+
+        Print the dataset summary:
+
+        >>> dataset.summary()# doctest: +SKIP
+        Dataset(name='ToyDataset', path='data/ToyDataset')
+          experiment: Experiment(screen=Screen(...), eyetracker=EyeTracker(...))
+          resources: 1 defined
+          gaze: 20 recordings
+          events: 20 recordings
+          total samples: 566,715 (26.1 MB in memory)
+          total events: 0
+        """
+        lines = [str(self)]
+
+        total_samples = sum(
+            len(gaze.samples) for gaze in self.gaze if gaze.samples is not None
+        )
+        estimated_size_mb = sum(
+            gaze.samples.estimated_size() for gaze in self.gaze if gaze.samples is not None
+        ) / (1024 * 1024)
+        lines.append(f'  total samples: {total_samples:,} ({estimated_size_mb:.1f} MB in memory)')
+
+        total_events = sum(len(events) for events in self.events)
+        lines.append(f'  total events: {total_events:,}')
+
+        if total_events:
+            name_counts = pl.concat(
+                [events.frame.select('name') for events in self.events],
+            )['name'].value_counts().sort('name')
+            for name, count in name_counts.iter_rows():
+                lines.append(f'    {name}: {count:,}')
+
+        print('\n'.join(lines))
+
+    def __str__(self) -> str:
+        """Return string representation of Dataset.
+
+        The representation includes the dataset name and path, the experiment definition, the
+        number of defined resources and the number of loaded gaze and event recordings.
+        """
+        lines = [f'{type(self).__name__}(name={self.definition.name!r}, path={str(self.path)!r})']
+
+        if self.definition.experiment:
+            lines.append(f'  experiment: {self.definition.experiment}')
+
+        if self.definition.resources:
+            lines.append(f'  resources: {len(self.definition.resources)} defined')
+
+        lines.append(f'  gaze: {len(self.gaze)} recordings')
+        lines.append(f'  events: {len(self.events)} recordings')
+
+        return '\n'.join(lines)
+
+    def __repr__(self) -> str:
+        """Return string representation of Dataset."""
+        return self.__str__()
 
     def _disclaimer(self) -> str:
         """Return string for dataset download disclaimer."""

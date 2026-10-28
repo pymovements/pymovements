@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,20 +23,45 @@ from unittest.mock import Mock
 import matplotlib.colors
 import matplotlib.pyplot as plt
 import numpy as np
+import polars as pl
 import pytest
-from matplotlib import figure
 
-import pymovements as pm
+from pymovements import Experiment
+from pymovements.gaze import from_numpy
+from pymovements.plotting import traceplot
+from pymovements.stimulus.image import from_file
 
 
-@pytest.fixture(name='gaze', scope='session')
-def gaze_fixture():
+@pytest.fixture(
+    name='gaze',
+    params=[
+        '200',
+        '0',
+        '1',
+        '2_equal',
+    ],
+    scope='function',
+)
+def gaze_fixture(request):
     # pylint: disable=duplicate-code
-    x = np.arange(-100, 100)
-    y = np.arange(-100, 100)
+    if request.param == '0':
+        x = np.empty((1,))
+        y = np.empty((1,))
+    elif request.param == '1':
+        x = np.array([1])
+        y = np.array([2])
+    elif request.param == '2_equal':
+        x = np.array([1, 1])
+        y = np.array([2, 2])
+    elif request.param == '200':
+        x = np.arange(-100, 100)
+        y = np.arange(-100, 100)
+    else:
+        raise ValueError(f'{request.param} not supported as gaze fixture param')
+
     arr = np.column_stack((x, y)).transpose()
 
-    experiment = pm.Experiment(
+    experiment = Experiment(
         screen_width_px=1280,
         screen_height_px=1024,
         screen_width_cm=38,
@@ -46,7 +71,7 @@ def gaze_fixture():
         sampling_rate=1000.0,
     )
 
-    gaze = pm.gaze.from_numpy(
+    gaze = from_numpy(
         samples=arr,
         schema=['x_pix', 'y_pix'],
         experiment=experiment,
@@ -57,6 +82,23 @@ def gaze_fixture():
     gaze.pos2vel()
 
     return gaze
+
+
+@pytest.fixture(name='gaze_no_exp', scope='session')
+def gaze_no_exp_fixture():
+    # pylint: disable=duplicate-code
+    x = np.arange(-100, 100)
+    y = np.arange(-100, 100)
+    arr = np.column_stack((x, y)).transpose()
+
+    gaze_no_exp = from_numpy(
+        samples=arr,
+        schema=['x_pix', 'y_pix'],
+        experiment=None,
+        pixel_columns=['x_pix', 'y_pix'],
+    )
+
+    return gaze_no_exp
 
 
 @pytest.mark.parametrize(
@@ -87,11 +129,18 @@ def gaze_fixture():
             id='cmap_norm_linear',
         ),
         pytest.param(
-            {'cval': np.arange(0, 200), 'cmap_norm': matplotlib.colors.NoNorm()},
+            {
+                'cval': np.arange(0, 200),
+                'cmap_norm': matplotlib.colors.NoNorm(),
+            },
             id='cmap_norm_class',
         ),
         pytest.param(
-            {'cmap': matplotlib.colors.LinearSegmentedColormap(name='test', segmentdata={})},
+            {
+                'cmap': matplotlib.colors.LinearSegmentedColormap(
+                    name='test', segmentdata={},
+                ),
+            },
             id='cmap_class',
         ),
         pytest.param(
@@ -117,41 +166,38 @@ def gaze_fixture():
         pytest.param(
             {
                 'add_stimulus': True,
-                'path_to_image_stimulus': './tests/files/pexels-zoorg-1000498.jpg',
+                'path_to_image_stimulus': './tests/files/stimuli/pexels-zoorg-1000498.jpg',
             },
             id='set_stimulus',
+            marks=pytest.mark.filterwarnings('ignore::DeprecationWarning'),
         ),
     ],
 )
-def test_traceplot_show(gaze, kwargs, monkeypatch):
-    mock = Mock()
-    monkeypatch.setattr(plt, 'show', mock)
-    pm.plotting.traceplot(gaze=gaze, **kwargs)
-    plt.close()
-    mock.assert_called_once()
+def test_traceplot_returns_fig_and_axes(gaze, kwargs):
+    fig, ax = traceplot(gaze=gaze, **kwargs)
+
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
 
 
 def test_traceplot_noshow(gaze, monkeypatch):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
-    pm.plotting.traceplot(gaze=gaze, show=False)
-    plt.close()
+    traceplot(gaze=gaze)
+
     mock.assert_not_called()
 
 
-def test_traceplot_save(gaze, monkeypatch, tmp_path):
-    mock = Mock()
-    monkeypatch.setattr(figure.Figure, 'savefig', mock)
-    pm.plotting.traceplot(
+def test_traceplot_save(gaze, tmp_path):
+    filepath = tmp_path / 'test.svg'
+    assert not filepath.is_file()
+
+    traceplot(
         gaze=gaze,
-        show=False,
-        savepath=str(
-            tmp_path /
-            'test.svg',
-        ),
+        savepath=str(filepath),
     )
-    plt.close()
-    mock.assert_called_once()
+
+    assert filepath.is_file()
 
 
 @pytest.mark.parametrize(
@@ -167,9 +213,144 @@ def test_traceplot_save(gaze, monkeypatch, tmp_path):
         ),
     ],
 )
-def test_traceplot_exceptions(gaze, kwargs, exception, monkeypatch):
-    mock = Mock()
-    monkeypatch.setattr(plt, 'show', mock)
-
+def test_traceplot_exceptions(gaze, kwargs, exception):
     with pytest.raises(exception):
-        pm.plotting.traceplot(gaze=gaze, **kwargs)
+        traceplot(gaze=gaze, **kwargs)
+
+
+def test_traceplot_no_experiment(gaze_no_exp):
+    # Should not raise any exception
+    traceplot(gaze_no_exp)
+
+
+def test_set_screen_axes_valid(gaze):
+    _, ax = traceplot(gaze=gaze)
+
+    assert ax.get_xlim() == (0, gaze.experiment.screen.width_px)
+    assert ax.get_ylim() == (gaze.experiment.screen.height_px, 0)
+    assert ax.get_aspect() == 1
+
+
+@pytest.mark.parametrize('origin', ['lower left', 'center', 'upper right'])
+def test_set_screen_axes_invalid_origin(origin, gaze):
+    gaze.experiment.screen.origin = origin
+    with pytest.raises(ValueError, match='screen origin must be "upper left"'):
+        traceplot(gaze=gaze)
+
+
+@pytest.mark.parametrize(
+    'width,height',
+    [
+        (None, None),
+        (None, 768),
+        (1024, None),
+    ],
+)
+def test_set_screen_axes_none_dimensions_returns(width, height, gaze):
+    """Should not raise or override axes when screen dimensions are None."""
+    gaze.experiment.screen.width_px = width
+    gaze.experiment.screen.height_px = height
+
+    _, ax = plt.subplots()
+    assert ax.get_aspect() != 'equal'
+    # Call traceplot; should return silently, without ValueError
+    # _set_screen_axes() should return early without modifying axes
+    traceplot(gaze=gaze, ax=ax, figsize=None)
+
+    # Axes limits should be finite numbers, not NaN/None
+    xlim, ylim = ax.get_xlim(), ax.get_ylim()
+    assert np.isfinite(xlim).all()
+    assert np.isfinite(ylim).all()
+
+    # Aspect ratio should not be 'equal' (not forced by _set_screen_axes)
+    assert ax.get_aspect() != 'equal'
+
+
+@pytest.mark.parametrize(
+    'bad_x, bad_y', [
+        (np.inf, 0.0),
+        (np.nan, 0.0),
+        (np.inf, np.nan),
+        (np.nan, np.inf),
+    ],
+)
+def test_traceplot_handles_nan_inf_variations(gaze, bad_x, bad_y):
+    # create a polars series with the length of samples["position"]
+    replacement_position = pl.Series(
+        'position',
+        [
+            [bad_x, bad_y],
+        ] + gaze.samples['position'].to_list()[1:],
+    )
+    # get index of 'position' column
+    pos_index = gaze.samples.get_column_index('position')
+    # replace the 'position' column in gaze.samples with the new series
+    gaze.samples = gaze.samples.with_columns(
+        replacement_position,
+        at_index=pos_index,
+    )
+
+    fig, ax = traceplot(gaze=gaze)
+
+    assert fig is not None
+    assert ax is not None
+
+
+def test_traceplot_with_image_stimulus(gaze, tmp_path):
+    """Test that traceplot correctly plots with an ImageStimulus."""
+    image_path = './tests/files/stimuli/pexels-zoorg-1000498.jpg'
+    image_stimulus = from_file(image_path)
+
+    image_stimulus.origin = 'upper'
+
+    fig, ax = plt.subplots(figsize=(15, 5))
+
+    image_stimulus.plot(0, ax=ax)
+
+    with pytest.warns(
+        UserWarning, match='figsize is ignored because '
+        'an external Axes was provided.',
+    ):
+        returned_fig, returned_ax = traceplot(
+            gaze=gaze,
+            position_column='pixel',
+            figsize=(15, 5),
+            ax=ax,
+            savepath=str(tmp_path / 'traceplot_with_stimulus.svg'),
+        )
+
+    assert returned_fig is fig
+    assert returned_ax is ax
+
+    assert len(ax.images) >= 1
+
+    assert (tmp_path / 'traceplot_with_stimulus.svg').is_file()
+
+    plt.close(fig)
+
+
+@pytest.mark.parametrize('gaze', ['200'], indirect=True)
+@pytest.mark.parametrize(
+    ('deprecated_argument', 'value'),
+    (
+        pytest.param('add_stimulus', True, id='add_stimulus'),
+        pytest.param(
+            'path_to_image_stimulus',
+            './tests/files/stimuli/pexels-zoorg-1000498.jpg',
+            id='path_to_image_stimulus',
+        ),
+        pytest.param('stimulus_origin', 'lower', id='stimulus_origin'),
+    ),
+)
+def test_traceplot_deprecated_parameters(
+        gaze, deprecated_argument, value, assert_deprecation_is_removed,
+):
+    """Test that a deprecated stimulus parameter triggers a warning scheduled for removal."""
+    with pytest.raises(DeprecationWarning) as info:
+        traceplot(gaze=gaze, **{deprecated_argument: value})
+
+    assert_deprecation_is_removed(
+        function_name=f"traceplot argument '{deprecated_argument}'",
+        warning_message=info.value.args[0],
+        scheduled_version='0.33.0',
+    )

@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 The pymovements Project Authors
+# Copyright (c) 2024-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,9 +20,11 @@
 """Provides access to stimulus classes."""
 from pymovements.stimulus.image import ImageStimulus
 from pymovements.stimulus.text import TextStimulus
+from pymovements.stimulus.text import WritingSystem
 
 
 __all__ = [
     'ImageStimulus',
     'TextStimulus',
+    'WritingSystem',
 ]

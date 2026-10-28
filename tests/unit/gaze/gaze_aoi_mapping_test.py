@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,13 +18,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test all Gaze functionality."""
+import math
+from typing import Any
+
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
 import pymovements as pm
+from pymovements import Gaze
+from pymovements.stimulus import TextStimulus
 
-EXPECTED_DF = {
+
+EXPECTED_GAZE_SAMPLES = {
     'char_left_pixel': pl.DataFrame(
         [
             (
@@ -1070,7 +1076,6 @@ EXPECTED_DF = {
 }
 
 
-@pytest.mark.filterwarnings('ignore:GazeDataFrame contains data but no.*:UserWarning')
 @pytest.mark.parametrize(
     ('eye'),
     [
@@ -1080,7 +1085,6 @@ EXPECTED_DF = {
         'else',
     ],
 )
-@pytest.mark.filterwarnings('ignore:GazeDataFrame contains data but no.*:UserWarning')
 @pytest.mark.parametrize(
     ('aoi_column'),
     [
@@ -1088,7 +1092,6 @@ EXPECTED_DF = {
         'char',
     ],
 )
-@pytest.mark.filterwarnings('ignore:GazeDataFrame contains data but no.*:UserWarning')
 @pytest.mark.parametrize(
     ('gaze_type'),
     [
@@ -1096,9 +1099,15 @@ EXPECTED_DF = {
         'position',
     ],
 )
-def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type):
+@pytest.mark.filterwarnings(
+    'ignore:Gaze contains samples but no components could be inferred.*:UserWarning',
+)
+def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type, make_example_file):
+    aoi_filepath = make_example_file('stimuli/toy_text_aoi.csv')
+    gaze_filepath = make_example_file('judo1000_example.csv')
+
     aoi_df = pm.stimulus.text.from_file(
-        'tests/files/toy_text_1_1_aoi.csv',
+        aoi_filepath,
         aoi_column=aoi_column,
         start_x_column='top_left_x',
         start_y_column='top_left_y',
@@ -1108,24 +1117,28 @@ def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type):
     )
     if gaze_type == 'pixel':
         gaze = pm.gaze.io.from_csv(
-            'tests/files/judo1000_example.csv',
-            **{'separator': '\t'},
+            gaze_filepath,
+            read_csv_kwargs={'separator': '\t'},
             pixel_columns=['x_left', 'y_left', 'x_right', 'y_right'],
         )
     elif gaze_type == 'position':
         gaze = pm.gaze.io.from_csv(
-            'tests/files/judo1000_example.csv',
-            **{'separator': '\t'},
+            gaze_filepath,
+            read_csv_kwargs={'separator': '\t'},
             position_columns=['x_left', 'y_left', 'x_right', 'y_right'],
         )
     else:
         assert False, 'unknown gaze_type'
 
     gaze.map_to_aois(aoi_df, eye=eye, gaze_type=gaze_type)
-    assert_frame_equal(gaze.samples, EXPECTED_DF[f'{aoi_column}_{eye}_{gaze_type}'])
+    expected = Gaze(
+        EXPECTED_GAZE_SAMPLES[f'{aoi_column}_{eye}_{gaze_type}'],
+        time_column='time',
+        time_unit='ms',
+    )
+    assert_frame_equal(gaze.samples, expected.samples)
 
 
-@pytest.mark.filterwarnings('ignore:GazeDataFrame contains data but no.*:UserWarning')
 @pytest.mark.parametrize(
     ('eye'),
     [
@@ -1135,7 +1148,6 @@ def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type):
         'else',
     ],
 )
-@pytest.mark.filterwarnings('ignore:GazeDataFrame contains data but no.*:UserWarning')
 @pytest.mark.parametrize(
     ('aoi_column'),
     [
@@ -1143,7 +1155,6 @@ def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type):
         'char',
     ],
 )
-@pytest.mark.filterwarnings('ignore:GazeDataFrame contains data but no.*:UserWarning')
 @pytest.mark.parametrize(
     ('gaze_type'),
     [
@@ -1151,9 +1162,15 @@ def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type):
         'position',
     ],
 )
-def test_gaze_to_aoi_mapping_char_end(eye, aoi_column, gaze_type):
+@pytest.mark.filterwarnings(
+    'ignore:Gaze contains samples but no components could be inferred.*:UserWarning',
+)
+def test_gaze_to_aoi_mapping_char_end(eye, aoi_column, gaze_type, make_example_file):
+    aoi_filepath = make_example_file('stimuli/toy_text_aoi.csv')
+    gaze_filepath = make_example_file('judo1000_example.csv')
+
     aoi_df = pm.stimulus.text.from_file(
-        'tests/files/toy_text_1_1_aoi.csv',
+        aoi_filepath,
         aoi_column=aoi_column,
         start_x_column='top_left_x',
         start_y_column='top_left_y',
@@ -1163,26 +1180,34 @@ def test_gaze_to_aoi_mapping_char_end(eye, aoi_column, gaze_type):
     )
     if gaze_type == 'pixel':
         gaze = pm.gaze.io.from_csv(
-            'tests/files/judo1000_example.csv',
-            **{'separator': '\t'},
+            gaze_filepath,
+            read_csv_kwargs={'separator': '\t'},
             pixel_columns=['x_left', 'y_left', 'x_right', 'y_right'],
         )
     elif gaze_type == 'position':
         gaze = pm.gaze.io.from_csv(
-            'tests/files/judo1000_example.csv',
-            **{'separator': '\t'},
+            gaze_filepath,
+            read_csv_kwargs={'separator': '\t'},
             position_columns=['x_left', 'y_left', 'x_right', 'y_right'],
         )
     else:
         assert False, 'unknown gaze_type'
 
     gaze.map_to_aois(aoi_df, eye=eye, gaze_type=gaze_type)
-    assert_frame_equal(gaze.samples, EXPECTED_DF[f'{aoi_column}_{eye}_{gaze_type}'])
+    expected = Gaze(
+        EXPECTED_GAZE_SAMPLES[f'{aoi_column}_{eye}_{gaze_type}'],
+        time_column='time',
+        time_unit='ms',
+    )
+    assert_frame_equal(gaze.samples, expected.samples)
 
 
-def test_map_to_aois_raises_value_error():
+def test_map_to_aois_raises_value_error(make_example_file):
+    aoi_filepath = make_example_file('stimuli/toy_text_aoi.csv')
+    gaze_filepath = make_example_file('judo1000_example.csv')
+
     aoi_df = pm.stimulus.text.from_file(
-        'tests/files/toy_text_1_1_aoi.csv',
+        aoi_filepath,
         aoi_column='char',
         start_x_column='top_left_x',
         start_y_column='top_left_y',
@@ -1191,8 +1216,8 @@ def test_map_to_aois_raises_value_error():
         page_column='page',
     )
     gaze = pm.gaze.io.from_csv(
-        'tests/files/judo1000_example.csv',
-        **{'separator': '\t'},
+        gaze_filepath,
+        read_csv_kwargs={'separator': '\t'},
         position_columns=['x_left', 'y_left', 'x_right', 'y_right'],
     )
 
@@ -1200,3 +1225,267 @@ def test_map_to_aois_raises_value_error():
         gaze.map_to_aois(aoi_df, eye='right', gaze_type='')
     msg, = excinfo.value.args
     assert msg.startswith('neither position nor pixel column in samples dataframe')
+
+
+# Tests for Gaze.map_to_aois preserve_structure flag
+
+
+@pytest.fixture(name='flat_pixel_samples')
+def _flat_pixel_samples() -> pl.DataFrame:
+    # Only flat pixel columns, no list columns -> unnest() would raise Warning
+    return pl.DataFrame(
+        {
+            'pixel_xr': [5.0, 15.0],
+            'pixel_yr': [5.0, 5.0],
+        },
+    )
+
+
+@pytest.fixture(name='list_position_samples')
+def _list_position_samples() -> pl.DataFrame:
+    # Position as a list column [xl, yl, xr, yr]
+    return pl.DataFrame({'position': [[0.0, 0.0, 5.0, 5.0], [0.0, 0.0, 15.0, 15.0]]})
+
+
+@pytest.mark.filterwarnings(
+    'ignore:Gaze contains samples but no components could be inferred.*:UserWarning',
+)
+def test_gaze_map_to_aois_preserve_structure_true_flat_columns(
+    simple_stimulus: TextStimulus, flat_pixel_samples: pl.DataFrame,
+) -> None:
+    # With only flat columns present, unnest() raises Warning internally - we
+    # tolerate it and proceed.
+    gaze = Gaze(samples=flat_pixel_samples)
+    gaze.map_to_aois(simple_stimulus, eye='right', gaze_type='pixel', preserve_structure=True)
+
+    # AOI labels: [5,5] -> inside 'A' - [15,5] -> outside
+    labels = gaze.samples.get_column('label').to_list()
+    assert labels == ['A', None]
+
+
+def test_gaze_map_to_aois_preserve_structure_false_list_column(
+    simple_stimulus: TextStimulus, list_position_samples: pl.DataFrame,
+) -> None:
+    # No schema change expected - 'position' list column remains.
+    gaze = Gaze(samples=list_position_samples)
+    gaze.map_to_aois(simple_stimulus, eye='right', gaze_type='position', preserve_structure=False)
+
+    cols = set(gaze.samples.columns)
+    assert 'position' in cols  # schema preserved
+    labels = gaze.samples.get_column('label').to_list()
+    assert labels == ['A', None]
+
+
+@pytest.mark.parametrize(
+    'eye',
+    ['auto', 'mono', 'left', 'right', 'cyclops'],
+)
+@pytest.mark.filterwarnings(
+    'ignore:Gaze contains samples but no components could be inferred.*:UserWarning',
+)
+def test_flat_selector_returns_none_for_incomplete_flat_columns_triggers_fallback_error(
+    eye: str,
+    simple_stimulus_w_h: TextStimulus,
+) -> None:
+    # Create samples with a single flat pixel component so that the flat selection logic runs
+    # but cannot find a valid (x,y) pair for any eye setting. This makes the selector return None
+    # at the eye-specific branch, then the method falls back to list logic and raises because no
+    # 'pixel'/'position' list column exists.
+    samples = pl.DataFrame({
+        'pixel_x': [1.0, 2.0],  # only X present, no matching Y nor other pairs
+    })
+
+    gaze = Gaze(samples=samples)
+
+    with pytest.raises(ValueError, match='neither position nor pixel column'):
+        gaze.map_to_aois(
+            aoi_dataframe=simple_stimulus_w_h,
+            eye=eye,
+            gaze_type='pixel',
+            preserve_structure=True,  # try to unnest (no list cols -> Warning is caught internally)
+            verbose=False,
+        )
+
+
+@pytest.mark.parametrize('bad_value', [None, 5.5, 'not_a_list'])
+@pytest.mark.filterwarnings(
+    'ignore:Gaze contains samples but no components could be inferred.*:UserWarning',
+)
+def test_list_path_non_list_values_create_empty_aoi_rows(
+    bad_value: Any,
+    simple_stimulus_w_h: TextStimulus,
+) -> None:
+    # Initialise without any list component columns so Gaze init doesn't infer components
+    base = pl.DataFrame({'dummy': [0, 1]})
+    gaze = Gaze(samples=base)
+
+    # Inject a scalar 'pixel' column post-init to avoid list dtype inference
+    gaze.samples = gaze.samples.with_columns(pl.lit(bad_value).alias('pixel'))
+
+    # Avoid unnesting so we stay on the list-based path using the scalar 'pixel' column
+    with pytest.warns(UserWarning, match='Invalid eye coordinates in 2 of 2 samples'):
+        gaze.map_to_aois(
+            aoi_dataframe=simple_stimulus_w_h,
+            eye='auto',
+            gaze_type='pixel',
+            preserve_structure=False,
+            verbose=False,
+        )
+
+    # All AOI result columns should be appended and None for each row
+    for col in simple_stimulus_w_h.aois.columns:
+        assert col in gaze.samples.columns
+        # Column should be entirely None
+        assert gaze.samples[col].null_count() == len(gaze.samples)
+
+
+def test_map_to_aois_uses_first_overlapping_aoi_without_misalignment() -> None:
+    """Map only the first overlapping AOI row and keep event/AOI rows aligned."""
+    stimulus = TextStimulus(
+        pl.DataFrame(
+            {
+                'content': ['AOI1', 'AOI2'],
+                'left': [0, 100],
+                'right': [200, 300],
+                'top': [0, 100],
+                'bottom': [200, 300],
+            },
+        ),
+        aoi_column='content',
+        start_x_column='left',
+        end_x_column='right',
+        start_y_column='top',
+        end_y_column='bottom',
+    )
+    samples = pl.DataFrame(
+        {
+            'pixel': [(50, 50), (150, 150), (250, 250), (350, 350)],
+        },
+    )
+    gaze = Gaze(samples=samples)
+
+    with pytest.warns(UserWarning, match='Multiple AOIs matched this point'):
+        gaze.map_to_aois(stimulus, verbose=False)
+
+    assert gaze.samples.height == 4
+    assert gaze.samples.get_column('content').to_list() == ['AOI1', 'AOI1', 'AOI2', None]
+
+
+def test_map_to_aois_raises_value_error_missing_width_and_end_columns() -> None:
+    stimulus = TextStimulus(
+        pl.DataFrame({'char': ['A'], 'top_left_x': [0.0], 'top_left_y': [0.0]}),
+        aoi_column='char',
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+    )
+    gaze = Gaze(samples=pl.DataFrame({'pixel': [[1.0, 1.0]]}))
+
+    with pytest.raises(ValueError) as excinfo:
+        gaze.map_to_aois(stimulus)
+    msg, = excinfo.value.args
+    assert msg == 'either TextStimulus.width or TextStimulus.end_x_column must be defined'
+
+
+@pytest.mark.parametrize(
+    'samples',
+    [
+        pytest.param(
+            pl.DataFrame({'pixel_x': ['5', 'abc'], 'pixel_y': ['5', 'abc']}),
+            id='flat_string_columns',
+        ),
+        pytest.param(
+            pl.DataFrame({'pixel': [['5', '5'], ['abc', 'abc']]}),
+            id='list_of_strings',
+        ),
+    ],
+)
+@pytest.mark.filterwarnings(
+    'ignore:Gaze contains samples but no components could be inferred.*:UserWarning',
+)
+def test_map_to_aois_non_numeric_coordinates_give_no_match(
+        samples: pl.DataFrame,
+        simple_stimulus_w_h: TextStimulus,
+) -> None:
+    gaze = Gaze(samples=samples)
+
+    with pytest.warns(UserWarning, match='Invalid eye coordinates in 2 of 2 samples'):
+        gaze.map_to_aois(simple_stimulus_w_h, eye='mono', preserve_structure=False)
+
+    for column in simple_stimulus_w_h.aois.columns:
+        assert gaze.samples[column].null_count() == 2
+
+
+def test_map_to_aois_warns_once_with_count_of_invalid_samples(
+        simple_stimulus_w_h: TextStimulus,
+) -> None:
+    samples = pl.DataFrame({
+        'pixel_x': [5.0, None, math.nan, 7.0],
+        'pixel_y': [5.0, 5.0, 5.0, None],
+    })
+    gaze = Gaze(samples=samples, pixel_columns=['pixel_x', 'pixel_y'])
+
+    with pytest.warns(UserWarning) as record:
+        gaze.map_to_aois(simple_stimulus_w_h, eye='mono')
+
+    assert [str(warning.message) for warning in record] == [
+        'Invalid eye coordinates in 3 of 4 samples for AOI lookup. '
+        'Returning no match for these samples.',
+    ]
+    assert gaze.samples.get_column('aoi').to_list() == ['A', None, None, None]
+
+
+def test_map_to_aois_empty_samples_returns_empty_aoi_columns(
+        simple_stimulus_w_h: TextStimulus,
+) -> None:
+    samples = pl.DataFrame(schema={'pixel': pl.List(pl.Float64)})
+    gaze = Gaze(samples=samples)
+
+    gaze.map_to_aois(simple_stimulus_w_h, preserve_structure=False)
+
+    assert gaze.samples.height == 0
+    assert gaze.samples.columns == ['pixel', 'aoi', 'x', 'y', 'width', 'height']
+
+
+@pytest.fixture(name='gaze_with_sources')
+def fixture_gaze_with_sources():
+    return Gaze(
+        samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+        metadata={'Sources': ['raw/sub_1.csv']},
+    )
+
+
+@pytest.fixture(name='text_stimulus_with_sources')
+def fixture_text_stimulus_with_sources():
+    return TextStimulus(
+        aois=pl.DataFrame({
+            'char': ['a'],
+            'sx': [0.0],
+            'sy': [0.0],
+            'ex': [1.0],
+            'ey': [1.0],
+        }),
+        aoi_column='char',
+        start_x_column='sx',
+        start_y_column='sy',
+        end_x_column='ex',
+        end_y_column='ey',
+        metadata={'Sources': ['stimuli/text_1_aoi.csv']},
+    )
+
+
+def test_gaze_map_to_aois_merges_stimulus_sources(gaze_with_sources, text_stimulus_with_sources):
+    gaze_with_sources.map_to_aois(text_stimulus_with_sources, verbose=False)
+
+    assert gaze_with_sources.metadata['Sources'] == ['raw/sub_1.csv', 'stimuli/text_1_aoi.csv']
+
+
+def test_gaze_map_to_aois_with_none_metadata_adopts_stimulus_sources(
+        gaze_with_sources, text_stimulus_with_sources,
+):
+    gaze_with_sources.metadata = None
+
+    gaze_with_sources.map_to_aois(text_stimulus_with_sources, verbose=False)
+
+    assert gaze_with_sources.metadata == {'Sources': ['stimuli/text_1_aoi.csv']}

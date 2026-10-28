@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,16 +18,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Gaze initialization."""
-# pylint: disable=too-many-lines
-import re
-
 import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements import __version__
-from pymovements import DatasetDefinition
 from pymovements import Events
 from pymovements import Experiment
 from pymovements import Gaze
@@ -132,24 +127,6 @@ from pymovements import Gaze
             ),
             2,
             id='df_single_row_two_pixel_columns',
-        ),
-
-        pytest.param(
-            {
-                'data': pl.from_dict(
-                    {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
-                ),
-                'pixel_columns': ['x', 'y'],
-            },
-            pl.from_dict(
-                {'pixel': [[1.23, 4.56]]},
-                schema={'pixel': pl.List(pl.Float64)},
-            ),
-            2,
-            marks=pytest.mark.filterwarnings(
-                'ignore:.*data.*samples.*:DeprecationWarning',
-            ),
-            id='deprecated_data_argument',
         ),
 
 
@@ -872,6 +849,30 @@ from pymovements import Gaze
             id='df_three_rows_two_position_float_step_time_converts_to_int_millis',
         ),
 
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    {
+                        'time': [1000, 2000, 3000],
+                        'x': [0., 1., 2.],
+                        'y': [3., 4., 5.],
+                    },
+                    schema={'time': pl.Int64, 'x': pl.Float64, 'y': pl.Float64},
+                ),
+                'pixel_columns': ['x', 'y'],
+                'time_unit': 'us',
+                'time_column': 'time',
+            },
+            pl.from_dict(
+                {
+                    'time': [1, 2, 3],
+                    'pixel': [[0., 3.], [1., 4.], [2., 5.]],
+                },
+                schema={'time': pl.Int64, 'pixel': pl.List(pl.Float64)},
+            ),
+            2,
+            id='df_three_rows_two_position_int_microseconds_time_converts_to_int_millis',
+        ),
 
         pytest.param(
             {
@@ -1022,246 +1023,104 @@ from pymovements import Gaze
         pytest.param(
             {
                 'samples': pl.from_dict(
-                    {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
+                    {'pixel': [[1.23, 4.56]]},
+                    schema={'pixel': pl.List(pl.Float64)},
                 ),
-                'definition': DatasetDefinition(pixel_columns=['x', 'y']),
             },
             pl.from_dict(
                 {'pixel': [[1.23, 4.56]]},
                 schema={'pixel': pl.List(pl.Float64)},
             ),
             2,
-            id='df_single_row_two_pixel_columns_dataset_definition',
+            id='df_pixel_column_two_components',
         ),
 
         pytest.param(
             {
                 'samples': pl.from_dict(
-                    {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
+                    {'pixel': [[1.23, 4.56], None]},
+                    schema={'pixel': pl.List(pl.Float64)},
                 ),
-                'definition': DatasetDefinition(pixel_columns=['foo', 'bar']),
-                'pixel_columns': ['x', 'y'],
             },
             pl.from_dict(
-                {'pixel': [[1.23, 4.56]]},
+                {'pixel': [[1.23, 4.56], None]},
                 schema={'pixel': pl.List(pl.Float64)},
             ),
             2,
-            id='df_single_row_two_pixel_columns_overwrite_dataset_definition',
+            id='df_pixel_column_two_components_one_null',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
-                    {'abc': [1], 'x': [1.23], 'y': [4.56]},
-                    schema={'abc': pl.Int64, 'x': pl.Float64, 'y': pl.Float64},
+                    {
+                        'pixel': [[1.23, 4.56], None],
+                        'position': [None, [7.89, 10.11]],
+                    },
+                    schema={
+                        'pixel': pl.List(pl.Float64),
+                        'position': pl.List(pl.Float64),
+                    },
                 ),
-                'definition': DatasetDefinition(pixel_columns=['x', 'y']),
             },
             pl.from_dict(
-                {'abc': [1], 'pixel': [[1.23, 4.56]]},
-                schema={'abc': pl.Int64, 'pixel': pl.List(pl.Float64)},
+                {
+                    'pixel': [[1.23, 4.56], None],
+                    'position': [None, [7.89, 10.11]],
+                },
+                schema={
+                    'pixel': pl.List(pl.Float64),
+                    'position': pl.List(pl.Float64),
+                },
             ),
             2,
-            id='df_single_row_three_columns_two_pixel_columns_dataset_definition',
+            id='df_pixel_position_columns_both_have_nulls',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
-                    {'xl': [1.2], 'yl': [3.4], 'xr': [5.6], 'yr': [7.8]},
-                    schema={'xl': pl.Float64, 'yl': pl.Float64, 'xr': pl.Float64, 'yr': pl.Float64},
+                    {'pixel': [None, None]},
+                    schema={'pixel': pl.List(pl.Float64)},
                 ),
-                'definition': DatasetDefinition(pixel_columns=['xl', 'yl', 'xr', 'yr']),
             },
             pl.from_dict(
-                {'pixel': [[1.2, 3.4, 5.6, 7.8]]},
+                {'pixel': [None, None]},
                 schema={'pixel': pl.List(pl.Float64)},
             ),
-            4,
-            id='df_single_row_four_pixel_columns_dataset_definition',
-        ),
-
-        pytest.param(
-            {
-                'samples': pl.from_dict(
-                    {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
-                ),
-                'definition': DatasetDefinition(position_columns=['x', 'y']),
-            },
-            pl.from_dict(
-                {'position': [[1.23, 4.56]]},
-                schema={'position': pl.List(pl.Float64)},
-            ),
-            2,
-            id='df_single_row_two_position_columns_dataset_definition',
-        ),
-
-        pytest.param(
-            {
-                'samples': pl.from_dict(
-                    {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
-                ),
-                'definition': DatasetDefinition(position_columns=['foo', 'bar']),
-                'position_columns': ['x', 'y'],
-            },
-            pl.from_dict(
-                {'position': [[1.23, 4.56]]},
-                schema={'position': pl.List(pl.Float64)},
-            ),
-            2,
-            id='df_single_row_two_position_columns_overwrite_dataset_definition',
-        ),
-
-        pytest.param(
-            {
-                'samples': pl.from_dict(
-                    {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
-                ),
-                'definition': DatasetDefinition(velocity_columns=['x', 'y']),
-            },
-            pl.from_dict(
-                {'velocity': [[1.23, 4.56]]},
-                schema={'velocity': pl.List(pl.Float64)},
-            ),
-            2,
-            id='df_single_row_two_velocity_columns_dataset_definition',
-        ),
-
-        pytest.param(
-            {
-                'samples': pl.from_dict(
-                    {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
-                ),
-                'definition': DatasetDefinition(velocity_columns=['foo', 'bar']),
-                'velocity_columns': ['x', 'y'],
-            },
-            pl.from_dict(
-                {'velocity': [[1.23, 4.56]]},
-                schema={'velocity': pl.List(pl.Float64)},
-            ),
-            2,
-            id='df_single_row_two_velocity_columns_overwrite_dataset_definition',
-        ),
-
-        pytest.param(
-            {
-                'samples': pl.from_dict(
-                    {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
-                ),
-                'definition': DatasetDefinition(acceleration_columns=['x', 'y']),
-            },
-            pl.from_dict(
-                {'acceleration': [[1.23, 4.56]]},
-                schema={'acceleration': pl.List(pl.Float64)},
-            ),
-            2,
-            id='df_single_row_two_acceleration_columns_dataset_definition',
-        ),
-
-        pytest.param(
-            {
-                'samples': pl.from_dict(
-                    {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
-                ),
-                'definition': DatasetDefinition(acceleration_columns=['foo', 'bar']),
-                'acceleration_columns': ['x', 'y'],
-            },
-            pl.from_dict(
-                {'acceleration': [[1.23, 4.56]]},
-                schema={'acceleration': pl.List(pl.Float64)},
-            ),
-            2,
-            id='df_single_row_two_acceleration_columns_overwrite_dataset_definition',
-        ),
-
-        pytest.param(
-            {
-                'samples': pl.from_dict({'t': [1.23]}, schema={'t': pl.Float64}),
-                'definition': DatasetDefinition(time_column='t'),
-            },
-            pl.from_dict({'time': [1.23]}, schema={'time': pl.Float64}),
             None,
             marks=pytest.mark.filterwarnings(
                 'ignore:Gaze contains samples but no.*:UserWarning',
             ),
-            id='df_single_row_time_column_dataset_definition',
-        ),
-
-        pytest.param(
-            {
-                'samples': pl.from_dict({'t': [1.23]}, schema={'t': pl.Float64}),
-                'definition': DatasetDefinition(time_column='foo'),
-                'time_column': 't',
-            },
-            pl.from_dict({'time': [1.23]}, schema={'time': pl.Float64}),
-            None,
-            marks=pytest.mark.filterwarnings(
-                'ignore:Gaze contains samples but no.*:UserWarning',
-            ),
-            id='df_single_row_time_column_overwrites_dataset_definition',
-        ),
-
-        pytest.param(
-            {
-                'samples': pl.from_dict({'time': [1.23]}, schema={'time': pl.Float64}),
-                'definition': DatasetDefinition(time_unit='s'),
-            },
-            pl.from_dict({'time': [1230]}, schema={'time': pl.Int64}),
-            None,
-            marks=pytest.mark.filterwarnings(
-                'ignore:Gaze contains samples but no.*:UserWarning',
-            ),
-            id='df_single_row_time_unit_dataset_definition',
-        ),
-
-        pytest.param(
-            {
-                'samples': pl.from_dict({'time': [4.56]}, schema={'time': pl.Float64}),
-                'definition': DatasetDefinition(time_unit='ms'),
-                'time_unit': 's',
-            },
-            pl.from_dict({'time': [4560]}, schema={'time': pl.Int64}),
-            None,
-            marks=pytest.mark.filterwarnings(
-                'ignore:Gaze contains samples but no.*:UserWarning',
-            ),
-            id='df_single_row_time_unit_overwrites_dataset_definition',
-        ),
-
-        pytest.param(
-            {
-                'samples': pl.from_dict({'d': [1.23]}, schema={'d': pl.Float64}),
-                'definition': DatasetDefinition(distance_column='d'),
-            },
-            pl.from_dict({'distance': [1.23]}, schema={'distance': pl.Float64}),
-            None,
-            marks=pytest.mark.filterwarnings(
-                'ignore:Gaze contains samples but no.*:UserWarning',
-            ),
-            id='df_single_row_distance_column_dataset_definition',
-        ),
-
-        pytest.param(
-            {
-                'samples': pl.from_dict({'d': [1.23]}, schema={'d': pl.Float64}),
-                'definition': DatasetDefinition(distance_column='foo'),
-                'distance_column': 'd',
-            },
-            pl.from_dict({'distance': [1.23]}, schema={'distance': pl.Float64}),
-            None,
-            marks=pytest.mark.filterwarnings(
-                'ignore:Gaze contains samples but no.*:UserWarning',
-            ),
-            id='df_single_row_distance_column_overwrites_dataset_definition',
+            id='df_pixel_column_all_nulls_returns_none',
         ),
 
     ],
 )
 def test_init_gaze_has_expected_attrs(init_kwargs, expected_samples, expected_n_components):
     gaze = Gaze(**init_kwargs)
+    if 'time' in expected_samples.columns:
+        time_dtype = expected_samples.schema['time']
+        if time_dtype in (pl.Float64, pl.Int64, pl.Int32, pl.Float32):
+            expected_samples = expected_samples.with_columns(
+                (pl.col('time').cast(pl.Float64) * 1000).round().cast(pl.Duration('us')),
+            )
     assert_frame_equal(gaze.samples, expected_samples)
     assert gaze.n_components == expected_n_components
+
+
+def test_init_rounds_sub_microsecond_duration_time():
+    # A sub-microsecond Duration time column is rounded to the nearest microsecond, not truncated.
+    gaze = Gaze(
+        pl.DataFrame({
+            'time': pl.Series([1500, 2600, 4500], dtype=pl.Duration('ns')),
+            'x': [1.0, 2.0, 3.0],
+            'y': [1.0, 2.0, 3.0],
+        }),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+    )
+
+    assert gaze.samples.schema['time'] == pl.Duration('us')
+    assert gaze.samples['time'].dt.total_microseconds().to_list() == [2, 3, 4]
 
 
 @pytest.mark.parametrize(
@@ -1274,24 +1133,6 @@ def test_init_gaze_has_expected_attrs(init_kwargs, expected_samples, expected_n_
             Experiment(sampling_rate=1000),
             id='experiment',
         ),
-
-        pytest.param(
-            {
-                'definition': DatasetDefinition(experiment=Experiment(sampling_rate=1234)),
-            },
-            Experiment(sampling_rate=1234),
-            id='definition',
-        ),
-
-        pytest.param(
-            {
-                'experiment': Experiment(sampling_rate=5678),
-                'definition': DatasetDefinition(experiment=Experiment(sampling_rate=1111)),
-            },
-            Experiment(sampling_rate=5678),
-            id='experiment_overwrites_definition',
-        ),
-
     ],
 )
 def test_init_gaze_has_expected_experiment(init_kwargs, expected_experiment):
@@ -1337,31 +1178,6 @@ def test_init_gaze_has_expected_experiment(init_kwargs, expected_experiment):
             },
             ['trial'],
             id='df_single_trial_column_list',
-        ),
-
-        pytest.param(
-            {
-                'samples': pl.from_dict(
-                    data={'trial': [1]},
-                    schema={'trial': pl.Int64},
-                ),
-                'definition': DatasetDefinition(trial_columns=['trial']),
-            },
-            ['trial'],
-            id='df_single_trial_column_definition',
-        ),
-
-        pytest.param(
-            {
-                'samples': pl.from_dict(
-                    data={'trial': [1]},
-                    schema={'trial': pl.Int64},
-                ),
-                'definition': DatasetDefinition(trial_columns=['foobar']),
-                'trial_columns': 'trial',
-            },
-            ['trial'],
-            id='df_single_trial_column_overwrites_definition',
         ),
 
         pytest.param(
@@ -1908,22 +1724,43 @@ def test_init_gaze_has_expected_trial_columns(init_kwargs, expected_trial_column
             },
             ValueError,
             "unsupported time unit 'invalid'. "
-            "Supported units are 's' for seconds, 'ms' for milliseconds and "
-            "'step' for steps.",
+            "Supported units are 's' for seconds, 'ms' for milliseconds, "
+            "'us' for microseconds and 'step' for steps.",
             id='time_unit_unsupported',
         ),
 
         pytest.param(
             {
-                'samples': pl.DataFrame(),
-                'data': pl.DataFrame(),
+                'samples': pl.DataFrame(
+                    schema={
+                        'x': pl.Float64, 'y': pl.Float64,
+                        'time': pl.Duration('us'),
+                    },
+                ),
+                'pixel_columns': ['x', 'y'],
+                'time_column': 'time',
+                'time_unit': 'invalid',
             },
             ValueError,
-            'The arguments "samples" and "data" are mutually exclusive.',
-            marks=pytest.mark.filterwarnings('ignore:.*data.*samples.*:DeprecationWarning'),
-            id='samples_data_mutually_exclusive',
+            "unsupported time unit 'invalid'. "
+            "Supported units are 's' for seconds, 'ms' for milliseconds, "
+            "'us' for microseconds and 'step' for steps.",
+            id='time_unit_unsupported_with_duration_time',
         ),
 
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    {
+                        'pixel': [[1.23, 4.56], None, [7.89, 10.11, 12.13]],
+                    },
+                    schema={'pixel': pl.List(pl.Float64)},
+                ),
+            },
+            ValueError,
+            'inconsistent number of components inferred: {2, 3}',
+            id='inconsistent_n_components_with_nulls',
+        ),
     ],
 )
 def test_gaze_init_exceptions(init_kwargs, exception, exception_msg):
@@ -2010,6 +1847,80 @@ def test_gaze_init_events(events, init_kwargs):
     assert gaze.events.frame is not expected_events
 
 
+@pytest.mark.parametrize(
+    ('metadata', 'expected_metadata'),
+    [
+        pytest.param(None, {}, id='None'),
+        pytest.param({'test': 'value'}, {'test': 'value'}, id='dict'),
+    ],
+)
+def test_gaze_has_correct_metadata(metadata, expected_metadata):
+    gaze = Gaze(metadata=metadata)
+    assert gaze.metadata == expected_metadata
+
+
+def test_gaze_init_propagates_sources_to_events():
+    gaze = Gaze(
+        samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+        metadata={'Sources': ['raw/sub_1.csv']},
+    )
+    assert gaze.events.metadata['Sources'] == ['raw/sub_1.csv']
+
+
+def test_gaze_init_without_sources_leaves_events_metadata_empty():
+    gaze = Gaze(
+        samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+    )
+    assert gaze.events.metadata == {}
+
+
+def test_gaze_init_merges_sources_into_passed_events():
+    events = Events(
+        name='fixation', onsets=[0], offsets=[1],
+        metadata={'Sources': ['events/sub_1.feather']},
+    )
+    gaze = Gaze(
+        samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+        events=events,
+        metadata={'Sources': ['raw/sub_1.csv']},
+    )
+    assert gaze.events.metadata['Sources'] == ['events/sub_1.feather', 'raw/sub_1.csv']
+
+
+def test_gaze_init_raises_on_non_list_sources():
+    with pytest.raises(TypeError) as excinfo:
+        Gaze(
+            samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+            time_column='time',
+            pixel_columns=['x', 'y'],
+            metadata={'Sources': 'raw/sub_1.csv'},
+        )
+    assert str(excinfo.value) == (
+        "metadata['Sources'] must be a list of path strings "
+        "but is of type str: 'raw/sub_1.csv'"
+    )
+
+
+def test_gaze_init_raises_on_non_path_sources_entry():
+    with pytest.raises(TypeError) as excinfo:
+        Gaze(
+            samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+            time_column='time',
+            pixel_columns=['x', 'y'],
+            metadata={'Sources': ['raw/sub_1.csv', 123]},
+        )
+    assert str(excinfo.value) == (
+        "metadata['Sources'] entries must be path strings "
+        'but found entry of type int: 123'
+    )
+
+
 def test_gaze_init_warnings():
     with pytest.warns(UserWarning) as record:
         Gaze(samples=pl.from_dict({'a': [1, 2, 3]}))
@@ -2018,42 +1929,3 @@ def test_gaze_init_warnings():
 
     assert len(record) == 1
     assert record[0].message.args[0].startswith(expected_msg_prefix)
-
-
-@pytest.mark.parametrize(
-    'init_kwargs',
-    [
-        pytest.param(
-            {'data': pl.DataFrame()},
-            id='data',
-        ),
-    ],
-)
-def test_gaze_init_parameter_is_deprecated(init_kwargs):
-    with pytest.warns(DeprecationWarning):
-        Gaze(**init_kwargs)
-
-
-@pytest.mark.parametrize(
-    'init_kwargs',
-    [
-        pytest.param(
-            {'data': pl.DataFrame()},
-            id='data',
-        ),
-    ],
-)
-def test_gaze_init_parameter_is_removed(init_kwargs):
-    with pytest.raises(DeprecationWarning) as info:
-        Gaze(**init_kwargs)
-
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
-
-    msg = info.value.args[0]
-    argument_name = list(init_kwargs.keys())[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'keyword argument {argument_name} was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
-    )

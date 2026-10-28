@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 The pymovements Project Authors
+# Copyright (c) 2024-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test for Experiment class."""
+import numpy as np
 import pytest
 
 from pymovements import Experiment
@@ -253,3 +254,38 @@ def test_experiment_to_dict_exclude_none(experiment, exclude_none, expected_dict
 )
 def test_experiment_bool(experiment, expected_bool):
     assert bool(experiment) == expected_bool
+
+
+@pytest.mark.filterwarnings('ignore:.*pos2vel.*:DeprecationWarning')
+def test_pos2vel():
+    experiment = Experiment(sampling_rate=1000.0)
+    arr = [[0., 0.], [1., 1.], [2., 2.], [3., 3.], [4., 4.], [5., 5.]]
+    expected = np.array(
+        [
+            [500., 500.],
+            [1000., 1000.],
+            [1000., 1000.],
+            [1000., 1000.],
+            [1000., 1000.],
+            [500., 500.],
+        ],
+    )
+
+    result = experiment.pos2vel(arr)
+
+    assert np.equal(result, expected).all()
+
+
+def test_pos2vel_is_deprecated_and_removed_as_scheduled(assert_deprecation_is_removed):
+    experiment = Experiment(sampling_rate=1000.0)
+    arr = [[0., 0.], [1., 1.], [2., 2.], [3., 3.], [4., 4.], [5., 5.]]
+
+    with pytest.raises(DeprecationWarning) as info:
+        experiment.pos2vel(arr)
+
+    assert_deprecation_is_removed(
+        function_name='pos2vel',
+        warning_message=info.value.args[0],
+        scheduled_version='0.32.0',
+
+    )

@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,17 +20,155 @@
 """Module for the TextDataFrame."""
 from __future__ import annotations
 
+import math
+import warnings
 from collections.abc import Sequence
+from copy import deepcopy
+from dataclasses import dataclass
+from dataclasses import KW_ONLY
 from pathlib import Path
 from typing import Any
+from typing import ClassVar
+from typing import Literal
 
+import matplotlib.pyplot as plt
 import polars as pl
+from matplotlib import patches
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
+from pymovements._utils._sources import add_source
 
 
-@repr_html(['aois'])
+@dataclass(frozen=True)
+@repr_html()
+class WritingSystem:
+    """Writing system specification for text stimuli.
+
+    Attributes
+    ----------
+    directionality: Literal['left-to-right', 'right-to-left', 'top-to-bottom']
+        Direction in which text flows within a line.
+        For horizontal text, this is typically 'left-to-right' or 'right-to-left'.
+        For vertical text, this is typically 'top-to-bottom'.
+        Bidirectional/Boustrophedon scripts (e.g., Arabic with embedded English)
+        is currently not supported.
+        (default: 'left-to-right')
+    axis: Literal['horizontal', 'vertical']
+        Primary axis along which text is laid out.
+        (default: 'horizontal')
+    lining: Literal['top-to-bottom', 'left-to-right', 'right-to-left']
+        Direction in which lines of text are stacked.
+        For horizontal text, this is typically 'top-to-bottom'.
+        For vertical text, this is typically 'left-to-right' or 'right-to-left'.
+        (default: 'top-to-bottom')
+    DESCRIPTORS: ClassVar[tuple[str, ...]]
+        Valid descriptor strings for :meth:`from_descriptor`:
+
+        - ``'left-to-right'``, ``ltr``
+        - ``'right-to-left'``, ``rtl``
+
+    Examples
+    --------
+    Typical configurations are:
+
+    * Horizontal left-to-right (LTR)::
+
+        WritingSystem(
+            directionality='left-to-right',
+            axis='horizontal',
+            lining='top-to-bottom',
+        )
+
+    * Horizontal right-to-left (RTL)::
+
+        WritingSystem(
+            directionality='right-to-left',
+            axis='horizontal',
+            lining='top-to-bottom',
+        )
+
+    * Vertical right-to-left columns::
+
+        WritingSystem(
+            directionality='top-to-bottom',
+            axis='vertical',
+            lining='right-to-left',
+        )
+
+    * Vertical left-to-right columns::
+
+        WritingSystem(
+            directionality='top-to-bottom',
+            axis='vertical',
+            lining='left-to-right',
+        )
+    """
+
+    directionality: Literal['left-to-right', 'right-to-left', 'top-to-bottom'] = 'left-to-right'
+    _: KW_ONLY
+    axis: Literal['horizontal', 'vertical'] = 'horizontal'
+    lining: Literal['top-to-bottom', 'left-to-right', 'right-to-left'] = 'top-to-bottom'
+
+    DESCRIPTORS: ClassVar[tuple[str, ...]] = (
+        'left-to-right',
+        'ltr',
+        'right-to-left',
+        'rtl',
+    )
+
+    @staticmethod
+    def from_descriptor(descriptor: str) -> WritingSystem:
+        """Create a WritingSystem instance from a descriptor string.
+
+        Mapping is as follows:
+
+        - ``left-to-right``, ``ltr``: vertical left to right
+        - ``right-to-left``, ``rtl``: vertical right to left
+
+        Parameters
+        ----------
+        descriptor: str
+            The descriptor string. Valid values are found in ``WritingSystem.DESCRIPTORS``.
+
+        Returns
+        -------
+        WritingSystem
+            The corresponding WritingSystem instance.
+
+        Examples
+        --------
+        Vertical left to right:
+
+        >>> WritingSystem.from_descriptor('left-to-right')
+        WritingSystem(directionality='left-to-right', axis='horizontal', lining='top-to-bottom')
+
+        Abbreviations are also supported:
+
+        >>> WritingSystem.from_descriptor('ltr')
+        WritingSystem(directionality='left-to-right', axis='horizontal', lining='top-to-bottom')
+
+        and
+
+        >>> WritingSystem.from_descriptor('rtl')
+        WritingSystem(directionality='right-to-left', axis='horizontal', lining='top-to-bottom')
+        """
+        descriptor = descriptor.lower()
+        if descriptor in {'left-to-right', 'ltr'}:
+            return WritingSystem(
+                directionality='left-to-right', axis='horizontal', lining='top-to-bottom',
+            )
+        if descriptor in {'right-to-left', 'rtl'}:
+            return WritingSystem(
+                directionality='right-to-left', axis='horizontal', lining='top-to-bottom',
+            )
+        raise ValueError(
+            f"Unknown descriptor '{descriptor}'. "
+            f'Valid descriptors are: {WritingSystem.DESCRIPTORS}',
+        )
+
+
+@repr_html(['aois', 'metadata'])
 class TextStimulus:
     """A DataFrame for the text stimulus that the gaze data was recorded on.
 
@@ -59,6 +197,15 @@ class TextStimulus:
     page_column: str | None
         Name of the column which contains the page information of the area of interest.
         (default: None)
+    trial_column: str | None
+        Name for the column that specifies the unique trial id.
+        (default: None)
+    writing_system: WritingSystem | str
+        Writing system of the text. If ``writing_system`` is a string,
+        :py:meth:`~pymovements.stimulus.WritingSystem.from_descriptor()` is used for initialization.
+        (default: ``'left-to-right'``)
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
     """
 
     def __init__(
@@ -73,6 +220,9 @@ class TextStimulus:
             end_x_column: str | None = None,
             end_y_column: str | None = None,
             page_column: str | None = None,
+            trial_column: str | None = None,
+            writing_system: WritingSystem | str = 'left-to-right',
+            metadata: dict[str, Any] | None = None,
     ) -> None:
 
         self.aois = aois.clone()
@@ -84,6 +234,13 @@ class TextStimulus:
         self.end_x_column = end_x_column
         self.end_y_column = end_y_column
         self.page_column = page_column
+        self.trial_column = trial_column
+        self.metadata = metadata if metadata is not None else {}
+
+        if isinstance(writing_system, str):
+            self.writing_system = WritingSystem.from_descriptor(writing_system)
+        else:
+            self.writing_system = writing_system
 
     def split(
             self,
@@ -99,7 +256,8 @@ class TextStimulus:
         Returns
         -------
         list[TextStimulus]
-            A list of TextStimulus objects.
+            A list of TextStimulus objects. Each split holds a deep copy of the
+            metadata dictionary.
         """
         return [
             TextStimulus(
@@ -112,8 +270,11 @@ class TextStimulus:
                 end_x_column=self.end_x_column,
                 end_y_column=self.end_y_column,
                 page_column=self.page_column,
+                trial_column=self.trial_column,
+                writing_system=self.writing_system,
+                metadata=deepcopy(self.metadata),
             )
-            for df in self.aois.partition_by(by=by, as_dict=False)
+            for df in self.aois.partition_by(by, as_dict=False)
         ]
 
     def get_aoi(
@@ -122,33 +283,514 @@ class TextStimulus:
             row: pl.DataFrame.row,
             x_eye: str,
             y_eye: str,
+            max_matches: int | None = None,
     ) -> pl.DataFrame:
-        """Given eye movement and aoi dataframe, return aoi.
+        """Return the AOI that contains the given gaze row.
 
-        If `width` is used, calculation: start_x_column <= x_eye < start_x_column + width.
-        If `end_x_column` is used, calculation: start_x_column <= x_eye < end_x_column.
-        Analog for y coordinate and height.
+        This function checks spatial bounds using the interval `start <= coord < start + size` if
+        `width`/`height` is provided, or `start <= coord < end` if `end_x_column`/`end_y_column`
+        is provided.
+        In both cases, the end boundary is exclusive (half-open interval `[start, end)`).
+        When `trial_column` and/or `page_column` are configured,
+        AOIs are first filtered to match the current row's values for these columns,
+        which are then dropped to avoid duplicate columns during concatenation.
 
         Parameters
         ----------
         row: pl.DataFrame.row
-            Eye movement row.
+            Eye movement row with fields for the eye coordinates and any trial/page identifiers.
         x_eye: str
-            Name of x eye coordinate.
+            Name of the x eye coordinate field in ``row``.
         y_eye: str
-            Name of y eye coordinate.
+            Name of the y eye coordinate field in ``row``.
+        max_matches: int | None
+            If not ``None``, reduce the number of matches to this amount. This may happen in case of
+            overlapping AOIs.
+            (default: None)
 
         Returns
         -------
         pl.DataFrame
-            Looked at area of interest.
+            A one-row DataFrame representing the matched AOI. If no AOI matches, the result is a
+            single row with ``None`` values in the AOI columns.
 
         Raises
         ------
         ValueError
-            If width and end_TYPE_column is None.
+            If neither width/height nor end_x/end_y columns are defined to specify AOI bounds.
+
+        Notes
+        -----
+        If multiple AOIs overlap and match the same point, a `UserWarning` is emitted.
+        For invalid or missing coordinates (e.g. `None` or strings), a `UserWarning` is emitted,
+        and the lookup returns a single row of `None` values.
+
+        Examples
+        --------
+        Looking up the AOI containing a gaze coordinate returns the matching row:
+
+        >>> import polars as pl
+        >>> from pymovements.stimulus import TextStimulus
+        >>> stimulus = TextStimulus(
+        ...     aois=pl.DataFrame({
+        ...         'word': ['Hello', 'world'],
+        ...         'start_x': [100.0, 200.0],
+        ...         'start_y': [100.0, 100.0],
+        ...         'width': [80.0, 80.0],
+        ...         'height': [40.0, 40.0],
+        ...     }),
+        ...     aoi_column='word',
+        ...     start_x_column='start_x',
+        ...     start_y_column='start_y',
+        ...     width_column='width',
+        ...     height_column='height',
+        ... )
+        >>> stimulus.get_aoi(row={'x': 120.0, 'y': 110.0}, x_eye='x', y_eye='y')
+        shape: (1, 5)
+        ┌───────┬─────────┬─────────┬───────┬────────┐
+        │ word  ┆ start_x ┆ start_y ┆ width ┆ height │
+        │ ---   ┆ ---     ┆ ---     ┆ ---   ┆ ---    │
+        │ str   ┆ f64     ┆ f64     ┆ f64   ┆ f64    │
+        ╞═══════╪═════════╪═════════╪═══════╪════════╡
+        │ Hello ┆ 100.0   ┆ 100.0   ┆ 80.0  ┆ 40.0   │
+        └───────┴─────────┴─────────┴───────┴────────┘
         """
-        return _get_aoi(self, row=row, x_eye=x_eye, y_eye=y_eye)
+        aois = _get_aoi(self, row=row, x_eye=x_eye, y_eye=y_eye)
+        if max_matches:
+            aois = aois.head(max_matches)
+        return aois
+
+    @staticmethod
+    def from_csv(
+            path: str | Path,
+            *,
+            aoi_column: str,
+            start_x_column: str,
+            start_y_column: str,
+            width_column: str | None = None,
+            height_column: str | None = None,
+            end_x_column: str | None = None,
+            end_y_column: str | None = None,
+            page_column: str | None = None,
+            trial_column: str | None = None,
+            writing_system: WritingSystem | str = 'left-to-right',
+            metadata: dict[str, Any] | None = None,
+            read_csv_kwargs: dict[str, Any] | None = None,
+    ) -> TextStimulus:
+        """Load text stimulus from file.
+
+        Parameters
+        ----------
+        path:  str | Path
+            Path to file to be read.
+        aoi_column: str
+            Name of column that contains the content of the aois.
+        start_x_column: str
+            Name of column which contains the x coordinate's start position of the
+            areas of interest.
+        start_y_column: str
+            Name of column which contains the y coordinate's start position of the
+            areas of interest.
+        width_column: str | None
+            Name of the column which contains the width of the area of interest. (default: None)
+        height_column: str | None
+            Name of column which contains the height of the area of interest. (default: None)
+        end_x_column: str | None
+            Name of column which contains the x coordinate's end position of the areas of interest.
+            (default: None)
+        end_y_column: str | None
+            Name of column which contains the y coordinate's end position of the areas of interest.
+            (default: None)
+        page_column: str | None
+            Name of column which contains the page information of the area of interest.
+            (default: None)
+        trial_column: str | None
+            Name of column that specifies the unique trial id.
+            (default: None)
+        writing_system: WritingSystem | str
+            Writing system of the text. If ``writing_system`` is a string,
+            :py:meth:`~pymovements.stimulus.WritingSystem.from_descriptor()` for initialization.
+            (default: ``'left-to-right'``)
+        metadata: dict[str, Any] | None
+            Dictionary containing additional metadata. Unless already present, a ``Sources``
+            entry holding ``path`` as given is added. (default: None)
+        read_csv_kwargs: dict[str, Any] | None
+            Custom read keyword arguments for polars. (default: None)
+
+
+        Returns
+        -------
+        TextStimulus
+            Returns the text stimulus file.
+
+        Examples
+        --------
+        .. testsetup::
+
+            >>> getfixture('doctest_tmp_cwd')
+
+        First we write a small AOI file with one row per word to disk:
+
+        >>> import polars as pl
+        >>> pl.DataFrame({
+        ...     'word': ['Hello', 'world'],
+        ...     'start_x': [100.0, 200.0],
+        ...     'start_y': [100.0, 100.0],
+        ...     'width': [80.0, 80.0],
+        ...     'height': [40.0, 40.0],
+        ... }).write_csv('aois.csv')
+
+        Loading the file returns a :py:class:`~pymovements.stimulus.TextStimulus`
+        holding the AOIs:
+
+        >>> from pymovements.stimulus import TextStimulus
+        >>> stimulus = TextStimulus.from_csv(
+        ...     'aois.csv',
+        ...     aoi_column='word',
+        ...     start_x_column='start_x',
+        ...     start_y_column='start_y',
+        ...     width_column='width',
+        ...     height_column='height',
+        ... )
+        >>> stimulus.aois
+        shape: (2, 5)
+        ┌───────┬─────────┬─────────┬───────┬────────┐
+        │ word  ┆ start_x ┆ start_y ┆ width ┆ height │
+        │ ---   ┆ ---     ┆ ---     ┆ ---   ┆ ---    │
+        │ str   ┆ f64     ┆ f64     ┆ f64   ┆ f64    │
+        ╞═══════╪═════════╪═════════╪═══════╪════════╡
+        │ Hello ┆ 100.0   ┆ 100.0   ┆ 80.0  ┆ 40.0   │
+        │ world ┆ 200.0   ┆ 100.0   ┆ 80.0  ┆ 40.0   │
+        └───────┴─────────┴─────────┴───────┴────────┘
+        """
+        if isinstance(path, str):
+            path = Path(path)
+        if read_csv_kwargs is None:
+            read_csv_kwargs = {}
+
+        try:
+            stimulus_df = pl.read_csv(path, **read_csv_kwargs)
+        except FileNotFoundError as exception:
+            raise FileNotFoundError(f'Stimulus file not found: {path}') from exception
+        except pl.exceptions.ComputeError as exception:
+            raise ValueError(f'Stimulus file is not a valid CSV file: {path}') from exception
+
+        stimulus_df = stimulus_df.fill_null(' ')
+
+        return TextStimulus(
+            aois=stimulus_df,
+            aoi_column=aoi_column,
+            start_x_column=start_x_column,
+            start_y_column=start_y_column,
+            width_column=width_column,
+            height_column=height_column,
+            end_x_column=end_x_column,
+            end_y_column=end_y_column,
+            page_column=page_column,
+            trial_column=trial_column,
+            writing_system=writing_system,
+            metadata=add_source(metadata, path),
+        )
+
+    def resolve_boxes(
+        self,
+        *,
+        page: str | int | None = None,
+        trial: str | int | None = None,
+    ) -> pl.DataFrame:
+        """Resolve AOIs into a fixed box representation.
+
+        Parameters
+        ----------
+        page: str | int | None
+            Page number of text to resolve
+        trial: str | int | None
+            Trial number of text to resolve
+
+        Returns
+        -------
+        pl.DataFrame
+            DataFrame with columns:
+            ``text, start_x, start_y, width, height``.
+
+        Raises
+        ------
+        ValueError
+            If page/trial are provided but their columns are not configured
+            If page/trial columns are configured but are not provided
+            If dimension columns are not configured in their respective pairs
+            If AOIs are not found for a given page/trial
+
+        Warns
+        -----
+        UserWarning
+            If a row has null/NaN geometry
+            If an AOI has a non-positive extent
+
+        """
+        if page is not None and self.page_column is None:
+            raise ValueError(
+                f"page={page!r} was provided, but no page_column is configured.",
+            )
+
+        if trial is not None and self.trial_column is None:
+            raise ValueError(
+                f"trial={trial!r} was provided, but no trial_column is configured.",
+            )
+
+        df = self.aois
+
+        if self.page_column is not None:
+            if page is None:
+                raise ValueError(
+                    f"page must be provided because page_column "
+                    f"'{self.page_column}' is configured.",
+                )
+
+            df = df.filter(pl.col(self.page_column) == page)
+
+            if df.is_empty():
+                raise ValueError(
+                    f"No AOIs found for page={page!r}.",
+                )
+
+        if self.trial_column is not None:
+            if trial is None:
+                raise ValueError(
+                    f"trial must be provided because trial_column "
+                    f"'{self.trial_column}' is configured.",
+                )
+
+            df = df.filter(pl.col(self.trial_column) == trial)
+
+            if df.is_empty():
+                raise ValueError(
+                    f"No AOIs found for trial={trial!r}.",
+                )
+
+        has_width = self.width_column is not None
+        has_height = self.height_column is not None
+        has_end_x = self.end_x_column is not None
+        has_end_y = self.end_y_column is not None
+
+        width_height_complete = has_width and has_height
+        end_complete = has_end_x and has_end_y
+
+        width_height_partial = has_width != has_height
+        end_partial = has_end_x != has_end_y
+
+        if width_height_partial:
+            raise ValueError(
+                'Both width_column and height_column must be configured together.',
+            )
+
+        if end_partial:
+            raise ValueError(
+                'Both end_x_column and end_y_column must be configured together.',
+            )
+
+        if not width_height_complete and not end_complete:
+            raise ValueError(
+                'AOI geometry cannot be resolved: configure either '
+                'width_column/height_column or end_x_column/end_y_column.',
+            )
+
+        configured = [
+            self.start_x_column,
+            self.start_y_column,
+            *(
+                [self.end_x_column, self.end_y_column]
+                if end_complete
+                else [self.width_column, self.height_column]
+            ),
+        ]
+
+        for column in configured:
+            if column not in df.columns:
+                raise ValueError(
+                    f"Configured geometry column '{column}' does not exist in the AOI dataframe.",
+                )
+
+        start_x = pl.col(self.start_x_column).cast(pl.Float64, strict=False)
+        start_y = pl.col(self.start_y_column).cast(pl.Float64, strict=False)
+
+        if width_height_complete:
+            width = pl.col(self.width_column).cast(pl.Float64, strict=False)
+            height = pl.col(self.height_column).cast(pl.Float64, strict=False)
+        else:
+            end_x = pl.col(self.end_x_column).cast(pl.Float64, strict=False)
+            end_y = pl.col(self.end_y_column).cast(pl.Float64, strict=False)
+
+            width = end_x - start_x
+            height = end_y - start_y
+
+        geometry = [start_x, start_y, width, height]
+
+        defective = pl.any_horizontal(
+            [expr.is_null() | expr.is_nan() for expr in geometry],
+        )
+
+        nonpositive = (width <= 0) | (height <= 0)
+
+        for row in df.filter(defective).iter_rows(named=True):
+            warnings.warn(
+                f"Skipping defective AOI row: {row}",
+                UserWarning,
+            )
+
+        for row in df.filter(~defective & nonpositive).iter_rows(named=True):
+            warnings.warn(
+                f"Skipping AOI with non-positive extent: {row}",
+                UserWarning,
+            )
+
+        return df.filter(~defective & ~nonpositive).select(
+            pl.col(self.aoi_column).cast(pl.String).alias('text'),
+            start_x.alias('start_x'),
+            start_y.alias('start_y'),
+            width.alias('width'),
+            height.alias('height'),
+        )
+
+    def plot(
+        self,
+        *,
+        page: str | int | None = None,
+        trial: str | int | None = None,
+        show_boxes: bool = True,
+        text_kwargs: dict[str, Any] | None = None,
+        box_kwargs: dict[str, Any] | None = None,
+        ax: plt.Axes | None = None,
+    ) -> tuple[plt.Figure, plt.Axes]:
+        """Plot a schematic reconstruction of text AOIs.
+
+        This is a schematic layout reconstruction from AOI boxes and is not
+        a pixel-accurate copy of the original stimulus font.
+
+        Parameters
+        ----------
+        page: str | int | None
+            Page to plot. Passed to :meth:`resolve_boxes`.
+        trial: str | int | None
+            Trial to plot. Passed to :meth:`resolve_boxes`.
+        show_boxes: bool
+            Whether to draw AOI rectangles. Labels are always drawn.
+        text_kwargs: dict[str, Any] | None
+            Keyword arguments passed to ``Axes.text``.
+        box_kwargs: dict[str, Any] | None
+            Keyword arguments passed to ``patches.Rectangle``.
+        ax: plt.Axes | None
+            Existing axes to draw into. If ``None``, a new figure and axes
+            are created.
+
+        Returns
+        -------
+        tuple[plt.Figure, plt.Axes]
+            The figure and axes containing the plot.
+
+        Raises
+        ------
+        NotImplementedError
+            If the configured writing system is not horizontal
+            left-to-right.
+        """
+        if (
+            self.writing_system.directionality != 'left-to-right'
+            or self.writing_system.axis != 'horizontal'
+        ):
+            raise NotImplementedError(
+                'TextStimulus.plot currently supports only horizontal '
+                'left-to-right writing systems.',
+            )
+
+        boxes = self.resolve_boxes(page=page, trial=trial)
+
+        if ax is None:
+            fig, ax = plt.subplots()
+            ax.set_aspect('equal')
+            own_axes = True
+        else:
+            fig = ax.figure
+            own_axes = False
+
+        default_box_kwargs = {
+            'fill': False,
+        }
+        if box_kwargs is not None:
+            default_box_kwargs.update(box_kwargs)
+
+        default_text_kwargs = {'ha': 'center', 'va': 'center'}
+        if text_kwargs is not None:
+            default_text_kwargs.update(text_kwargs)
+
+        for row in boxes.iter_rows(named=True):
+            start_x = row['start_x']
+            start_y = row['start_y']
+            width = row['width']
+            height = row['height']
+            text = row['text']
+
+            if show_boxes:
+                rectangle = patches.Rectangle(
+                    (start_x, start_y),
+                    width,
+                    height,
+                    **default_box_kwargs,
+                )
+                ax.add_patch(rectangle)
+
+            ax.text(
+                start_x + width / 2,
+                start_y + height / 2,
+                text,
+                **default_text_kwargs,
+            )
+
+        if own_axes:
+            ax.invert_yaxis()
+
+            ax.set_xlim(
+                boxes['start_x'].min(),
+                (boxes['start_x'] + boxes['width']).max(),
+            )
+
+            ax.set_ylim(
+                (boxes['start_y'] + boxes['height']).max(),
+                boxes['start_y'].min(),
+            )
+
+        return fig, ax
+
+
+def _is_number(v: Any) -> bool:
+    """Return True if v is an int/float and not NaN."""
+    return isinstance(v, (int, float)) and not (isinstance(v, float) and math.isnan(v))
+
+
+def _empty_aoi_like(df: pl.DataFrame) -> pl.DataFrame:
+    """Create a single-row AOI DataFrame with None for each column of df."""
+    return pl.from_dict({col: None for col in df.columns})
+
+
+def _extract_valid_xy_or_none(
+    row: pl.DataFrame.row,
+    x_eye: str,
+    y_eye: str,
+) -> tuple[float, float] | None:
+    """Extract numeric x,y from row or return None after warning if invalid.
+
+    Emits a UserWarning exactly once per invalid input pair.
+    """
+    x_val = row.get(x_eye)
+    y_val = row.get(y_eye)
+    if not (_is_number(x_val) and _is_number(y_val)):
+        warnings.warn(
+            f'Invalid eye coordinates (x={x_val}, y={y_val}) for AOI lookup. '
+            'Returning no match.',
+            UserWarning,
+        )
+        return None
+    return float(x_val), float(y_val)
 
 
 def from_file(
@@ -162,7 +804,10 @@ def from_file(
         end_x_column: str | None = None,
         end_y_column: str | None = None,
         page_column: str | None = None,
+        trial_column: str | None = None,
         custom_read_kwargs: dict[str, Any] | None = None,
+        writing_system: WritingSystem | str = 'left-to-right',
+        metadata: dict[str, Any] | None = None,
 ) -> TextStimulus:
     """Load text stimulus from file.
 
@@ -191,35 +836,58 @@ def from_file(
     page_column: str | None
         Name of the column which contains the page information of the area of interest.
         (default: None)
+    trial_column: str | None
+        Name for the column that specifies the unique trial id.
+        (default: None)
     custom_read_kwargs: dict[str, Any] | None
         Custom read keyword arguments for polars. (default: None)
+    writing_system: WritingSystem | str
+        Text writing system. See TextStimulus.__init__ for details.
+        (default: WritingSystem(horizontal, top-to-bottom, left-to-right))
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. Unless already present, a ``Sources``
+        entry holding ``aoi_path`` as given is added. (default: None)
 
 
     Returns
     -------
     TextStimulus
         Returns the text stimulus file.
+
+    Examples
+    --------
+    .. testsetup::
+
+        >>> getfixture('doctest_tmp_cwd')
+
+    First we write a small AOI file with one row per word to disk:
+
+    >>> import polars as pl
+    >>> pl.DataFrame({
+    ...     'word': ['Hello', 'world'],
+    ...     'start_x': [100.0, 200.0],
+    ...     'start_y': [100.0, 100.0],
+    ...     'width': [80.0, 80.0],
+    ...     'height': [40.0, 40.0],
+    ... }).write_csv('aois.csv')
+
+    Loading the file returns a :py:class:`~pymovements.stimulus.TextStimulus` holding
+    the AOIs:
+
+    >>> from pymovements.stimulus import text
+    >>> stimulus = text.from_file(
+    ...     'aois.csv',
+    ...     aoi_column='word',
+    ...     start_x_column='start_x',
+    ...     start_y_column='start_y',
+    ...     width_column='width',
+    ...     height_column='height',
+    ... )
+    >>> stimulus.aois['word'].to_list()
+    ['Hello', 'world']
     """
-    if isinstance(aoi_path, str):
-        aoi_path = Path(aoi_path)
-    if custom_read_kwargs is None:
-        custom_read_kwargs = {}
-
-    valid_extensions = {'.csv', '.tsv', '.txt', '.ias'}
-    if aoi_path.suffix in valid_extensions:
-        stimulus_df = pl.read_csv(
-            aoi_path,
-            **custom_read_kwargs,
-        )
-        stimulus_df = stimulus_df.fill_null(' ')
-    else:
-        raise ValueError(
-            f'unsupported file format "{aoi_path.suffix}".'
-            f'Supported formats are: {sorted(valid_extensions)}',
-        )
-
-    return TextStimulus(
-        aois=stimulus_df,
+    return TextStimulus.from_csv(
+        path=aoi_path,
         aoi_column=aoi_column,
         start_x_column=start_x_column,
         start_y_column=start_y_column,
@@ -228,6 +896,10 @@ def from_file(
         end_x_column=end_x_column,
         end_y_column=end_y_column,
         page_column=page_column,
+        trial_column=trial_column,
+        read_csv_kwargs=custom_read_kwargs,
+        writing_system=writing_system,
+        metadata=metadata,
     )
 
 
@@ -242,10 +914,6 @@ def _get_aoi(
     If `width` is used, calculation: start_x_column <= x_eye < start_x_column + width.
     If `end_x_column` is used, calculation: start_x_column <= x_eye < end_x_column.
     Analog for y coordinate and height.
-
-    .. deprecated:: v0.21.1
-       Please use :py:meth:`~pymovements.TextStimulus.get_aoi()` instead.
-       This function will be removed in v0.26.0.
 
     Parameters
     ----------
@@ -268,28 +936,59 @@ def _get_aoi(
     ValueError
         If width and end_TYPE_column is None.
     """
+    row_aois = aoi_dataframe.aois
+    # Filter AOIs to the same trial/page as the current row (if those columns are defined).
+    # After filtering, drop these key columns from the temporary AOI selection to avoid
+    # duplicate columns later when concatenating AOI properties back to event/gaze frames.
+    if aoi_dataframe.trial_column is not None:
+        trial_val = row.get(aoi_dataframe.trial_column)
+        if trial_val is not None:
+            row_aois = row_aois.filter(
+                row_aois[aoi_dataframe.trial_column] == trial_val,
+            )
+    if aoi_dataframe.page_column is not None:
+        page_val = row.get(aoi_dataframe.page_column)
+        if page_val is not None:
+            row_aois = row_aois.filter(
+                row_aois[aoi_dataframe.page_column] == page_val,
+            )
+
     if aoi_dataframe.width_column is not None:
         _checks.check_is_none_is_mutual(
             height_column=aoi_dataframe.width_column,
             width_column=aoi_dataframe.height_column,
         )
-        aoi = aoi_dataframe.aois.filter(
-            (aoi_dataframe.aois[aoi_dataframe.start_x_column] <= row[x_eye]) &
+        # Validate and extract numeric coordinates once.
+        xy = _extract_valid_xy_or_none(row, x_eye, y_eye)
+        if xy is None:
+            return _empty_aoi_like(row_aois)
+        x_val, y_val = xy
+
+        aoi = row_aois.filter(
+            (row_aois[aoi_dataframe.start_x_column] <= x_val) &
             (
-                row[x_eye] <
-                aoi_dataframe.aois[aoi_dataframe.start_x_column] +
-                aoi_dataframe.aois[aoi_dataframe.width_column]
+                x_val <
+                row_aois[aoi_dataframe.start_x_column] +
+                row_aois[aoi_dataframe.width_column]
             ) &
-            (aoi_dataframe.aois[aoi_dataframe.start_y_column] <= row[y_eye]) &
+            (row_aois[aoi_dataframe.start_y_column] <= y_val) &
             (
-                row[y_eye] <
-                aoi_dataframe.aois[aoi_dataframe.start_y_column] +
-                aoi_dataframe.aois[aoi_dataframe.height_column]
+                y_val <
+                row_aois[aoi_dataframe.start_y_column] +
+                row_aois[aoi_dataframe.height_column]
             ),
         )
 
         if aoi.is_empty():
             aoi.extend(pl.from_dict({col: None for col in aoi.columns}))
+            return aoi
+        # If multiple AOIs overlap, warn
+        if aoi.height > 1:
+            warnings.warn(
+                'Multiple AOIs matched this point '
+                f'(x={x_val}, y={y_val}).',
+                UserWarning,
+            )
         return aoi
 
     if aoi_dataframe.end_x_column is not None:
@@ -297,17 +996,32 @@ def _get_aoi(
             end_x_column=aoi_dataframe.end_x_column,
             end_y_column=aoi_dataframe.end_y_column,
         )
-        aoi = aoi_dataframe.aois.filter(
+        # Validate and extract numeric coordinates once.
+        xy = _extract_valid_xy_or_none(row, x_eye, y_eye)
+        if xy is None:
+            return _empty_aoi_like(row_aois)
+        x_val, y_val = xy
+
+        aoi = row_aois.filter(
             # x-coordinate: within bounding box
-            (aoi_dataframe.aois[aoi_dataframe.start_x_column] <= row[x_eye]) &
-            (row[x_eye] < aoi_dataframe.aois[aoi_dataframe.end_x_column]) &
+            (row_aois[aoi_dataframe.start_x_column] <= x_val) &
+            (x_val < row_aois[aoi_dataframe.end_x_column]) &
             # y-coordinate: within bounding box
-            (aoi_dataframe.aois[aoi_dataframe.start_y_column] <= row[y_eye]) &
-            (row[y_eye] < aoi_dataframe.aois[aoi_dataframe.end_y_column]),
+            (row_aois[aoi_dataframe.start_y_column] <= y_val) &
+            (y_val < row_aois[aoi_dataframe.end_y_column]),
         )
 
         if aoi.is_empty():
             aoi.extend(pl.from_dict({col: None for col in aoi.columns}))
+            return aoi
+
+        # If multiple AOIs overlap, warn
+        if aoi.height > 1:
+            warnings.warn(
+                'Multiple AOIs matched this point '
+                f'(x={x_val}, y={y_val}).',
+                UserWarning,
+            )
 
         return aoi
     raise ValueError(

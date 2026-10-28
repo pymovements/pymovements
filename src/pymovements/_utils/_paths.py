@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides path specific funtions."""
+"""Provides path specific functions."""
 from __future__ import annotations
 
 import re
@@ -31,7 +31,7 @@ def get_filepaths(
 ) -> list[Path]:
     """Get filepaths from rootpath depending on extension or regular expression.
 
-    Passing extension and regex is mutually exclusive.
+    Passing extension and regex are mutually exclusive.
 
     Parameters
     ----------
@@ -81,7 +81,7 @@ def match_filepaths(
         regex: re.Pattern,
         relative: bool = True,
         relative_anchor: Path | None = None,
-) -> list[dict[str, str]]:
+) -> list[dict[str, str | None]]:
     """Traverse path and match regular expression.
 
     Parameters
@@ -98,8 +98,9 @@ def match_filepaths(
 
     Returns
     -------
-    list[dict[str, str]]
+    list[dict[str, str | None]]
         Each entry contains the match group dictionary of the regular expression.
+        Values of optional capture groups are ``None`` if the group did not match.
 
     Raises
     ------
@@ -117,7 +118,7 @@ def match_filepaths(
     if relative and relative_anchor is None:
         relative_anchor = path
 
-    match_dicts: list[dict[str, str]] = []
+    match_dicts: list[dict[str, str | None]] = []
     for childpath in path.iterdir():
         if childpath.is_dir():
             recursive_results = match_filepaths(
@@ -125,15 +126,27 @@ def match_filepaths(
                 relative=relative, relative_anchor=relative_anchor,
             )
             match_dicts.extend(recursive_results)
-        elif match := regex.match(childpath.name):
-            match_dict = match.groupdict()
+        else:
+            match_on_filename = regex.match(childpath.name)
 
-            filepath = childpath
-            if relative:
-                # mypy is unaware that 'relative_anchor' can never be None (l.116)
-                assert relative_anchor is not None
-                filepath = filepath.relative_to(relative_anchor)
+            match_on_relative_path = None
+            if relative_anchor is not None:
+                match_on_relative_path = regex.match(
+                    childpath.relative_to(relative_anchor).as_posix(),
+                )
 
-            match_dict['filepath'] = str(filepath)
-            match_dicts.append(match_dict)
+            match = match_on_filename or match_on_relative_path
+
+            if match:
+                match_dict = match.groupdict()
+
+                filepath = childpath
+                if relative:
+                    # mypy is unaware that 'relative_anchor' can never be None
+                    assert relative_anchor is not None
+                    filepath = filepath.relative_to(relative_anchor)
+
+                match_dict['filepath'] = str(filepath)
+                match_dicts.append(match_dict)
+
     return match_dicts

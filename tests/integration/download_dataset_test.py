@@ -1,4 +1,4 @@
-# Copyright (c) 2025 The pymovements Project Authors
+# Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -35,4 +35,4 @@ def test_download_dataset(dataset_name, tmp_path):
     # Check that all resources are downloaded.
     download_dir = dataset.paths.downloads
     for resource in dataset.definition.resources:
-        assert download_dir / resource.filename in download_dir.iterdir()
+        assert download_dir / resource.source.filename in download_dir.iterdir()

@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,14 +18,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test from gaze.from_numpy."""
-import re
-
 import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements import __version__
 from pymovements import Events
 from pymovements import Experiment
 from pymovements.gaze import from_numpy
@@ -108,7 +105,7 @@ def test_from_numpy_with_schema():
 
     expected = pl.DataFrame(
         {
-            'time': [101, 102, 103, 104],
+            'time': [101000, 102000, 103000, 104000],
             'distance': [100, 100, 100, 100],
             'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
             'position': [[9, 5], [8, 4], [7, 3], [6, 2]],
@@ -116,7 +113,7 @@ def test_from_numpy_with_schema():
             'acceleration': [[2, 6], [3, 7], [4, 8], [5, 9]],
         },
         schema={
-            'time': pl.Int64,
+            'time': pl.Duration('us'),
             'distance': pl.Float64,
             'pixel': pl.List(pl.Float64),
             'position': pl.List(pl.Float64),
@@ -164,12 +161,12 @@ def test_from_numpy_with_trial_id():
     expected = pl.DataFrame(
         {
             'trial_id': [1, 1, 2, 2],
-            'time': [101, 102, 103, 104],
+            'time': [101000, 102000, 103000, 104000],
             'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
         },
         schema={
             'trial_id': pl.Float64,
-            'time': pl.Int64,
+            'time': pl.Duration('us'),
             'pixel': pl.List(pl.Float64),
         },
     )
@@ -210,7 +207,7 @@ def test_from_numpy_explicit_columns():
 
     expected = pl.DataFrame(
         {
-            'time': [101, 102, 103, 104],
+            'time': [101000, 102000, 103000, 104000],
             'distance': [100, 100, 100, 100],
             'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
             'position': [[9, 5], [8, 4], [7, 3], [6, 2]],
@@ -218,7 +215,7 @@ def test_from_numpy_explicit_columns():
             'acceleration': [[2, 6], [3, 7], [4, 8], [5, 9]],
         },
         schema={
-            'time': pl.Int64,
+            'time': pl.Duration('us'),
             'distance': pl.Float64,
             'pixel': pl.List(pl.Int64),
             'position': pl.List(pl.Float64),
@@ -229,6 +226,51 @@ def test_from_numpy_explicit_columns():
 
     assert_frame_equal(gaze.samples, expected)
     assert gaze.n_components == 2
+
+
+@pytest.mark.parametrize('argument', ['time', 'trial', 'distance'])
+@pytest.mark.parametrize(
+    'shape',
+    [
+        pytest.param((4,), id='one_dimension'),
+        pytest.param((1, 4), id='leading_singleton'),
+        pytest.param((4, 1), id='trailing_singleton'),
+        pytest.param((1, 4, 1), id='surrounding_singletons'),
+        pytest.param((4, 1, 1), id='multiple_trailing_singletons'),
+    ],
+)
+def test_from_numpy_flattens_single_column_array_singleton_dimensions(argument, shape):
+    array = np.array([101, 102, 103, 104], dtype=np.int64).reshape(shape)
+    pixel = np.array([[0, 1, 2, 3], [4, 5, 6, 7]], dtype=np.int64)
+
+    gaze = from_numpy(pixel=pixel, **{argument: array})
+
+    result = gaze.samples[argument]
+    if argument == 'time':
+        result = result.dt.total_milliseconds()
+    assert result.to_list() == [101, 102, 103, 104]
+    assert gaze.samples.height == 4
+
+
+@pytest.mark.parametrize('argument', ['time', 'trial', 'distance'])
+@pytest.mark.parametrize(
+    'shape',
+    [
+        pytest.param((), id='zero_dimensions'),
+        pytest.param((2, 4), id='two_dimensions'),
+        pytest.param((2, 1, 4), id='two_dimensions_with_singleton'),
+    ],
+)
+def test_from_numpy_single_column_array_unsupported_shape_raises(argument, shape):
+    array = np.zeros(shape)
+
+    with pytest.raises(ValueError) as error:
+        from_numpy(**{argument: array})
+
+    assert str(error.value) == (
+        f'{argument} array must be at least one-dimensional and have at most one non-singleton '
+        f'dimension, but got shape {shape}'
+    )
 
 
 def test_from_numpy_explicit_columns_with_trial():
@@ -245,12 +287,12 @@ def test_from_numpy_explicit_columns_with_trial():
     expected = pl.DataFrame(
         {
             'trial': [1, 1, 2, 2],
-            'time': [101, 102, 103, 104],
+            'time': [101000, 102000, 103000, 104000],
             'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
         },
         schema={
             'trial': pl.Int64,
-            'time': pl.Int64,
+            'time': pl.Duration('us'),
             'pixel': pl.List(pl.Int64),
         },
     )
@@ -258,6 +300,291 @@ def test_from_numpy_explicit_columns_with_trial():
     assert_frame_equal(gaze.samples, expected)
     assert gaze.n_components == 2
     assert gaze.trial_columns == ['trial']
+
+
+@pytest.mark.parametrize(
+    (
+        'array', 'schema', 'kwargs', 'expected', 'expected_trial_columns',
+    ),
+    [
+        pytest.param(
+            np.array(
+                [
+                    [1, 2], [101, 102], [100, 100],
+                    [0, 1], [4, 5], [9, 8], [5, 4],
+                    [1, 2], [5, 6], [2, 3], [6, 7],
+                ], dtype=np.float64,
+            ),
+            None,
+            {
+                'trial_columns': [0], 'time_column': 1, 'distance_column': 2,
+                'pixel_columns': [3, 4], 'position_columns': [5, 6],
+                'velocity_columns': [7, 8], 'acceleration_columns': [9, 10],
+            },
+            pl.DataFrame(
+                {
+                    'column_0': [1, 2], 'time': [101000, 102000], 'distance': [100, 100],
+                    'pixel': [[0, 4], [1, 5]], 'position': [[9, 5], [8, 4]],
+                    'velocity': [[1, 5], [2, 6]], 'acceleration': [[2, 6], [3, 7]],
+                },
+                schema={
+                    'column_0': pl.Float64, 'time': pl.Duration('us'), 'distance': pl.Float64,
+                    'pixel': pl.List(pl.Float64), 'position': pl.List(pl.Float64),
+                    'velocity': pl.List(pl.Float64), 'acceleration': pl.List(pl.Float64),
+                },
+            ),
+            ['column_0'],
+            id='no_schema_all_indices',
+        ),
+        pytest.param(
+            np.array(
+                [
+                    [1, 2], [101, 102], [100, 100],
+                    [0, 1], [4, 5], [9, 8], [5, 4],
+                    [1, 2], [5, 6], [2, 3], [6, 7],
+                ], dtype=np.float64,
+            ),
+            [
+                'trial_id', 't', 'd', 'x_pix', 'y_pix', 'x_pos',
+                'y_pos', 'x_vel', 'y_vel', 'x_acc', 'y_acc',
+            ],
+            {
+                'trial_columns': [0], 'time_column': 1, 'distance_column': 2,
+                'pixel_columns': [3, 4], 'position_columns': [5, 6],
+                'velocity_columns': [7, 8], 'acceleration_columns': [9, 10],
+            },
+            pl.DataFrame(
+                {
+                    'trial_id': [1, 2], 'time': [101000, 102000], 'distance': [100, 100],
+                    'pixel': [[0, 4], [1, 5]], 'position': [[9, 5], [8, 4]],
+                    'velocity': [[1, 5], [2, 6]], 'acceleration': [[2, 6], [3, 7]],
+                },
+                schema={
+                    'trial_id': pl.Float64, 'time': pl.Duration('us'), 'distance': pl.Float64,
+                    'pixel': pl.List(pl.Float64), 'position': pl.List(pl.Float64),
+                    'velocity': pl.List(pl.Float64), 'acceleration': pl.List(pl.Float64),
+                },
+            ),
+            ['trial_id'],
+            id='schema_all_indices',
+        ),
+        pytest.param(
+            np.array(
+                [
+                    [1, 2], [101, 102], [100, 100],
+                    [0, 1], [4, 5], [9, 8], [5, 4],
+                    [1, 2], [5, 6], [2, 3], [6, 7],
+                ], dtype=np.float64,
+            ),
+            [
+                'trial_id', 't', 'd', 'x_pix', 'y_pix', 'x_pos',
+                'y_pos', 'x_vel', 'y_vel', 'x_acc', 'y_acc',
+            ],
+            {
+                'trial_columns': 0, 'time_column': 1, 'distance_column': 2,
+                'pixel_columns': [3, 4], 'position_columns': [5, 6],
+                'velocity_columns': [7, 8], 'acceleration_columns': [9, 10],
+            },
+            pl.DataFrame(
+                {
+                    'trial_id': [1, 2], 'time': [101000, 102000], 'distance': [100, 100],
+                    'pixel': [[0, 4], [1, 5]], 'position': [[9, 5], [8, 4]],
+                    'velocity': [[1, 5], [2, 6]], 'acceleration': [[2, 6], [3, 7]],
+                },
+                schema={
+                    'trial_id': pl.Float64, 'time': pl.Duration('us'), 'distance': pl.Float64,
+                    'pixel': pl.List(pl.Float64), 'position': pl.List(pl.Float64),
+                    'velocity': pl.List(pl.Float64), 'acceleration': pl.List(pl.Float64),
+                },
+            ),
+            ['trial_id'],
+            id='schema_single_trial_index',
+        ),
+        pytest.param(
+            np.array(
+                [
+                    [0, 1], [1, 2], [101, 102], [100, 100],
+                    [0, 1], [4, 5], [9, 8], [5, 4],
+                    [1, 2], [5, 6], [2, 3], [6, 7],
+                ], dtype=np.float64,
+            ),
+            [
+                'trial_id_1', 'trial_id_2', 't', 'd', 'x_pix', 'y_pix', 'x_pos',
+                'y_pos', 'x_vel', 'y_vel', 'x_acc', 'y_acc',
+            ],
+            {
+                'trial_columns': [0, 1], 'time_column': 2, 'distance_column': 3,
+                'pixel_columns': [4, 5], 'position_columns': [6, 7],
+                'velocity_columns': [8, 9], 'acceleration_columns': [10, 11],
+            },
+            pl.DataFrame(
+                {
+                    'trial_id_1': [0, 1], 'trial_id_2': [1, 2], 'time': [101000, 102000],
+                    'distance': [100, 100], 'pixel': [[0, 4], [1, 5]],
+                    'position': [[9, 5], [8, 4]], 'velocity': [[1, 5], [2, 6]],
+                    'acceleration': [[2, 6], [3, 7]],
+                },
+                schema={
+                    'trial_id_1': pl.Float64, 'trial_id_2': pl.Float64, 'time': pl.Duration('us'),
+                    'distance': pl.Float64, 'pixel': pl.List(pl.Float64),
+                    'position': pl.List(pl.Float64), 'velocity': pl.List(pl.Float64),
+                    'acceleration': pl.List(pl.Float64),
+                },
+            ),
+            ['trial_id_1', 'trial_id_2'],
+            id='schema_multiple_trial_indices',
+        ),
+        pytest.param(
+            np.array(
+                [
+                    [1, 2], [101, 102], [100, 100],
+                    [0, 1], [4, 5], [9, 8], [5, 4],
+                    [1, 2], [5, 6], [2, 3], [6, 7],
+                ], dtype=np.float64,
+            ),
+            [
+                'trial_id', 't', 'd', 'x_pix', 'y_pix', 'x_pos',
+                'y_pos', 'x_vel', 'y_vel', 'x_acc', 'y_acc',
+            ],
+            {
+                'trial_columns': 'trial_id', 'time_column': 't', 'distance_column': 'd',
+                'pixel_columns': [3, 4], 'position_columns': [5, 6],
+                'velocity_columns': [7, 8], 'acceleration_columns': [9, 10],
+            },
+            pl.DataFrame(
+                {
+                    'trial_id': [1, 2], 'time': [101000, 102000], 'distance': [100, 100],
+                    'pixel': [[0, 4], [1, 5]], 'position': [[9, 5], [8, 4]],
+                    'velocity': [[1, 5], [2, 6]], 'acceleration': [[2, 6], [3, 7]],
+                },
+                schema={
+                    'trial_id': pl.Float64, 'time': pl.Duration('us'), 'distance': pl.Float64,
+                    'pixel': pl.List(pl.Float64), 'position': pl.List(pl.Float64),
+                    'velocity': pl.List(pl.Float64), 'acceleration': pl.List(pl.Float64),
+                },
+            ),
+            ['trial_id'],
+            id='schema_mixed_indices_and_names',
+        ),
+    ],
+)
+def test_from_numpy_with_column_indices(
+        array, schema, kwargs, expected, expected_trial_columns,
+):
+    experiment = Experiment(
+        screen_width_px=1280,
+        screen_height_px=1024,
+        screen_width_cm=38,
+        screen_height_cm=30,
+        distance_cm=None,
+        origin='upper left',
+        sampling_rate=1000.0,
+    )
+
+    gaze = from_numpy(
+        samples=array,
+        schema=schema,
+        experiment=experiment,
+        time_unit='ms',
+        **kwargs,
+    )
+
+    assert_frame_equal(gaze.samples, expected.select(gaze.samples.columns))
+    assert gaze.n_components == 2
+    assert gaze.trial_columns == expected_trial_columns
+
+
+def test_from_numpy_mixed_indices_and_names():
+    array = np.array(
+        [
+            [101, 102],
+            [1, 2],
+            [3, 4],
+        ], dtype=np.float64,
+    )
+    schema = ['time', 'x', 'y']
+
+    gaze = from_numpy(
+        samples=array,
+        schema=schema,
+        time_column='time',
+        position_columns=['x', 2],  # 2 refers to 'y'
+    )
+
+    assert gaze.columns == ['time', 'position']
+    assert gaze.samples['position'][0].to_list() == [1, 3]
+
+
+def test_from_numpy_out_of_range_index_raises():
+    array = np.array([[1, 2], [3, 4]])
+    with pytest.raises(IndexError, match='column index 5 is out of bounds for 2 columns'):
+        from_numpy(samples=array, time_column=5)
+
+
+def test_from_numpy_bool_index_raises():
+    array = np.array([[10, 20], [30, 40]])
+    schema = ['col0', 'col1']
+
+    expected_msg = 'column specifiers must be of type int or str but got bool'
+    with pytest.raises(TypeError, match=expected_msg):
+        from_numpy(samples=array, schema=schema, time_column=True)
+
+
+@pytest.mark.filterwarnings('ignore:Gaze contains samples but no.*:UserWarning')
+def test_from_numpy_negative_index():
+    array = np.array([[10, 40], [20, 50], [30, 60]])  # 3 columns if orient='col'
+    schema = ['col0', 'col1', 'col2']
+
+    # -1 should be col2
+    gaze = from_numpy(samples=array, schema=schema, time_column=-1, orient='col')
+    assert 'time' in gaze.samples.columns
+    assert gaze.samples['time'].dt.total_milliseconds()[0] == 30
+
+
+@pytest.mark.parametrize(
+    ('kwargs', 'expected_msg'),
+    [
+        pytest.param(
+            {'time_column': 0},
+            'time_column can only be used when samples is provided',
+            id='time_column',
+        ),
+        pytest.param(
+            {'pixel_columns': [0, 1]},
+            'pixel_columns can only be used when samples is provided',
+            id='pixel_columns',
+        ),
+        pytest.param(
+            {'position_columns': [0, 1]},
+            'position_columns can only be used when samples is provided',
+            id='position_columns',
+        ),
+        pytest.param(
+            {'velocity_columns': [0, 1]},
+            'velocity_columns can only be used when samples is provided',
+            id='velocity_columns',
+        ),
+        pytest.param(
+            {'acceleration_columns': [0, 1]},
+            'acceleration_columns can only be used when samples is provided',
+            id='acceleration_columns',
+        ),
+        pytest.param(
+            {'distance_column': 0},
+            'distance_column can only be used when samples is provided',
+            id='distance_column',
+        ),
+        pytest.param(
+            {'trial_columns': 0},
+            'trial_columns can only be used when samples is provided',
+            id='trial_columns',
+        ),
+    ],
+)
+def test_from_numpy_columns_provided_without_samples_raises(kwargs, expected_msg):
+    time = np.array([1, 2, 3])
+    with pytest.raises(ValueError, match=expected_msg):
+        from_numpy(time=time, **kwargs)
 
 
 def test_from_numpy_all_none():
@@ -319,47 +646,3 @@ def test_from_numpy_events(events):
     assert_frame_equal(gaze.events.frame, expected_events)
     # We don't want the events point to the same reference.
     assert gaze.events.frame is not expected_events
-
-
-@pytest.mark.filterwarnings('ignore:Gaze contains samples but no.*:UserWarning')
-def test_from_numpy_data_argument_is_deprecated():
-    array = np.array(
-        [
-            [0, 1, 2, 3],
-            [0, 1, 2, 3],
-            [0, 1, 2, 3],
-            [0, 1, 2, 3],
-        ],
-    )
-    schema = ['x_pix', 'y_pix', 'x_pos', 'y_pos']
-
-    with pytest.warns(DeprecationWarning):
-        gaze = from_numpy(data=array, schema=schema)
-
-    assert gaze.samples.shape == (4, 4)
-
-
-def test_from_numpy_data_argument_is_removed():
-    array = np.array(
-        [
-            [0, 1, 2, 3],
-            [0, 1, 2, 3],
-            [0, 1, 2, 3],
-            [0, 1, 2, 3],
-        ],
-    )
-    schema = ['x_pix', 'y_pix', 'x_pos', 'y_pos']
-
-    with pytest.raises(DeprecationWarning) as info:
-        from_numpy(data=array, schema=schema)
-
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
-
-    msg = info.value.args[0]
-    argument_name = 'data'
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'keyword argument {argument_name} was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
-    )
