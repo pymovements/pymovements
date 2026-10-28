@@ -36,7 +36,7 @@ from pymovements.transforms.numpy import pos2vel
 
 
 @repr_html(['eyetracker', 'screen'])
-class Experiment:
+class Experiment:  # noqa: PLW1641
     """Experiment class for holding experiment properties.
 
     Attributes

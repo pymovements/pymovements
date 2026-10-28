@@ -208,7 +208,7 @@ def _match_points_to_aois(
 
 
 @repr_html(['samples', 'events', 'metadata', 'messages', 'trial_columns', 'experiment'])
-class Gaze:
+class Gaze:  # noqa: PLW1641
     """Self-contained data structure containing gaze represented as samples or events.
 
     Includes metadata on the experiment and recording setup.
@@ -729,7 +729,7 @@ class Gaze:
             return gazes
         return list(gazes.values())
 
-    def transform(
+    def transform(  # noqa: PLR0912
             self,
             transform_method: str | Callable[..., polars.Expr],
             **kwargs: Any,
@@ -743,7 +743,6 @@ class Gaze:
         **kwargs: Any
             Additional keyword arguments to be passed to the transformation method.
         """
-        # pylint: disable=too-many-branches
         if isinstance(transform_method, str):
             transform_method = transforms.TransformLibrary.get(transform_method)
 
@@ -1829,14 +1828,14 @@ class Gaze:
         """List of column names in samples dataframe."""
         return self.samples.columns
 
-    def map_to_aois(
+    def map_to_aois(  # noqa: PLR0915
             self,
             aoi_dataframe: TextStimulus,
             *,
             eye: str = 'auto',
             gaze_type: str = 'pixel',
             preserve_structure: bool = True,
-            verbose: bool = True,
+            verbose: bool = True,  # noqa: ARG002
     ) -> None:
         """Map gaze samples to AOIs.
 
@@ -1866,7 +1865,6 @@ class Gaze:
         verbose : bool
             If ``True``, show a progress bar. (default: True)
         """
-        # pylint: disable=unused-argument, too-many-statements
         component_suffixes = ['x', 'y', 'xl', 'yl', 'xr', 'yr', 'xa', 'ya']
         # Schema handling: preserve_structure controls whether we alter the samples schema
         # (by unnesting) or keep list columns intact and select from them. By default,
@@ -1891,7 +1889,7 @@ class Gaze:
             if c in self.samples.columns
         ]
 
-        def _select_components_from_flat_columns() -> tuple | None:
+        def _select_components_from_flat_columns() -> tuple | None:  # noqa: PLR0911
             """Select a flat component strategy.
 
             Returns
@@ -1904,7 +1902,6 @@ class Gaze:
                 - warn_msg: optional string to warn the user about fallbacks
                 or None if no flat columns fit the selection and we should fallback to list logic.
             """
-            # pylint: disable=too-many-return-statements
             def pick(cols: list[str], suffix: str) -> str | None:
                 for c in cols:
                     if c.endswith(suffix):
@@ -3388,7 +3385,7 @@ def _replace_nones_in_split_keys(
         """Return a comparable surrogate value for a particular datatype."""
         if dtype in {float, int, bool}:
             return -math.inf
-        if dtype == str:
+        if dtype == str:  # noqa: E721
             return ''
         raise TypeError(
             f'dtype {dtype.__name__} not supported as "by" column dtype in split(). '

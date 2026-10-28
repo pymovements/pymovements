@@ -56,7 +56,7 @@ def test_transform_returns_early_when_groupby_yields_no_groups(monkeypatch):
         return pl.lit(1).alias('dummy')
 
     # Monkeypatch polars.DataFrame.group_by to return an empty iterator, simulating no groups
-    def fake_group_by(self, keys, maintain_order=True):  # pylint: disable=unused-argument
+    def fake_group_by(self, keys, maintain_order=True):
         return iter([])
 
     monkeypatch.setattr(pl.DataFrame, 'group_by', fake_group_by, raising=True)

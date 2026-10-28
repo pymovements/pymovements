@@ -641,7 +641,7 @@ def from_asc(
         validations=validations,
     )
     # Keep remaining metadata privately on Gaze
-    gaze._metadata = dict(parsed_metadata)  # pylint: disable=protected-access
+    gaze._metadata = dict(parsed_metadata)  # noqa: SLF001
     return gaze
 
 

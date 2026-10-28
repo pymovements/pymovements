@@ -69,7 +69,7 @@ __all__ = [
     'DatasetFile',
     'DatasetLibrary',
     'DatasetPaths',
-    'datasets',
+    'datasets',  # noqa: F822
     'ValidationError',
     'Participants',
     'Phenotype',

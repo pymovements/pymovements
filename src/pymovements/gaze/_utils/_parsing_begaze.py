@@ -103,7 +103,7 @@ def parse_event_for_eye(row: list[str], eye: str, header_idx: dict[str, int]) ->
     return '-'
 
 
-def parse_begaze(
+def parse_begaze(  # noqa: PLR0912, PLR0915
         filepath: Path | str,
         *,
         patterns: list[dict[str, Any] | str] | None = None,
@@ -156,7 +156,6 @@ def parse_begaze(
     tuple[pl.DataFrame, pl.DataFrame, dict[str, Any]]
         A tuple containing the parsed gaze sample data, the parsed event data, and the metadata.
     """
-    # pylint: disable=too-many-branches, too-many-statements, too-many-nested-blocks
     msg_prefix = r'\d+\tMSG\t\d+\t# Message:\s+'
 
     # consume unused argument to satisfy linters (schema is still unused)
@@ -377,7 +376,7 @@ def parse_begaze(
             )
         metadata[key] = value
 
-    for line in lines[header_row_index + 1:]:
+    for line in lines[header_row_index + 1:]:  # noqa: PLR1702
         # Apply message-driven additional columns first
         for pattern_dict in compiled_patterns:
             if match := pattern_dict['pattern'].match(line):

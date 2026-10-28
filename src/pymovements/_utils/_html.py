@@ -133,7 +133,7 @@ def _obj_html(obj: object, attrs: list[str] | None = None) -> str:
             # Skip properties that raise errors
             try:
                 value = getattr(obj, attr)
-            except BaseException:
+            except BaseException:  # noqa: BLE001
                 continue
             # Skip methods
             if not callable(value):
@@ -249,7 +249,7 @@ def _attr_details_html(obj: object, depth: int = 0, max_depth: int = 3) -> str:
         details += '</ul>'
 
     elif hasattr(obj, '_repr_html_'):
-        details = obj._repr_html_()  # pylint: disable=protected-access
+        details = obj._repr_html_()
 
     else:
         details = escape(repr(obj))

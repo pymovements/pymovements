@@ -475,7 +475,7 @@ def _migrate_samples_to_binocular(samples: dict[str, list[Any]]) -> None:
     samples['pupil_right'] = [math.nan] * n_prev
 
 
-def parse_eyelink(
+def parse_eyelink(  # noqa: PLR0912, PLR0915
         file: Path | str | IO[str] | IO[bytes],
         patterns: list[dict[str, Any] | str] | None = None,
         schema: dict[str, Any] | None = None,
@@ -545,7 +545,6 @@ def parse_eyelink(
     the current context (values derived from the provided ``patterns`` at that line), so trial/task
     information is preserved when available.
     """
-    # pylint: disable=too-many-branches, too-many-statements, too-many-nested-blocks
     msg_prefix = r'MSG\s+\d+[.]?\d*\s+'
 
     if patterns is None:
@@ -635,7 +634,7 @@ def parse_eyelink(
     is_binocular = False
 
     # Single pass: collect events, patterns, samples, samples config, and metadata
-    for line in lines:
+    for line in lines:  # noqa: PLR1702
         # Gaze sample lines start with a digit (their timestamp); every other line is an event,
         # config or metadata line. Dispatch on the first character so the many non-sample regexes
         # are not evaluated for every sample line.

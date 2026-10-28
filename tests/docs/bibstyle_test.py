@@ -23,7 +23,7 @@ from __future__ import annotations
 import string
 
 import pytest
-from conf import AuthorYearLabelStyle  # pylint: disable=import-error
+from conf import AuthorYearLabelStyle
 from pybtex.database import Entry
 from pybtex.database import Person
 

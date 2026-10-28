@@ -55,7 +55,7 @@ def fixture_make_events():
             events.frame = events.frame.select(
                 [pl.all()] + [
                     pl.int_ranges(0, 100 * len(names), 100).alias(property)
-                    for property in properties
+                    for property in properties  # noqa: A001
                 ],
             )
 

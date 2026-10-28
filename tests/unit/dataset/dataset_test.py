@@ -161,7 +161,7 @@ def create_raw_gaze_files_from_fileinfo(gazes, fileinfo, rootpath):
 
         for key in fileinfo_row.keys():
             if key in gaze.columns:
-                gaze = gaze.drop(key)
+                gaze = gaze.drop(key)  # noqa: PLW2901
 
         gaze.write_csv(rootpath / filepath)
 

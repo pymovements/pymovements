@@ -302,7 +302,8 @@ force-sort-within-sections = false
 "__init__.py" = ["F401"]
 "tests/**" = ["D101", "D102", "D103", "SLF001", "ARG", "PLR2004"]
 "tests/**/*_fixtures.py" = ["D", "ARG"]
-"docs/**" = ["D", "E402"]
+"docs/**" = ["A001", "ARG001", "BLE001", "D", "E402"]
+"docs/source/tutorials/parsing-dataset.ipynb" = ["E501"]
 
 [tool.ruff.lint.pylint]
 max-args = 10
