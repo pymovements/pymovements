@@ -28,18 +28,20 @@
     pymovements.events.blink
     pymovements.events.fill
     pymovements.events.idt
+    pymovements.events.ihmm
     pymovements.events.ivt
     pymovements.events.microsaccades
 
 """
-from pymovements.events.detection._blink import blink
-from pymovements.events.detection._fill import fill
-from pymovements.events.detection._idt import idt
-from pymovements.events.detection._ivt import ivt
-from pymovements.events.detection._library import EventDetectionLibrary
-from pymovements.events.detection._library import register_event_detection
-from pymovements.events.detection._microsaccades import microsaccades
-from pymovements.events.detection._out_of_screen import out_of_screen
+from pymovements.events.detection.blink import blink
+from pymovements.events.detection.fill import fill
+from pymovements.events.detection.idt import idt
+from pymovements.events.detection.ihmm import ihmm
+from pymovements.events.detection.ivt import ivt
+from pymovements.events.detection.library import EventDetectionLibrary
+from pymovements.events.detection.library import register_event_detection
+from pymovements.events.detection.microsaccades import microsaccades
+from pymovements.events.detection.out_of_screen import out_of_screen
 
 __all__ = [
     'EventDetectionLibrary',
@@ -48,6 +50,7 @@ __all__ = [
     'blink',
     'fill',
     'idt',
+    'ihmm',
     'ivt',
     'microsaccades',
     'out_of_screen',

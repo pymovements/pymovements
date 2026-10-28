@@ -25,13 +25,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 import pytest
-from matplotlib import figure
 
 from pymovements import Events
 from pymovements import Experiment
 from pymovements import Gaze
 from pymovements.gaze import from_numpy
 from pymovements.plotting import scanpathplot
+from pymovements.stimulus.image import from_file
 
 
 @pytest.fixture(name='make_events', scope='function')
@@ -226,8 +226,10 @@ def gaze_fixture(request, make_gaze):
             {
                 'add_stimulus': True,
                 'path_to_image_stimulus': './tests/files/stimuli/pexels-zoorg-1000498.jpg',
+                'stimulus_origin': 'lower',  # This will trigger the warning
             },
-            id='set_stimulus',
+            id='set_stimulus_with_origin',
+            marks=pytest.mark.filterwarnings('ignore::DeprecationWarning'),
         ),
         pytest.param(
             {
@@ -240,18 +242,17 @@ def gaze_fixture(request, make_gaze):
         ),
     ],
 )
-def test_scanpathplot_show(gaze, kwargs, monkeypatch):
-    mock = Mock()
-    monkeypatch.setattr(plt, 'show', mock)
-    scanpathplot(gaze=gaze, **kwargs)
+def test_scanpathplot_returns_fig_and_axes(gaze, kwargs):
+    fig, ax = scanpathplot(gaze=gaze, **kwargs)
 
-    mock.assert_called_once()
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
 
 
 def test_scanpathplot_noshow(gaze, monkeypatch):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
-    scanpathplot(gaze=gaze, show=False)
+    scanpathplot(gaze=gaze)
 
     mock.assert_not_called()
 
@@ -273,25 +274,34 @@ def test_scanpathplot_filter_events_plots_expected_circles(
         make_gaze_param, event_name, expected_n_circles, make_gaze,
 ):
     gaze = make_gaze(make_gaze_param)
-    _, ax = scanpathplot(gaze=gaze, event_name=event_name, show=False)
+    _, ax = scanpathplot(gaze=gaze, event_name=event_name)
 
     assert all(isinstance(patch, plt.Circle) for patch in ax.patches)
     assert len(ax.patches) == expected_n_circles
 
 
-def test_scanpathplot_save(gaze, monkeypatch, tmp_path):
-    mock = Mock()
-    monkeypatch.setattr(figure.Figure, 'savefig', mock)
-    scanpathplot(
-        gaze=gaze,
-        show=False,
-        savepath=str(
-            tmp_path /
-            'test.svg',
-        ),
+def test_scanpathplot_numeric_duration_events(make_gaze):
+    # Events mutated to numeric millisecond columns must still be plottable.
+    gaze = make_gaze('1_fixation')
+    gaze.events.frame = gaze.events.frame.with_columns(
+        pl.col('onset', 'offset', 'duration').dt.total_milliseconds(),
     )
 
-    mock.assert_called_once()
+    _, ax = scanpathplot(gaze=gaze, event_name='fixation')
+
+    assert len(ax.patches) == 1
+
+
+def test_scanpathplot_save(gaze, tmp_path):
+    filepath = tmp_path / 'test.svg'
+    assert not filepath.is_file()
+
+    scanpathplot(
+        gaze=gaze,
+        savepath=str(filepath),
+    )
+
+    assert filepath.is_file()
 
 
 @pytest.mark.parametrize(
@@ -307,23 +317,20 @@ def test_scanpathplot_save(gaze, monkeypatch, tmp_path):
         ),
     ],
 )
-def test_scanpathplot_exceptions(gaze, kwargs, exception, monkeypatch):
-    mock = Mock()
-    monkeypatch.setattr(plt, 'show', mock)
-
+def test_scanpathplot_exceptions(gaze, kwargs, exception):
     with pytest.raises(exception):
         scanpathplot(gaze=gaze, **kwargs)
 
 
-def test_scanpathplot_gaze_events_all_none_exception():
-    with pytest.raises(TypeError, match='must not be both None'):
-        scanpathplot(gaze=None, events=None)
+def test_scanpathplot_gaze_none_exception():
+    with pytest.raises(TypeError, match='must not be None'):
+        scanpathplot()
 
 
 def test_scanpathplot_traceplot_gaze_samples_none_exception(gaze):
     gaze.samples = None
     with pytest.raises(TypeError, match='must not be None'):
-        scanpathplot(events=None, gaze=gaze, add_traceplot=True)
+        scanpathplot(gaze=gaze, add_traceplot=True)
 
 
 def test_scanpathplot_gaze_events_none_exception(gaze):
@@ -332,30 +339,16 @@ def test_scanpathplot_gaze_events_none_exception(gaze):
         scanpathplot(gaze=gaze)
 
 
-def test_scanpathplot_events_is_deprecated(gaze, assert_deprecation_is_removed):
-    with pytest.raises(DeprecationWarning) as info:
-        scanpathplot(events=gaze.events)
-
-    assert_deprecation_is_removed(
-        function_name='scanpathplot() argument events',
-        warning_message=info.value.args[0],
-        scheduled_version='0.28.0',
-
-    )
-
-
 def test_scanpathplot_no_experiment(gaze):
     # test if gaze is not None and gaze.experiment is not None:
     gaze.experiment = None
     # Should not raise any exception
-    scanpathplot(gaze=gaze, show=False)
+    scanpathplot(gaze=gaze)
 
 
 def test_set_screen_axes_valid(gaze):
-    _, ax = scanpathplot(
-        gaze=gaze,
-        show=False,
-    )
+    _, ax = scanpathplot(gaze=gaze)
+
     assert ax.get_xlim() == (0, gaze.experiment.screen.width_px)
     assert ax.get_ylim() == (gaze.experiment.screen.height_px, 0)
     assert ax.get_aspect() == 1
@@ -365,7 +358,7 @@ def test_set_screen_axes_valid(gaze):
 def test_set_screen_axes_invalid_origin(origin, gaze):
     gaze.experiment.screen.origin = origin
     with pytest.raises(ValueError, match='screen origin must be "upper left"'):
-        scanpathplot(gaze=gaze, show=False)
+        scanpathplot(gaze=gaze)
 
 
 @pytest.mark.parametrize(
@@ -385,7 +378,7 @@ def test_set_screen_axes_none_dimensions_returns(width, height, gaze):
 
     # Call scanpathplot; should return silently, without ValueError
     # _set_screen_axes() should return early without modifying axes
-    scanpathplot(gaze=gaze, show=False, ax=ax, figsize=None)
+    scanpathplot(gaze=gaze, ax=ax, figsize=None)
 
     # Axes limits should be finite numbers, not NaN/None
     xlim, ylim = ax.get_xlim(), ax.get_ylim()
@@ -394,3 +387,61 @@ def test_set_screen_axes_none_dimensions_returns(width, height, gaze):
 
     # Aspect ratio should not be 'equal' (not forced by _set_screen_axes)
     assert ax.get_aspect() != 'equal'
+
+
+def test_scanpathplot_with_image_stimulus(gaze, tmp_path):
+    """Test that scanpathplot correctly plots with an ImageStimulus."""
+    image_path = './tests/files/stimuli/pexels-zoorg-1000498.jpg'
+    image_stimulus = from_file(image_path)
+
+    image_stimulus.origin = 'upper'
+
+    fig, ax = plt.subplots(figsize=(15, 5))
+
+    image_stimulus.plot(0, ax=ax)
+
+    with pytest.warns(
+        UserWarning, match='figsize is ignored '
+        'because an external Axes was provided.',
+    ):
+        returned_fig, returned_ax = scanpathplot(
+            gaze=gaze,
+            ax=ax,
+            savepath=str(tmp_path / 'scanpathplot_with_stimulus.svg'),
+        )
+
+    assert returned_fig is fig
+    assert returned_ax is ax
+
+    assert len(ax.images) >= 1  # At least the stimulus image
+
+    assert (tmp_path / 'scanpathplot_with_stimulus.svg').is_file()
+
+    plt.close(fig)
+
+
+@pytest.mark.parametrize('gaze', ['1_fixation'], indirect=True)
+@pytest.mark.parametrize(
+    ('deprecated_argument', 'value'),
+    (
+        pytest.param('add_stimulus', True, id='add_stimulus'),
+        pytest.param(
+            'path_to_image_stimulus',
+            './tests/files/stimuli/pexels-zoorg-1000498.jpg',
+            id='path_to_image_stimulus',
+        ),
+        pytest.param('stimulus_origin', 'lower', id='stimulus_origin'),
+    ),
+)
+def test_scanpathplot_deprecated_parameters(
+        gaze, deprecated_argument, value, assert_deprecation_is_removed,
+):
+    """Test that a deprecated stimulus parameter triggers a warning scheduled for removal."""
+    with pytest.raises(DeprecationWarning) as info:
+        scanpathplot(gaze=gaze, **{deprecated_argument: value})
+
+    assert_deprecation_is_removed(
+        function_name=f"scanpathplot argument '{deprecated_argument}'",
+        warning_message=info.value.args[0],
+        scheduled_version='0.33.0',
+    )

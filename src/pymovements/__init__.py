@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides top-level access to submodules."""
-from pymovements import datasets
 from pymovements import events
 from pymovements import exceptions
 from pymovements import gaze
@@ -26,25 +25,32 @@ from pymovements import measure
 from pymovements import plotting
 from pymovements import stimulus
 from pymovements import synthetic
-from pymovements import utils
+from pymovements import transforms
 from pymovements import warnings
 from pymovements._version import __version__
 from pymovements.dataset import Dataset
 from pymovements.dataset import DatasetDefinition
+from pymovements.dataset import DatasetFile
 from pymovements.dataset import DatasetLibrary
 from pymovements.dataset import DatasetPaths
+from pymovements.dataset import Participants
+from pymovements.dataset import Phenotype
 from pymovements.dataset import register_dataset
 from pymovements.dataset import ResourceDefinition
 from pymovements.dataset import ResourceDefinitions
-from pymovements.events import EventDataFrame
+from pymovements.dataset.websource import WebSource
 from pymovements.events import Events
+from pymovements.exceptions import ChecksumError
 from pymovements.exceptions import UnknownFileType
 from pymovements.exceptions import UnknownMeasure
 from pymovements.gaze import Experiment
 from pymovements.gaze import EyeTracker
 from pymovements.gaze import Gaze
-from pymovements.gaze import GazeDataFrame
 from pymovements.gaze import Screen
+from pymovements.gaze.quality import CheckResult
+from pymovements.gaze.quality import DataQualityReport
+from pymovements.gaze.quality import ValidationError
+from pymovements.measure import annotate_fixations
 from pymovements.measure import EVENT_MEASURES
 from pymovements.measure import EventProcessor
 from pymovements.measure import EventSamplesProcessor
@@ -57,18 +63,24 @@ from pymovements.warnings import ExperimentalWarning
 
 
 __all__ = [
+    'CheckResult',
     'Dataset',
     'DatasetDefinition',
+    'DataQualityReport',
+    'DatasetFile',
     'DatasetLibrary',
     'DatasetPaths',
     'datasets',
+    'ValidationError',
+    'Participants',
+    'Phenotype',
     'register_dataset',
     'ResourceDefinition',
     'ResourceDefinitions',
+    'WebSource',
 
     'events',
     'Events',
-    'EventDataFrame',
     'EventSamplesProcessor',
     'EventProcessor',
 
@@ -77,13 +89,13 @@ __all__ = [
     'EyeTracker',
     'Screen',
     'Gaze',
-    'GazeDataFrame',
 
     'measure',
     'EVENT_MEASURES',
     'register_event_measure',
     'EventProcessor',
     'EventSamplesProcessor',
+    'annotate_fixations',
     'ReadingMeasures',
     'SampleMeasureLibrary',
     'register_sample_measure',
@@ -91,15 +103,15 @@ __all__ = [
     'plotting',
     'stimulus',
     'synthetic',
+    'transforms',
 
     'exceptions',
+    'ChecksumError',
     'UnknownFileType',
     'UnknownMeasure',
 
     'warnings',
     'ExperimentalWarning',
-
-    'utils',
 
     'text',
 

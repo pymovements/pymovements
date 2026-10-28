@@ -524,7 +524,7 @@ def test_data_loss_invalid_time_column_raises(bad_time_column):
 def test_data_loss_invalid_sampling_rate_raises(bad_sampling_rate):
     """Test that providing an invalid sampling rate raises a ValueError."""
     message = (
-        f"sampling_rate must be a positive number, but got: {repr(bad_sampling_rate)}"
+        f'sampling_rate must be a positive number, but got: {repr(bad_sampling_rate)}'
     )
     with pytest.raises(ValueError, match=message):
         data_loss('value', sampling_rate=bad_sampling_rate)
@@ -543,3 +543,38 @@ def test_data_loss_time_column_not_found():
     expr = data_loss('value', time_column='t', sampling_rate=1000)
     with pytest.raises(pl.exceptions.ColumnNotFoundError, match='t'):
         df.select(expr)
+
+
+@pytest.mark.parametrize(
+    ('column', 'data', 'column_dtype', 'expected'),
+    [
+        pytest.param(
+            'value', [1.0, nan, None, inf, 3.0], pl.Float64, 3,
+            id='scalar_float',
+        ),
+        pytest.param(
+            'value', [1, None, 3, 4], pl.Int64, 1,
+            id='scalar_int',
+        ),
+        pytest.param(
+            'value', [[1.0, 1.0], [nan, 1.0], None, [1.0, None]], pl.List(pl.Float64), 3,
+            id='list_float',
+        ),
+    ],
+)
+def test_data_loss_column_dtype_matches_default(column, data, column_dtype, expected):
+    """The dtype-aware invalid check gives the expected count and matches the fallback."""
+    df = pl.DataFrame(
+        {'time': list(range(len(data))), column: data},
+        schema={'time': pl.Int64, column: column_dtype},
+    )
+
+    with_dtype = df.select(
+        data_loss(column, sampling_rate=1000.0, unit='count', column_dtype=column_dtype),
+    )
+    without_dtype = df.select(
+        data_loss(column, sampling_rate=1000.0, unit='count'),
+    )
+
+    assert with_dtype.item() == expected
+    assert_frame_equal(with_dtype, without_dtype)

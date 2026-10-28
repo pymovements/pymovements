@@ -21,21 +21,25 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
+from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import colors
 
-from pymovements.gaze import Gaze
 from pymovements.plotting._matplotlib import _set_screen_axes
-from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import prepare_figure
 from pymovements.stimulus.image import _draw_image_stimulus
+
+if TYPE_CHECKING:
+    from pymovements.gaze import Gaze
 
 
 def heatmap(
         gaze: Gaze,
         position_column: str = 'pixel',
+        *,
         gridsize: tuple[int, int] = (10, 10),
         cmap: colors.Colormap | str = 'jet',
         interpolation: str = 'gaussian',
@@ -46,15 +50,12 @@ def heatmap(
         title: str | None = None,
         xlabel: str | None = None,
         ylabel: str | None = None,
-        show: bool = True,
         savepath: str | None = None,
         add_stimulus: bool = False,
         path_to_image_stimulus: str | Path | None = None,
         stimulus_origin: str = 'upper',
         alpha: float = 1.,
-        *,
         ax: plt.Axes | None = None,
-        closefig: bool | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot a heatmap of gaze data.
 
@@ -90,8 +91,6 @@ def heatmap(
         Set x-axis label. (default: None)
     ylabel: str | None
         Set y-axis label. (default: None)
-    show: bool
-        Whether to show the plot. (default: True)
     savepath: str | None
         If provided, the figure will be saved to this path. (default: None)
     add_stimulus: bool
@@ -103,11 +102,7 @@ def heatmap(
     alpha: float
         Alpha value of heatmap. (default: 1.)
     ax: plt.Axes | None
-        External axes to draw into. If provided, the function will not show or close
-        the figure automatically. (default: None)
-    closefig: bool | None
-        Whether to close the figure. If None, close only when the function created
-        the figure. (default: None)
+        External axes to draw into. (default: None)
 
     Returns
     -------
@@ -121,6 +116,33 @@ def heatmap(
     ValueError
         If the experiment property of the Gaze is None
     """
+    if add_stimulus:
+        warn(
+            DeprecationWarning(
+                "heatmap argument 'add_stimulus' is deprecated since version v0.28.0. "
+                'Use ImageStimulus.plot() and pass the returned axes to heatmap(ax=...) '
+                'instead. This argument will be removed in v0.33.0.',
+            ),
+        )
+
+    if path_to_image_stimulus is not None:
+        warn(
+            DeprecationWarning(
+                "heatmap argument 'path_to_image_stimulus' is deprecated since version "
+                'v0.28.0. Use ImageStimulus.plot() and pass the returned axes to '
+                'heatmap(ax=...) instead. This argument will be removed in v0.33.0.',
+            ),
+        )
+
+    if stimulus_origin != 'upper':
+        warn(
+            DeprecationWarning(
+                "heatmap argument 'stimulus_origin' is deprecated since version v0.28.0. "
+                'Use ImageStimulus.plot() and pass the returned axes to heatmap(ax=...) '
+                'instead. This argument will be removed in v0.33.0.',
+            ),
+        )
+
     # Extract x and y positions from the gaze dataframe
     x = gaze.samples[position_column].list.get(0).to_numpy()
     y = gaze.samples[position_column].list.get(1).to_numpy()
@@ -172,7 +194,7 @@ def heatmap(
         extent = [x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]]
 
     # If add_stimulus is requested, we still reuse/create fig/ax via prepare_figure and then draw
-    fig, ax, own_figure = prepare_figure(ax, figsize, func_name='heatmap')
+    fig, ax = prepare_figure(ax, figsize, func_name='heatmap')
 
     if add_stimulus:
         assert path_to_image_stimulus
@@ -201,7 +223,13 @@ def heatmap(
     heatmap_plot.set_alpha(np.where(heatmap_plot.get_array().data > 0, alpha, 0.0))
 
     # Apply screen-based axis limits and aspect ratio
-    _set_screen_axes(ax, gaze.experiment.screen, func_name='heatmap')
+    _set_screen_axes(
+        ax,
+        gaze.experiment.screen.width_px,
+        gaze.experiment.screen.height_px,
+        gaze.experiment.screen.origin,
+        func_name='heatmap',
+    )
 
     # Set the plot title and axis labels
     if title:
@@ -217,14 +245,7 @@ def heatmap(
         if cbar_label:
             cbar.set_label(cbar_label)
 
-    # Finalize (save/show/close) with standardized behavior
-    finalize_figure(
-        fig,
-        show=show,
-        savepath=savepath,
-        closefig=closefig,
-        own_figure=own_figure,
-        func_name='heatmap',
-    )
+    if savepath is not None:
+        fig.savefig(savepath)
 
     return fig, ax

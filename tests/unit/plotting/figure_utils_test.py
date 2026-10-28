@@ -21,48 +21,26 @@
 
 These focus on covering specific branches that were previously missed:
 - prepare_figure with figsize=None when creating a new figure
-- finalize_figure with own_figure=False and closefig=True (ignored + warns)
 - _setup_axes_and_colormap warning when external ax is provided together with a non-None figsize
 """
 from __future__ import annotations
 
 import warnings
-from unittest.mock import Mock
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
 from pymovements.plotting._matplotlib import _setup_axes_and_colormap
-from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import prepare_figure
 
 
 def test_prepare_figure_figsize_none_creates_default():
     # When figsize=None and no external ax is given, prepare_figure should create a figure
-    fig, ax, own = prepare_figure(ax=None, figsize=None, func_name='test_prepare_figure')
-    assert own is True
+    fig, ax = prepare_figure(ax=None, figsize=None, func_name='test_prepare_figure')
     assert fig is ax.figure
-
-
-def test_finalize_figure_closefig_true_ignored_with_external_ax_warns(monkeypatch):
-    # When an external ax is used (own_figure=False) and closefig=True is requested,
-    # finalize_figure should warn and not close the figure.
-    fig, _ = plt.subplots()
-    close_mock = Mock()
-    monkeypatch.setattr(plt, 'close', close_mock)
-
-    with pytest.warns(UserWarning):
-        finalize_figure(
-            fig,
-            show=False,
-            savepath=None,
-            closefig=True,
-            own_figure=False,
-            func_name='dummy_func',
-        )
-
-    close_mock.assert_not_called()
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
 
 
 def test_setup_axes_and_colormap_warns_on_external_ax_with_figsize():
@@ -127,10 +105,9 @@ def test_prepare_figure_warns_on_external_ax_with_figsize():
     # prepare_figure should warn when an external ax is provided and figsize is not None.
     fig, ax = plt.subplots()
     with pytest.warns(UserWarning):
-        ret_fig, ret_ax, own = prepare_figure(ax=ax, figsize=(6, 4), func_name='dummy')
+        ret_fig, ret_ax = prepare_figure(ax=ax, figsize=(6, 4), func_name='dummy')
     assert ret_ax is ax
     assert ret_fig is fig
-    assert own is False
 
 
 def test_prepare_figure_external_ax_figsize_none_no_warning():
@@ -138,9 +115,8 @@ def test_prepare_figure_external_ax_figsize_none_no_warning():
     fig, ax = plt.subplots()
     with warnings.catch_warnings(record=True) as record:
         warnings.simplefilter('always')
-        ret_fig, ret_ax, own = prepare_figure(ax=ax, figsize=None, func_name='dummy')
+        ret_fig, ret_ax = prepare_figure(ax=ax, figsize=None, func_name='dummy')
     # No warnings captured
     assert len(record) == 0
     assert ret_ax is ax
     assert ret_fig is fig
-    assert own is False

@@ -23,6 +23,7 @@
 from __future__ import annotations
 
 import re
+import shutil
 from pathlib import Path
 
 import polars as pl
@@ -31,17 +32,24 @@ import pytest
 from polars.testing import assert_frame_equal
 
 from pymovements import DatasetDefinition
+from pymovements import DatasetPaths
+from pymovements import Events
 from pymovements import Experiment
 from pymovements import Gaze
 from pymovements import ResourceDefinition
 from pymovements.dataset.dataset_files import DatasetFile
+from pymovements.dataset.dataset_files import load_event_files
 from pymovements.dataset.dataset_files import load_gaze_file
+from pymovements.dataset.dataset_files import load_gaze_files
 from pymovements.dataset.dataset_files import load_precomputed_event_file
 from pymovements.dataset.dataset_files import load_precomputed_event_files
 from pymovements.dataset.dataset_files import load_precomputed_reading_measure_file
 from pymovements.dataset.dataset_files import load_precomputed_reading_measures
 from pymovements.dataset.dataset_files import load_stimuli_files
 from pymovements.dataset.dataset_files import load_stimulus_file
+from pymovements.dataset.dataset_files import save_events
+from pymovements.dataset.dataset_files import save_preprocessed
+from pymovements.dataset.dataset_files import scan_dataset
 from pymovements.stimulus import ImageStimulus
 from pymovements.stimulus import TextStimulus
 
@@ -171,18 +179,25 @@ MSG	2154570 0 READING_SCREEN_1.STOP
 
 EXPECTED_EYELINK_SAMPLES_NO_PATTERNS = pl.from_dict(
     {
-        'time': [2154557, 2154558, 2154560, 2154561, 2154565, 2154567, 2154568],
+        'time': [
+            2154557000, 2154558000, 2154560000, 2154561000,
+            2154565000, 2154567000, 2154568000,
+        ],
         'pixel': [
             (139.6, 132.1), (139.5, 131.9), (None, None), (850.7, 717.5),
             (139.5, 131.9), (None, None), (850.7, 717.5),
         ],
         'pupil': [784.0, 784.0, 0.0, 714.0, 784.0, 0.0, 714.0],
     },
+    schema_overrides={'time': pl.Duration('us')},
 )
 
 EXPECTED_EYELINK_SAMPLES_PATTERNS = pl.from_dict(
     {
-        'time': [2154557, 2154558, 2154560, 2154561, 2154565, 2154567, 2154568],
+        'time': [
+            2154557000, 2154558000, 2154560000, 2154561000,
+            2154565000, 2154567000, 2154568000,
+        ],
         'pixel': [
             (139.6, 132.1), (139.5, 131.9), (None, None), (850.7, 717.5),
             (139.5, 131.9), (None, None), (850.7, 717.5),
@@ -191,6 +206,7 @@ EXPECTED_EYELINK_SAMPLES_PATTERNS = pl.from_dict(
         'task': ['reading', 'reading', 'reading', 'reading', 'reading', 'reading', 'reading'],
         'trial_id': [0, 0, 0, 0, 1, 1, 1],
     },
+    schema_overrides={'time': pl.Duration('us')},
 )
 
 EYELINK_PATTERNS = [
@@ -444,9 +460,10 @@ def test_load_example_gaze_file(
     )
     expected_df = pl.from_dict(
         {
-            'time': list(range(10)),
+            'time': list(range(0, 10_000, 1_000)),
             'pixel': [[0, 0]] * 10,
         },
+        schema_overrides={'time': pl.Duration('us')},
     )
 
     assert_frame_equal(gaze.samples, expected_df, check_column_order=False)
@@ -502,7 +519,53 @@ def test_load_gaze_file_has_correct_metadata(
         dataset_definition=DatasetDefinition(),
     )
 
-    assert gaze.metadata == metadata
+    expected_sources = [filepath.as_posix()]
+    assert gaze.metadata == {**metadata, 'Sources': expected_sources}
+    # The DatasetFile metadata dictionary is copied, not mutated.
+    assert 'Sources' not in file.metadata
+
+
+@pytest.mark.parametrize(
+    ('example_filename', 'content', 'load_kwargs', 'metadata'),
+    [
+        pytest.param(
+            'stimuli/toy_text_1_1_aoi.csv',
+            'textstimulus',
+            {
+                'aoi_column': 'char',
+                'start_x_column': 'top_left_x',
+                'start_y_column': 'top_left_y',
+                'width_column': 'width',
+                'height_column': 'height',
+            },
+            {'key': 'value'},
+            id='text',
+        ),
+
+        pytest.param(
+            'stimuli/pexels-zoorg-1000498.jpg',
+            'imagestimulus',
+            {},
+            {'foo': 'bar'},
+            id='image',
+        ),
+    ],
+)
+def test_load_stimulus_file_has_correct_metadata(
+        example_filename, content, load_kwargs, metadata, make_example_file,
+):
+    filepath = make_example_file(example_filename)
+    resource_definition = ResourceDefinition(content=content, load_kwargs=load_kwargs)
+    file = DatasetFile(path=filepath, definition=resource_definition, metadata=metadata)
+
+    stimulus = load_stimulus_file(
+        file,
+    )
+
+    expected_sources = [filepath.as_posix()]
+    assert stimulus.metadata == {**metadata, 'Sources': expected_sources}
+    # The DatasetFile metadata dictionary is copied, not mutated.
+    assert 'Sources' not in file.metadata
 
 
 @pytest.mark.parametrize(
@@ -869,7 +932,7 @@ def test_load_precomputed_rm_file_no_kwargs(make_example_file):
     assert_frame_equal(reading_measure.frame, expected_df, check_column_order=False)
 
 
-def test_load_precomputed_rm_files_rda(make_example_file):
+def test_load_precomputed_rm_files_rda(make_example_file, tmp_path):
     filepath1 = make_example_file('rda_test_file.rda', '1.rda')
     filepath2 = make_example_file('rda_test_file.rda', '2.rda')
 
@@ -888,7 +951,8 @@ def test_load_precomputed_rm_files_rda(make_example_file):
         DatasetFile(path=filepath2, definition=resource_definition, metadata={'subject_id': '2'}),
     ]
 
-    precomputed_rm_list = load_precomputed_reading_measures(definition, files)
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+    precomputed_rm_list = load_precomputed_reading_measures(definition, files, paths)
 
     for file, measures in zip(files, precomputed_rm_list):
         expected_df = pyreadr.read_r(file.path)
@@ -898,6 +962,10 @@ def test_load_precomputed_rm_files_rda(make_example_file):
             pl.DataFrame(expected_df['joint.fix']),
             check_column_order=False,
         )
+
+        # Source filepaths are relativized to the dataset root.
+        expected_metadata = {**file.metadata, 'Sources': [file.path.name]}
+        assert measures.metadata == expected_metadata
 
 
 @pytest.mark.parametrize('target_filename', ['rda_test_file.rda', 'rda_test_file.RDA'])
@@ -1013,7 +1081,7 @@ def test_load_precomputed_file_unsupported_file_format(make_example_file):
         'Supported formats are: .csv, .jsonl, .ndjson, .rda, .tsv, .txt'
 
 
-def test_load_precomputed_files_rda(make_example_file):
+def test_load_precomputed_files_rda(make_example_file, tmp_path):
     filepath1 = make_example_file('rda_test_file.rda', '1.rda')
     filepath2 = make_example_file('rda_test_file.rda', '2.rda')
 
@@ -1032,7 +1100,8 @@ def test_load_precomputed_files_rda(make_example_file):
         DatasetFile(path=filepath2, definition=resource_definition, metadata={'subject_id': '2'}),
     ]
 
-    precomputed_events_list = load_precomputed_event_files(definition, files)
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+    precomputed_events_list = load_precomputed_event_files(definition, files, paths)
 
     for file, events in zip(files, precomputed_events_list):
         expected_df = pyreadr.read_r(file.path)
@@ -1042,6 +1111,10 @@ def test_load_precomputed_files_rda(make_example_file):
             pl.DataFrame(expected_df['joint.fix']),
             check_column_order=False,
         )
+
+        # Source filepaths are relativized to the dataset root.
+        expected_metadata = {**file.metadata, 'Sources': [file.path.name]}
+        assert events.metadata == expected_metadata
 
 
 @pytest.mark.parametrize('target_filename', ['rda_test_file.rda', 'rda_test_file.RDA'])
@@ -1257,9 +1330,9 @@ def test_load_gaze_file_from_begaze(load_kwargs, definition_dict, make_text_file
 
     # Expected numeric values for comparison (subset)
     EXPECTED_TIMES = [
-        10000000.123, 10000002.123, 10000004.123, 10000006.123, 10000008.123,
-        10000011.123, 10000014.345, 10000017.345, 10000019.123, 10000020.123,
-        10000021.123,
+        10000000123, 10000002123, 10000004123, 10000006123, 10000008123,
+        10000011123, 10000014345, 10000017345, 10000019123, 10000020123,
+        10000021123,
     ]
     EXPECTED_X = [850.7] * 9 + [None, None]
     EXPECTED_Y = [717.5] * 9 + [None, None]
@@ -1288,17 +1361,20 @@ def test_load_gaze_file_from_begaze(load_kwargs, definition_dict, make_text_file
     # from_begaze constructs a Gaze with nested pixel column from x_pix/y_pix
     # Build expected samples accordingly (time + pixel)
     # Build expected samples from inline numeric expectations
-    expected_df = pl.DataFrame({
-        'time': EXPECTED_TIMES,
-        'pixel': [[EXPECTED_X[i], EXPECTED_Y[i]] for i in range(len(EXPECTED_TIMES))],
-    })
+    expected_df = pl.DataFrame(
+        {
+            'time': EXPECTED_TIMES,
+            'pixel': [[EXPECTED_X[i], EXPECTED_Y[i]] for i in range(len(EXPECTED_TIMES))],
+        },
+        schema_overrides={'time': pl.Duration('us')},
+    )
     # Compare only rows where pixel values are present (blink rows are None in expected)
     mask = [all(v is not None for v in pair) for pair in expected_df['pixel'].to_list()]
     expected_df_non_nan = expected_df.filter(pl.Series(mask))
     gaze_non_nan = gaze.samples.filter(pl.col('pixel').list.get(0).is_not_null())
     assert_frame_equal(
-        gaze_non_nan.select(['time', 'pixel']).with_columns(pl.col('time').round(3)),
-        expected_df_non_nan.select(['time', 'pixel']).with_columns(pl.col('time').round(3)),
+        gaze_non_nan.select(['time', 'pixel']),
+        expected_df_non_nan.select(['time', 'pixel']),
         check_column_order=False,
     )
 
@@ -1309,13 +1385,13 @@ def test_load_gaze_file_from_begaze(load_kwargs, definition_dict, make_text_file
     assert gaze.trial_columns == ['trial_id']
 
 
-def test_load_stimuli_files_empty():
-    result = load_stimuli_files([])
+def test_load_stimuli_files_empty(tmp_path):
+    result = load_stimuli_files([], paths=DatasetPaths(root=tmp_path, dataset='.'))
     assert isinstance(result, list)
     assert not result
 
 
-def test_load_stimuli_files_returns_text_stimulus_list(make_example_file):
+def test_load_stimuli_files_returns_text_stimulus_list(make_example_file, tmp_path):
     example_filenames = [
         'toy_text_aoi.csv', 'toy_text_1_1_aoi.csv', 'toy_text_2_5_aoi.csv', 'toy_text_3_8_aoi.csv',
     ]
@@ -1339,10 +1415,14 @@ def test_load_stimuli_files_returns_text_stimulus_list(make_example_file):
         )
         files.append(file)
 
-    stimuli = load_stimuli_files(files)
+    stimuli = load_stimuli_files(files, paths=DatasetPaths(root=tmp_path, dataset='.'))
 
     assert all(isinstance(stimulus, TextStimulus) for stimulus in stimuli)
     assert len(stimuli) == len(example_filenames)
+
+    # Source filepaths are relativized to the dataset root.
+    for example_filename, stimulus in zip(example_filenames, stimuli):
+        assert stimulus.metadata['Sources'] == ['stimuli/' + example_filename]
 
 
 @pytest.mark.parametrize(
@@ -1433,3 +1513,226 @@ def test_load_stimulus_file_raises_unknown_stimulus_content_type():
     )
     with pytest.raises(ValueError, match=message):
         load_stimulus_file(file)
+
+
+def test_load_gaze_files_relativizes_sources(tmp_path, testfiles_dirpath):
+    raw_dirpath = tmp_path / 'raw'
+    raw_dirpath.mkdir()
+    filepath = raw_dirpath / 'monocular_example.csv'
+    shutil.copy(testfiles_dirpath / 'monocular_example.csv', filepath)
+
+    resource_definition = ResourceDefinition(
+        content='gaze',
+        load_kwargs={
+            'time_column': 'time',
+            'time_unit': 'ms',
+            'pixel_columns': ['x_left_pix', 'y_left_pix'],
+        },
+    )
+    files = [
+        DatasetFile(path=filepath, definition=resource_definition, metadata={'subject_id': 1}),
+    ]
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+
+    gazes = load_gaze_files(DatasetDefinition(), files, paths)
+
+    assert gazes[0].metadata == {
+        'subject_id': 1,
+        'Sources': ['raw/monocular_example.csv'],
+    }
+    assert gazes[0].events.metadata['Sources'] == ['raw/monocular_example.csv']
+
+
+def test_load_gaze_files_preprocessed_sources_point_to_preprocessed_file(
+        tmp_path, testfiles_dirpath,
+):
+    raw_filepath = tmp_path / 'raw' / 'monocular_example.csv'
+    preprocessed_dirpath = tmp_path / 'preprocessed'
+    preprocessed_dirpath.mkdir()
+    shutil.copy(
+        testfiles_dirpath / 'monocular_example.feather',
+        preprocessed_dirpath / 'monocular_example.feather',
+    )
+
+    resource_definition = ResourceDefinition(content='gaze')
+    files = [
+        DatasetFile(path=raw_filepath, definition=resource_definition, metadata={'subject_id': 1}),
+    ]
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+
+    gazes = load_gaze_files(DatasetDefinition(), files, paths, preprocessed=True)
+
+    # The sources list the file that was actually loaded, not the original raw file.
+    assert gazes[0].metadata['Sources'] == ['preprocessed/monocular_example.feather']
+
+
+def test_load_event_files_adds_relative_sources(tmp_path):
+    events_dirpath = tmp_path / 'events'
+    events_dirpath.mkdir()
+    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [1]})
+    events_df.write_ipc(events_dirpath / 'sub_1.feather')
+
+    resource_definition = ResourceDefinition(content='gaze')
+    files = [
+        DatasetFile(
+            path=tmp_path / 'raw' / 'sub_1.csv',
+            definition=resource_definition,
+            metadata={'subject_id': 1},
+        ),
+    ]
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+
+    events_list = load_event_files(files, paths, verbose=False)
+
+    assert events_list[0].metadata == {
+        'subject_id': 1,
+        'Sources': ['events/sub_1.feather'],
+    }
+    # The DatasetFile metadata dictionary is copied, not mutated.
+    assert files[0].metadata == {'subject_id': 1}
+
+
+def test_load_event_files_keeps_user_sources_list_unmutated(tmp_path):
+    events_dirpath = tmp_path / 'events'
+    events_dirpath.mkdir()
+    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [1]})
+    events_df.write_ipc(events_dirpath / 'sub_1.feather')
+
+    absolute_source = (events_dirpath / 'sub_1.feather').as_posix()
+    metadata = {'Sources': [absolute_source]}
+    resource_definition = ResourceDefinition(content='gaze')
+    files = [
+        DatasetFile(
+            path=tmp_path / 'raw' / 'sub_1.csv',
+            definition=resource_definition,
+            metadata=metadata,
+        ),
+    ]
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+
+    events_list = load_event_files(files, paths, verbose=False)
+
+    # The user-supplied entry is respected and recorded relative to the dataset root.
+    assert events_list[0].metadata == {'Sources': ['events/sub_1.feather']}
+    # The user's own sources list is not rewritten during relativization.
+    assert metadata == {'Sources': [absolute_source]}
+
+
+def test_load_event_files_relativizes_relative_user_source(tmp_path, monkeypatch):
+    events_dirpath = tmp_path / 'events'
+    events_dirpath.mkdir()
+    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [1]})
+    events_df.write_ipc(events_dirpath / 'sub_1.feather')
+
+    # A standalone load from inside the events directory records the path as given.
+    monkeypatch.chdir(events_dirpath)
+    metadata = {'Sources': ['sub_1.feather']}
+    resource_definition = ResourceDefinition(content='gaze')
+    files = [
+        DatasetFile(
+            path=tmp_path / 'raw' / 'sub_1.csv',
+            definition=resource_definition,
+            metadata=metadata,
+        ),
+    ]
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+
+    events_list = load_event_files(files, paths, verbose=False)
+
+    # The relative entry is anchored at the working directory and then made root-relative.
+    assert events_list[0].metadata == {'Sources': ['events/sub_1.feather']}
+
+
+def test_load_event_files_respects_empty_user_sources(tmp_path):
+    events_dirpath = tmp_path / 'events'
+    events_dirpath.mkdir()
+    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [1]})
+    events_df.write_ipc(events_dirpath / 'sub_1.feather')
+
+    resource_definition = ResourceDefinition(content='gaze')
+    files = [
+        DatasetFile(
+            path=tmp_path / 'raw' / 'sub_1.csv',
+            definition=resource_definition,
+            metadata={'Sources': []},
+        ),
+    ]
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+
+    events_list = load_event_files(files, paths, verbose=False)
+
+    # An explicitly empty user-provided Sources entry expresses that no source shall be
+    # recorded. Neither source recording nor relativization touches it.
+    assert events_list[0].metadata == {'Sources': []}
+
+
+@pytest.mark.parametrize(
+    'extension',
+    [
+        pytest.param('csv', id='csv'),
+        pytest.param('feather', id='feather'),
+    ],
+)
+def test_save_events_and_preprocessed_round_trip_preserves_duration_values(tmp_path, extension):
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+    fileinfo = pl.DataFrame({'filepath': ['subject_1.csv']})
+
+    events = Events(name=['fixation'], onsets=[0.5], offsets=[2.25])
+    gaze = Gaze(
+        pl.DataFrame({'time': [0.0, 0.5, 1.0], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}),
+        time_column='time',
+        time_unit='ms',
+        pixel_columns=['x', 'y'],
+    )
+
+    save_events([events], fileinfo, paths, verbose=0, extension=extension)
+    save_preprocessed([gaze], fileinfo, paths, verbose=0, extension=extension)
+
+    events_file = paths.events / f'subject_1.{extension}'
+    samples_file = paths.preprocessed / f'subject_1.{extension}'
+    if extension == 'csv':
+        loaded_events = Events(pl.read_csv(events_file))
+        loaded_samples = pl.read_csv(samples_file, schema_overrides={'pixel': pl.Utf8})
+        loaded_time = (
+            (loaded_samples['time'].cast(pl.Float64) * 1000).round().cast(pl.Duration('us'))
+        )
+    else:
+        loaded_events = Events(pl.read_ipc(events_file))
+        loaded_samples = pl.read_ipc(samples_file)
+        loaded_time = loaded_samples['time']
+
+    # Sub-millisecond precision must survive the save/load round trip.
+    assert_frame_equal(loaded_events.frame, events.frame)
+    assert loaded_time.to_list() == gaze.samples['time'].to_list()
+
+
+def test_scan_dataset_optional_pattern_field_missing_in_first_rows(tmp_path):
+    raw_dirpath = tmp_path / 'raw'
+    raw_dirpath.mkdir()
+    for subject_id in range(100, 210):
+        (raw_dirpath / f'{subject_id}.csv').touch()
+    (raw_dirpath / '900_extra.csv').touch()
+
+    definition = DatasetDefinition(
+        name='test',
+        resources=[{
+            'content': 'gaze',
+            'filename_pattern': '{subject_id:d}(_{session_name})?.csv',
+        }],
+    )
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+
+    fileinfo_dicts, files = scan_dataset(definition=definition, paths=paths)
+
+    fileinfo_df = fileinfo_dicts['gaze']
+    assert fileinfo_df.height == 111
+    assert fileinfo_df.schema['session_name'] == pl.String
+    assert fileinfo_df['session_name'].null_count() == 110
+    assert fileinfo_df.row(0, named=True) == {
+        'subject_id': '100', 'session_name': None, 'filepath': '100.csv',
+    }
+    assert fileinfo_df.row(110, named=True) == {
+        'subject_id': '900', 'session_name': 'extra', 'filepath': '900_extra.csv',
+    }
+    assert len(files) == 111
+    assert files[110].metadata == {'subject_id': '900', 'session_name': 'extra'}

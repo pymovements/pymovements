@@ -18,6 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from eyelink asc files."""
+import io
+import re
+from datetime import timedelta
+
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
@@ -66,6 +70,10 @@ def test_from_asc_has_expected_samples(
     filepath = make_text_file('test_eyelink.asc', header=header, body=body)
     gaze = from_asc(filepath, **kwargs)
 
+    if 'time' in expected_samples.columns:
+        expected_samples = expected_samples.with_columns(
+            (pl.col('time') * 1000).round().cast(pl.Duration('us')),
+        )
     assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
 
 
@@ -93,7 +101,7 @@ def test_from_asc_has_expected_samples(
                     ],
                 },
                 schema={
-                    'time': pl.Int64,
+                    'time': pl.Float64,
                     'pupil': pl.Float64,
                     'pixel': pl.List(pl.Float64),
                 },
@@ -126,10 +134,10 @@ def test_from_asc_has_expected_samples(
                     'trial_id': [0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 3, 3, 4, 4, None],
                     'point_id': 3 * [None] + [0, 1, 2, 3] + [None, 0] + [0, 0, 1, 2] + [0, 1, None],
                     'screen_id': [None, 0, 1] + 13 * [None],
-                    'task': [None] + 2 * ['reading'] + 12 * ['judo'] + [None],
+                    'task': 3 * ['reading'] + 12 * ['judo'] + [None],
                 },
                 schema={
-                    'time': pl.Int64,
+                    'time': pl.Float64,
                     'pupil': pl.Float64,
                     'task': pl.Utf8,
                     'screen_id': pl.Int64,
@@ -177,6 +185,10 @@ def test_from_asc_example_file_has_expected_samples(
 ):
     filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
+    if 'time' in expected_samples.columns:
+        expected_samples = expected_samples.with_columns(
+            (pl.col('time') * 1000).round().cast(pl.Duration('us')),
+        )
     assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
 
 
@@ -188,7 +200,7 @@ def test_from_asc_example_file_has_expected_samples(
             {'patterns': 'eyelink'},
             (16, 3),
             {
-                'time': pl.Int64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
             },
@@ -200,7 +212,7 @@ def test_from_asc_example_file_has_expected_samples(
             {'patterns': 'eyelink', 'add_columns': {'test': 'A'}},
             (16, 4),
             {
-                'time': pl.Int64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
                 'test': pl.String,
@@ -216,7 +228,7 @@ def test_from_asc_example_file_has_expected_samples(
             },
             (16, 4),
             {
-                'time': pl.Int64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
                 'test': pl.Float64,
@@ -232,7 +244,7 @@ def test_from_asc_example_file_has_expected_samples(
             },
             (16, 7),
             {
-                'time': pl.Int64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'task': pl.Utf8,
                 'screen_id': pl.Int64,
@@ -248,7 +260,7 @@ def test_from_asc_example_file_has_expected_samples(
             {'patterns': 'eyelink'},
             (16, 3),
             {
-                'time': pl.Float64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
             },
@@ -263,7 +275,7 @@ def test_from_asc_example_file_has_expected_samples(
             },
             (297, 3),
             {
-                'time': pl.Int64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
             },
@@ -278,7 +290,7 @@ def test_from_asc_example_file_has_expected_samples(
             },
             (297, 3),
             {
-                'time': pl.Int64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
             },
@@ -289,7 +301,7 @@ def test_from_asc_example_file_has_expected_samples(
             {'patterns': 'eyelink'},
             (368, 3),
             {
-                'time': pl.Int64,
+                'time': pl.Duration('us'),
                 'pixel': pl.List(pl.Float64),
                 'pupil': pl.List(pl.Float64),
             },
@@ -692,7 +704,7 @@ def test_from_asc_sets_public_cal_interfaces(filename, make_example_file):
     # Calibrations DataFrame present with the expected schema
     assert isinstance(gaze.calibrations, pl.DataFrame)
     assert gaze.calibrations.schema == {
-        'time': pl.Float64,
+        'time': pl.Duration('us'),
         'num_points': pl.Int64,
         'eye': pl.Utf8,
         'tracking_mode': pl.Utf8,
@@ -714,7 +726,7 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
     # Validations DataFrame present with the expected schema
     assert isinstance(gaze.validations, pl.DataFrame)
     assert gaze.validations.schema == {
-        'time': pl.Float64,
+        'time': pl.Duration('us'),
         'num_points': pl.Int64,
         'eye': pl.Utf8,
         'accuracy_avg': pl.Float64,
@@ -740,9 +752,9 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
                 },
                 schema={
                     'name': pl.Utf8,
-                    'onset': pl.Int64,
-                    'offset': pl.Int64,
-                    'duration': pl.Int64,
+                    'onset': pl.Duration('ms'),
+                    'offset': pl.Duration('ms'),
+                    'duration': pl.Duration('ms'),
                 },
             ),
             id='eyelink_asc_mono_without_events',
@@ -765,9 +777,9 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
                 schema={
                     'name': pl.Utf8,
                     'eye': pl.Utf8,
-                    'onset': pl.Int64,
-                    'offset': pl.Int64,
-                    'duration': pl.Int64,
+                    'onset': pl.Duration('ms'),
+                    'offset': pl.Duration('ms'),
+                    'duration': pl.Duration('ms'),
                 },
             ),
             id='eyelink_asc_mono_with_events',
@@ -790,9 +802,9 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
                 schema={
                     'name': pl.Utf8,
                     'eye': pl.Utf8,
-                    'onset': pl.Int64,
-                    'offset': pl.Int64,
-                    'duration': pl.Int64,
+                    'onset': pl.Duration('ms'),
+                    'offset': pl.Duration('ms'),
+                    'duration': pl.Duration('ms'),
                 },
             ),
             id='eyelink_asc_mono_2khz_with_events',
@@ -824,9 +836,9 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
                 schema={
                     'name': pl.Utf8,
                     'eye': pl.Utf8,
-                    'onset': pl.Int64,
-                    'offset': pl.Int64,
-                    'duration': pl.Int64,
+                    'onset': pl.Duration('ms'),
+                    'offset': pl.Duration('ms'),
+                    'duration': pl.Duration('ms'),
                 },
             ),
             id='eyelink_asc_bino_with_events',
@@ -839,6 +851,9 @@ def test_from_asc_example_file_has_expected_events(
     filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
 
+    expected_event_frame = expected_event_frame.with_columns(
+        pl.col('onset', 'offset', 'duration').cast(pl.Duration('us')),
+    )
     assert_frame_equal(gaze.events.frame, expected_event_frame, check_column_order=False)
 
 
@@ -883,19 +898,40 @@ def test_from_asc_warns(
 @pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
+def test_from_asc_corrupted_file_warning_contains_full_path(make_text_file):
+    """Test that the corrupted file warning prints the full path for a Path input."""
+    filepath = make_text_file(
+        filename='test.asc',
+        body='END	1408901 	SAMPLES	EVENTS	RES	  47.75	  45.92',
+    )
+
+    with pytest.warns(UserWarning, match=f"File '{re.escape(str(filepath))}' may be corrupted"):
+        from_asc(filepath)
+
+
+@pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No sampling rate found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No tracked eye information found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
 @pytest.mark.parametrize(
     ('body', 'messages', 'expected_data'),
     [
         pytest.param(
             'MSG 123 message here\nMSG 152 TEST 1',
             True,
-            [(123, 152), ('message here', 'TEST 1')],
+            [(123_000, 152_000), ('message here', 'TEST 1')],
             id='multiple_messages',
         ),
         pytest.param(
             'MSG 123 message here\nMSG 152 TEST 1',
             [r'^.*TEST.*$'],
-            [(152,), ('TEST 1',)],
+            [(152_000,), ('TEST 1',)],
             id='filter_messages',
         ),
         pytest.param(
@@ -923,7 +959,7 @@ def test_from_asc_messages(make_text_file, body, messages, expected_data):
         assert_frame_equal(
             gaze.messages,
             pl.DataFrame(
-                schema={'time': pl.Float64, 'content': pl.String},
+                schema={'time': pl.Duration('us'), 'content': pl.String},
                 data=expected_data,
             ),
         )
@@ -941,11 +977,6 @@ def test_from_asc_keeps_remaining_metadata_private_and_pops_cal_val(make_example
     assert isinstance(gaze._metadata, dict)
     assert 'calibrations' not in gaze._metadata
     assert 'validations' not in gaze._metadata
-
-    # Data loss ratios should be present for consumers until we migrate to explicit preprocessing
-    # utilities.
-    assert 'data_loss_ratio' in gaze._metadata
-    assert 'data_loss_ratio_blinks' in gaze._metadata
 
 
 @pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
@@ -988,11 +1019,86 @@ def test_from_asc_orphaned_event_end_marker_with_custom_patterns_does_not_raise_
         schema={
             'name': pl.Utf8,
             'eye': pl.Utf8,
-            'onset': pl.Int64,
-            'offset': pl.Int64,
-            'duration': pl.Int64,
+            'onset': pl.Duration('ms'),
+            'offset': pl.Duration('ms'),
+            'duration': pl.Duration('ms'),
             'trial_id': pl.Null,
         },
     )
+    expected_events = expected_events.with_columns(
+        pl.col('onset', 'offset', 'duration').cast(pl.Duration('us')),
+    )
 
     assert_frame_equal(gaze.events.frame, expected_events, check_column_order=False)
+
+
+@pytest.mark.parametrize(
+    ('mode', 'encoding', 'buffering'), [
+        pytest.param('r', 'utf-8', -1, id='text_mode'),
+        pytest.param('rb', None, -1, id='binary_mode'),
+        pytest.param('rb', None, 0, id='binary_mode_unbuffered'),
+    ],
+)
+def test_from_asc_accepts_file_object(make_example_file, mode, encoding, buffering):
+    """Test that from_asc reads a file object equivalently to a path and keeps it open."""
+    filepath = make_example_file('eyelink_monocular_example.asc')
+    expected_gaze = from_asc(filepath)
+
+    with open(filepath, mode, encoding=encoding, buffering=buffering) as asc_file:
+        gaze = from_asc(asc_file)
+
+        assert not asc_file.closed
+
+    assert_frame_equal(gaze.samples, expected_gaze.samples)
+
+
+def test_from_asc_rejects_nonfile_objects():
+    """Test that from_asc raises an error when given a non-file object."""
+    with pytest.raises(TypeError, match='Expected a file path or a file-like object'):
+        from_asc(12345)
+
+
+_MONOCULAR_HEADER = (
+    '** DATE: Wed Mar  8 09:25:20 2023\n'
+    '** TYPE: EDF_FILE BINARY EVENT SAMPLE TAGGED\n'
+    '** VERSION: EYELINK II 1\n'
+    '** EYELINK II CL v6.12 Feb  1 2018 (EyeLink Portable Duo)\n'
+    '** RECORDED BY pymovements\n'
+    '**\n'
+    'MSG\t100 RECCFG CR 1000 2 1 L\n'
+    'MSG\t100 ELCLCFG BTABLER\n'
+    'MSG\t100 GAZE_COORDS 0.00 0.00 1279.00 1023.00\n'
+    'START\t200 \tLEFT\tSAMPLES\tEVENTS\n'
+    'SAMPLES\tGAZE\tLEFT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2\n'
+)
+
+
+def test_from_asc_skips_malformed_sample_line():
+    """A digit-first line that is not a valid sample is skipped."""
+    content = (
+        _MONOCULAR_HEADER
+        + '1000\t10.0\t20.0\t3.0\t0.0\t.....\n'
+        + '1234567'  # no trailing newline: starts with a digit but is not a sample line
+    )
+
+    gaze = from_asc(io.StringIO(content))
+
+    assert gaze.samples['time'].to_list() == [timedelta(seconds=1)]
+
+
+def test_from_asc_calibration_timestamp_followed_by_sample_line():
+    """A sample line right after !CAL ends the calibration entry with its timestamp only."""
+    content = (
+        _MONOCULAR_HEADER
+        + 'MSG\t300 !CAL\n'
+        + '1000\t10.0\t20.0\t3.0\t0.0\t.....\n'
+        + '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+    )
+
+    gaze = from_asc(io.StringIO(content))
+
+    assert gaze.calibrations.height == 1
+    assert gaze.calibrations['time'].to_list() == [timedelta(milliseconds=300)]
+    assert gaze.calibrations['num_points'].to_list() == [None]
+    assert gaze.calibrations['eye'].to_list() == [None]
+    assert gaze.samples['time'].to_list() == [timedelta(seconds=1)]

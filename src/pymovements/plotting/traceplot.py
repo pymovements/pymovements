@@ -20,21 +20,26 @@
 """Provides the traceplot plotting function."""
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+from warnings import warn
+
 import matplotlib.pyplot as plt
 import matplotlib.scale
 import numpy as np
 
-from pymovements.gaze.gaze import Gaze
 from pymovements.plotting._matplotlib import _draw_line_data
 from pymovements.plotting._matplotlib import _set_screen_axes
 from pymovements.plotting._matplotlib import _setup_axes_and_colormap
-from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import LinearSegmentedColormapType
+
+if TYPE_CHECKING:
+    from pymovements.gaze.gaze import Gaze
 
 
 def traceplot(
         gaze: Gaze,
         position_column: str = 'pixel',
+        *,
         cval: np.ndarray | None = None,
         cmap: matplotlib.colors.Colormap | None = None,
         cmap_norm: matplotlib.colors.Normalize | str | None = None,
@@ -46,13 +51,10 @@ def traceplot(
         figsize: tuple[int, int] = (15, 5),
         title: str | None = None,
         savepath: str | None = None,
-        show: bool = True,
         add_stimulus: bool = False,
         path_to_image_stimulus: str | None = None,
         stimulus_origin: str = 'upper',
-        *,
         ax: plt.Axes | None = None,
-        closefig: bool | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot eye gaze trace from positional data.
 
@@ -85,8 +87,6 @@ def traceplot(
         Set figure title. (default: None)
     savepath: str | None
         If given, figure will be saved to this path. (default: None)
-    show: bool
-        If True, figure will be shown. (default: True)
     add_stimulus: bool
         Define whether stimulus should be included. (default: False)
     path_to_image_stimulus: str | None
@@ -94,9 +94,7 @@ def traceplot(
     stimulus_origin: str
         Origin of stimulus. (default: 'upper')
     ax: plt.Axes | None
-        External axes to draw into. If provided, the function will not show or close the figure.
-    closefig: bool | None
-        Whether to close the figure. If None, close only when the function created the figure.
+        External axes to draw into.
 
     Returns
     -------
@@ -109,11 +107,36 @@ def traceplot(
         If length of x and y coordinates do not match or if ``cmap_norm`` is unknown.
 
     """
+    if add_stimulus:
+        warn(
+            DeprecationWarning(
+                "traceplot argument 'add_stimulus' is deprecated since version v0.28.0. "
+                'Use ImageStimulus.plot() and pass the returned axes to traceplot(ax=...) '
+                'instead. This argument will be removed in v0.33.0.',
+            ),
+        )
+
+    if path_to_image_stimulus is not None:
+        warn(
+            DeprecationWarning(
+                "traceplot argument 'path_to_image_stimulus' is deprecated since version "
+                'v0.28.0. Use ImageStimulus.plot() and pass the returned axes to '
+                'traceplot(ax=...) instead. This argument will be removed in v0.33.0.',
+            ),
+        )
+
+    if stimulus_origin != 'upper':
+        warn(
+            DeprecationWarning(
+                "traceplot argument 'stimulus_origin' is deprecated since version v0.28.0. "
+                'Use ImageStimulus.plot() and pass the returned axes to traceplot(ax=...) '
+                'instead. This argument will be removed in v0.33.0.',
+            ),
+        )
+
     # pylint: disable=duplicate-code
     x_signal = gaze.samples[position_column].list.get(0)
     y_signal = gaze.samples[position_column].list.get(1)
-
-    own_figure = ax is None
 
     fig, ax, cmap, cmap_norm, cval, show_cbar = _setup_axes_and_colormap(
         x_signal,
@@ -142,7 +165,13 @@ def traceplot(
     )
 
     if gaze is not None and gaze.experiment is not None:
-        _set_screen_axes(ax, gaze.experiment.screen, func_name='traceplot')
+        _set_screen_axes(
+            ax,
+            gaze.experiment.screen.width_px,
+            gaze.experiment.screen.height_px,
+            gaze.experiment.screen.origin,
+            func_name='traceplot',
+        )
 
     if show_cbar:
         # sm = matplotlib.cm.ScalarMappable(cmap=cmap, norm=cmap_norm)
@@ -152,13 +181,7 @@ def traceplot(
     if title:
         ax.set_title(title)
 
-    finalize_figure(
-        fig,
-        show=show,
-        savepath=savepath,
-        closefig=closefig,
-        own_figure=own_figure,
-        func_name='traceplot',
-    )
+    if savepath is not None:
+        fig.savefig(savepath)
 
     return fig, ax

@@ -22,15 +22,17 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from collections.abc import Sequence
-from copy import deepcopy
 from dataclasses import asdict
 from dataclasses import dataclass
+from dataclasses import KW_ONLY
+from dataclasses import replace
 from typing import Any
-from warnings import warn
 
 from deprecated.sphinx import deprecated
 
+from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
+from pymovements.dataset.websource import WebSource
 
 
 @repr_html()
@@ -42,10 +44,58 @@ class ResourceDefinition:
     ----------
     content: str
         The content type of the resource.
-    filename: str | None
-        The target filename of the downloadable resource. This may be an archive. (default: None)
+    source: str | WebSource | None
+        The source of the downloadable resource, either an inline :py:class:`~.WebSource` or a
+        string referencing a key of
+        :py:attr:`~pymovements.DatasetDefinition.sources`. (default: None)
+    filename_pattern: str | None
+        The filename pattern of the resource files. Named groups will
+        be parsed as metadata will appear in the `fileinfo` dataframe. (default: None)
+    filename_pattern_schema_overrides: dict[str, type] | None
+        If named groups are present in the `filename_pattern`, this specifies their particular
+        datatypes. (default: None)
+    load_function: str | None
+        The name of the function used to load the data files. If None, the function is determined
+        by the file extension. Refer to :ref:`gaze-io` for available function names. (default: None)
+    load_kwargs: dict[str, Any]
+        A dictionary of additional keyword arguments that are passed to the ``load_function``.
     url: str | None
         The URL to the downloadable resource. (default: None)
+
+        .. deprecated:: v0.26.2
+            Please use ``source`` instead.
+            This property will be removed in v0.31.0.
+    filename: str | None
+        The target filename of the downloadable resource. (default: None)
+
+        .. deprecated:: v0.26.2
+            Please use ``source`` instead.
+            This property will be removed in v0.31.0.
+    md5: str | None
+        The MD5 checksum of the downloadable resource. (default: None)
+
+        .. deprecated:: v0.26.2
+            Please use ``source`` instead.
+            This property will be removed in v0.31.0.
+    mirrors: list[str] | None
+        A list of additional mirror URLs to download the resource. (default: None)
+
+        .. deprecated:: v0.26.2
+            Please use ``source`` instead.
+            This property will be removed in v0.31.0.
+
+    Parameters
+    ----------
+    content: str
+        The content type of the resource.
+    source: str | WebSource | None
+        The source of the downloadable resource, either an inline :py:class:`~.WebSource` or a
+        string referencing a key of
+        :py:attr:`~pymovements.DatasetDefinition.sources`. (default: None)
+    url: str | None
+        The URL to the downloadable resource. (default: None)
+    filename: str | None
+        The target filename of the downloadable resource. This may be an archive. (default: None)
     mirrors: list[str] | None
         An optional list of additional mirror URLs to download the resource. If downloading the
         resource from :py:attr:`~pymovements.ResourceDefinition.url` fails, these mirror URLs are
@@ -68,16 +118,201 @@ class ResourceDefinition:
 
     content: str
 
-    filename: str | None = None
-    url: str | None = None
-    mirrors: list[str] | None = None
-    md5: str | None = None
+    _: KW_ONLY
+
+    source: str | WebSource | None = None
 
     filename_pattern: str | None = None
     filename_pattern_schema_overrides: dict[str, type] | None = None
 
     load_function: str | None = None
-    load_kwargs: dict[str, Any] | None = None
+    load_kwargs: dict[str, Any]
+
+    def __init__(
+            self,
+            content: str,
+            *,
+            source: str | WebSource | None = None,
+            url: str | None = None,
+            filename: str | None = None,
+            mirrors: list[str] | None = None,
+            md5: str | None = None,
+            filename_pattern: str | None = None,
+            filename_pattern_schema_overrides: dict[str, type] | None = None,
+            load_function: str | None = None,
+            load_kwargs: dict[str, Any] | None = None,
+    ) -> None:
+        self.content = content
+
+        self.source = source
+        # The assignments in the following block will raise deprecation warnings if not None.
+        if url is not None:
+            check_is_mutual_exclusive(source=source, url=url)
+            self.url = url
+        if filename is not None:
+            check_is_mutual_exclusive(source=source, filename=filename)
+            self.filename = filename
+        if md5 is not None:
+            check_is_mutual_exclusive(source=source, md5=md5)
+            self.md5 = md5
+        if mirrors is not None:
+            check_is_mutual_exclusive(source=source, mirrors=mirrors)
+            self.mirrors = mirrors
+
+        self.filename_pattern = filename_pattern
+        self.filename_pattern_schema_overrides = filename_pattern_schema_overrides
+        self.load_function = load_function
+
+        if load_kwargs is None:
+            load_kwargs = {}
+        self.load_kwargs = load_kwargs
+
+    def _inline_websource(self, attr: str) -> WebSource | None:
+        """Return the inline ``WebSource``, raising if the source is a named reference."""
+        if isinstance(self.source, str):
+            raise AttributeError(
+                f"ResourceDefinition.{attr} is not available because this resource's source "
+                f"is a named reference ('{self.source}'). "
+                'Look it up in DatasetDefinition.sources instead.',
+            )
+        return self.source
+
+    def _get_websource_attribute(self, attr: str) -> Any:
+        """Return an attribute of the inline ``WebSource``, or ``None`` without a source."""
+        source = self._inline_websource(attr)
+        return getattr(source, attr) if source else None
+
+    @property
+    @deprecated(
+        reason='Please use ResourceDefinition.source instead. '
+               'This property will be removed in v0.31.0.',
+        version='v0.26.2',
+    )
+    def url(self) -> str | None:
+        """The URL to the downloadable resource.
+
+        .. deprecated:: v0.26.2
+           Please use ResourceDefinition.source instead.
+           This property will be removed in v0.31.0.
+
+        Returns
+        -------
+        str | None
+            The URL to the downloadable resource.
+        """
+        return self._get_websource_attribute('url')
+
+    @url.setter
+    @deprecated(
+        reason='Please use ResourceDefinition.source instead. '
+               'This property will be removed in v0.31.0.',
+        version='v0.26.2',
+    )
+    def url(self, data: str) -> None:
+        source = self._inline_websource('url')
+        if source is None:
+            self.source = WebSource(url=data)
+        else:
+            self.source = replace(source, url=data)
+
+    @property
+    @deprecated(
+        reason='Please use ResourceDefinition.source instead. '
+               'This property will be removed in v0.31.0.',
+        version='v0.26.2',
+    )
+    def filename(self) -> str | None:
+        """The target filename of the downloadable resource. This may be an archive.
+
+        .. deprecated:: v0.26.2
+           Please use ResourceDefinition.source instead.
+           This property will be removed in v0.31.0.
+
+        Returns
+        -------
+        str | None
+            The target filename of the downloadable resource. This may be an archive.
+        """
+        return self._get_websource_attribute('filename')
+
+    @filename.setter
+    @deprecated(
+        reason='Please use ResourceDefinition.source instead. '
+               'This property will be removed in v0.31.0.',
+        version='v0.26.2',
+    )
+    def filename(self, data: str) -> None:
+        source = self._inline_websource('filename')
+        if source is None:
+            self.source = WebSource(url=None, filename=data)  # type: ignore[arg-type]
+        else:
+            self.source = replace(source, filename=data)
+
+    @property
+    @deprecated(
+        reason='Please use ResourceDefinition.source instead. '
+               'This property will be removed in v0.31.0.',
+        version='v0.26.2',
+    )
+    def md5(self) -> str | None:
+        """The MD5 checksum of the downloadable resource.
+
+        .. deprecated:: v0.26.2
+           Please use ResourceDefinition.source instead.
+           This property will be removed in v0.31.0.
+
+        Returns
+        -------
+        str | None
+            The MD5 checksum of the downloadable resource.
+        """
+        return self._get_websource_attribute('md5')
+
+    @md5.setter
+    @deprecated(
+        reason='Please use ResourceDefinition.source instead. '
+               'This property will be removed in v0.31.0.',
+        version='v0.26.2',
+    )
+    def md5(self, data: str) -> None:
+        source = self._inline_websource('md5')
+        if source is None:
+            self.source = WebSource(url=None, md5=data)  # type: ignore[arg-type]
+        else:
+            self.source = replace(source, md5=data)
+
+    @property
+    @deprecated(
+        reason='Please use ResourceDefinition.source instead. '
+               'This property will be removed in v0.31.0.',
+        version='v0.26.2',
+    )
+    def mirrors(self) -> list[str] | None:
+        """A list of additional mirror URLs to download the resource.
+
+        .. deprecated:: v0.26.2
+           Please use ResourceDefinition.source instead.
+           This property will be removed in v0.31.0.
+
+        Returns
+        -------
+        list[str] | None
+            A list of additional mirror URLs to download the resource.
+        """
+        return self._get_websource_attribute('mirrors')
+
+    @mirrors.setter
+    @deprecated(
+        reason='Please use ResourceDefinition.source instead. '
+               'This property will be removed in v0.31.0.',
+        version='v0.26.2',
+    )
+    def mirrors(self, data: list[str]) -> None:
+        source = self._inline_websource('mirrors')
+        if source is None:
+            self.source = WebSource(url=None, mirrors=data)  # type: ignore[arg-type]
+        else:
+            self.source = replace(source, mirrors=data)
 
     @staticmethod
     def from_dict(dictionary: dict[str, Any]) -> ResourceDefinition:
@@ -93,18 +328,14 @@ class ResourceDefinition:
         ResourceDefinition
             An initialized ``Resource`` instance.
         """
-        if 'resource' in dictionary:
-            warn(
-                DeprecationWarning(
-                    'from_dict() key "resource" is deprecated since version v0.23.0. '
-                    'Please use key "url" instead. '
-                    'This field will be removed in v0.28.0.',
-                ),
-            )
-
-            url = dictionary['resource']
-            dictionary = {key: value for key, value in dictionary.items() if key != 'resource'}
-            dictionary['url'] = url
+        if 'source' in dictionary and dictionary['source'] is not None:
+            if isinstance(dictionary['source'], dict):
+                dictionary['source'] = WebSource.from_dict(dictionary['source'])
+            elif not isinstance(dictionary['source'], (str, WebSource)):
+                raise TypeError(
+                    'source must be str, WebSource or dict, '
+                    f"but is {type(dictionary['source']).__name__}",
+                )
 
         return ResourceDefinition(**dictionary)
 
@@ -130,6 +361,10 @@ class ResourceDefinition:
             for key, value in list(data.items()):
                 if not isinstance(value, (bool, int, float)) and not value:
                     del data[key]
+
+        # Convert source object field to dictionary.
+        if 'source' in data and isinstance(self.source, WebSource):
+            data['source'] = self.source.to_dict(exclude_none=exclude_none)
 
         return data
 
@@ -176,42 +411,6 @@ class ResourceDefinitions(list):
             return self
 
         resources = [resource for resource in self if resource.content == content]
-        return ResourceDefinitions(resources)
-
-    @staticmethod
-    @deprecated(
-        reason='Please use ResourceDefinitions.from_dicts() instead. '
-               'This property will be removed in v0.28.0.',
-        version='v0.23.0',
-    )
-    def from_dict(
-        dictionary: dict[str, Sequence[dict[str, Any]]] | None,
-    ) -> ResourceDefinitions:
-        """Create a ``ResourceDefinitions`` instance from a dictionary of lists of dictionaries.
-
-        Parameters
-        ----------
-        dictionary : dict[str, Sequence[dict[str, Any]]] | None
-            A list of dictionaries containing ``ResourceDefinition`` parameters.
-
-        Returns
-        -------
-        ResourceDefinitions
-            An initialized ``ResourceDefinitions`` instance.
-        """
-        if dictionary is None:
-            return ResourceDefinitions()
-
-        resources = []
-        for content_type, content_dictionaries in dictionary.items():
-            if not content_dictionaries:
-                continue
-            for content_dictionary in content_dictionaries:
-                _dictionary = deepcopy(content_dictionary)
-                _dictionary['content'] = content_type
-                resource = ResourceDefinition.from_dict(_dictionary)
-                resources.append(resource)
-
         return ResourceDefinitions(resources)
 
     @staticmethod
@@ -267,38 +466,6 @@ class ResourceDefinitions(list):
         """
         return any(resource.content == content for resource in self)
 
-
-class _HasResourcesIndexer:
-    """Helper class for :py:meth:`~pymovements.dataset.DatasetDefinition.has_resources` property.
-
-    Provides dynamic inference on the presence of any
-    :py:meth:`~pymovements.dataset.DatasetDefinition.resources`.
-    """
-
-    def __init__(self, resources: ResourceDefinitions) -> None:
-        self._resources = resources
-
-    def set_resources(self, resources: ResourceDefinitions) -> None:
-        """Set dataset definition resources for lookup."""
-        self._resources = resources
-
-    def __getitem__(self, key: str) -> bool:
-        """Lookup if resources of specific content are set."""
-        return self.__bool__() and self._resources.has_content(key)
-
-    def __bool__(self) -> bool:
-        """Lookup if resources of any content are set."""
-        return bool(self._resources)
-
-    def __eq__(self, other: Any) -> bool:
-        """Return self == other.
-
-        Automatically casts to bool if compared to a boolean.
-        """
-        if isinstance(other, bool):  # Needed to check equality against booleans.
-            return self.__bool__() == other
-        return super().__eq__(other)
-
-    def __repr__(self) -> str:
-        """Return string with boolean value whether any resources are set."""
-        return str(self.__bool__())
+    def __getitem__(self, index: int) -> ResourceDefinition:
+        """Get ``ResourceDefinition`` at index."""
+        return super().__getitem__(index)

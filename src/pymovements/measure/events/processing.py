@@ -20,11 +20,13 @@
 """Module for event processing."""
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 from warnings import warn
 
 import polars as pl
 
+from pymovements._utils._time import duration_to_ms
 from pymovements.exceptions import UnknownMeasure
 from pymovements.measure.events.measures import EVENT_MEASURES
 from pymovements.measure.samples.library import SampleMeasureLibrary
@@ -178,14 +180,32 @@ class EventSamplesProcessor:
 
         results = []
 
+        # Sample measures expect the time column in numeric milliseconds. The samples handed
+        # to the measures are converted below. The event time filter also compares in
+        # milliseconds so it stays correct whether or not the events and samples time dtypes
+        # match (e.g. Duration events against a numeric sample time column, or vice versa).
+        # Duration values are converted by their physical unit; a numeric time column follows
+        # the codebase convention of already being in milliseconds.
+        time_is_duration = (
+            'time' in samples.columns and isinstance(samples.schema['time'], pl.Duration)
+        )
+        samples_schema = dict(samples.schema)
+        if time_is_duration:
+            samples_schema['time'] = pl.Float64
+
+        # Time expression in milliseconds used for the event membership filter.
+        time_filter_expr = (
+            duration_to_ms('time') if time_is_duration else pl.col('time')
+        )
+
         if len(events) == 0:
             measure_columns = [measure.meta.output_name() for measure in self.measures]
             warn(
-                f"No events available for processing. Creating empty columns for {measure_columns}",
+                f'No events available for processing. Creating empty columns for {measure_columns}',
             )
 
             # run measures on empty samples data frame.
-            result = pl.LazyFrame(schema=samples.schema).select(
+            result = pl.LazyFrame(schema=samples_schema).select(
                 *[pl.repeat(None, 0).alias(column_name) for column_name in event_identifiers],
                 *self.measures,
             )
@@ -194,15 +214,29 @@ class EventSamplesProcessor:
         for event in events.iter_rows(named=True):
             event_keys = {column: event[column] for column in event_identifiers}
 
+            # Convert the event bounds to milliseconds so they match the millisecond time
+            # filter expression regardless of the events' own time dtype.
+            onset_ms = event['onset']
+            offset_ms = event['offset']
+            if isinstance(onset_ms, timedelta):
+                onset_ms = onset_ms / timedelta(milliseconds=1)
+            if isinstance(offset_ms, timedelta):
+                offset_ms = offset_ms / timedelta(milliseconds=1)
+
             # Find samples that belong to the current event (lazy evaluation).
             event_samples = samples.lazy().filter(
-                pl.col('time').is_between(event['onset'], event['offset']),
+                time_filter_expr.is_between(onset_ms, offset_ms),
                 *[
                     pl.col(column).is_null() if event_keys[column] is None
                     else pl.col(column) == event_keys[column]
                     for column in _identifiers
                 ],
             )
+
+            if time_is_duration:
+                event_samples = event_samples.with_columns(
+                    duration_to_ms('time').alias('time'),
+                )
 
             # Compute event measure values and include identifier columns.
             # Cast literals to the schema type from the events dataframe to ensure
@@ -233,19 +267,19 @@ def _check_measures(
         if not isinstance(measures[0], str):
             raise TypeError(
                 f'First item of tuple must be a string, '
-                f"but received {type(measures[0])}.",
+                f'but received {type(measures[0])}.',
             )
         if not isinstance(measures[1], dict):
             raise TypeError(
                 'Second item of tuple must be a dictionary, '
-                f"but received {type(measures[1])}.",
+                f'but received {type(measures[1])}.',
             )
     elif isinstance(measures, list):
         for measure in measures:
             if not isinstance(measure, (str, tuple)):
                 raise TypeError(
                     'Each item in the list must be either a string or a tuple, '
-                    f"but received {type(measure)}.",
+                    f'but received {type(measure)}.',
                 )
             if isinstance(measure, tuple):
                 if len(measure) != 2:
@@ -263,5 +297,5 @@ def _check_measures(
     else:
         raise TypeError(
             'measures must be of type str, tuple, or list, '
-            f"but received {type(measures)}.",
+            f'but received {type(measures)}.',
         )

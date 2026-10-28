@@ -18,31 +18,31 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides gaze related functionality."""
-from pymovements.gaze import transforms
-from pymovements.gaze import transforms_numpy
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.eyetracker import EyeTracker
 from pymovements.gaze.gaze import Gaze
-from pymovements.gaze.gaze_dataframe import GazeDataFrame
 from pymovements.gaze.integration import from_numpy
 from pymovements.gaze.integration import from_pandas
 from pymovements.gaze.io import from_asc
 from pymovements.gaze.io import from_begaze
 from pymovements.gaze.io import from_csv
 from pymovements.gaze.io import from_ipc
+from pymovements.gaze.quality import DataQualityReport
+from pymovements.gaze.quality import ValidationError
 from pymovements.gaze.screen import Screen
+from pymovements.gaze.validation import CheckResult
 
 
 __all__ = [
+    'CheckResult',
+    'DataQualityReport',
     'Experiment',
     'EyeTracker',
     'from_numpy',
     'from_pandas',
     'Gaze',
-    'GazeDataFrame',
+    'ValidationError',
     'Screen',
-    'transforms_numpy',
-    'transforms',
     'from_asc',
     'from_begaze',
     'from_csv',

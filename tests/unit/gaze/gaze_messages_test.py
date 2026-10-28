@@ -40,26 +40,26 @@ def test_gaze_messages_must_be_polars_dataframe(bad_messages):
     """Ensure that non-DataFrame `messages` raises a TypeError with exact message."""
     expected = (
         f"The `messages` must be a polars DataFrame with columns ['time', 'content'], "
-        f"not {type(bad_messages)}."
+        f'not {type(bad_messages)}.'
     )
     with pytest.raises(TypeError, match=escape(expected)):
         Gaze(messages=bad_messages)
 
 
-@pytest.mark.parametrize(
-    'good_messages',
-    [
-        pytest.param(None, id='none'),
-        pytest.param(pl.DataFrame({'time': [1], 'content': ['hello']}), id='polars_dataframe'),
-    ],
-)
-def test_gaze_messages_accepts_none_or_polars_dataframe(good_messages):
-    """Ensure that `messages` accepts None or a polars DataFrame without raising."""
-    gaze = Gaze(messages=good_messages)
-    if good_messages is None:
-        assert gaze.messages is None
-    else:
-        assert gaze.messages is good_messages
+def test_gaze_messages_accepts_none():
+    """Ensure that `messages` accepts None without raising."""
+    gaze = Gaze(messages=None)
+    assert gaze.messages is None
+
+
+def test_gaze_messages_accepts_polars_dataframe():
+    """Ensure that `messages` accepts a polars DataFrame and migrates its time column."""
+    messages = pl.DataFrame({'time': [1], 'content': ['hello']})
+    gaze = Gaze(messages=messages)
+    # The time column is migrated to Duration('us'); the content is stored unchanged.
+    assert gaze.messages.schema == {'time': pl.Duration('us'), 'content': pl.String}
+    assert gaze.messages['content'].to_list() == messages['content'].to_list()
+    assert gaze.messages['time'].dt.total_milliseconds().to_list() == messages['time'].to_list()
 
 
 @pytest.mark.parametrize(
@@ -100,7 +100,7 @@ def test_gaze_str_messages_variations(messages_df, expected_fragment):
     """Check __str__ shows clear messages summary."""
     gaze = Gaze(messages=messages_df)
     s = str(gaze)
-    assert f"messages={expected_fragment}" in s, s
+    assert f'messages={expected_fragment}' in s, s
 
 
 def test_gaze_str_messages_exluded_if_none():

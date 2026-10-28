@@ -30,24 +30,21 @@ from typing import Any
 from warnings import warn
 
 import yaml
-from deprecated.sphinx import deprecated
 
 from pymovements._utils._html import repr_html
 from pymovements.dataset._utils._yaml import reverse_substitute_types
 from pymovements.dataset._utils._yaml import substitute_types
 from pymovements.dataset._utils._yaml import type_constructor
-from pymovements.dataset.resources import _HasResourcesIndexer
 from pymovements.dataset.resources import ResourceDefinition
 from pymovements.dataset.resources import ResourceDefinitions
+from pymovements.dataset.websource import WebSource
 from pymovements.gaze.experiment import Experiment
 
-
-ResourcesLike = Sequence[dict[str, Any]] | dict[str, Sequence[dict[str, Any]]]
 
 yaml.add_multi_constructor('!', type_constructor, Loader=yaml.SafeLoader)
 
 
-@repr_html()
+@repr_html(['name', 'long_name', 'description', 'experiment', 'sources', 'resources'])
 @dataclass
 class DatasetDefinition:
     """Definition to initialize a :py:class:`~Dataset`.
@@ -61,28 +58,18 @@ class DatasetDefinition:
     description: str | None
         A fulltext description of the dataset.
         (default: None)
-    mirrors: dict[str, Sequence[str]]
-        A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
+    sources: dict[str, WebSource]
+        A mapping of names to dataset sources. Entries can be referenced from
+        :py:attr:`~pymovements.ResourceDefinition.source` by passing the name as a string.
         (default: {})
-
-        .. deprecated:: v0.24.0
-           Please use :py:attr:`~pymovements.ResourceDefinition.mirrors` instead.
-           This field will be removed in v0.29.0.
     resources: ResourceDefinitions
-        A list of dataset resources. Each list entry must be a dictionary with the following keys:
-
-        - `resource`: The url suffix of the resource. This will be concatenated with the mirror.
-        - `filename`: The filename under which the file is saved as.
-        - `md5`: The MD5 checksum of the respective file.
-
-        (default: ResourceDefinitions())
+        A list of dataset resources. Each :py:class:`~pymovements.ResourceDefinition` specifies a
+        ``content`` type and a ``source``, which is either the name of an entry in
+        :py:attr:`~pymovements.DatasetDefinition.sources` or an inline
+        :py:class:`~pymovements.WebSource`. See :py:class:`~pymovements.ResourceDefinition` for
+        details on the available fields. (default: ResourceDefinitions())
     experiment: Experiment | None
         The experiment definition. (default: None)
-    extract: dict[str, bool] | None
-        Decide whether to extract the data. (default: None)
-
-        .. deprecated:: v0.22.1
-           This field will be removed in v0.27.0.
     custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function. The
         behavior of this argument depends on the file extension of the dataset files.
@@ -178,46 +165,18 @@ class DatasetDefinition:
     description: str | None
         A fulltext description of the dataset.
         (default: None)
-    has_files: dict[str, bool] | None
-        Indicate whether the dataset contains 'gaze', 'precomputed_events', and
-        'precomputed_reading_measures'. (default: None)
-
-        .. deprecated:: v0.23.0
-           This field will be removed in v0.28.0.
-    mirrors: dict[str, Sequence[str]] | None
-        A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
+    sources: dict[str, WebSource | dict[str, Any]] | None
+        A mapping of names to dataset sources. Entries can be referenced from
+        :py:attr:`~pymovements.ResourceDefinition.source` by passing the name as a string.
         (default: None)
-
-        .. deprecated:: v0.24.0
-           Please use :py:attr:`~pymovements.ResourceDefinition.mirrors`. instead.
-           This field will be removed in v0.29.0.
-    resources: ResourceDefinitions | ResourcesLike | None
-        A list of dataset resources. Each list entry must be a dictionary with the following keys:
-
-        - `resource`: The url suffix of the resource. This will be concatenated with the mirror.
-        - `filename`: The filename under which the file is saved as.
-        - `md5`: The MD5 checksum of the respective file.
-
-        (default: None)
+    resources: ResourceDefinitions | Sequence[dict[str, Any]] | None
+        A list of dataset resources. Each list entry is a
+        :py:class:`~pymovements.ResourceDefinition` or a dictionary of its fields, specifying a
+        ``content`` type and a ``source`` that is either the name of an entry in ``sources`` or
+        an inline web source mapping. See :py:class:`~pymovements.ResourceDefinition` for details
+        on the available fields. (default: None)
     experiment: Experiment | None
         The experiment definition. (default: None)
-    extract: dict[str, bool] | None
-        Decide whether to extract the data. (default: None)
-
-        .. deprecated:: v0.22.1
-           This field will be removed in v0.27.0.
-    filename_format: dict[str, str] | None
-        Regular expression, which will be matched before trying to load the file. Named groups will
-        appear in the `fileinfo` dataframe. (default: None)
-
-        .. deprecated:: v0.24.1
-           This field will be removed in v0.28.0.
-    filename_format_schema_overrides: dict[str, dict[str, type]] | None
-        If named groups are present in the `filename_format`, this makes it possible to cast
-        specific named groups to a particular datatype. (default: None)
-
-        .. deprecated:: v0.24.1
-           This field will be removed in v0.28.0.
     custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function. The
         behavior of this argument depends on the file extension of the dataset files.
@@ -268,6 +227,23 @@ class DatasetDefinition:
         transformations. If not specified, the constant eye-to-screen distance will be taken from
         the experiment definition. This column will be renamed to ``distance``. (default: None)
 
+        .. deprecated:: v0.25.0
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
+
+    Raises
+    ------
+    ValueError
+        If a named source has no ``url``, if two named sources share the same target
+        ``filename`` but have different ``url`` values, if a resource references a source name
+        that is missing from ``sources`` (dangling source reference), or if the resolved
+        sources of the resources conflict (see
+        :py:meth:`~pymovements.DatasetDefinition.resolved_sources`).
+    TypeError
+        If ``sources`` contains a value that is neither a :py:class:`~pymovements.WebSource`
+        nor a dictionary, or if ``resources`` is neither a
+        :py:class:`~pymovements.ResourceDefinitions` instance nor a list of dictionaries.
+
     Notes
     -----
     .. deprecated:: v0.25.0
@@ -306,13 +282,11 @@ class DatasetDefinition:
 
     description: str | None = None
 
-    mirrors: dict[str, Sequence[str]] = field(default_factory=dict)
+    sources: dict[str, WebSource] = field(default_factory=dict)
 
     resources: ResourceDefinitions = field(default_factory=ResourceDefinitions)
 
     experiment: Experiment | None = field(default_factory=Experiment)
-
-    extract: dict[str, bool] | None = None
 
     custom_read_kwargs: dict[str, dict[str, Any]] | None = None
 
@@ -333,13 +307,9 @@ class DatasetDefinition:
             *,
             long_name: str | None = None,
             description: str | None = None,
-            has_files: dict[str, bool] | None = None,
-            mirrors: dict[str, Sequence[str]] | None = None,
-            resources: ResourceDefinitions | ResourcesLike | None = None,
+            sources: dict[str, WebSource | dict[str, Any]] | None = None,
+            resources: ResourceDefinitions | Sequence[dict[str, Any]] | None = None,
             experiment: Experiment | None = None,
-            extract: dict[str, bool] | None = None,
-            filename_format: dict[str, str] | None = None,
-            filename_format_schema_overrides: dict[str, dict[str, type]] | None = None,
             custom_read_kwargs: dict[str, dict[str, Any]] | None = None,
             column_map: dict[str, str] | None = None,
             trial_columns: list[str] | None = None,
@@ -357,22 +327,12 @@ class DatasetDefinition:
 
         self.experiment = experiment
 
-        self.extract = extract
-
+        self.sources = self._initialize_sources(sources=sources)
         self.resources = self._initialize_resources(resources=resources)
-        self._has_resources = _HasResourcesIndexer(resources=self.resources)
 
-        if mirrors is None:
-            self.mirrors = {}
-        else:
-            warn(
-                DeprecationWarning(
-                    'DatasetDefinition.mirrors is deprecated since version v0.24.0. '
-                    'Please specify ResourceDefinition.mirrors instead. '
-                    'This field will be removed in v0.29.0.',
-                ),
-            )
-            self.mirrors = mirrors
+        self._validate_sources(self.sources)
+        self._validate_resource_sources(self.resources, self.sources)
+        self._validate_resolved_sources()
 
         if trial_columns is not None:
             warn(
@@ -474,132 +434,223 @@ class DatasetDefinition:
             )
             self.custom_read_kwargs = custom_read_kwargs
 
-        if filename_format:
-            # the setter will raise a deprecation warning
-            self.filename_format = filename_format
+    @staticmethod
+    def _validate_sources(
+            sources: dict[str, WebSource],
+    ) -> None:
+        """Validate that named sources do not conflict.
 
-        if filename_format_schema_overrides:
-            # the setter will raise a deprecation warning
-            self.filename_format_schema_overrides = filename_format_schema_overrides
+        Fully identical sources declared under different names are legal, matching the silent
+        deduplication of identical inline sources. A named source does not need to be
+        referenced by a resource, so it can be pre-declared for later selection.
 
-        if has_files is not None:
-            warn(
-                DeprecationWarning(
-                    'DatasetDefinition.has_files is deprecated since version v0.23.0. '
-                    'Please specify ResourceDefinition.filename_pattern instead. '
-                    'This field will be removed in v0.28.0.',
-                ),
-            )
+        Parameters
+        ----------
+        sources: dict[str, WebSource]
+            Mapping of source names to sources to validate.
 
-        if self.extract is not None:
-            warn(
-                DeprecationWarning(
-                    'DatasetDefinition.extract is deprecated since version v0.22.1. '
-                    'This field will be removed in v0.27.0.',
-                ),
-            )
+        Raises
+        ------
+        ValueError
+            If a named source has no ``url``, or if two named sources share the same
+            ``filename`` but have different ``url`` values.
+        """
+        filename_urls: dict[str, str] = {}
+        for name, source in sources.items():
+            if source.url is None:
+                raise ValueError(
+                    f"Source '{name}' has no url. A named source must define a url.",
+                )
+            if source.filename is None:
+                continue
+            existing_url = filename_urls.get(source.filename)
+            if existing_url is not None and existing_url != source.url:
+                raise ValueError(
+                    f"Conflicting sources for filename '{source.filename}': the same "
+                    f"filename is claimed by different urls "
+                    f"('{existing_url}' != '{source.url}').",
+                )
+            filename_urls[source.filename] = source.url
 
-    @property
-    @deprecated(
-        reason='Please use ResourceDefinition.filename_pattern instead. '
-               'This property will be removed in v0.28.0.',
-        version='v0.23.0',
-    )
-    def filename_format(self) -> dict[str, str]:
-        """Regular expression, which will be matched before trying to load the file.
+    @staticmethod
+    def _validate_resource_sources(
+            resources: ResourceDefinitions,
+            sources: dict[str, WebSource],
+    ) -> None:
+        """Validate resource source references.
 
-        Namedgroups will appear in the `fileinfo` dataframe.
+        Parameters
+        ----------
+        resources: ResourceDefinitions
+            Resource definitions to validate source references against.
+        sources: dict[str, WebSource]
+            Mapping of source names to sources to validate against.
+        """
+        for resource in resources:
+            # A string source is a reference to a named entry in ``sources``.
+            if isinstance(resource.source, str):
+                if resource.source not in sources:
+                    raise ValueError(
+                        f"Dangling source reference: '{resource.source}' "
+                        f"in resource '{resource.content}'",
+                    )
 
-        .. deprecated:: v0.23.0
-        Please use ResourceDefinition.filename_pattern instead.
-        This property will be removed in v0.28.0.
+    @staticmethod
+    def _initialize_sources(
+            sources: dict[str, WebSource | dict[str, Any]] | None,
+    ) -> dict[str, WebSource]:
+        """Initialize sources mapping, converting dict values to ``WebSource`` if necessary."""
+        if sources is None:
+            return {}
+
+        initialized_sources: dict[str, WebSource] = {}
+        for name, source in sources.items():
+            if isinstance(source, WebSource):
+                initialized_sources[name] = source
+            elif isinstance(source, dict):
+                initialized_sources[name] = WebSource.from_dict(source)
+            else:
+                raise TypeError(
+                    f"source '{name}' must be WebSource or dict, "
+                    f'but is {type(source).__name__}',
+                )
+        return initialized_sources
+
+    @staticmethod
+    def _initialize_resources(
+            resources: ResourceDefinitions | Sequence[dict[str, Any]] | None,
+    ) -> ResourceDefinitions:
+        """Initialize ``ResourceDefinitions`` instance if necessary."""
+        if isinstance(resources, ResourceDefinitions):
+            return resources
+
+        if resources is None:
+            return ResourceDefinitions()
+
+        if isinstance(resources, Sequence):
+            return ResourceDefinitions(resources)
+
+        raise TypeError(
+            f'resources is of type {type(resources).__name__} but must be of type'
+            ' ResourceDefinitions or a list of dicts.',
+        )
+
+    def resolve_source(self, resource: ResourceDefinition) -> WebSource | None:
+        """Resolve a resource's source reference to a ``WebSource``.
+
+        A resource ``source`` may be a ``WebSource`` (inline) or a string that references a key
+        of :py:attr:`~pymovements.DatasetDefinition.sources`.
+
+        Parameters
+        ----------
+        resource: ResourceDefinition
+            The resource whose source should be resolved.
 
         Returns
         -------
-        dict[str, str]
-            filename format for each content type
+        WebSource | None
+            The resolved source, or ``None`` if the resource has no source.
+
+        Raises
+        ------
+        ValueError
+            If the resource references a source name that is missing from
+            :py:attr:`~pymovements.DatasetDefinition.sources`.
         """
-        data: dict[str, str] = {}
-        content_types = ('gaze', 'precomputed_events', 'precomputed_reading_measures', 'stimulus')
-        for content_type in content_types:
-            if content_resources := self.resources.filter(content=content_type):
-                # take first resource with matching content type.
-                # deprecated property supports only one value per content type.
-                data[content_type] = content_resources[0].filename_pattern
-        return data
-
-    @filename_format.setter
-    @deprecated(
-        reason='Please use ResourceDefinition.filename_pattern instead. '
-               'This property will be removed in v0.28.0.',
-        version='v0.23.0',
-    )
-    def filename_format(self, data: dict[str, str]) -> None:
-        for content_type, content_filename_pattern in data.items():
-            content_resources = self.resources.filter(content_type)
-
-            if not content_resources:
-                # legacy DatasetDefinitions may have defined filename_format without resources.
-                resource = ResourceDefinition(
-                    content=content_type,
-                    filename_pattern=content_filename_pattern,
+        source = resource.source
+        if isinstance(source, str):
+            # Guard against dangling references introduced by post-init mutation.
+            if source not in self.sources:
+                raise ValueError(
+                    f"Dangling source reference: '{source}' in resource '{resource.content}'",
                 )
-                self.resources.append(resource)
+            return self.sources[source]
+        return source
+
+    def _validate_resolved_sources(self) -> None:
+        """Validate that the resolved sources of all resources do not conflict.
+
+        Raises
+        ------
+        ValueError
+            If two sources share the same ``url`` and ``filename`` but disagree on any other
+            field, if two sources share the same ``filename`` but have different ``url``
+            values, or if a resource references a source name that is missing from
+            :py:attr:`~pymovements.DatasetDefinition.sources`.
+        """
+        seen: dict[tuple[str | None, str | None], WebSource] = {}
+        filename_urls: dict[str, str | None] = {}
+        for resource in self.resources:
+            source = self.resolve_source(resource)
+            if source is None:
                 continue
+            key = (source.url, source.filename)
+            existing = seen.get(key)
+            if existing is not None:
+                if existing == source:
+                    continue
+                if existing.md5 != source.md5:
+                    raise ValueError(
+                        f"Conflicting sources for url '{source.url}' and filename "
+                        f"'{source.filename}': md5 differs between resources "
+                        f"('{existing.md5}' != '{source.md5}').",
+                    )
+                if existing.mirrors != source.mirrors:
+                    raise ValueError(
+                        f"Conflicting sources for url '{source.url}' and filename "
+                        f"'{source.filename}': mirrors differ between resources "
+                        f"({existing.mirrors} != {source.mirrors}).",
+                    )
+                raise ValueError(
+                    f"Conflicting sources for url '{source.url}' and filename "
+                    f"'{source.filename}': sources differ between resources "
+                    f'({existing} != {source}).',
+                )
+            # A repeated filename with a different url would silently overwrite the first
+            # download.
+            if source.filename is not None:
+                if source.filename in filename_urls:
+                    raise ValueError(
+                        f"Conflicting sources for filename '{source.filename}': the same "
+                        f"filename is claimed by different urls "
+                        f"('{filename_urls[source.filename]}' != '{source.url}').",
+                    )
+                filename_urls[source.filename] = source.url
+            seen[key] = source
 
-            for content_resource in content_resources:
-                content_resource.filename_pattern = content_filename_pattern
+    def resolved_sources(self) -> list[WebSource]:
+        """Return the unique resolved sources referenced by the resources.
 
-    @property
-    @deprecated(
-        reason='Please use ResourceDefinition.filename_pattern_schema_overrides instead. '
-               'This property will be removed in v0.28.0.',
-        version='v0.23.0',
-    )
-    def filename_format_schema_overrides(self) -> dict[str, dict[str, type]]:
-        """Specifies datatypes of named groups in the filename pattern.
-
-        This casts specific named groups to a particular datatype.
-
-        .. deprecated:: v0.23.0
-        Please use ResourceDefinition.filename_pattern_schema_overrides instead.
-        This property will be removed in v0.28.0.
+        A single source may be shared by multiple resources, so sources are deduplicated by
+        ``(url, filename)`` to download each file only once.
 
         Returns
         -------
-        dict[str, dict[str, type]]
-            filename format schema overrides for each content type
+        list[WebSource]
+            The unique resolved sources of all resources with a source.
+
+        Raises
+        ------
+        ValueError
+            If two sources share the same ``url`` and ``filename`` but disagree on any other
+            field, if two sources share the same ``filename`` but have different ``url``
+            values, or if a resource references a source name that is missing from
+            :py:attr:`~pymovements.DatasetDefinition.sources`.
         """
-        data: dict[str, dict[str, type]] = {}
-        content_types = ('gaze', 'precomputed_events', 'precomputed_reading_measures', 'stimulus')
-        for content_type in content_types:
-            if content_resources := self.resources.filter(content=content_type):
-                # take first resource with matching content type.
-                # deprecated property supports only one dict per content type.
-                data[content_type] = content_resources[0].filename_pattern_schema_overrides
-        return data
+        self._validate_resolved_sources()
 
-    @filename_format_schema_overrides.setter
-    @deprecated(
-        reason='Please use ResourceDefinition.filename_pattern instead. '
-               'This property will be removed in v0.28.0.',
-        version='v0.23.0',
-    )
-    def filename_format_schema_overrides(self, data: dict[str, dict[str, type]]) -> None:
-        for content_type, content_schema_overrides in data.items():
-            content_resources = self.resources.filter(content_type)
-
-            if not content_resources:
-                # legacy DatasetDefinitions may have defined fields without resources.
-                resource = ResourceDefinition(
-                    content=content_type,
-                    filename_pattern_schema_overrides=content_schema_overrides,
-                )
-                self.resources.append(resource)
+        sources: list[WebSource] = []
+        seen: set[tuple[str | None, str | None]] = set()
+        for resource in self.resources:
+            source = self.resolve_source(resource)
+            if source is None:
                 continue
-
-            for content_resource in content_resources:
-                content_resource.filename_pattern_schema_overrides = content_schema_overrides
+            key = (source.url, source.filename)
+            if key in seen:
+                continue
+            seen.add(key)
+            sources.append(source)
+        return sources
 
     @staticmethod
     def from_yaml(path: str | Path) -> DatasetDefinition:
@@ -623,6 +674,7 @@ class DatasetDefinition:
             data['experiment'] = Experiment.from_dict(data['experiment'])
 
         data = reverse_substitute_types(data)
+
         # Initialize DatasetDefinition with YAML data
         return DatasetDefinition(**data)
 
@@ -664,7 +716,13 @@ class DatasetDefinition:
                 if not isinstance(value, (bool, int, float)) and not value:
                     del data[key]
 
-        # Convert those object fields.
+        # Convert those object fields to dictionaries.
+        if 'sources' in data and data['sources'] is not None:
+            data['sources'] = {
+                name: source.to_dict(exclude_none=exclude_none)
+                for name, source in self.sources.items()
+            }
+
         if 'experiment' in data and data['experiment'] is not None:
             data['experiment'] = data['experiment'].to_dict(exclude_none=exclude_none)
         if 'resources' in data and data['resources'] is not None:
@@ -698,74 +756,3 @@ class DatasetDefinition:
 
         with open(path, 'w', encoding='utf-8') as f:
             yaml.dump(data, f, sort_keys=False)
-
-    @property
-    @deprecated(
-        reason='Please use DatasetDefinition.resources.has_content() instead. '
-               'This field will be removed in v0.28.0.',
-        version='v0.23.0',
-    )
-    def has_resources(self) -> _HasResourcesIndexer:
-        """Checks for resources in :py:attr:`~pymovements.dataset.DatasetDefinition.resources`.
-
-        This read-only property checks if there are any resources set in
-        :py:attr:`~pymovements.dataset.DatasetDefinition.resources`. It can be used as a `bool` or
-        as an indexable class. In a boolean context it checks if there are any resources set in the
-        :py:cls:`~pymovements.dataset.DatasetDefinition`. Furthermore, you can index the property
-        to check if there are any resources set for a given content type.
-
-        Returns
-        -------
-        _HasResourcesIndexer
-            indexable helper class to check for resources of each content type.
-
-        Examples
-        --------
-        This custom :py:cls:`~pymovements.dataset.DatasetDefinition` has no resources defined:
-        >>> import pymovements as pm
-        >>> my_definition = pm.DatasetDefinition('MyDatasetWithoutOnlineResources', resources=None)
-        >>> my_definition.has_resources# doctest: +SKIP
-        False
-
-        A :py:cls:`~pymovements.dataset.DatasetDefinition` from our
-        :py:cls:`~pymovements.dataset.DatasetLibrary` will usually have some online resources
-        defined:
-        >>> definition = pm.DatasetLibrary.get('ToyDataset')
-        >>> definition.has_resources# doctest: +SKIP
-        True
-
-        You can also check if a specific content type is contained in the resources:
-        >>> definition.has_resources['gaze']# doctest: +SKIP
-        True
-
-        In this definition there are gaze resources defined, but no precomputed events.
-        >>> definition.has_resources['precomputed_events']# doctest: +SKIP
-        False
-        """
-        # ResourceDefinitions may have changed, so update indexer before returning.
-        # A better way to update the resources would be through a resources setter property.
-        self._has_resources.set_resources(self.resources)
-        return self._has_resources
-
-    def _initialize_resources(
-            self,
-            resources: ResourceDefinitions | ResourcesLike | None,
-    ) -> ResourceDefinitions:
-        """Initialize ``ResourceDefinitions`` instance if necessary."""
-        if isinstance(resources, ResourceDefinitions):
-            return resources
-
-        if resources is None:
-            return ResourceDefinitions()
-
-        if isinstance(resources, Sequence):
-            return ResourceDefinitions(resources)
-
-        if isinstance(resources, dict):
-            # this calls a deprecated method and will be removed in the future.
-            return ResourceDefinitions.from_dict(resources)
-
-        raise TypeError(
-            f'resources is of type {type(resources).__name__} but must be of type'
-            ' ResourceDefinitions, list, or dict.',
-        )

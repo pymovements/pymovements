@@ -28,6 +28,7 @@ from pymovements import DatasetLibrary
 from pymovements import Experiment
 from pymovements import ResourceDefinition
 from pymovements import ResourceDefinitions
+from pymovements import WebSource
 
 
 @pytest.mark.parametrize(
@@ -65,12 +66,6 @@ def test_dataset_definition_is_equal(init_kwargs):
             id='none',
         ),
 
-        pytest.param(
-            {'resources': {}},
-            ResourceDefinitions(),
-            marks=pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
-            id='empty_dict',
-        ),
 
         pytest.param(
             {'resources': []},
@@ -96,12 +91,6 @@ def test_dataset_definition_is_equal(init_kwargs):
             id='single_gaze_resource',
         ),
 
-        pytest.param(
-            {'resources': {'gaze': [{'resource': 'www.example.com'}]}},
-            ResourceDefinitions([ResourceDefinition(content='gaze', url='www.example.com')]),
-            marks=pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
-            id='single_gaze_resource_legacy',
-        ),
 
         pytest.param(
             {
@@ -115,19 +104,6 @@ def test_dataset_definition_is_equal(init_kwargs):
 
         pytest.param(
             {
-                'resources': {'gaze': [{'content': 'gaze'}]},
-                'filename_format': {'gaze': 'test.csv'},
-            },
-            ResourceDefinitions([ResourceDefinition(content='gaze', filename_pattern='test.csv')]),
-            marks=[
-                pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
-                pytest.mark.filterwarnings('ignore:.*filename_format.*:DeprecationWarning'),
-            ],
-            id='single_gaze_resource_filename_format_legacy',
-        ),
-
-        pytest.param(
-            {
                 'resources': [
                     {
                         'content': 'gaze', 'filename_pattern': 'test.csv',
@@ -137,47 +113,34 @@ def test_dataset_definition_is_equal(init_kwargs):
             },
             ResourceDefinitions([
                 ResourceDefinition(
-                    content='gaze', filename_pattern='test.csv',
-                    url='https://example.com', mirrors=['https://mirror.com'],
+                    content='gaze',
+                    source=WebSource(url='https://example.com', mirrors=['https://mirror.com']),
+                    filename_pattern='test.csv',
                 ),
             ]),
-            id='single_gaze_resource_with_url_and_mirror',
+            marks=pytest.mark.filterwarnings(
+                'ignore:.*Please use ResourceDefinition[.]source instead.*:DeprecationWarning',
+            ),
+            id='single_gaze_resource_with_url_and_mirror_deprecated',
         ),
 
         pytest.param(
             {
-                'filename_format': {'gaze': 'test.csv'},
-            },
-            ResourceDefinitions([ResourceDefinition(content='gaze', filename_pattern='test.csv')]),
-            marks=[
-                pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
-                pytest.mark.filterwarnings('ignore:.*filename_format.*:DeprecationWarning'),
-            ],
-            id='filename_format_without_resources_legacy',
-        ),
-
-        pytest.param(
-            {
-                'resources': {'gaze': [{'content': 'gaze'}]},
-                'filename_format': {'gaze': '{subject_id:d}.csv'},
-                'filename_format_schema_overrides': {
-                    'gaze': {
-                        'subject_id': int,
+                'resources': [
+                    {
+                        'content': 'gaze', 'filename_pattern': 'test.csv',
+                        'source': {'url': 'https://example.com', 'mirrors': ['https://mirror.com']},
                     },
-                },
+                ],
             },
             ResourceDefinitions([
                 ResourceDefinition(
                     content='gaze',
-                    filename_pattern='{subject_id:d}.csv',
-                    filename_pattern_schema_overrides={'subject_id': int},
+                    source=WebSource(url='https://example.com', mirrors=['https://mirror.com']),
+                    filename_pattern='test.csv',
                 ),
             ]),
-            marks=[
-                pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
-                pytest.mark.filterwarnings('ignore:.*filename_format.*:DeprecationWarning'),
-            ],
-            id='single_gaze_resource_filename_format_schema_overrides_legacy',
+            id='single_gaze_resource_with_url_and_mirror',
         ),
 
         pytest.param(
@@ -200,50 +163,7 @@ def test_dataset_definition_is_equal(init_kwargs):
             id='two_resources',
         ),
 
-        pytest.param(
-            {
-                'resources': {
-                    'gaze': [{'resource': 'www.example1.com'}],
-                    'precomputed_events': [{'resource': 'www.example2.com'}],
-                },
-            },
-            ResourceDefinitions([
-                ResourceDefinition(content='gaze', url='www.example1.com'),
-                ResourceDefinition(content='precomputed_events', url='www.example2.com'),
-            ]),
-            marks=pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
-            id='two_resources_legacy',
-        ),
 
-        pytest.param(
-            {
-                'resources': {
-                    'gaze': [{'resource': 'www.example1.com'}],
-                    'precomputed_events': [{'resource': 'www.example2.com'}],
-                },
-                'filename_format': {
-                    'gaze': 'test1.csv',
-                    'precomputed_events': 'test2.csv',
-                },
-            },
-            ResourceDefinitions([
-                ResourceDefinition(
-                    content='gaze',
-                    url='www.example1.com',
-                    filename_pattern='test1.csv',
-                ),
-                ResourceDefinition(
-                    content='precomputed_events',
-                    url='www.example2.com',
-                    filename_pattern='test2.csv',
-                ),
-            ]),
-            marks=[
-                pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
-                pytest.mark.filterwarnings('ignore:.*filename_format.*:DeprecationWarning'),
-            ],
-            id='two_resources_filename_format_legacy',
-        ),
     ],
 )
 def test_dataset_definition_resources_init_expected(init_kwargs, expected_resources):
@@ -268,11 +188,10 @@ def test_dataset_definition_resources_init_expected(init_kwargs, expected_resour
                 'description': None,
                 'distance_column': None,
                 'experiment': None,
-                'extract': None,
-                'mirrors': {},
                 'pixel_columns': None,
                 'position_columns': None,
                 'resources': [],
+                'sources': {},
                 'time_column': None,
                 'time_unit': None,
                 'trial_columns': None,
@@ -321,11 +240,10 @@ def test_dataset_definition_resources_init_expected(init_kwargs, expected_resour
                         'width_px': 1280,
                     },
                 },
-                'extract': None,
-                'mirrors': {},
                 'pixel_columns': None,
                 'position_columns': None,
                 'resources': [],
+                'sources': {},
                 'time_column': None,
                 'time_unit': None,
                 'trial_columns': None,
@@ -371,11 +289,10 @@ def test_dataset_definition_to_dict_expected(definition, expected_dict):
                         'width_px': None,
                     },
                 },
-                'extract': None,
-                'mirrors': {},
                 'pixel_columns': None,
                 'position_columns': None,
                 'resources': [],
+                'sources': {},
                 'time_column': None,
                 'time_unit': None,
                 'trial_columns': None,
@@ -414,11 +331,10 @@ def test_dataset_definition_to_dict_expected(definition, expected_dict):
                         'width_px': None,
                     },
                 },
-                'extract': None,
-                'mirrors': {},
                 'pixel_columns': None,
                 'position_columns': None,
                 'resources': [],
+                'sources': {},
                 'time_column': None,
                 'time_unit': None,
                 'trial_columns': None,
@@ -477,7 +393,6 @@ def test_dataset_definition_to_yaml_equal_dicts(definition, tmp_path):
     assert definition.to_dict() == yaml_dict
 
 
-@pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
 def test_write_yaml_already_existing_dataset_definition_w_tuple_screen(tmp_path):
     tmp_file = tmp_path / 'tmp.yaml'
     definition = DatasetLibrary.get('ToyDatasetEyeLink')
@@ -487,6 +402,28 @@ def test_write_yaml_already_existing_dataset_definition_w_tuple_screen(tmp_path)
         yaml.safe_load(f)
 
     assert DatasetDefinition.from_yaml(tmp_file) == definition
+
+
+def test_from_yaml_with_named_sources(tmp_path):
+    tmp_file = tmp_path / 'tmp.yaml'
+    yaml_content = (
+        'name: Example\n'
+        'sources:\n'
+        '  main:\n'
+        '    url: http://example.com/file.zip\n'
+        '    filename: file.zip\n'
+        'resources:\n'
+        '- content: gaze\n'
+        '  source: main\n'
+    )
+    tmp_file.write_text(yaml_content, encoding='utf-8')
+
+    definition = DatasetDefinition.from_yaml(tmp_file)
+
+    assert definition.resources[0].source == 'main'
+    assert definition.sources == {
+        'main': WebSource(url='http://example.com/file.zip', filename='file.zip'),
+    }
 
 
 def test_check_equality_of_load_from_yaml_and_load_from_dictionary_dump(tmp_path):
@@ -505,187 +442,6 @@ def test_check_equality_of_load_from_yaml_and_load_from_dictionary_dump(tmp_path
     )
 
     assert yaml_definition == expected_definition
-
-
-@pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning')
-@pytest.mark.filterwarnings('ignore:.*has_resources.*:DeprecationWarning')
-@pytest.mark.parametrize(
-    ('resources', 'expected_has_resources'),
-    [
-        pytest.param(
-            None,
-            False,
-            id='none',
-        ),
-
-        pytest.param(
-            {},
-            False,
-            id='empty_resources_dict',
-        ),
-
-        pytest.param(
-            {'gaze': None},
-            False,
-            id='none_value_as_resources',
-        ),
-
-        pytest.param(
-            {'gaze': []},
-            False,
-            id='empty_list_as_resources',
-        ),
-
-        pytest.param(
-            {'gaze': [{'resource': 'foo'}]},
-            True,
-            id='gaze_resources',
-        ),
-
-        pytest.param(
-            {'precomputed_events': [{'resource': 'foo'}]},
-            True,
-            id='precomputed_event_resources',
-        ),
-
-        pytest.param(
-            {'precomputed_reading_measures': [{'resource': 'foo'}]},
-            True,
-            id='precomputed_reading_measures_resources',
-        ),
-
-        pytest.param(
-            {
-                'gaze': [{'resource': 'foo'}],
-                'precomputed_events': [{'resource': 'foo'}],
-                'precomputed_reading_measures': [{'resource': 'foo'}],
-            },
-            True,
-            id='all_resources',
-        ),
-
-        pytest.param(
-            {
-                'foo': [{'resource': 'bar'}],
-            },
-            True,
-            id='custom_resources',
-        ),
-    ],
-)
-def test_dataset_definition_has_resources_boolean(resources, expected_has_resources):
-    definition = DatasetDefinition(resources=resources)
-
-    # there are multiple contexts of using booleans.
-    assert bool(definition.has_resources) == expected_has_resources
-    assert str(definition.has_resources) == str(expected_has_resources)
-    assert definition.has_resources == expected_has_resources
-    assert not (definition.has_resources and not expected_has_resources)
-    assert not (not definition.has_resources and expected_has_resources)
-
-
-@pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning')
-@pytest.mark.filterwarnings('ignore:.*has_resources.*:DeprecationWarning')
-@pytest.mark.parametrize(
-    ('resources', 'expected_resources'),
-    [
-        pytest.param(
-            {},
-            {
-                'gaze': False,
-                'precomputed_events': False,
-                'precomputed_reading_measures': False,
-            },
-            id='empty_resources_dict',
-        ),
-
-        pytest.param(
-            {'gaze': None},
-            {
-                'gaze': False,
-                'precomputed_events': False,
-                'precomputed_reading_measures': False,
-            },
-            id='none_value_as_resources',
-        ),
-
-        pytest.param(
-            {'gaze': []},
-            {
-                'gaze': False,
-                'precomputed_events': False,
-                'precomputed_reading_measures': False,
-            },
-            id='empty_list_as_resources',
-        ),
-
-        pytest.param(
-            {'gaze': [{'resource': 'foo'}]},
-            {
-                'gaze': True,
-                'precomputed_events': False,
-                'precomputed_reading_measures': False,
-            },
-            id='gaze_resources',
-        ),
-
-        pytest.param(
-            {'precomputed_events': [{'resource': 'foo'}]},
-            {
-                'gaze': False,
-                'precomputed_events': True,
-                'precomputed_reading_measures': False,
-            },
-            id='precomputed_event_resources',
-        ),
-
-        pytest.param(
-            {'precomputed_reading_measures': [{'resource': 'foo'}]},
-            {
-                'gaze': False,
-                'precomputed_events': False,
-                'precomputed_reading_measures': True,
-            },
-            id='precomputed_reading_measures_resources',
-        ),
-
-        pytest.param(
-            {
-                'gaze': [{'resource': 'foo'}],
-                'precomputed_events': [{'resource': 'foo'}],
-                'precomputed_reading_measures': [{'resource': 'foo'}],
-            },
-            {'gaze': True, 'precomputed_events': True, 'precomputed_reading_measures': True},
-            id='all_resources',
-        ),
-
-        pytest.param(
-            {
-                'foo': [{'resource': 'bar'}],
-            },
-            {
-                'foo': True,
-                'gaze': False,
-                'precomputed_events': False,
-                'precomputed_reading_measures': False,
-            },
-            id='custom_resources',
-        ),
-    ],
-)
-def test_dataset_definition_has_resources_indexable(resources, expected_resources):
-    definition = DatasetDefinition(resources=resources)
-
-    for key, value in expected_resources.items():
-        assert definition.has_resources[key] == value
-
-
-@pytest.mark.filterwarnings('ignore::DeprecationWarning')
-def test_dataset_definition_has_resources_not_equal():
-    definition1 = DatasetDefinition(resources=[{'content': 'gaze', 'url': 'http://www.xample.com'}])
-    definition2 = DatasetDefinition(resources=[])
-
-    assert definition1.has_resources != definition2.has_resources
 
 
 @pytest.mark.parametrize(
@@ -716,10 +472,9 @@ def test_dataset_definition_has_resources_not_equal():
                 'name': '.',
                 'long_name': None,
                 'description': None,
-                'mirrors': {},
                 'resources': [],
+                'sources': {},
                 'experiment': None,
-                'extract': None,
                 'column_map': None,
                 'custom_read_kwargs': None,
                 'trial_columns': None,
@@ -741,10 +496,9 @@ def test_dataset_definition_has_resources_not_equal():
                 'name': '.',
                 'long_name': None,
                 'description': None,
-                'mirrors': {},
                 'resources': [],
+                'sources': {},
                 'experiment': None,
-                'extract': None,
                 'column_map': None,
                 'custom_read_kwargs': None,
                 'trial_columns': None,
@@ -766,8 +520,8 @@ def test_dataset_definition_has_resources_not_equal():
                 'name': '.',
                 'long_name': None,
                 'description': None,
-                'mirrors': {},
                 'resources': [],
+                'sources': {},
                 'experiment': {
                     'eyetracker': {
                         'sampling_rate': None,
@@ -787,7 +541,6 @@ def test_dataset_definition_has_resources_not_equal():
                         'origin': None,
                     },
                 },
-                'extract': None,
                 'column_map': None,
                 'custom_read_kwargs': None,
                 'trial_columns': None,
@@ -850,16 +603,13 @@ def test_dataset_definition_has_resources_not_equal():
                 'description': None,
                 'distance_column': None,
                 'experiment': None,
-                'extract': None,
                 'long_name': None,
-                'mirrors': {},
                 'name': '.',
                 'pixel_columns': None,
                 'position_columns': None,
                 'resources': [
                     {
                         'content': 'gaze',
-                        'filename': None,
                         'filename_pattern': None,
                         'filename_pattern_schema_overrides': None,
                         'load_function': None,
@@ -871,17 +621,102 @@ def test_dataset_definition_has_resources_not_equal():
                                 'bar',
                             ],
                         },
-                        'md5': None,
-                        'mirrors': None,
-                        'url': None,
+                        'source': None,
                     },
                 ],
+                'sources': {},
                 'time_column': None,
                 'time_unit': None,
                 'trial_columns': None,
                 'velocity_columns': None,
             },
             id='false_resources',
+        ),
+
+        pytest.param(
+            DatasetDefinition(
+                resources=[
+                    {
+                        'content': 'gaze',
+                        'load_kwargs': {
+                            'distance_column': 'test',
+                            'position_columns': ['test', 'foo', 'bar'],
+                        },
+                        'source': WebSource(url='http://my.example.here'),
+                    },
+                ],
+            ),
+            True,
+            {
+                'name': '.',
+                'resources': [
+                    {
+                        'content': 'gaze',
+                        'load_kwargs': {
+                            'distance_column': 'test',
+                            'position_columns': ['test', 'foo', 'bar'],
+                        },
+                        'source': {'url': 'http://my.example.here'},
+                    },
+                ],
+            },
+            id='true_resources_with_source',
+        ),
+
+        pytest.param(
+            DatasetDefinition(
+                resources=[
+                    {
+                        'content': 'gaze',
+                        'load_kwargs': {
+                            'distance_column': 'test',
+                            'position_columns': ['test', 'foo', 'bar'],
+                        },
+                        'source': WebSource(url='http://my.example.here'),
+                    },
+                ],
+            ),
+            False,
+            {
+                'acceleration_columns': None,
+                'column_map': None,
+                'custom_read_kwargs': None,
+                'description': None,
+                'distance_column': None,
+                'experiment': None,
+                'long_name': None,
+                'name': '.',
+                'pixel_columns': None,
+                'position_columns': None,
+                'resources': [
+                    {
+                        'content': 'gaze',
+                        'filename_pattern': None,
+                        'filename_pattern_schema_overrides': None,
+                        'load_function': None,
+                        'load_kwargs': {
+                            'distance_column': 'test',
+                            'position_columns': [
+                                'test',
+                                'foo',
+                                'bar',
+                            ],
+                        },
+                        'source': {
+                            'url': 'http://my.example.here',
+                            'filename': None,
+                            'md5': None,
+                            'mirrors': None,
+                        },
+                    },
+                ],
+                'sources': {},
+                'time_column': None,
+                'time_unit': None,
+                'trial_columns': None,
+                'velocity_columns': None,
+            },
+            id='false_resources_with_source',
         ),
     ],
 )
@@ -892,49 +727,6 @@ def test_dataset_to_dict_exclude_none(dataset_definition, exclude_none, expected
 @pytest.mark.parametrize(
     ('init_kwargs', 'scheduled_version'),
     [
-        pytest.param(
-            {'extract': True},
-            '0.27.0',
-            id='extract_true',
-        ),
-        pytest.param(
-            {'extract': False},
-            '0.27.0',
-            id='extract_false',
-        ),
-        pytest.param(
-            {'has_files': {'gaze': True}},
-            '0.28.0',
-            id='has_files',
-        ),
-        pytest.param(
-            {'mirrors': {'gaze': ['https://mirror.com']}},
-            '0.29.0',
-            id='mirrors',
-        ),
-        pytest.param(
-            {
-                'resources': {'gaze': [{'filename': 'test.csv'}]},
-            },
-            '0.28.0',
-            id='resources_dict_legacy',
-        ),
-        pytest.param(
-            {
-                'resources': [{'content': 'gaze'}],
-                'filename_format': {'gaze': '{subject}.csv'},
-            },
-            '0.28.0',
-            id='filename_format',
-        ),
-        pytest.param(
-            {
-                'resources': [{'content': 'gaze', 'filename_pattern': '{subject}.csv'}],
-                'filename_format_schema_overrides': {'gaze': {'subject': str}},
-            },
-            '0.28.0',
-            id='filename_format_schema_overrides',
-        ),
         pytest.param(
             {'trial_columns': ['trial']},
             '0.30.0',
@@ -1007,7 +799,7 @@ def test_dataset_definition_init_parameter_is_deprecated_or_removed(
         pytest.param(
             {'resources': 1},
             TypeError,
-            'resources is of type int but must be of type ResourceDefinitions, list, or dict.',
+            'resources is of type int but must be of type ResourceDefinitions or a list of dicts.',
             id='resources_int',
         ),
     ],
@@ -1020,167 +812,318 @@ def test_dataset_definition_init_raises_exception(init_kwargs, exception, except
     assert msg == exception_msg
 
 
-@pytest.mark.filterwarnings('ignore::DeprecationWarning')
 @pytest.mark.parametrize(
-    ('definition', 'expected'),
+    ('source_value', 'exception_msg'),
     [
         pytest.param(
-            DatasetDefinition(
-                resources=[{'content': 'gaze', 'filename_pattern': 'abc'}],
-            ),
-            {'gaze': 'abc'},
-            id='single_gaze',
+            'http://example.com/file.zip',
+            "source 'main' must be WebSource or dict, but is str",
+            id='str',
+        ),
+        pytest.param(
+            1,
+            "source 'main' must be WebSource or dict, but is int",
+            id='int',
+        ),
+        pytest.param(
+            None,
+            "source 'main' must be WebSource or dict, but is NoneType",
+            id='none',
         ),
     ],
 )
-def test_dataset_definition_get_filename_format_expected(definition, expected):
-    assert definition.filename_format == expected
+def test_dataset_definition_sources_wrong_value_type_raises(source_value, exception_msg):
+    with pytest.raises(TypeError) as excinfo:
+        DatasetDefinition(name='test', sources={'main': source_value})
+
+    msg, = excinfo.value.args
+    assert msg == exception_msg
 
 
-@pytest.mark.filterwarnings('ignore::DeprecationWarning')
-@pytest.mark.parametrize(
-    ('definition', 'new_value', 'expected'),
-    [
-        pytest.param(
-            DatasetDefinition(resources=None),
-            {'gaze': 'abc'},
-            ResourceDefinitions(
-                [ResourceDefinition(content='gaze', filename_pattern='abc')],
-            ),
-            id='no_resource',
-        ),
-        pytest.param(
-            DatasetDefinition(
-                resources=[{'content': 'gaze', 'filename_pattern': 'abc'}],
-            ),
-            {'gaze': 'def'},
-            ResourceDefinitions([ResourceDefinition(content='gaze', filename_pattern='def')]),
-            id='gaze_resource',
-        ),
-        pytest.param(
-            DatasetDefinition(
-                resources=[
-                    {'content': 'gaze', 'filename_pattern': 'abc'},
-                    {'content': 'precomputed_events', 'filename_pattern': 'cba'},
-                ],
-            ),
-            {'gaze': 'def'},
-            ResourceDefinitions([
-                ResourceDefinition(content='gaze', filename_pattern='def'),
-                ResourceDefinition(content='precomputed_events', filename_pattern='cba'),
-            ]),
-            id='two_resources',
-        ),
-    ],
-)
-def test_dataset_definition_set_filename_format_expected(definition, new_value, expected):
-    definition.filename_format = new_value
-    assert definition.resources == expected
+def test_dataset_definition_inline_source_is_preserved():
+    """Test that an inline WebSource is kept as-is (not rewritten to a reference)."""
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    resource = ResourceDefinition(content='gaze', source=source)
+    definition = DatasetDefinition(name='test', resources=[resource])
+
+    assert not definition.sources
+    assert definition.resources[0].source is source
 
 
-@pytest.mark.filterwarnings('ignore::DeprecationWarning')
-@pytest.mark.parametrize(
-    ('definition', 'expected'),
-    [
-        pytest.param(
-            DatasetDefinition(
-                resources=[{'content': 'gaze', 'filename_pattern_schema_overrides': {'a': int}}],
-            ),
-            {'gaze': {'a': int}},
-            id='single_gaze',
-        ),
-    ],
-)
-def test_dataset_definition_filename_get_format_schema_expected(definition, expected):
-    assert definition.filename_format_schema_overrides == expected
+def test_dataset_definition_named_source_reference():
+    """Test that a resource can reference a named source by string."""
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    resource = ResourceDefinition(content='gaze', source='main')
+    definition = DatasetDefinition(name='test', resources=[resource], sources={'main': source})
+
+    assert definition.resources[0].source == 'main'
+    assert definition.sources['main'] is source
 
 
-@pytest.mark.filterwarnings('ignore::DeprecationWarning')
-@pytest.mark.parametrize(
-    ('definition', 'new_value', 'expected'),
-    [
-        pytest.param(
-            DatasetDefinition(resources=None),
-            {'gaze': {'a': str}},
-            ResourceDefinitions(
-                [ResourceDefinition(content='gaze', filename_pattern_schema_overrides={'a': str})],
-            ),
-            id='no_resource',
-        ),
-        pytest.param(
-            DatasetDefinition(
-                resources=[{'content': 'gaze', 'filename_pattern_schema_overrides': {'a': int}}],
-            ),
-            {'gaze': {'b': str}},
-            ResourceDefinitions(
-                [ResourceDefinition(content='gaze', filename_pattern_schema_overrides={'b': str})],
-            ),
-            id='gaze_resource',
-        ),
-        pytest.param(
-            DatasetDefinition(
-                resources=[
-                    {'content': 'gaze', 'filename_pattern_schema_overrides': {'a': int}},
-                    {'content': 'precomputed_events'},
-                ],
-            ),
-            {'gaze': {'c': str}},
-            ResourceDefinitions(
-                [
-                    ResourceDefinition(
-                        content='gaze', filename_pattern_schema_overrides={'c': str},
-                    ),
-                    ResourceDefinition(content='precomputed_events'),
-                ],
-            ),
-            id='two_resources',
-        ),
-    ],
-)
-def test_dataset_definition_set_filename_format_schema_expected(definition, new_value, expected):
-    definition.filename_format_schema_overrides = new_value
-    assert definition.resources == expected
-
-
-@pytest.mark.parametrize(
-    ('definition', 'attribute', 'value'),
-    [
-        pytest.param(
-            DatasetDefinition(),
-            'filename_format',
-            {'gaze': 'test.csv'},
-            id='filename_format',
-        ),
-    ],
-)
-def test_dataset_definition_set_attribute_is_deprecated(definition, attribute, value):
-    with pytest.warns(DeprecationWarning):
-        setattr(definition, attribute, value)
-
-
-@pytest.mark.parametrize(
-    ('attribute', 'scheduled_version'),
-    [
-        pytest.param(
-            'filename_format', '0.28.0',
-            id='filename_format',
-        ),
-        pytest.param(
-            'filename_format_schema_overrides', '0.28.0',
-            id='filename_format_schema_overrides',
-        ),
-    ],
-)
-def test_dataset_definition_get_attribute_is_removed(
-        attribute, scheduled_version, assert_deprecation_is_removed,
-):
-    definition = DatasetDefinition()
-    with pytest.raises(DeprecationWarning) as info:
-        getattr(definition, attribute)
-
-    assert_deprecation_is_removed(
-        function_name=f'DatasetDefinition.{attribute}',
-        warning_message=info.value.args[0],
-        scheduled_version=scheduled_version,
-
+def test_dataset_definition_named_source_reference_from_dict():
+    """Test that a raw dict value in sources is converted to a WebSource."""
+    resource = ResourceDefinition(content='gaze', source='main')
+    definition = DatasetDefinition(
+        name='test',
+        resources=[resource],
+        sources={'main': {'url': 'http://example.com/file.zip', 'filename': 'file.zip'}},
     )
+
+    assert definition.sources['main'] == WebSource(
+        url='http://example.com/file.zip', filename='file.zip',
+    )
+
+
+def test_dataset_definition_identical_named_sources_deduplicate():
+    """Test that fully identical named sources are legal and deduplicated when resolved."""
+    source1 = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    source2 = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    resources = [
+        ResourceDefinition(content='gaze', source='a'),
+        ResourceDefinition(content='precomputed_events', source='b'),
+    ]
+    definition = DatasetDefinition(
+        name='test', resources=resources, sources={'a': source1, 'b': source2},
+    )
+
+    assert definition.resolved_sources() == [source1]
+
+
+def test_dataset_definition_validation_dangling_reference():
+    """Test that dangling source references raise ValueError."""
+    resource = ResourceDefinition(content='gaze', source='nonexistent')
+    with pytest.raises(
+        ValueError, match="Dangling source reference: 'nonexistent' in resource 'gaze'",
+    ):
+        DatasetDefinition(name='test', resources=[resource])
+
+
+def test_dataset_definition_resolved_sources_dangling_reference_after_mutation():
+    """Test that a dangling source reference introduced after init raises ValueError."""
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    resource = ResourceDefinition(content='gaze', source='main')
+    definition = DatasetDefinition(name='test', resources=[resource], sources={'main': source})
+
+    definition.resources[0].source = 'typo'
+
+    with pytest.raises(ValueError, match="Dangling source reference: 'typo' in resource 'gaze'"):
+        definition.resolved_sources()
+
+
+def test_dataset_definition_unreferenced_named_source_is_legal():
+    """Test that a named source not referenced by any resource constructs cleanly."""
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    definition = DatasetDefinition(name='test', sources={'main': source})
+
+    assert definition.sources == {'main': source}
+    assert not definition.resolved_sources()
+
+
+def test_dataset_definition_named_source_without_url_raises():
+    """Test that a named source without a url raises ValueError at construction."""
+    source = WebSource(url=None, filename='file.zip')
+
+    with pytest.raises(
+        ValueError, match="Source 'main' has no url. A named source must define a url.",
+    ):
+        DatasetDefinition(name='test', sources={'main': source})
+
+
+def test_dataset_definition_filename_none_excluded_from_uniqueness():
+    """Test that sources with filename=None are excluded from uniqueness check."""
+    source1 = WebSource(url='http://example.com/1.zip', filename=None)
+    source2 = WebSource(url='http://example.com/2.zip', filename=None)
+    resources = [
+        ResourceDefinition(content='gaze', source='a'),
+        ResourceDefinition(content='precomputed_events', source='b'),
+    ]
+    definition = DatasetDefinition(
+        name='test', resources=resources, sources={'a': source1, 'b': source2},
+    )
+    assert len(definition.sources) == 2
+
+
+def test_dataset_definition_resolved_sources_deduplicates():
+    """Test that resolved_sources returns a source shared by several resources only once."""
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    resources = [
+        ResourceDefinition(content='gaze', source='main'),
+        ResourceDefinition(content='precomputed_events', source='main'),
+        ResourceDefinition(
+            content='imagestimulus',
+            source=WebSource(url='http://example.com/file.zip', filename='file.zip'),
+        ),
+    ]
+    definition = DatasetDefinition(name='test', resources=resources, sources={'main': source})
+
+    assert definition.resolved_sources() == [source]
+
+
+def test_dataset_definition_conflicting_sources_md5_raises():
+    """Test that sources sharing (url, filename) but differing md5 raise ValueError on init."""
+    resource1 = ResourceDefinition(
+        content='gaze',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip', md5='abc'),
+    )
+    resource2 = ResourceDefinition(
+        content='precomputed_events',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip', md5='def'),
+    )
+
+    with pytest.raises(ValueError, match="md5 differs between resources \\('abc' != 'def'\\)"):
+        DatasetDefinition(name='test', resources=[resource1, resource2])
+
+
+def test_dataset_definition_conflicting_sources_asymmetric_md5_raises():
+    """Test that a shared (url, filename) with md5 set on only one resource raises ValueError."""
+    resource1 = ResourceDefinition(
+        content='gaze',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip', md5='abc'),
+    )
+    resource2 = ResourceDefinition(
+        content='precomputed_events',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip'),
+    )
+
+    with pytest.raises(ValueError, match="md5 differs between resources \\('abc' != 'None'\\)"):
+        DatasetDefinition(name='test', resources=[resource1, resource2])
+
+
+def test_dataset_definition_conflicting_sources_mirrors_raises():
+    """Test that a shared (url, filename) with differing mirrors raises ValueError on init."""
+    resource1 = ResourceDefinition(
+        content='gaze',
+        source=WebSource(
+            url='http://example.com/file.zip', filename='file.zip',
+            mirrors=['http://mirror.com/file.zip'],
+        ),
+    )
+    resource2 = ResourceDefinition(
+        content='precomputed_events',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip'),
+    )
+
+    with pytest.raises(ValueError, match='mirrors differ between resources'):
+        DatasetDefinition(name='test', resources=[resource1, resource2])
+
+
+def test_dataset_definition_conflicting_sources_other_field_raises():
+    """Test that a shared (url, filename) with any other field difference raises ValueError."""
+    @dataclass(frozen=True)
+    class ExtendedWebSource(WebSource):
+        sha256: str | None = None
+
+    resource1 = ResourceDefinition(
+        content='gaze',
+        source=ExtendedWebSource(
+            url='http://example.com/file.zip', filename='file.zip', sha256='abc',
+        ),
+    )
+    resource2 = ResourceDefinition(
+        content='precomputed_events',
+        source=ExtendedWebSource(
+            url='http://example.com/file.zip', filename='file.zip', sha256='def',
+        ),
+    )
+
+    with pytest.raises(ValueError, match='sources differ between resources'):
+        DatasetDefinition(name='test', resources=[resource1, resource2])
+
+
+@pytest.mark.parametrize(
+    ('resources', 'sources'),
+    [
+        pytest.param(
+            [
+                ResourceDefinition(
+                    content='gaze',
+                    source=WebSource(url='http://example.com/a.zip', filename='file.zip'),
+                ),
+                ResourceDefinition(
+                    content='precomputed_events',
+                    source=WebSource(url='http://example.com/b.zip', filename='file.zip'),
+                ),
+            ],
+            None,
+            id='inline_sources',
+        ),
+        pytest.param(
+            [
+                ResourceDefinition(content='gaze', source='main'),
+                ResourceDefinition(
+                    content='precomputed_events',
+                    source=WebSource(url='http://example.com/b.zip', filename='file.zip'),
+                ),
+            ],
+            {'main': WebSource(url='http://example.com/a.zip', filename='file.zip')},
+            id='named_and_inline_sources',
+        ),
+        pytest.param(
+            None,
+            {
+                'a': WebSource(url='http://example.com/a.zip', filename='file.zip'),
+                'b': WebSource(url='http://example.com/b.zip', filename='file.zip'),
+            },
+            id='named_sources',
+        ),
+    ],
+)
+def test_dataset_definition_same_filename_different_urls_raises(resources, sources):
+    """Test that two sources sharing a filename but differing in url raise ValueError on init."""
+    with pytest.raises(
+        ValueError,
+        match=r'the same filename is claimed by different urls '
+              r"\('http://example.com/a.zip' != 'http://example.com/b.zip'\)",
+    ):
+        DatasetDefinition(name='test', resources=resources, sources=sources)
+
+
+def test_dataset_definition_does_not_mutate_input_resources():
+    """Test that the caller's input objects are not mutated."""
+    source = WebSource(url='http://example.com', filename='data.zip')
+    resource = ResourceDefinition(content='gaze', source=source)
+    resources_input = [resource]
+
+    definition = DatasetDefinition(name='test', resources=resources_input)
+
+    assert definition.resources[0].source is source
+    assert resources_input[0].source is source
+    assert isinstance(resources_input[0].source, WebSource)
+
+
+def test_dataset_definition_to_dict_with_named_sources():
+    """Test that named sources are serialized as nested dictionaries by to_dict."""
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip', md5='abc')
+    resource = ResourceDefinition(content='gaze', source='main')
+    definition = DatasetDefinition(name='test', resources=[resource], sources={'main': source})
+
+    data = definition.to_dict(exclude_none=False)
+
+    assert data['sources'] == {
+        'main': {
+            'url': 'http://example.com/file.zip',
+            'filename': 'file.zip',
+            'md5': 'abc',
+            'mirrors': None,
+        },
+    }
+    # A referenced resource keeps the string reference instead of an inline source.
+    assert data['resources'][0]['source'] == 'main'
+
+
+def test_dataset_definition_to_yaml_roundtrip_with_named_sources(tmp_path):
+    """Test that a definition with named sources survives a to_yaml / from_yaml round-trip."""
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip', md5='abc')
+    resources = [
+        ResourceDefinition(content='gaze', source='main'),
+        ResourceDefinition(content='precomputed_events', source='main'),
+    ]
+    definition = DatasetDefinition(name='test', resources=resources, sources={'main': source})
+
+    tmp_file = tmp_path / 'tmp.yaml'
+    definition.to_yaml(tmp_file)
+    reloaded = DatasetDefinition.from_yaml(tmp_file)
+
+    assert reloaded.sources == definition.sources
+    assert reloaded.resources == definition.resources
+    assert [resource.source for resource in reloaded.resources] == ['main', 'main']

@@ -19,6 +19,7 @@
 # SOFTWARE.
 """Tests functionality of the IDT algorithm."""
 import numpy as np
+import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
@@ -28,7 +29,7 @@ from pymovements.synthetic import step_function
 
 
 @pytest.mark.parametrize(
-    ('kwargs', 'expected_error'),
+    ('kwargs', 'expected_error', 'expected_message'),
     [
         pytest.param(
             {
@@ -37,6 +38,7 @@ from pymovements.synthetic import step_function
                 'minimum_duration': 1,
             },
             ValueError,
+            r'positions must have shape \(N, 2\) but have shape \(\)',
             id='positions_none_raises_value_error',
         ),
         pytest.param(
@@ -46,6 +48,7 @@ from pymovements.synthetic import step_function
                 'minimum_duration': 1,
             },
             TypeError,
+            "'<=' not supported between instances of 'NoneType' and 'int'",
             id='dispersion_threshold_none_raises_type_error',
         ),
         pytest.param(
@@ -55,6 +58,7 @@ from pymovements.synthetic import step_function
                 'minimum_duration': None,
             },
             TypeError,
+            "'<=' not supported between instances of 'NoneType' and 'int'",
             id='duration_threshold_none_raises_type_error',
         ),
         pytest.param(
@@ -64,7 +68,18 @@ from pymovements.synthetic import step_function
                 'minimum_duration': 1,
             },
             ValueError,
+            r'positions must have shape \(N, 2\) but have shape \(\)',
             id='positions_not_array_like_raises_value_error',
+        ),
+        pytest.param(
+            {
+                'positions': pl.arange(10, eager=True),
+                'dispersion_threshold': 1,
+                'minimum_duration': 1,
+            },
+            TypeError,
+            'positions dtype must be List but is Int64',
+            id='positions_1d_raises_type_error',
         ),
         pytest.param(
             {
@@ -73,7 +88,28 @@ from pymovements.synthetic import step_function
                 'minimum_duration': 1,
             },
             ValueError,
-            id='positions_1d_raises_value_error',
+            r'positions must have shape \(N, 2\) but have shape \(3,\)',
+            id='positions_1d_raises_value_error_list',
+        ),
+        pytest.param(
+            {
+                'positions': np.array([1, 2, 3]),
+                'dispersion_threshold': 1,
+                'minimum_duration': 1,
+            },
+            ValueError,
+            r'positions must have shape \(N, 2\) but have shape \(3,\)',
+            id='positions_1d_raises_value_error_numpy',
+        ),
+        pytest.param(
+            {
+                'positions': pl.repeat((1, 2, 3), 100, eager=True),
+                'dispersion_threshold': 1.,
+                'minimum_duration': 1,
+            },
+            ValueError,
+            r'positions must be 2D list but list lengths are: \[3\]',
+            id='positions_3d_raises_value_error',
         ),
         pytest.param(
             {
@@ -82,7 +118,18 @@ from pymovements.synthetic import step_function
                 'minimum_duration': 1,
             },
             ValueError,
-            id='positions_not_2_elements_in_second_dimension_raises_value_error',
+            r'positions must have shape \(N, 2\) but have shape \(2, 3\)',
+            id='positions_3d_raises_value_error_list',
+        ),
+        pytest.param(
+            {
+                'positions': pl.Series([[1], [1, 2], [1, 2, 3]]),
+                'dispersion_threshold': 1.,
+                'minimum_duration': 1,
+            },
+            ValueError,
+            r'positions must be 2D list but list lengths are: \[1, 2, 3\]',
+            id='positions_varying_dimensions_columns_raises_value_error',
         ),
         pytest.param(
             {
@@ -91,6 +138,7 @@ from pymovements.synthetic import step_function
                 'minimum_duration': 1,
             },
             ValueError,
+            'dispersion_threshold must be greater than 0',
             id='dispersion_threshold_not_greater_than_0_raises_value_error',
         ),
         pytest.param(
@@ -100,22 +148,14 @@ from pymovements.synthetic import step_function
                 'minimum_duration': 0,
             },
             ValueError,
+            'minimum_duration must be greater than 0',
             id='duration_threshold_not_greater_than_0_raises_value_error',
-        ),
-        pytest.param(
-            {
-                'positions': [[1, 2], [1, 2]],
-                'dispersion_threshold': 1,
-                'minimum_duration': 1.1,
-            },
-            TypeError,
-            id='duration_threshold_not_integer_raises_type_error',
         ),
     ],
 )
-def test_idt_raises_error(kwargs, expected_error):
+def test_idt_raises_error(kwargs, expected_error, expected_message):
     """Test if idt raises expected error."""
-    with pytest.raises(expected_error):
+    with pytest.raises(expected_error, match=expected_message):
         idt(**kwargs)
 
 
@@ -124,7 +164,11 @@ def test_idt_raises_error(kwargs, expected_error):
     [
         pytest.param(
             {
-                'positions': np.stack([np.arange(0, 200, 2), np.arange(0, 200, 2)], axis=1),
+                'positions': pl.select(
+                    pl.concat_list(
+                        [pl.arange(0, 200, 2, eager=True), pl.arange(0, 200, 2, eager=True)],
+                    ).alias('position'),
+                )['position'],
                 'dispersion_threshold': 1,
                 'minimum_duration': 10,
             },
@@ -133,7 +177,19 @@ def test_idt_raises_error(kwargs, expected_error):
         ),
         pytest.param(
             {
-                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'positions': np.stack([np.arange(0, 200, 2), np.arange(0, 200, 2)], axis=1),
+                'dispersion_threshold': 1,
+                'minimum_duration': 10,
+            },
+            Events(),
+            id='constant_velocity_no_fixation_numpy',
+        ),
+        pytest.param(
+            {
+                'positions': pl.from_numpy(
+                    step_function(length=100, steps=[0], values=[(0, 0)]),
+                    schema=['x', 'y'],
+                ).select(pl.concat_list(['x', 'y']).alias('position'))['position'],
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
             },
@@ -149,6 +205,22 @@ def test_idt_raises_error(kwargs, expected_error):
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[99],
+            ),
+            id='constant_position_single_fixation_numpy',
+        ),
+        pytest.param(
+            {
+                'positions': pl.from_numpy(
+                    step_function(length=100, steps=[0], values=[(0, 0)]),
+                    schema=['x', 'y'],
+                ).select(pl.concat_list(['x', 'y']).alias('position'))['position'],
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
                 'name': 'custom_fixation',
             },
             Events(
@@ -157,6 +229,41 @@ def test_idt_raises_error(kwargs, expected_error):
                 offsets=[99],
             ),
             id='constant_position_single_fixation_custom_name',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+                'name': 'custom_fixation',
+            },
+            Events(
+                name='custom_fixation',
+                onsets=[0],
+                offsets=[99],
+            ),
+            id='constant_position_single_fixation_custom_name_numpy',
+        ),
+        pytest.param(
+            {
+                'positions': pl.from_numpy(
+                    step_function(
+                        length=100,
+                        steps=[49, 50],
+                        values=[(9, 9), (1, 1)],
+                        start_value=(0, 0),
+                    ),
+                    schema=['x', 'y'],
+                ).select(pl.concat_list(['x', 'y']).alias('position'))['position'],
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[0, 50],
+                offsets=[49, 99],
+            ),
+            id='three_steps_two_fixations',
         ),
         pytest.param(
             {
@@ -174,17 +281,18 @@ def test_idt_raises_error(kwargs, expected_error):
                 onsets=[0, 50],
                 offsets=[49, 99],
             ),
-            id='three_steps_two_fixations',
+            id='three_steps_two_fixations_numpy',
         ),
         pytest.param(
             {
-                'positions': step_function(
-                    length=100, steps=[10, 20, 90],
-                    values=[
-                        (np.nan, np.nan), (0, 0),
-                        (np.nan, np.nan),
-                    ],
-                ),
+                'positions': pl.from_numpy(
+                    step_function(
+                        length=100,
+                        steps=[10, 20, 90],
+                        values=[(np.nan, np.nan), (0, 0), (np.nan, np.nan)],
+                    ),
+                    schema=['x', 'y'],
+                ).select(pl.concat_list(['x', 'y']).alias('position'))['position'],
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
             },
@@ -206,6 +314,26 @@ def test_idt_raises_error(kwargs, expected_error):
                 ),
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[0, 20],
+                offsets=[9, 89],
+            ),
+            id='two_fixations_nan_delete_leading_ending_numpy',
+        ),
+        pytest.param(
+            {
+                'positions': pl.from_numpy(
+                    step_function(
+                        length=100,
+                        steps=[10, 20, 90],
+                        values=[(np.nan, np.nan), (0, 0), (np.nan, np.nan)],
+                    ),
+                    schema=['x', 'y'],
+                ).select(pl.concat_list(['x', 'y']).alias('position'))['position'],
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
                 'include_nan': True,
             },
             Events(
@@ -217,7 +345,28 @@ def test_idt_raises_error(kwargs, expected_error):
         ),
         pytest.param(
             {
-                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'positions': step_function(
+                    length=100,
+                    steps=[10, 20, 90],
+                    values=[(np.nan, np.nan), (0, 0), (np.nan, np.nan)],
+                ),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+                'include_nan': True,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[89],
+            ),
+            id='one_fixation_nan_delete_leading_ending_numpy',
+        ),
+        pytest.param(
+            {
+                'positions': pl.from_numpy(
+                    step_function(length=100, steps=[0], values=[(0, 0)]),
+                    schema=['x', 'y'],
+                ).select(pl.concat_list(['x', 'y']).alias('position'))['position'],
                 'timesteps': np.arange(1000, 1100, dtype=int),
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
@@ -232,6 +381,51 @@ def test_idt_raises_error(kwargs, expected_error):
         pytest.param(
             {
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'timesteps': np.arange(1000, 1100, dtype=int),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[1000],
+                offsets=[1099],
+            ),
+            id='constant_position_single_fixation_with_timesteps_numpy',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'timesteps': pl.Series(np.arange(1000, 1100)).cast(pl.Duration('ms')),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[1000],
+                offsets=[1099],
+            ),
+            id='constant_position_single_fixation_with_duration_timesteps',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'timesteps': pl.Series(np.arange(0, 50_000, 500)).cast(pl.Duration('us')),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[49.5],
+            ),
+            id='constant_position_single_fixation_with_2khz_duration_timesteps',
+        ),
+        pytest.param(
+            {
+                'positions': pl.from_numpy(
+                    step_function(length=100, steps=[0], values=[(0, 0)]),
+                    schema=['x', 'y'],
+                ).select(pl.concat_list(['x', 'y']).alias('position'))['position'],
                 'timesteps': np.reshape(np.arange(1000, 1100, dtype=int), (100, 1)),
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
@@ -246,6 +440,23 @@ def test_idt_raises_error(kwargs, expected_error):
         pytest.param(
             {
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'timesteps': np.reshape(np.arange(1000, 1100, dtype=int), (100, 1)),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[1000],
+                offsets=[1099],
+            ),
+            id='constant_position_single_fixation_with_timesteps_extra_dim_numpy',
+        ),
+        pytest.param(
+            {
+                'positions': pl.from_numpy(
+                    step_function(length=100, steps=[0], values=[(0, 0)]),
+                    schema=['x', 'y'],
+                ).select(pl.concat_list(['x', 'y']).alias('position'))['position'],
                 'timesteps': np.arange(1000, 1100, dtype=float),
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
@@ -260,7 +471,7 @@ def test_idt_raises_error(kwargs, expected_error):
         pytest.param(
             {
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
-                'timesteps': np.arange(1000, 1010, 0.1, dtype=float),
+                'timesteps': np.arange(1000, 1100, dtype=float),
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
             },
@@ -269,8 +480,200 @@ def test_idt_raises_error(kwargs, expected_error):
                 onsets=[1000],
                 offsets=[1099],
             ),
+            id='constant_position_single_fixation_with_timesteps_float_no_decimal_numpy',
+        ),
+        pytest.param(
+            {
+                'positions': pl.from_numpy(
+                    step_function(length=100, steps=[0], values=[(0, 0)]),
+                    schema=['x', 'y'],
+                ).select(pl.concat_list(['x', 'y']).alias('position'))['position'],
+                'timesteps': np.arange(1000, 1010, 0.1, dtype=float),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[1000],
+                offsets=[1009.9],
+            ),
             id='constant_position_single_fixation_with_timesteps_float_with_decimal',
-            marks=pytest.mark.xfail(reason='#532'),
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'timesteps': np.arange(1000, 1010, 0.1, dtype=float),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[1000],
+                offsets=[1009.9],
+            ),
+            id='constant_position_single_fixation_with_timesteps_float_with_decimal_numpy',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'timesteps': pl.Series(np.arange(0, 10_000, 100)).cast(pl.Duration('us')),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[9.9],
+            ),
+            id='constant_position_single_fixation_with_10khz_duration_timesteps',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'timesteps': np.arange(0, 150, 1.5),
+                'dispersion_threshold': 1,
+                'minimum_duration': 100,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[148.5],
+            ),
+            id='constant_position_single_fixation_with_timesteps_interval_not_dividing_duration',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=10, steps=[0], values=[(0, 0)]),
+                'timesteps': np.concatenate([
+                    np.arange(0, 5, dtype=int), np.arange(7, 12, dtype=int),
+                ]),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[11],
+            ),
+            id='constant_position_single_fixation_with_non_constant_timesteps_interval',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=3, steps=[0], values=[(0, 0)]),
+                'timesteps': [0, 50, 100],
+                'dispersion_threshold': 1,
+                'minimum_duration': 100,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[100],
+            ),
+            id='constant_position_single_fixation_with_sparse_timesteps_covering_duration',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=3, steps=[0], values=[(0, 0)]),
+                'timesteps': [0, 50, 99],
+                'dispersion_threshold': 1,
+                'minimum_duration': 100,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[99],
+            ),
+            id='constant_position_single_fixation_with_sparse_timesteps_tail_covering_duration',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=3, steps=[0], values=[(0, 0)]),
+                'timesteps': [0, 50, 60],
+                'dispersion_threshold': 1,
+                'minimum_duration': 100,
+            },
+            Events(),
+            id='constant_position_no_fixation_with_timesteps_shorter_than_duration',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=1, steps=[0], values=[(0, 0)]),
+                'dispersion_threshold': 1,
+                'minimum_duration': 1,
+            },
+            Events(),
+            id='constant_position_no_fixation_with_single_sample',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(
+                    length=12, steps=[5, 6, 7, 8],
+                    values=[(np.nan, np.nan), (0, 0), (np.nan, np.nan), (0, 0)],
+                ),
+                'dispersion_threshold': 1,
+                'minimum_duration': 1,
+            },
+            Events(
+                name='fixation',
+                onsets=[0, 8],
+                offsets=[4, 10],
+            ),
+            id='two_fixations_single_sample_between_nans_dropped',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=10, steps=[0], values=[(0, 0)]),
+                'timesteps': np.arange(0, 30, step=3, dtype=int),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[27],
+            ),
+            id='constant_position_single_fixation_with_timesteps_interval_longer_than_duration',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'dispersion_threshold': 1,
+                'minimum_duration': 1,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[99],
+            ),
+            id='constant_position_single_fixation_with_minimum_duration_one_interval',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'timesteps': np.arange(0, 50, 0.5),
+                'dispersion_threshold': 1,
+                'minimum_duration': 0.5,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[49.5],
+            ),
+            id='constant_position_single_fixation_with_float_minimum_duration',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=10, steps=[0], values=[(0, 0)]),
+                'timesteps': [0, 1, 2, 2, 3, 4, 5, 6, 7, 8],
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[8],
+            ),
+            id='constant_position_single_fixation_with_repeated_timestep',
         ),
     ],
 )
@@ -282,55 +685,50 @@ def test_idt_detects_fixations(kwargs, expected):
 
 
 @pytest.mark.parametrize(
-    ('kwargs', 'exception', 'msg_substrings'),
+    ('kwargs', 'exception', 'exception_message'),
     [
         pytest.param(
             {
-                'positions': step_function(length=10, steps=[0], values=[(0, 0)]),
-                'timesteps': np.concatenate([
-                    np.arange(0, 5, dtype=int), np.arange(7, 12, dtype=int),
-                ]),
-                'dispersion_threshold': 1,
-                'minimum_duration': 1,
+                'positions': pl.repeat((1, 2), 100, eager=True),
+                'dispersion_threshold': 1.0,
+                'timesteps': pl.repeat('b', 10, eager=True),
             },
-            ValueError, ('interval', 'timesteps', 'constant'),
-            id='non_constant_timesteps_interval',
+            TypeError,
+            r'timesteps dtype must be float or int but is String',
+            id='timesteps_str_raises_type_error',
         ),
         pytest.param(
             {
-                'positions': step_function(length=10, steps=[0], values=[(0, 0)]),
-                'timesteps': np.arange(0, 30, step=3, dtype=int),
-                'dispersion_threshold': 1,
-                'minimum_duration': 2,
+                'positions': pl.repeat((1, 2), 10, eager=True),
+                'dispersion_threshold': 1.0,
+                'timesteps': ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'],
             },
-            ValueError, ('interval', 'timesteps', 'divisible', 'minimum_duration'),
-            id='minimum_duration_not_divisible_by_timesteps_interval',
+            TypeError,
+            r'timesteps dtype must be float or int but is <U1',
+            id='timesteps_str_list_raises_type_error',
         ),
         pytest.param(
             {
-                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
-                'timesteps': np.linspace(0, 1, 100),
-                'dispersion_threshold': 1,
-                'minimum_duration': 1,
+                'positions': pl.repeat((1, 2), 10, eager=True),
+                'dispersion_threshold': 1.0,
+                'timesteps': [0, 1, 2, 3, 4, 9, 8, 7, 6, 5],
             },
-            TypeError, ('timesteps', 'int'),
-            id='constant_position_single_fixation_with_timesteps_float_with_fractions',
+            ValueError,
+            r'timesteps must be in ascending order',
+            id='timesteps_not_ascending_raises_value_error',
         ),
         pytest.param(
             {
-                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
-                'dispersion_threshold': 1,
-                'minimum_duration': 1,
+                'positions': pl.repeat((1, 2), 10, eager=True),
+                'dispersion_threshold': 1.0,
+                'timesteps': pl.Series(np.arange(9, -1, -1)),
             },
-            ValueError, ('minimum_duration', '2'),
-            id='minimum_duration_1_sample',
+            ValueError,
+            r'timesteps must be in ascending order',
+            id='timesteps_series_descending_raises_value_error',
         ),
     ],
 )
-def test_idt_timesteps_exceptions(kwargs, exception, msg_substrings):
-    with pytest.raises(exception) as excinfo:
+def test_idt_timesteps_exceptions(kwargs, exception, exception_message):
+    with pytest.raises(exception, match=exception_message):
         idt(**kwargs)
-
-    msg, = excinfo.value.args
-    for msg_substring in msg_substrings:
-        assert msg_substring.lower() in msg.lower()
