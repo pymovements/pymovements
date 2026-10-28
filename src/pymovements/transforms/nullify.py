@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Module for py:func:`pymovements.transforms.nullify_out_of_bounds`."""
+"""Module for py:func:`pymovements.transforms.nullify`."""
 from __future__ import annotations
 
 import polars as pl
@@ -26,7 +26,7 @@ from pymovements.transforms.library import register_transform
 
 
 @register_transform
-def nullify_out_of_bounds(
+def nullify(
         lower_bound: int | float | None,
         upper_bound: int | float | None,
         *,
@@ -36,11 +36,9 @@ def nullify_out_of_bounds(
 ) -> pl.Expr:
     """Set gaze samples with any component outside a lower and upper bound to null.
 
-    In contrast to :func:`~pymovements.transforms.clip`, which replaces out-of-bound components by
-    the bound, a sample with any component outside the bounds is set to null as a whole.
-    Samples with null components keep their existing nulls. Only ``output_column`` is affected.
-    Other signal columns of the same sample are untouched, see
-    :py:meth:`~pymovements.Gaze.nullify_event_samples` for nulling every signal column.
+    A sample is set to null as a whole as soon as one of its components is below the lower or
+    above the upper bound. Samples with null components keep their existing nulls. Only
+    ``output_column`` is affected, other signal columns of the same sample are untouched.
 
     Parameters
     ----------
@@ -59,6 +57,11 @@ def nullify_out_of_bounds(
     -------
     pl.Expr
         The respective polars expression.
+
+    See Also
+    --------
+    pymovements.transforms.clip : Replace out-of-bound components by the bound instead.
+    pymovements.Gaze.nullify_event_samples : Set every signal column of event samples to null.
     """
     out_of_bounds = []
     for component in range(n_components):

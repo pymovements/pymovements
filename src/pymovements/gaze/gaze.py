@@ -964,7 +964,7 @@ class Gaze:
             **kwargs,
         )
 
-    def nullify_out_of_bounds(
+    def nullify(
             self,
             lower_bound: int | float | None,
             upper_bound: int | float | None,
@@ -975,11 +975,9 @@ class Gaze:
     ) -> None:
         """Set gaze samples with any component outside a lower and upper bound to null.
 
-        In contrast to :py:meth:`~.Gaze.clip`, which replaces out-of-bound components by the
-        bound, a sample with any component outside the bounds is set to null as a whole.
-        Samples with null components keep their existing nulls. Only ``output_column`` is
-        affected. Other signal columns of the same sample are untouched, see
-        :py:meth:`~.Gaze.nullify_event_samples` for nulling every signal column.
+        A sample is set to null as a whole as soon as one of its components is below the lower
+        or above the upper bound. Samples with null components keep their existing nulls. Only
+        ``output_column`` is affected, other signal columns of the same sample are untouched.
 
         After success, the out-of-bound samples in :py:attr:`~.Gaze.samples` are null.
 
@@ -995,13 +993,18 @@ class Gaze:
             Name of the output column.
         **kwargs: Any
             Additional keyword arguments to be passed to the
-            :func:`~pymovements.transforms.nullify_out_of_bounds()` method.
+            :func:`~pymovements.transforms.nullify()` method.
 
         Raises
         ------
         AttributeError
             If :py:attr:`~.Gaze.samples` is None, or if the number of components cannot be
             inferred from :py:attr:`~.Gaze.samples`.
+
+        See Also
+        --------
+        pymovements.Gaze.clip : Replace out-of-bound components by the bound instead.
+        pymovements.Gaze.nullify_event_samples : Set every signal column of event samples to null.
 
         Examples
         --------
@@ -1011,14 +1014,14 @@ class Gaze:
         ...     samples=pl.DataFrame({'x': [1.0, 50.0, 5.0], 'y': [4.0, 5.0, 6.0]}),
         ...     pixel_columns=['x', 'y'],
         ... )
-        >>> gaze.nullify_out_of_bounds(
+        >>> gaze.nullify(
         ...     lower_bound=0, upper_bound=10, input_column='pixel', output_column='pixel',
         ... )
         >>> gaze.samples['pixel'].to_list()
         [[1.0, 4.0], None, [5.0, 6.0]]
         """
         self.transform(
-            'nullify_out_of_bounds',
+            'nullify',
             lower_bound=lower_bound,
             upper_bound=upper_bound,
             input_column=input_column,

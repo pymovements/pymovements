@@ -156,7 +156,7 @@ def test_transform_grouped_path_empty_samples_early_return():
     assert before.shape == after.shape
 
 
-def test_nullify_out_of_bounds_nulls_whole_sample():
+def test_nullify_nulls_whole_sample():
     samples = pl.DataFrame(
         {
             'time': [1000, 1001, 1002, 1003],
@@ -166,7 +166,7 @@ def test_nullify_out_of_bounds_nulls_whole_sample():
     )
     gaze = Gaze(samples=samples, pixel_columns=['x_pix', 'y_pix'])
 
-    gaze.nullify_out_of_bounds(
+    gaze.nullify(
         lower_bound=0, upper_bound=10, input_column='pixel', output_column='pixel',
     )
 

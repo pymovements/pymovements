@@ -26,7 +26,7 @@ from pymovements.transforms.downsample import downsample
 from pymovements.transforms.library import register_transform
 from pymovements.transforms.library import TransformLibrary
 from pymovements.transforms.norm import norm
-from pymovements.transforms.nullify_out_of_bounds import nullify_out_of_bounds
+from pymovements.transforms.nullify import nullify
 from pymovements.transforms.pix2deg import pix2deg
 from pymovements.transforms.pos2acc import pos2acc
 from pymovements.transforms.pos2vel import pos2vel
@@ -44,7 +44,7 @@ __all__ = [
     'deg2pix',
     'downsample',
     'norm',
-    'nullify_out_of_bounds',
+    'nullify',
     'pix2deg',
     'pos2acc',
     'pos2vel',

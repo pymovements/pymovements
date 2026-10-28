@@ -880,7 +880,7 @@ def fixture_experiment():
                 ),
                 'pixel_columns': ['x_pix', 'y_pix'],
             },
-            'nullify_out_of_bounds', {
+            'nullify', {
                 'input_column': 'pixel', 'output_column': 'pixel', 'n_components': 2,
                 'lower_bound': 1, 'upper_bound': 10,
             },
@@ -893,7 +893,7 @@ def fixture_experiment():
                     schema={'time': pl.Int64, 'pixel': pl.List(pl.Int64)},
                 ),
             ),
-            id='nullify_out_of_bounds',
+            id='nullify',
         ),
 
     ],
@@ -1363,7 +1363,7 @@ def test_gaze_clip_creates_new_column(experiment):
     assert 'pixel_new' in gaze.columns
 
 
-def test_gaze_nullify_out_of_bounds_creates_new_column(experiment):
+def test_gaze_nullify_creates_new_column(experiment):
     gaze = pm.Gaze(
         samples=pl.from_dict(
             {
@@ -1375,7 +1375,7 @@ def test_gaze_nullify_out_of_bounds_creates_new_column(experiment):
         experiment=experiment,
         pixel_columns=['x_pix', 'y_pix'],
     )
-    gaze.nullify_out_of_bounds(
+    gaze.nullify(
         input_column='pixel',
         output_column='pixel_new',
         n_components=2,

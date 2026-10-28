@@ -17,12 +17,12 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test pymovements.transforms.nullify_out_of_bounds."""
+"""Test pymovements.transforms.nullify."""
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements.transforms import nullify_out_of_bounds
+from pymovements.transforms import nullify
 
 
 @pytest.mark.parametrize(
@@ -120,23 +120,23 @@ from pymovements.transforms import nullify_out_of_bounds
         ),
     ],
 )
-def test_nullify_out_of_bounds_returns(kwargs, series, expected_df):
+def test_nullify_returns(kwargs, series, expected_df):
     df = pl.DataFrame(series)
     result_df = df.select(
-        nullify_out_of_bounds(
+        nullify(
             input_column='velocity', output_column='velocity', **kwargs,
         ),
     )
     assert_frame_equal(result_df, expected_df)
 
 
-def test_nullify_out_of_bounds_writes_output_column():
+def test_nullify_writes_output_column():
     df = pl.DataFrame(
         {'velocity': [[1., 2.], [30., 4.]]},
         schema={'velocity': pl.List(pl.Float64)},
     )
     result_df = df.with_columns(
-        nullify_out_of_bounds(
+        nullify(
             lower_bound=0, upper_bound=10, n_components=2,
             input_column='velocity', output_column='velocity_nulled',
         ),
