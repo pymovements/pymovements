@@ -185,7 +185,8 @@ For running a specific hook on all git repository files use
 pre-commit run mypy -a
 ```
 
-pylint is not a pre-commit hook. Run it in its tox environment:
+pylint runs as a pre-commit hook on your machine, where the dev install above provides the
+package it needs. pre-commit.ci skips it, CI runs it in its tox environment:
 
 ```bash
 tox -e pylint
