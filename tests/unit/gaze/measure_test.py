@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Gaze.measure_samples method."""
-
 import numpy as np
 import polars as pl
 import pytest
@@ -49,13 +48,13 @@ def my_test_measure(column: str) -> pl.Expr:
             pl.DataFrame(data={'null_ratio': [0.0]}),
             id='null_ratio_int_column_no_nulls',
         ),
+
         pytest.param(
             {
                 'samples': pl.from_dict(
                     data={
                         'A': [1000, None, None, 1003],
-                    },
-                    schema={'A': pl.Int64},
+                    }, schema={'A': pl.Int64},
                 ),
             },
             'null_ratio',
@@ -63,13 +62,13 @@ def my_test_measure(column: str) -> pl.Expr:
             pl.DataFrame(data={'null_ratio': [0.5]}),
             id='null_ratio_int_column_half_nulls',
         ),
+
         pytest.param(
             {
                 'samples': pl.from_dict(
                     data={
                         'A': [1.0, np.nan, np.nan, 1.3],
-                    },
-                    schema={'A': pl.Float64},
+                    }, schema={'A': pl.Float64},
                 ),
             },
             'null_ratio',
@@ -77,13 +76,13 @@ def my_test_measure(column: str) -> pl.Expr:
             pl.DataFrame(data={'null_ratio': [0.5]}),
             id='null_ratio_int_column_half_nans',
         ),
+
         pytest.param(
             {
                 'samples': pl.from_dict(
                     data={
                         'A': [None, None, None, None],
-                    },
-                    schema={'A': pl.Int64},
+                    }, schema={'A': pl.Int64},
                 ),
             },
             'null_ratio',
@@ -91,13 +90,13 @@ def my_test_measure(column: str) -> pl.Expr:
             pl.DataFrame(data={'null_ratio': [1.0]}),
             id='null_ratio_int_column_all_nulls',
         ),
+
         pytest.param(
             {
                 'samples': pl.from_dict(
                     data={
                         'A': [0.0, 0.1, 0.2, 0.3],
-                    },
-                    schema={'A': pl.Float64},
+                    }, schema={'A': pl.Float64},
                 ),
             },
             'null_ratio',
@@ -105,13 +104,13 @@ def my_test_measure(column: str) -> pl.Expr:
             pl.DataFrame(data={'null_ratio': [0.0]}),
             id='null_ratio_float_column_no_nulls',
         ),
+
         pytest.param(
             {
                 'samples': pl.from_dict(
                     data={
                         'A': [0.0, None, None, 0.3],
-                    },
-                    schema={'A': pl.Float64},
+                    }, schema={'A': pl.Float64},
                 ),
             },
             'null_ratio',
@@ -119,13 +118,13 @@ def my_test_measure(column: str) -> pl.Expr:
             pl.DataFrame(data={'null_ratio': [0.5]}),
             id='null_ratio_float_column_half_nulls',
         ),
+
         pytest.param(
             {
                 'samples': pl.from_dict(
                     data={
                         'A': [None, None, None, None],
-                    },
-                    schema={'A': pl.Float64},
+                    }, schema={'A': pl.Float64},
                 ),
             },
             'null_ratio',
@@ -133,13 +132,13 @@ def my_test_measure(column: str) -> pl.Expr:
             pl.DataFrame(data={'null_ratio': [1.0]}),
             id='null_ratio_float_column_all_nulls',
         ),
+
         pytest.param(
             {
                 'samples': pl.from_dict(
                     data={
                         'A': ['a', 'b', 'c', 'd'],
-                    },
-                    schema={'A': pl.Utf8},
+                    }, schema={'A': pl.Utf8},
                 ),
             },
             'null_ratio',
@@ -147,13 +146,13 @@ def my_test_measure(column: str) -> pl.Expr:
             pl.DataFrame(data={'null_ratio': [0.0]}),
             id='null_ratio_str_column_no_nulls',
         ),
+
         pytest.param(
             {
                 'samples': pl.from_dict(
                     data={
                         'A': ['a', None, None, 'd'],
-                    },
-                    schema={'A': pl.Utf8},
+                    }, schema={'A': pl.Utf8},
                 ),
             },
             'null_ratio',
@@ -161,13 +160,13 @@ def my_test_measure(column: str) -> pl.Expr:
             pl.DataFrame(data={'null_ratio': [0.5]}),
             id='null_ratio_str_column_half_nulls',
         ),
+
         pytest.param(
             {
                 'samples': pl.from_dict(
                     data={
                         'A': [None, None, None, None],
-                    },
-                    schema={'A': pl.Utf8},
+                    }, schema={'A': pl.Utf8},
                 ),
             },
             'null_ratio',
@@ -175,6 +174,7 @@ def my_test_measure(column: str) -> pl.Expr:
             pl.DataFrame(data={'null_ratio': [1.0]}),
             id='null_ratio_str_column_all_nulls',
         ),
+
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -188,13 +188,12 @@ def my_test_measure(column: str) -> pl.Expr:
             pl.DataFrame(data={'null_ratio': [0.0]}),
             id='null_ratio_pixel_no_nulls',
         ),
+
         pytest.param(
             {
                 'samples': pl.from_dict(
                     data={
-                        't': [1000, 1001, 1002],
-                        'x': [None, None, None],
-                        'y': [None, None, None],
+                        't': [1000, 1001, 1002], 'x': [None, None, None], 'y': [None, None, None],
                     },
                 ),
                 'time_column': 't',
@@ -205,13 +204,12 @@ def my_test_measure(column: str) -> pl.Expr:
             pl.DataFrame(data={'null_ratio': [1.0]}),
             id='null_ratio_pixel_all_nulls',
         ),
+
         pytest.param(
             {
                 'samples': pl.from_dict(
                     data={
-                        't': [1000, 1001],
-                        'x': [0.1, None],
-                        'y': [0.2, None],
+                        't': [1000, 1001], 'x': [0.1, None], 'y': [0.2, None],
                     },
                 ),
                 'time_column': 't',
@@ -222,13 +220,12 @@ def my_test_measure(column: str) -> pl.Expr:
             pl.DataFrame(data={'null_ratio': [0.5]}),
             id='null_ratio_pixel_half_nulls',
         ),
+
         pytest.param(
             {
                 'samples': pl.DataFrame(
                     data={
-                        't': [1000, 1001],
-                        'x': [0.1, np.nan],
-                        'y': [0.2, np.nan],
+                        't': [1000, 1001], 'x': [0.1, np.nan], 'y': [0.2, np.nan],
                     },
                 ),
                 'time_column': 't',
@@ -239,13 +236,12 @@ def my_test_measure(column: str) -> pl.Expr:
             pl.DataFrame(data={'null_ratio': [0.5]}),
             id='null_ratio_pixel_half_nans',
         ),
+
         pytest.param(
             {
                 'samples': pl.from_dict(
                     data={
-                        't': [1000, 1001],
-                        'x': [0.1, None],
-                        'y': [0.2, None],
+                        't': [1000, 1001], 'x': [0.1, None], 'y': [0.2, None],
                     },
                 ),
                 'time_column': 't',
@@ -256,13 +252,12 @@ def my_test_measure(column: str) -> pl.Expr:
             pl.DataFrame(data={'null_ratio': [0.5]}),
             id='null_ratio_position_half_nulls',
         ),
+
         pytest.param(
             {
                 'samples': pl.from_dict(
                     data={
-                        't': [1000, 1001],
-                        'x': [0.1, None],
-                        'y': [0.2, None],
+                        't': [1000, 1001], 'x': [0.1, None], 'y': [0.2, None],
                     },
                 ),
                 'time_column': 't',
@@ -273,6 +268,7 @@ def my_test_measure(column: str) -> pl.Expr:
             pl.DataFrame(data={'null_ratio': [0.5]}),
             id='null_ratio_velocity_half_nulls',
         ),
+
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -286,6 +282,7 @@ def my_test_measure(column: str) -> pl.Expr:
             pl.DataFrame(data={'trial': [1], 'null_ratio': [0.0]}),
             id='null_ratio_int_column_no_nulls_single_trial',
         ),
+
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -299,13 +296,13 @@ def my_test_measure(column: str) -> pl.Expr:
             pl.DataFrame(data={'trial': [1, 2], 'null_ratio': [0.0, 1.0]}),
             id='null_ratio_int_column_no_nulls_two_trials',
         ),
+
         pytest.param(
             {
                 'samples': pl.from_dict(
                     data={
                         'A': [1000, 1001, 1002, 1003],
-                    },
-                    schema={'A': pl.Int64},
+                    }, schema={'A': pl.Int64},
                 ),
             },
             my_test_measure,

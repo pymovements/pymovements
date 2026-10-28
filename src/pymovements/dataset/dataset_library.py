@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """DatasetLibrary module."""
-
 from __future__ import annotations
 
 from copy import deepcopy
@@ -90,7 +89,7 @@ class DatasetLibrary:
         if name not in cls.definitions:
             raise KeyError(
                 f"Dataset '{name}' not found in DatasetLibrary. "
-                f'Available datasets: {sorted(cls.definitions.keys())}',
+                f"Available datasets: {sorted(cls.definitions.keys())}",
             )
         return deepcopy(cls.definitions[name])
 
@@ -104,7 +103,7 @@ class DatasetLibrary:
             List of dataset names that are available in
             :py:class:`~pymovements.DatasetLibrary`.
         """
-        return sorted(cls.definitions.keys())
+        return sorted(list(cls.definitions.keys()))
 
 
 DatasetDefinitionClass = TypeVar('DatasetDefinitionClass', bound=type[DatasetDefinition])

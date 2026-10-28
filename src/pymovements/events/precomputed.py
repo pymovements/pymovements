@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Module for the precomputed events dataframe."""
-
 from __future__ import annotations
 
 import polars as pl
@@ -37,4 +36,5 @@ class PrecomputedEventDataFrame:
     """
 
     def __init__(self, data: pl.DataFrame) -> None:
+
         self.frame = data.clone()

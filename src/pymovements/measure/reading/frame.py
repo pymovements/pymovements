@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Module for the Reading Measure DataFrame."""
-
 from __future__ import annotations
 
 import polars as pl
@@ -37,4 +36,5 @@ class ReadingMeasures:
     """
 
     def __init__(self, reading_measure_df: pl.DataFrame) -> None:
+
         self.frame = reading_measure_df.clone()

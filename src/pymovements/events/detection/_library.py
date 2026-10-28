@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides the EventDetectionLibrary."""
-
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -77,7 +76,7 @@ class EventDetectionLibrary:
 
 
 def register_event_detection(
-    method: Callable[..., Events],
+        method: Callable[..., Events],
 ) -> Callable[..., Events]:
     """Register an event detection method.
 

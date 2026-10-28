@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests pymovements asc to csv processing - shared functionality."""
-
 import pytest
 
 from pymovements.gaze._utils import _parsing
@@ -44,17 +43,12 @@ from pymovements.gaze._utils import _parsing
     ],
 )
 def test_calculate_data_loss_ratio(
-    num_expected_samples,
-    num_actual_samples,
-    num_blink_samples,
-    expected_total,
-    expected_blink,
+        num_expected_samples, num_actual_samples, num_blink_samples,
+        expected_total, expected_blink,
 ):
     """Test data loss ratio calculation."""
     total, blink = _parsing._calculate_data_loss_ratio(
-        num_expected_samples,
-        num_actual_samples,
-        num_blink_samples,
+        num_expected_samples, num_actual_samples, num_blink_samples,
     )
     assert total == expected_total
     assert blink == expected_blink

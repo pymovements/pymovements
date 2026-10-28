@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides a definition for the OneStop dataset."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -102,7 +101,8 @@ class OneStop(DatasetDefinition):
     _: KW_ONLY  # all fields below can only be passed as a positional argument.
 
     long_name: str = (
-        'OneStop: A 360-Participant English Eye Tracking Dataset with Different Reading Regimes'
+        'OneStop: A 360-Participant English Eye Tracking Dataset with '
+        'Different Reading Regimes'
     )
 
     resources: ResourceDefinitions = field(

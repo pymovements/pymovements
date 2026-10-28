@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test all functions in pymovements.transforms."""
-
 import numpy as np
 import pytest
 
@@ -512,8 +511,8 @@ def test_pos2acc_returns(kwargs, padding, expected_value):
     actual_value = pos2acc(**kwargs)
 
     assert np.allclose(
-        actual_value[padding[0] : padding[1]],
-        expected_value[padding[0] : padding[1]],
+        actual_value[padding[0]:padding[1]],
+        expected_value[padding[0]:padding[1]],
     )
 
 
@@ -625,7 +624,7 @@ def test_pos2vel_raises_error(kwargs, expected_error):
 )
 def test_pos2vel_returns(method, kwargs, padding, expected_value):
     actual_value = pos2vel(method=method, **kwargs)
-    assert (actual_value[padding[0] : padding[1]] == expected_value[padding[0] : padding[1]]).all()
+    assert (actual_value[padding[0]:padding[1]] == expected_value[padding[0]:padding[1]]).all()
 
 
 @pytest.mark.parametrize(
@@ -648,13 +647,11 @@ def test_pos2vel_returns(method, kwargs, padding, expected_value):
         ),
         pytest.param(
             {'method': 'savitzky_golay', 'window_length': 7, 'polyorder': 2, 'sampling_rate': 1},
-            np.concatenate(
-                [
-                    np.array([0.71428571, 0.80952381, 0.9047619]),
-                    np.ones((94,)),
-                    np.array([0.9047619, 0.80952381, 0.71428571]),
-                ]
-            ),
+            np.concatenate([
+                np.array([0.71428571, 0.80952381, 0.9047619]),
+                np.ones((94,)),
+                np.array([0.9047619, 0.80952381, 0.71428571]),
+            ]),
             id='method_savitzky_golay_linear_velocity',
         ),
     ],
@@ -675,25 +672,19 @@ def test_pos2vel_stepped_input_returns(params, expected_value):
     [
         pytest.param(
             {'method': 'savitzky_golay', 'window_length': 7, 'polyorder': 2, 'sampling_rate': 1},
-            np.concatenate(
-                [
-                    np.array(
-                        [
-                            [0.71428571, 0.71428571],
-                            [0.80952381, 0.80952381],
-                            [0.9047619, 0.9047619],
-                        ]
-                    ),
-                    np.ones((94, 2)),
-                    np.array(
-                        [
-                            [0.9047619, 0.9047619],
-                            [0.80952381, 0.80952381],
-                            [0.71428571, 0.71428571],
-                        ]
-                    ),
-                ]
-            ),
+            np.concatenate([
+                np.array([
+                    [0.71428571, 0.71428571],
+                    [0.80952381, 0.80952381],
+                    [0.9047619, 0.9047619],
+                ]),
+                np.ones((94, 2)),
+                np.array([
+                    [0.9047619, 0.9047619],
+                    [0.80952381, 0.80952381],
+                    [0.71428571, 0.71428571],
+                ]),
+            ]),
             id='method_savitzky_golay_linear_velocity_2d_input',
         ),
     ],
@@ -715,12 +706,10 @@ def test_pos2vel_2d_stepped_input_returns(params, expected_value):
     [
         pytest.param(
             {'arr': np.ones((2, 2, 5)), 'axis': None},
-            np.array(
-                [
-                    [1.41421356, 1.41421356, 1.41421356, 1.41421356, 1.41421356],
-                    [1.41421356, 1.41421356, 1.41421356, 1.41421356, 1.41421356],
-                ]
-            ),
+            np.array([
+                [1.41421356, 1.41421356, 1.41421356, 1.41421356, 1.41421356],
+                [1.41421356, 1.41421356, 1.41421356, 1.41421356, 1.41421356],
+            ]),
             id='3_dim_array_no_axis',
         ),
         pytest.param(
@@ -730,18 +719,16 @@ def test_pos2vel_2d_stepped_input_returns(params, expected_value):
         ),
         pytest.param(
             {'arr': np.ones((2, 2, 2, 2)), 'axis': 2},
-            np.array(
+            np.array([
                 [
-                    [
-                        [1.41421356, 1.41421356],
-                        [1.41421356, 1.41421356],
-                    ],
-                    [
-                        [1.41421356, 1.41421356],
-                        [1.41421356, 1.41421356],
-                    ],
-                ]
-            ),
+                    [1.41421356, 1.41421356],
+                    [1.41421356, 1.41421356],
+                ],
+                [
+                    [1.41421356, 1.41421356],
+                    [1.41421356, 1.41421356],
+                ],
+            ]),
             id='4_dim_array_with_axis',
         ),
     ],
@@ -792,14 +779,10 @@ def test_norm_raises_exception(params, expected_error):
         pytest.param(
             {'arr': np.ones((1, 11, 2)), 'window_size': 5, 'keep_padded': True},
             {
-                'value': np.concatenate(
-                    [
-                        np.ones((2, 5, 2)),
-                        np.expand_dims(
-                            np.concatenate([np.ones((1, 2)), np.ones((4, 2)) * np.nan]), 0
-                        ),
-                    ]
-                ),
+                'value': np.concatenate([
+                    np.ones((2, 5, 2)),
+                    np.expand_dims(np.concatenate([np.ones((1, 2)), np.ones((4, 2)) * np.nan]), 0),
+                ]),
             },
             id='length_double_window_size+1_not_keep_padded_returns_three_instances',
         ),
@@ -811,18 +794,12 @@ def test_norm_raises_exception(params, expected_error):
         pytest.param(
             {'arr': np.ones((2, 11, 2)), 'window_size': 5, 'keep_padded': True},
             {
-                'value': np.concatenate(
-                    [
-                        np.ones((2, 5, 2)),
-                        np.expand_dims(
-                            np.concatenate([np.ones((1, 2)), np.ones((4, 2)) * np.nan]), 0
-                        ),
-                        np.ones((2, 5, 2)),
-                        np.expand_dims(
-                            np.concatenate([np.ones((1, 2)), np.ones((4, 2)) * np.nan]), 0
-                        ),
-                    ]
-                ),
+                'value': np.concatenate([
+                    np.ones((2, 5, 2)),
+                    np.expand_dims(np.concatenate([np.ones((1, 2)), np.ones((4, 2)) * np.nan]), 0),
+                    np.ones((2, 5, 2)),
+                    np.expand_dims(np.concatenate([np.ones((1, 2)), np.ones((4, 2)) * np.nan]), 0),
+                ]),
             },
             id='two_instances_length_double_window_size+1_not_keep_padded_returns_six_instances',
         ),
@@ -837,5 +814,5 @@ def test_cut_into_subsequences(params, expected):
     arr = split(**params)
 
     assert np.array_equal(arr, expected['value'], equal_nan=True), (
-        f'arr = {arr}, expected = {expected["value"]}'
+        f"arr = {arr}, expected = {expected['value']}"
     )

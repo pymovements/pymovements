@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test functionality of the blink detection algorithm."""
-
 from __future__ import annotations
 
 import numpy as np
@@ -165,13 +164,11 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
             # expanding the blink by 1 sample on the right side.
             # Flagged region: samples 10..90, duration = 80.
             {
-                'pupil': np.concatenate(
-                    [
-                        np.full(10, 500.0),
-                        np.full(80, 0.0),
-                        np.full(110, 500.0),
-                    ]
-                ),
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, 0.0),
+                    np.full(110, 500.0),
+                ]),
                 'timesteps': np.arange(200, dtype=int),
             },
             Events(name='blink', onsets=[10], offsets=[90]),
@@ -182,13 +179,11 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
             # so only the NaN samples themselves are candidate_mask.
             # Flagged region: samples 10..89, duration = 79.
             {
-                'pupil': np.concatenate(
-                    [
-                        np.full(10, 500.0),
-                        np.full(80, np.nan),
-                        np.full(110, 500.0),
-                    ]
-                ),
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, np.nan),
+                    np.full(110, 500.0),
+                ]),
                 'timesteps': np.arange(200, dtype=int),
             },
             Events(name='blink', onsets=[10], offsets=[89]),
@@ -197,13 +192,11 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
         pytest.param(
             # NaN blink with explicit timesteps starting at 1000.
             {
-                'pupil': np.concatenate(
-                    [
-                        np.full(10, 500.0),
-                        np.full(80, np.nan),
-                        np.full(110, 500.0),
-                    ]
-                ),
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, np.nan),
+                    np.full(110, 500.0),
+                ]),
                 'timesteps': np.arange(1000, 1200, dtype=int),
             },
             Events(name='blink', onsets=[1010], offsets=[1089]),
@@ -212,15 +205,13 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
         pytest.param(
             # Two NaN blinks of 80 ms each, separated by 100 good samples.
             {
-                'pupil': np.concatenate(
-                    [
-                        np.full(10, 500.0),
-                        np.full(80, np.nan),
-                        np.full(100, 500.0),
-                        np.full(80, np.nan),
-                        np.full(30, 500.0),
-                    ]
-                ),
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, np.nan),
+                    np.full(100, 500.0),
+                    np.full(80, np.nan),
+                    np.full(30, 500.0),
+                ]),
                 'timesteps': np.arange(300, dtype=int),
                 'minimum_gap': 0,
             },
@@ -232,15 +223,13 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
             # Region 1: 10..89, gap: 90,91,92, Region 2: 93..172.
             # After absorption: single event 10..172, duration = 162.
             {
-                'pupil': np.concatenate(
-                    [
-                        np.full(10, 500.0),
-                        np.full(80, np.nan),
-                        np.full(3, 500.0),
-                        np.full(80, np.nan),
-                        np.full(27, 500.0),
-                    ]
-                ),
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, np.nan),
+                    np.full(3, 500.0),
+                    np.full(80, np.nan),
+                    np.full(27, 500.0),
+                ]),
                 'timesteps': np.arange(200, dtype=int),
                 'minimum_gap': 3,
                 'minimum_candidates_around_gap': 2,
@@ -253,15 +242,13 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
             # Region 1: 10..89, gap: 90,91,92, Region 2: 93..172.
             # Not absorbed because left region shorter than minimum candidate duration.
             {
-                'pupil': np.concatenate(
-                    [
-                        np.full(10, 500.0),
-                        np.full(80, np.nan),
-                        np.full(3, 500.0),
-                        np.full(80, np.nan),
-                        np.full(27, 500.0),
-                    ]
-                ),
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, np.nan),
+                    np.full(3, 500.0),
+                    np.full(80, np.nan),
+                    np.full(27, 500.0),
+                ]),
                 'timesteps': np.arange(200, dtype=int),
                 'minimum_gap': 3,
                 'minimum_candidates_around_gap': (15, 2),
@@ -272,15 +259,13 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
         pytest.param(
             # Same layout but absorption disabled — two separate blink events.
             {
-                'pupil': np.concatenate(
-                    [
-                        np.full(10, 500.0),
-                        np.full(80, np.nan),
-                        np.full(3, 500.0),
-                        np.full(80, np.nan),
-                        np.full(27, 500.0),
-                    ]
-                ),
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, np.nan),
+                    np.full(3, 500.0),
+                    np.full(80, np.nan),
+                    np.full(27, 500.0),
+                ]),
                 'timesteps': np.arange(200, dtype=int),
                 'minimum_gap': 0,
             },
@@ -290,13 +275,11 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
         pytest.param(
             # 30 ms NaN blink — below default minimum_duration=50, filtered out.
             {
-                'pupil': np.concatenate(
-                    [
-                        np.full(10, 500.0),
-                        np.full(31, np.nan),
-                        np.full(159, 500.0),
-                    ]
-                ),
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(31, np.nan),
+                    np.full(159, 500.0),
+                ]),
                 'timesteps': np.arange(200, dtype=int),
                 'minimum_gap': 0,
             },
@@ -306,13 +289,11 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
         pytest.param(
             # 600 ms NaN blink — above default maximum_duration=500, filtered out.
             {
-                'pupil': np.concatenate(
-                    [
-                        np.full(10, 500.0),
-                        np.full(601, np.nan),
-                        np.full(89, 500.0),
-                    ]
-                ),
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(601, np.nan),
+                    np.full(89, 500.0),
+                ]),
                 'timesteps': np.arange(700, dtype=int),
                 'minimum_gap': 0,
             },
@@ -322,13 +303,11 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
         pytest.param(
             # maximum_duration=None disables upper bound — 600 ms blink passes.
             {
-                'pupil': np.concatenate(
-                    [
-                        np.full(10, 500.0),
-                        np.full(601, np.nan),
-                        np.full(89, 500.0),
-                    ]
-                ),
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(601, np.nan),
+                    np.full(89, 500.0),
+                ]),
                 'timesteps': np.arange(700, dtype=int),
                 'minimum_gap': 0,
                 'maximum_duration': None,
@@ -357,13 +336,11 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
         ),
         pytest.param(
             {
-                'pupil': np.concatenate(
-                    [
-                        np.full(10, 500.0),
-                        np.full(80, np.nan),
-                        np.full(110, 500.0),
-                    ]
-                ),
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, np.nan),
+                    np.full(110, 500.0),
+                ]),
                 'timesteps': np.arange(200, dtype=int),
                 'name': 'my_blink',
             },
@@ -400,13 +377,11 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
             # transition samples. With minimum_gap=0, only the two edge
             # transitions are candidate_mask as separate short events.
             {
-                'pupil': np.concatenate(
-                    [
-                        np.full(10, 500.0),
-                        np.full(80, 100.0),
-                        np.full(110, 500.0),
-                    ]
-                ),
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, 100.0),
+                    np.full(110, 500.0),
+                ]),
                 'timesteps': np.arange(200, dtype=int),
                 'delta': 50.0,
                 'minimum_duration': 0,
@@ -422,13 +397,11 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
             # transition samples. With minimum_gap=0, only the two edge
             # transitions are candidate_mask as separate short events.
             {
-                'pupil': np.concatenate(
-                    [
-                        np.full(10, 500.0),
-                        np.full(80, 100.0),
-                        np.full(110, 500.0),
-                    ]
-                ),
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, 100.0),
+                    np.full(110, 500.0),
+                ]),
                 'timesteps': np.arange(200, dtype=int),
                 'delta': 50.0,
                 'minimum_duration': 1,
@@ -444,13 +417,11 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
             # samples before it, so absorption is rejected (False branch of
             # _merge_blink_candidates line 256).
             {
-                'pupil': np.concatenate(
-                    [
-                        np.full(2, 500.0),
-                        np.full(80, np.nan),
-                        np.full(118, 500.0),
-                    ]
-                ),
+                'pupil': np.concatenate([
+                    np.full(2, 500.0),
+                    np.full(80, np.nan),
+                    np.full(118, 500.0),
+                ]),
                 'timesteps': np.arange(200, dtype=int),
                 'minimum_gap': 3,
                 'minimum_candidates_around_gap': 2,

@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test writing_system parameter in TextStimulus class."""
-
 import pytest
 
 from pymovements.stimulus.text import WritingSystem

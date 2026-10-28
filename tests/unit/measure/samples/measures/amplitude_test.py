@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test module pymovements.events.event_properties."""
-
 import numpy as np
 import polars as pl
 import pytest
@@ -60,6 +59,7 @@ def test_amplitude_exceptions(init_kwargs, input_df, exception, message):
             ),
             id='one_sample',
         ),
+
         pytest.param(
             {},
             pl.DataFrame(
@@ -72,6 +72,7 @@ def test_amplitude_exceptions(init_kwargs, input_df, exception, message):
             ),
             id='two_samples_x_move',
         ),
+
         pytest.param(
             {},
             pl.DataFrame(
@@ -84,6 +85,7 @@ def test_amplitude_exceptions(init_kwargs, input_df, exception, message):
             ),
             id='two_samples_y_move',
         ),
+
         pytest.param(
             {},
             pl.DataFrame(

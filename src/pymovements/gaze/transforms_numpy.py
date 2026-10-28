@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Transforms module."""
-
 from __future__ import annotations
 
 from typing import Any
@@ -30,11 +29,11 @@ from pymovements._utils import _checks
 
 
 def pix2deg(
-    arr: float | list[float] | list[list[float]] | np.ndarray,
-    screen_px: float | list[float] | tuple[float, float] | np.ndarray,
-    screen_cm: float | list[float] | tuple[float, float] | np.ndarray,
-    distance_cm: float,
-    origin: str,
+        arr: float | list[float] | list[list[float]] | np.ndarray,
+        screen_px: float | list[float] | tuple[float, float] | np.ndarray,
+        screen_cm: float | list[float] | tuple[float, float] | np.ndarray,
+        distance_cm: float,
+        origin: str,
 ) -> np.ndarray:
     """Convert pixel screen coordinates to degrees of visual angle.
 
@@ -117,11 +116,13 @@ def pix2deg(
     # Check basic arr dimensions.
     if arr.ndim not in [0, 1, 2]:
         raise ValueError(
-            f'Number of dimensions of arr must be either 0, 1 or 2 (arr.ndim: {arr.ndim})',
+            'Number of dimensions of arr must be either 0, 1 or 2'
+            f' (arr.ndim: {arr.ndim})',
         )
     if arr.ndim == 2 and arr.shape[-1] not in [1, 2, 4, 6]:
         raise ValueError(
-            f'Last coord dimension must have length 1, 2, 4 or 6. (arr.shape: {arr.shape})',
+            'Last coord dimension must have length 1, 2, 4 or 6.'
+            f' (arr.shape: {arr.shape})',
         )
 
     # check if arr dimensions match screen_px and screen_cm dimensions
@@ -169,12 +170,12 @@ def pix2deg(
 
 
 def pos2acc(
-    arr: list[float] | list[list[float]] | np.ndarray,
-    sampling_rate: float,
-    window_length: int = 7,
-    degree: int = 2,
-    mode: str = 'interp',
-    cval: float = 0.0,
+        arr: list[float] | list[list[float]] | np.ndarray,
+        sampling_rate: float,
+        window_length: int = 7,
+        degree: int = 2,
+        mode: str = 'interp',
+        cval: float = 0.0,
 ) -> np.ndarray:
     """Compute velocity time series from 2-dimensional position time series.
 
@@ -237,6 +238,7 @@ def pos2acc(
             cval=cval,
         )
     else:  # we already checked for error cases
+
         for channel_id in range(arr.shape[1]):
             acc[:, channel_id] = savgol_filter(
                 x=arr[:, channel_id],
@@ -252,10 +254,10 @@ def pos2acc(
 
 
 def pos2vel(
-    arr: list[float] | list[list[float]] | np.ndarray,
-    sampling_rate: float = 1000,
-    method: str = 'smooth',
-    **kwargs: int | float | str,
+        arr: list[float] | list[list[float]] | np.ndarray,
+        sampling_rate: float = 1000,
+        method: str = 'smooth',
+        **kwargs: int | float | str,
 ) -> np.ndarray:
     """Compute velocity time series from 2-dimensional position time series.
 
@@ -330,7 +332,7 @@ def pos2vel(
         )
     if method != 'savitzky_golay' and kwargs:
         raise ValueError(
-            "selected method doesn't support any additional kwargs",
+            'selected method doesn\'t support any additional kwargs',
         )
 
     N = arr.shape[0]
@@ -339,11 +341,11 @@ def pos2vel(
     valid_methods = ['smooth', 'neighbors', 'preceding', 'savitzky_golay']
     if method == 'smooth':
         # center is N - 2
-        moving_avg = arr[4:N] + arr[3 : N - 1] - arr[1 : N - 3] - arr[0 : N - 4]
+        moving_avg = arr[4:N] + arr[3:N - 1] - arr[1:N - 3] - arr[0:N - 4]
         # mean(arr_-2, arr_-1) and mean(arr_1, arr_2) needs division by two
         # window is now 3 samples long (arr_-1.5, arr_0, arr_1+5)
         # we therefore need a division by three. All in all it's a division by 6
-        v[2 : N - 2] = moving_avg * sampling_rate / 6
+        v[2:N - 2] = moving_avg * sampling_rate / 6
 
         # for second and second last sample:
         # calculate velocity from preceding and subsequent sample
@@ -357,27 +359,27 @@ def pos2vel(
 
     elif method == 'neighbors':
         # window size is two, so we need to divide by two
-        v[1 : N - 1] = (arr[2:N] - arr[0 : N - 2]) * sampling_rate / 2
+        v[1:N - 1] = (arr[2:N] - arr[0:N - 2]) * sampling_rate / 2
 
     elif method == 'preceding':
-        v[1:N] = (arr[1:N] - arr[0 : N - 1]) * sampling_rate
+        v[1:N] = (arr[1:N] - arr[0:N - 1]) * sampling_rate
 
     elif method == 'savitzky_golay':
         # transform to velocities
         if arr.ndim == 1:
             v = savgol_filter(x=arr, deriv=1, **kwargs)
         else:  # we already checked for error cases
+
             for channel_id in range(arr.shape[1]):
                 v[:, channel_id] = savgol_filter(
-                    x=arr[:, channel_id],
-                    deriv=1,
-                    **kwargs,
+                    x=arr[:, channel_id], deriv=1, **kwargs,
                 )
         v *= sampling_rate
 
     else:
         raise ValueError(
-            f'Method needs to be in {valid_methods} (is: {method})',
+            f'Method needs to be in {valid_methods}'
+            f' (is: {method})',
         )
 
     return v
@@ -437,9 +439,9 @@ def norm(arr: np.ndarray, axis: int | None = None) -> np.ndarray | Any:
 
 
 def split(
-    arr: np.ndarray,
-    window_size: int,
-    keep_padded: bool = True,
+        arr: np.ndarray,
+        window_size: int,
+        keep_padded: bool = True,
 ) -> np.ndarray:
     """Split sequence into subsequences of equal length.
 
@@ -519,7 +521,7 @@ def split(
         arr_split_list = np.split(arr_instance, split_indices)
 
         # Put the first n elements of split list into output array.
-        arr_split[idx : idx + n] = arr_split_list[:-1]
+        arr_split[idx:idx + n] = arr_split_list[:-1]
         idx += n
 
         if rest > 0 and keep_padded:
@@ -531,8 +533,8 @@ def split(
 
 
 def downsample(
-    arr: np.ndarray,
-    factor: int,
+        arr: np.ndarray,
+        factor: int,
 ) -> np.ndarray:
     """Downsamples array by integer factor.
 

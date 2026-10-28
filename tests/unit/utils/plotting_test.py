@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test pymovements plotting utils."""
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
@@ -81,11 +80,13 @@ def test_draw_line_data(axes):
             },
             id='_setup_matplotlib',
         ),
+
         pytest.param(
             draw_image_stimulus,
             {},
             id='draw_image_stimulus',
         ),
+
         pytest.param(
             draw_line_data,
             {},
@@ -101,4 +102,5 @@ def test_plotting_function_removed(plotting_function, kwargs, assert_deprecation
         function_name='utils/filters.py',
         warning_message=info.value.args[0],
         scheduled_version='0.27.0',
+
     )

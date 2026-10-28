@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test pymovements.gaze.transforms.pos2vel."""
-
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
@@ -43,11 +42,8 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'savitzky_golay',
-                'window_length': 1,
-                'degree': 0,
-                'sampling_rate': 1,
-                'n_components': 2,
+                'method': 'savitzky_golay', 'window_length': 1,
+                'degree': 0, 'sampling_rate': 1, 'n_components': 2,
             },
             ValueError,
             ('degree', 'must', 'greater than zero'),
@@ -55,11 +51,8 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'savitzky_golay',
-                'window_length': 3,
-                'degree': 1.0,
-                'sampling_rate': 1,
-                'n_components': 2,
+                'method': 'savitzky_golay', 'window_length': 3,
+                'degree': 1.0, 'sampling_rate': 1, 'n_components': 2,
             },
             TypeError,
             ('degree', "must be of type 'int'", "is of type 'float'"),
@@ -67,11 +60,8 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'savitzky_golay',
-                'window_length': 1,
-                'degree': 1,
-                'sampling_rate': 1,
-                'n_components': 2,
+                'method': 'savitzky_golay', 'window_length': 1,
+                'degree': 1, 'sampling_rate': 1, 'n_components': 2,
             },
             ValueError,
             ("'degree' must be less than 'window_length'"),
@@ -79,11 +69,8 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'savitzky_golay',
-                'window_length': 1,
-                'degree': 2,
-                'sampling_rate': 1,
-                'n_components': 2,
+                'method': 'savitzky_golay', 'window_length': 1,
+                'degree': 2, 'sampling_rate': 1, 'n_components': 2,
             },
             ValueError,
             ("'degree' must be less than 'window_length'"),
@@ -107,45 +94,25 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'savitzky_golay',
-                'window_length': 3,
-                'degree': 1,
-                'padding': 'foobar',
-                'sampling_rate': 1,
-                'n_components': 2,
+                'method': 'savitzky_golay', 'window_length': 3,
+                'degree': 1, 'padding': 'foobar', 'sampling_rate': 1, 'n_components': 2,
             },
             ValueError,
             (
-                'padding',
-                'invalid',
-                'foobar',
-                'valid',
-                'mirror',
-                'nearest',
-                'wrap',
-                'None',
-                'scalar',
+                'padding', 'invalid', 'foobar',
+                'valid', 'mirror', 'nearest', 'wrap', 'None', 'scalar',
             ),
             id='invalid_padding_raises_value_error',
         ),
         pytest.param(
             {
-                'method': 'foobar',
-                'window_length': 3,
-                'degree': 1,
-                'sampling_rate': 1,
+                'method': 'foobar', 'window_length': 3, 'degree': 1, 'sampling_rate': 1,
                 'n_components': 2,
             },
             ValueError,
             (
-                'unknown',
-                'method',
-                "'foobar'",
-                'supported methods',
-                'preceding',
-                'neighbors',
-                'smooth',
-                'savitzky_golay',
+                'unknown', 'method', "'foobar'", 'supported methods', 'preceding', 'neighbors',
+                'smooth', 'savitzky_golay',
             ),
             id='unknown_method_raises_value_error',
         ),
@@ -155,7 +122,7 @@ def test_pos2vel_init_raises_error(kwargs, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
         pm.gaze.transforms.pos2vel(**kwargs)
 
-    (msg,) = excinfo.value.args
+    msg, = excinfo.value.args
     for msg_substring in msg_substrings:
         assert msg_substring.lower() in msg.lower()
 
@@ -165,16 +132,12 @@ def test_pos2vel_init_raises_error(kwargs, exception, msg_substrings):
     [
         pytest.param(
             {
-                'method': 'savitzky_golay',
-                'window_length': 3,
-                'degree': 1,
-                'padding': None,
-                'sampling_rate': 1,
-                'n_components': 2,
+                'method': 'savitzky_golay', 'window_length': 3,
+                'degree': 1, 'padding': None, 'sampling_rate': 1, 'n_components': 2,
             },
             pl.Series('position', [[1, 1]], pl.List(pl.Float64)),
             ValueError,
-            ("If mode is 'interp', window_length must be less than or equal to the size of x",),
+            ('If mode is \'interp\', window_length must be less than or equal to the size of x',),
             id='no_padding_input_shorter_than_window_length_raises_valueerror',
         ),
     ],
@@ -186,7 +149,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
         df.select(expression)
 
-    (msg,) = excinfo.value.args
+    msg, = excinfo.value.args
     for msg_substring in msg_substrings:
         assert msg_substring.lower() in msg.lower()
 
@@ -196,11 +159,8 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
     [
         pytest.param(
             {
-                'method': 'savitzky_golay',
-                'window_length': 3,
-                'degree': 1,
-                'sampling_rate': 1,
-                'n_components': 2,
+                'method': 'savitzky_golay', 'window_length': 3, 'degree': 1,
+                'sampling_rate': 1, 'n_components': 2,
             },
             pl.Series('position', [], pl.List(pl.Float64)),
             pl.Series('velocity', [], pl.List(pl.Float64)),
@@ -299,11 +259,8 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'method': 'savitzky_golay',
-                'window_length': 3,
-                'degree': 1,
-                'padding': None,
-                'sampling_rate': 1,
+                'method': 'savitzky_golay', 'window_length': 3,
+                'degree': 1, 'padding': None, 'sampling_rate': 1,
                 'n_components': 2,
             },
             pl.Series('position', [[1, 1], [2, 2], [3, 3]], pl.List(pl.Float64)),
@@ -312,11 +269,8 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'method': 'savitzky_golay',
-                'window_length': 3,
-                'degree': 1,
-                'padding': None,
-                'sampling_rate': 1000,
+                'method': 'savitzky_golay', 'window_length': 3,
+                'degree': 1, 'padding': None, 'sampling_rate': 1000,
                 'n_components': 2,
             },
             pl.Series('position', [[1, 1], [2, 2], [3, 3]], pl.List(pl.Float64)),
@@ -325,9 +279,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'method': 'preceding',
-                'sampling_rate': 1,
-                'n_components': 2,
+                'method': 'preceding', 'sampling_rate': 1, 'n_components': 2,
             },
             pl.Series('position', [[1, 1], [1, 1], [1, 1]], pl.List(pl.Float64)),
             pl.Series('velocity', [[None, None], [0, 0], [0, 0]], pl.List(pl.Float64)),
@@ -335,9 +287,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'method': 'preceding',
-                'sampling_rate': 1,
-                'n_components': 2,
+                'method': 'preceding', 'sampling_rate': 1, 'n_components': 2,
             },
             pl.Series('position', [[1, 1], [2, 2], [3, 3]], pl.List(pl.Float64)),
             pl.Series('velocity', [[None, None], [1, 1], [1, 1]], pl.List(pl.Float64)),
@@ -345,9 +295,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'method': 'preceding',
-                'sampling_rate': 1000,
-                'n_components': 2,
+                'method': 'preceding', 'sampling_rate': 1000, 'n_components': 2,
             },
             pl.Series('position', [[1, 1], [2, 2], [3, 3]], pl.List(pl.Float64)),
             pl.Series('velocity', [[None, None], [1000, 1000], [1000, 1000]], pl.List(pl.Float64)),
@@ -355,9 +303,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'method': 'neighbors',
-                'sampling_rate': 1,
-                'n_components': 2,
+                'method': 'neighbors', 'sampling_rate': 1, 'n_components': 2,
             },
             pl.Series('position', [[1, 1], [1, 1], [1, 1]], pl.List(pl.Float64)),
             pl.Series('velocity', [[None, None], [0, 0], [None, None]], pl.List(pl.Float64)),
@@ -365,9 +311,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'method': 'neighbors',
-                'sampling_rate': 1,
-                'n_components': 2,
+                'method': 'neighbors', 'sampling_rate': 1, 'n_components': 2,
             },
             pl.Series('position', [[1, 1], [2, 2], [3, 3]], pl.List(pl.Float64)),
             pl.Series('velocity', [[None, None], [1, 1], [None, None]], pl.List(pl.Float64)),
@@ -375,9 +319,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'method': 'neighbors',
-                'sampling_rate': 1000,
-                'n_components': 2,
+                'method': 'neighbors', 'sampling_rate': 1000, 'n_components': 2,
             },
             pl.Series('position', [[1, 1], [2, 2], [3, 3]], pl.List(pl.Float64)),
             pl.Series('velocity', [[None, None], [1000, 1000], [None, None]], pl.List(pl.Float64)),
@@ -385,67 +327,42 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'method': 'smooth',
-                'sampling_rate': 1,
-                'n_components': 2,
+                'method': 'smooth', 'sampling_rate': 1, 'n_components': 2,
             },
             pl.Series('position', [[1, 1], [1, 1], [1, 1], [1, 1], [1, 1]], pl.List(pl.Float64)),
             pl.Series(
-                'velocity',
-                [
-                    [None, None],
-                    [None, None],
-                    [0, 0],
-                    [
-                        None,
-                        None,
-                    ],
-                    [None, None],
-                ],
-                pl.List(pl.Float64),
+                'velocity', [
+                    [None, None], [None, None], [0, 0], [
+                        None, None,
+                    ], [None, None],
+                ], pl.List(pl.Float64),
             ),
             id='five_equal_elements_method_smooth_results_zero',
         ),
         pytest.param(
             {
-                'method': 'smooth',
-                'sampling_rate': 1,
-                'n_components': 2,
+                'method': 'smooth', 'sampling_rate': 1, 'n_components': 2,
             },
             pl.Series('position', [[1, 1], [2, 2], [3, 3], [4, 4], [5, 5]], pl.List(pl.Float64)),
             pl.Series(
-                'velocity',
-                [
-                    [None, None],
-                    [None, None],
-                    [1, 1],
-                    [
-                        None,
-                        None,
-                    ],
-                    [None, None],
-                ],
-                pl.List(pl.Float64),
+                'velocity', [
+                    [None, None], [None, None], [1, 1], [
+                        None, None,
+                    ], [None, None],
+                ], pl.List(pl.Float64),
             ),
             id='three_rising_elements_method_smooth_results_one',
         ),
         pytest.param(
             {
-                'method': 'smooth',
-                'sampling_rate': 1000,
-                'n_components': 2,
+                'method': 'smooth', 'sampling_rate': 1000, 'n_components': 2,
             },
             pl.Series('position', [[1, 1], [2, 2], [3, 3], [4, 4], [5, 5]], pl.List(pl.Float64)),
             pl.Series(
-                'velocity',
-                [
-                    [None, None],
-                    [None, None],
-                    [1000, 1000],
-                    [None, None],
-                    [None, None],
-                ],
-                pl.List(pl.Float64),
+                'velocity', [
+                    [None, None], [None, None], [1000, 1000],
+                    [None, None], [None, None],
+                ], pl.List(pl.Float64),
             ),
             id='three_rising_elements_method_smooth_sampling_rate_1000_results_1000',
         ),

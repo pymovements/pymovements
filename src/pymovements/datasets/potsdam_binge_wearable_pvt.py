@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides a definition for the PotsdamBingeWearablePVT dataset."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -151,8 +150,7 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
                         'time_unit': 'ms',
                         'distance_column': 'target_distance',
                         'pixel_columns': [
-                            'x_pix_pupilcore_interpolated',
-                            'y_pix_pupilcore_interpolated',
+                            'x_pix_pupilcore_interpolated', 'y_pix_pupilcore_interpolated',
                         ],
                         'read_csv_kwargs': {
                             'schema_overrides': {
@@ -192,8 +190,7 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
                         'time_unit': 'ms',
                         'distance_column': 'target_distance',
                         'pixel_columns': [
-                            'x_pix_pupilcore_interpolated',
-                            'y_pix_pupilcore_interpolated',
+                            'x_pix_pupilcore_interpolated', 'y_pix_pupilcore_interpolated',
                         ],
                         'read_csv_kwargs': {
                             'schema_overrides': {
@@ -233,8 +230,7 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
                         'time_unit': 'ms',
                         'distance_column': 'target_distance',
                         'pixel_columns': [
-                            'x_pix_pupilcore_interpolated',
-                            'y_pix_pupilcore_interpolated',
+                            'x_pix_pupilcore_interpolated', 'y_pix_pupilcore_interpolated',
                         ],
                         'read_csv_kwargs': {
                             'schema_overrides': {

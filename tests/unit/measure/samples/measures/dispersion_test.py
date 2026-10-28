@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test module pymovements.events.event_properties."""
-
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
@@ -59,6 +58,7 @@ def test_dispersion_exceptions(init_kwargs, input_df, exception, message):
             ),
             id='dispersion_one_sample',
         ),
+
         pytest.param(
             {},
             pl.DataFrame(
@@ -71,6 +71,7 @@ def test_dispersion_exceptions(init_kwargs, input_df, exception, message):
             ),
             id='dispersion_two_samples_x_move',
         ),
+
         pytest.param(
             {},
             pl.DataFrame(
@@ -83,6 +84,7 @@ def test_dispersion_exceptions(init_kwargs, input_df, exception, message):
             ),
             id='dispersion_two_samples_y_move',
         ),
+
         pytest.param(
             {},
             pl.DataFrame(

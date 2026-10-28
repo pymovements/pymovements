@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test pymovements.gaze.transforms.savitzky_golay."""
-
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
@@ -31,10 +30,7 @@ import pymovements as pm
     [
         pytest.param(
             {
-                'window_length': 1,
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 1, 'sampling_rate': 1, 'n_components': 2, 'input_column': 'A',
             },
             TypeError,
             ('degree', 'missing'),
@@ -42,10 +38,8 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'degree': 1,
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'degree': 1, 'sampling_rate': 1,
+                'n_components': 2, 'input_column': 'A',
             },
             TypeError,
             ('window_length', 'missing'),
@@ -53,11 +47,8 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'window_length': 1,
-                'degree': 0,
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 1, 'degree': 0, 'sampling_rate': 1,
+                'n_components': 2, 'input_column': 'A',
             },
             ValueError,
             ('degree', 'must', 'greater than zero'),
@@ -65,11 +56,8 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'window_length': 3,
-                'degree': 1.0,
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 3, 'degree': 1.0, 'sampling_rate': 1,
+                'n_components': 2, 'input_column': 'A',
             },
             TypeError,
             ('degree', "must be of type 'int'", "is of type 'float'"),
@@ -77,11 +65,8 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'window_length': 1,
-                'degree': 1,
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 1, 'degree': 1, 'sampling_rate': 1,
+                'n_components': 2, 'input_column': 'A',
             },
             ValueError,
             ("'degree' must be less than 'window_length'"),
@@ -89,11 +74,8 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'window_length': 1,
-                'degree': 2,
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 1, 'degree': 2, 'sampling_rate': 1,
+                'n_components': 2, 'input_column': 'A',
             },
             ValueError,
             ("'degree' must be less than 'window_length'"),
@@ -101,12 +83,8 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'window_length': 3,
-                'degree': 1,
-                'derivative': -1,
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 3, 'degree': 1, 'derivative': -1, 'sampling_rate': 1,
+                'n_components': 2, 'input_column': 'A',
             },
             ValueError,
             ("'derivative' must not be negative", '-1'),
@@ -114,12 +92,8 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'window_length': 3,
-                'degree': 1,
-                'derivative': 1.0,
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 3, 'degree': 1, 'derivative': 1.0, 'sampling_rate': 1,
+                'n_components': 2, 'input_column': 'A',
             },
             TypeError,
             ("'derivative' must be of type 'int'", "is of type 'float'"),
@@ -127,13 +101,8 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'window_length': 3,
-                'degree': 1,
-                'derivative': 0,
-                'padding': [],
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 3, 'degree': 1, 'derivative': 0, 'padding': [],
+                'sampling_rate': 1, 'n_components': 2, 'input_column': 'A',
             },
             TypeError,
             (
@@ -144,25 +113,13 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'window_length': 3,
-                'degree': 1,
-                'derivative': 0,
-                'padding': 'foobar',
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 3, 'degree': 1, 'derivative': 0, 'padding': 'foobar',
+                'sampling_rate': 1, 'n_components': 2, 'input_column': 'A',
             },
             ValueError,
             (
-                'padding',
-                'invalid',
-                'foobar',
-                'valid',
-                'mirror',
-                'nearest',
-                'wrap',
-                'None',
-                'scalar',
+                'padding', 'invalid', 'foobar',
+                'valid', 'mirror', 'nearest', 'wrap', 'None', 'scalar',
             ),
             id='invalid_padding_raises_value_error',
         ),
@@ -172,7 +129,7 @@ def test_savitzky_golay_init_raises_error(kwargs, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
         pm.gaze.transforms.savitzky_golay(**kwargs)
 
-    (msg,) = excinfo.value.args
+    msg, = excinfo.value.args
     for msg_substring in msg_substrings:
         assert msg_substring.lower() in msg.lower()
 
@@ -182,17 +139,12 @@ def test_savitzky_golay_init_raises_error(kwargs, exception, msg_substrings):
     [
         pytest.param(
             {
-                'window_length': 3,
-                'degree': 1,
-                'derivative': 0,
-                'padding': None,
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 3, 'degree': 1, 'derivative': 0, 'padding': None,
+                'sampling_rate': 1, 'n_components': 2, 'input_column': 'A',
             },
             pl.Series('A', [[1, 1]], pl.List(pl.Float64)),
             ValueError,
-            ("If mode is 'interp', window_length must be less than or equal to the size of x",),
+            ('If mode is \'interp\', window_length must be less than or equal to the size of x',),
             id='no_padding_input_shorter_than_window_length_raises_valueerror',
         ),
     ],
@@ -204,7 +156,7 @@ def test_savitzky_golay_raises_error(kwargs, series, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
         df.select(expression)
 
-    (msg,) = excinfo.value.args
+    msg, = excinfo.value.args
     for msg_substring in msg_substrings:
         assert msg_substring.lower() in msg.lower()
 
@@ -214,11 +166,8 @@ def test_savitzky_golay_raises_error(kwargs, series, exception, msg_substrings):
     [
         pytest.param(
             {
-                'window_length': 3,
-                'degree': 1,
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 3, 'degree': 1,
+                'sampling_rate': 1, 'n_components': 2, 'input_column': 'A',
             },
             pl.Series('A', [], pl.List(pl.Float64)),
             pl.Series('A', [], pl.List(pl.Float64)),
@@ -226,12 +175,8 @@ def test_savitzky_golay_raises_error(kwargs, series, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'window_length': 3,
-                'degree': 1,
-                'derivative': 0,
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 3, 'degree': 1, 'derivative': 0,
+                'sampling_rate': 1, 'n_components': 2, 'input_column': 'A',
             },
             pl.Series('A', [[1, 1]], pl.List(pl.Float64)),
             pl.Series('A', [[1, 1]], pl.List(pl.Float64)),
@@ -239,13 +184,8 @@ def test_savitzky_golay_raises_error(kwargs, series, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'window_length': 3,
-                'degree': 1,
-                'derivative': 0,
-                'padding': 'mirror',
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 3, 'degree': 1, 'derivative': 0, 'padding': 'mirror',
+                'sampling_rate': 1, 'n_components': 2, 'input_column': 'A',
             },
             pl.Series('A', [[1, 1]], pl.List(pl.Float64)),
             pl.Series('A', [[1, 1]], pl.List(pl.Float64)),
@@ -253,13 +193,8 @@ def test_savitzky_golay_raises_error(kwargs, series, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'window_length': 3,
-                'degree': 1,
-                'derivative': 0,
-                'padding': 'nearest',
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 3, 'degree': 1, 'derivative': 0, 'padding': 'nearest',
+                'sampling_rate': 1, 'n_components': 2, 'input_column': 'A',
             },
             pl.Series('A', [[1, 1]], pl.List(pl.Float64)),
             pl.Series('A', [[1, 1]], pl.List(pl.Float64)),
@@ -267,13 +202,8 @@ def test_savitzky_golay_raises_error(kwargs, series, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'window_length': 3,
-                'degree': 1,
-                'derivative': 0,
-                'padding': 'wrap',
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 3, 'degree': 1, 'derivative': 0, 'padding': 'wrap',
+                'sampling_rate': 1, 'n_components': 2, 'input_column': 'A',
             },
             pl.Series('A', [[1, 1]], pl.List(pl.Float64)),
             pl.Series('A', [[1, 1]], pl.List(pl.Float64)),
@@ -281,13 +211,8 @@ def test_savitzky_golay_raises_error(kwargs, series, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'window_length': 3,
-                'degree': 1,
-                'derivative': 0,
-                'padding': 1,
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 3, 'degree': 1, 'derivative': 0, 'padding': 1,
+                'sampling_rate': 1, 'n_components': 2, 'input_column': 'A',
             },
             pl.Series('A', [[1, 1]], pl.List(pl.Float64)),
             pl.Series('A', [[1, 1]], pl.List(pl.Float64)),
@@ -295,13 +220,8 @@ def test_savitzky_golay_raises_error(kwargs, series, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'window_length': 3,
-                'degree': 1,
-                'derivative': 0,
-                'padding': None,
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 3, 'degree': 1, 'derivative': 0, 'padding': None,
+                'sampling_rate': 1, 'n_components': 2, 'input_column': 'A',
             },
             pl.Series('A', [[1, 1], [1, 1], [1, 1]], pl.List(pl.Float64)),
             pl.Series('A', [[1, 1], [1, 1], [1, 1]], pl.List(pl.Float64)),
@@ -309,13 +229,8 @@ def test_savitzky_golay_raises_error(kwargs, series, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'window_length': 3,
-                'degree': 1,
-                'derivative': 1,
-                'padding': None,
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 3, 'degree': 1, 'derivative': 1, 'padding': None,
+                'sampling_rate': 1, 'n_components': 2, 'input_column': 'A',
             },
             pl.Series('A', [[1, 1], [1, 1], [1, 1]], pl.List(pl.Float64)),
             pl.Series('A', [[0, 0], [0, 0], [0, 0]], pl.List(pl.Float64)),
@@ -323,13 +238,8 @@ def test_savitzky_golay_raises_error(kwargs, series, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'window_length': 3,
-                'degree': 1,
-                'derivative': 1,
-                'padding': None,
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 3, 'degree': 1, 'derivative': 1, 'padding': None,
+                'sampling_rate': 1, 'n_components': 2, 'input_column': 'A',
             },
             pl.Series('A', [[1, 1], [2, 2], [3, 3]], pl.List(pl.Float64)),
             pl.Series('A', [[1, 1], [1, 1], [1, 1]], pl.List(pl.Float64)),
@@ -337,13 +247,8 @@ def test_savitzky_golay_raises_error(kwargs, series, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'window_length': 3,
-                'degree': 2,
-                'derivative': 2,
-                'padding': None,
-                'sampling_rate': 1,
-                'n_components': 2,
-                'input_column': 'A',
+                'window_length': 3, 'degree': 2, 'derivative': 2, 'padding': None,
+                'sampling_rate': 1, 'n_components': 2, 'input_column': 'A',
             },
             pl.Series('A', [[1, 1], [4, 4], [9, 9]], pl.List(pl.Float64)),
             pl.Series('A', [[2, 2], [2, 2], [2, 2]], pl.List(pl.Float64)),

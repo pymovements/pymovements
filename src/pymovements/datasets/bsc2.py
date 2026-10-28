@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides a definition for the BSCII dataset."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -122,8 +121,7 @@ class BSCII(DatasetDefinition):
                     'load_kwargs': {
                         'trial_columns': ['book_name', 'screen_id'],
                         'read_csv_kwargs': {
-                            'separator': '\t',
-                            'null_values': ['NA'],
+                            'separator': '\t', 'null_values': ['NA'],
                         },
                     },
                 },
