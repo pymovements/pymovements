@@ -532,7 +532,7 @@ class Screen:
         Raises
         ------
         ValueError
-            If ``width_px`` or ``height_px`` is unset or not positive.
+            If ``width_px`` or ``height_px`` is unset.
         ValueError
             If ``origin`` is unset or not a supported origin.
 
