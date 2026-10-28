@@ -219,9 +219,9 @@ builtins = ["display"] # notebooks, linted natively (drop nbqa)
 preview = true
 explicit-preview-rules = true # preview only for the codes listed by full code
 select = [
-  "E",
+  "E", # flake8, incl. E501
   "W",
-  "F", # flake8, incl. E501
+  "F",
   "E111",
   "E112",
   "E113",
