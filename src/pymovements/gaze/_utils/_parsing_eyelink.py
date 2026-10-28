@@ -477,12 +477,22 @@ def _parse_tracked_eye_layout(tracked: str) -> _EyeLayout:
     -------
     _EyeLayout
         ``'left'``, ``'right'`` or ``'both'``.
+
+    Raises
+    ------
+    ValueError
+        If ``tracked`` is none of the tokens captured by ``SAMPLES_CONFIG_REGEX``.
     """
     if ('LEFT' in tracked and 'RIGHT' in tracked) or tracked == 'LR':
         return 'both'
     if tracked in {'LEFT', 'L'}:
         return 'left'
-    return 'right'
+    if tracked in {'RIGHT', 'R'}:
+        return 'right'
+    raise ValueError(
+        f'Unknown tracked-eye token {tracked!r} in SAMPLES config line, '
+        'expected one of LEFT, RIGHT, LEFT RIGHT, L, R or LR.',
+    )
 
 
 def _eye_channels(eye: _MonocularEye) -> tuple[tuple[str, ...], tuple[str, ...]]:

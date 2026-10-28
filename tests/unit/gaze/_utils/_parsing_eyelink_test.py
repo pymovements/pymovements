@@ -1131,6 +1131,7 @@ def _build_eye_change_asc(block_keys, reccfg_eye=None, with_reccfg=True):
         pytest.param(['right', 'left'], id='right_to_left'),
         pytest.param(['both', 'left'], id='binocular_to_left'),
         pytest.param(['both', 'right'], id='binocular_to_right'),
+        pytest.param(['left', 'right', 'left_again'], id='left_to_right_to_left'),
     ],
 )
 def test_parse_eyelink_tracked_eye_change_promotes_to_binocular(make_text_file, block_keys):
@@ -1654,6 +1655,7 @@ def test_parse_eyelink_event_end_helper(line, expected):
             'Found inconsistent values', id='inconsistent',
         ),
         pytest.param([{'key': '1000'}], 'key', float, 1000.0, None, id='cast'),
+        pytest.param([{'key': '1000'}], 'key', None, '1000', None, id='no_cast'),
     ],
 )
 def test_check_samples_config_key_helper(configs, key, astype, expected_value, expected_warning):
@@ -1667,6 +1669,11 @@ def test_check_samples_config_key_helper(configs, key, astype, expected_value, e
         assert _parsing_eyelink._check_samples_config_key(
             configs, key, astype=astype,
         ) == expected_value
+
+
+def test_parse_tracked_eye_layout_helper_raises_on_unknown_token():
+    with pytest.raises(ValueError, match="Unknown tracked-eye token 'BOTH'"):
+        _parsing_eyelink._parse_tracked_eye_layout('BOTH')
 
 
 @pytest.mark.parametrize(
