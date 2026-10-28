@@ -242,7 +242,7 @@ def load_event_files(
         else:
             valid_extensions = ['csv', 'txt', 'tsv', 'feather']
             raise ValueError(
-                f'unsupported file format "{extension}".'
+                f'unsupported file format "{extension}". '
                 f'Supported formats are: {valid_extensions}',
             )
 
@@ -297,18 +297,16 @@ def load_gaze_files(
     gazes: list[Gaze] = []
 
     for file in tqdm(files, total=len(files), desc='Loading gaze files', unit='file'):
-        # Preprocessed files are in a separate directory.
         if preprocessed:
-            file = replace(
-                file,
-                path=paths.get_preprocessed_filepath(
-                    file.path, preprocessed_dirname=preprocessed_dirname,
-                    extension=extension,
-                ),
+            # Preprocessed files are in a separate directory.
+            path = paths.get_preprocessed_filepath(
+                file.path, preprocessed_dirname=preprocessed_dirname, extension=extension,
             )
+        else:
+            path = file.path
 
         gaze = load_gaze_file(
-            file=file,
+            file=replace(file, path=path),
             dataset_definition=deepcopy(definition),
             preprocessed=preprocessed,
         )
@@ -802,7 +800,7 @@ def save_events(
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
-                f'unsupported file format "{extension}".'
+                f'unsupported file format "{extension}". '
                 f'Supported formats are: {valid_extensions}',
             )
 
@@ -854,16 +852,11 @@ def save_preprocessed(
             disable=disable_progressbar,
         ),
     ):
-        gaze = gaze.clone()
-
         raw_filepath = paths.raw / Path(fileinfo[file_id, 'filepath'])
         preprocessed_filepath = paths.get_preprocessed_filepath(
             raw_filepath, preprocessed_dirname=preprocessed_dirname,
             extension=extension,
         )
-
-        if extension == 'csv':
-            gaze.unnest()
 
         if verbose >= 2:
             print('Save file to', preprocessed_filepath)
@@ -872,11 +865,13 @@ def save_preprocessed(
         if extension == 'feather':
             gaze.samples.write_ipc(preprocessed_filepath)
         elif extension == 'csv':
-            durations_to_ms(gaze.samples).write_csv(preprocessed_filepath)
+            gaze_copy = gaze.clone()
+            gaze_copy.unnest()
+            durations_to_ms(gaze_copy.samples).write_csv(preprocessed_filepath)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
-                f'unsupported file format "{extension}".'
+                f'unsupported file format "{extension}". '
                 f'Supported formats are: {valid_extensions}',
             )
 

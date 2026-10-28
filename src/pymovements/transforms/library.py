@@ -25,7 +25,6 @@ from typing import TypeVar
 
 import polars as pl
 
-
 TransformMethod = TypeVar('TransformMethod', bound=Callable[..., pl.Expr])
 
 

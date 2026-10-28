@@ -29,7 +29,6 @@ from pymovements import Experiment
 from pymovements.gaze import from_begaze
 from pymovements.gaze.io import _fill_experiment_from_parsing_begaze_metadata
 
-
 # Minimal BeGaze-like content (tabs) with MSG lines that our parser understands.
 BEGAZE_MINI = (
     '## [BeGaze]\n'

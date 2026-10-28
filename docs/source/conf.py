@@ -27,6 +27,7 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+"""Sphinx configuration of the pymovements documentation."""
 import importlib.resources
 import inspect
 import os
@@ -50,7 +51,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath('src'))))
 # -- Project information -----------------------------------------------------
 
 project = 'pymovements'
-copyright = '2022-2026 The pymovements Project Authors'
+copyright = '2022-2026 The pymovements Project Authors'  # noqa: A001  # builtin-variable-shadowing
 author = 'The pymovements Project Authors'
 
 
@@ -85,6 +86,7 @@ source_suffix = {
 
 
 def config_inited_handler(app, config):
+    """Create the directory for generated files and keep it out of the document tree."""
     os.makedirs(os.path.join(app.srcdir, config.generated_path), exist_ok=True)
     # Generated files are only pulled in via mdinclude and must not be picked up
     # as standalone documents.
@@ -99,7 +101,7 @@ DOCS_LINK_PATTERN = re.compile(
 )
 
 
-def generate_readme_handler(app, config):
+def generate_readme_handler(app, _config):
     """Write a copy of README.md with documentation links rewritten to :doc: references.
 
     README.md must keep absolute URLs so that links render on GitHub and PyPI.
@@ -117,7 +119,7 @@ def generate_readme_handler(app, config):
         generated_readme_file.write(content)
 
 
-def doctree_resolved_handler(app, doctree, docname):
+def doctree_resolved_handler(_app, doctree, _docname):
     """Open all external links in a new tab."""
     from docutils import nodes
 
@@ -164,7 +166,7 @@ def _is_section_header(lines, index):
     )
 
 
-def strip_property_attributes_handler(app, what, name, obj, options, lines):
+def strip_property_attributes_handler(app, what, name, _obj, _options, lines):
     """Remove property entries from the Attributes section of a class docstring.
 
     Properties are documented on their own pages (see ``_templates/property.rst``), which are
@@ -219,6 +221,7 @@ def strip_property_attributes_handler(app, what, name, obj, options, lines):
 
 
 def setup(app):
+    """Register the config values and event handlers of this configuration."""
     app.add_config_value('REVISION', 'master', 'env')
     app.add_config_value('generated_path', '_generated', 'env')
     app.connect('config-inited', config_inited_handler)
@@ -350,8 +353,8 @@ html_theme_options = {
         },
     ],
     'logo': {
-        'image_light': 'https://raw.githubusercontent.com/pymovements/pymovements/main/docs/source/_static/logo.svg',  # noqa: E501
-        'image_dark': 'https://raw.githubusercontent.com/pymovements/pymovements/main/docs/source/_static/logo.svg',  # noqa: E501
+        'image_light': 'https://raw.githubusercontent.com/pymovements/pymovements/main/docs/source/_static/logo.svg',
+        'image_dark': 'https://raw.githubusercontent.com/pymovements/pymovements/main/docs/source/_static/logo.svg',
     },
 }
 
@@ -391,9 +394,12 @@ bibtex_reference_style = 'label'
 
 
 class AuthorYearLabelStyle(BaseLabelStyle):
+    """Label citations as author and year, with letter suffixes on collisions."""
+
     template: str = '{author} et al., {year}'
 
     def format_labels(self, sorted_entries):
+        """Yield one label per entry, suffixing duplicates with a, b, c and so on."""
         outputs: list[str] = []
         for entry in sorted_entries:
             candidate = self.template.format(
@@ -415,6 +421,8 @@ class AuthorYearLabelStyle(BaseLabelStyle):
 
 
 class AuthorYearStyle(PlainStyle):
+    """Plain bibliography style with author-year citation labels."""
+
     default_label_style = AuthorYearLabelStyle
 
 
@@ -422,6 +430,7 @@ register_plugin('pybtex.style.formatting', 'author_year_style', AuthorYearStyle)
 
 
 def getrev():
+    """Return the git revision that source links point to."""
     try:
         revision = run(
             ['git', 'describe', '--tags', 'HEAD'],
@@ -452,6 +461,7 @@ LINKCODE_URL = (
 
 # revised from https://gist.github.com/nlgranger/55ff2e7ff10c280731348a16d569cb73
 def linkcode_resolve(domain, info):
+    """Return the GitHub source URL of a documented object, or None."""
     if domain != 'py' or not info['module']:
         return None
 
@@ -467,7 +477,7 @@ def linkcode_resolve(domain, info):
     for part in fullname.split('.'):
         try:
             obj = getattr(obj, part)
-        except Exception:
+        except AttributeError:
             return None
 
     try:
@@ -475,7 +485,7 @@ def linkcode_resolve(domain, info):
         filepath = os.path.relpath(inspect.getsourcefile(obj), modpath)
         if filepath is None:
             return
-    except Exception:
+    except Exception:  # noqa: BLE001  # blind-except
         return None
 
     try:

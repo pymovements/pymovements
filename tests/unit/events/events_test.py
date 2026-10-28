@@ -30,7 +30,6 @@ from polars.testing import assert_frame_equal
 
 from pymovements import Events
 
-
 EXPECTED_SCHEMA_AFTER_INIT = {
     'name': pl.Utf8,
     'onset': pl.Duration('us'),
@@ -55,8 +54,8 @@ def fixture_make_events():
         if properties is not None:
             events.frame = events.frame.select(
                 [pl.all()] + [
-                    pl.int_ranges(0, 100 * len(names), 100).alias(property)
-                    for property in properties
+                    pl.int_ranges(0, 100 * len(names), 100).alias(property_name)
+                    for property_name in properties
                 ],
             )
 

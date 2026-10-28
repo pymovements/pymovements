@@ -58,7 +58,6 @@ from pymovements.stimulus.image import ImageStimulus
 from pymovements.stimulus.text import TextStimulus
 from pymovements.warnings import ExperimentalWarning
 
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 

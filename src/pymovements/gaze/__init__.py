@@ -32,7 +32,6 @@ from pymovements.gaze.quality import ValidationError
 from pymovements.gaze.screen import Screen
 from pymovements.gaze.validation import CheckResult
 
-
 __all__ = [
     'CheckResult',
     'DataQualityReport',

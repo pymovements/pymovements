@@ -47,7 +47,6 @@ from pymovements.measure.reading.measures import total_fixation_count
 from pymovements.measure.reading.processing import compute_reading_measures
 from pymovements.stimulus.text import TextStimulus
 
-
 # Synthetic char-level AOI table
 # "The quick" — 2 words, each 3 chars, on page_1
 CHAR_AOI_DF = pl.DataFrame({

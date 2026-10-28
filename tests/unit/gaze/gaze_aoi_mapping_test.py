@@ -29,7 +29,6 @@ import pymovements as pm
 from pymovements import Gaze
 from pymovements.stimulus import TextStimulus
 
-
 EXPECTED_GAZE_SAMPLES = {
     'char_left_pixel': pl.DataFrame(
         [

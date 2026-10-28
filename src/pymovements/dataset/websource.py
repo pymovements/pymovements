@@ -140,7 +140,6 @@ class WebSource:
                         verbose=verbose,
                         verify_checksum=verify_checksum,
                     )
-                # pylint: disable=overlapping-except
                 except (URLError, OSError, RuntimeError) as mirror_error:
                     msg = f"Downloading resource from mirror {mirror_url} failed."
                     if mirror_idx < len(self.mirrors):

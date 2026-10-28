@@ -116,7 +116,7 @@ Time	Type	Trial	L POR X [px]	L POR Y [px]	L Pupil Diameter [mm]	Timing	Pupil Con
 10000019123	SMP	1	850.71	717.53	714.00	0	0	-1	Saccade	test.bmp
 10000020123	SMP	1	850.71	717.53	714.00	0	0	-1	Blink	test.bmp
 10000021123	SMP	1	850.71	717.53	714.00	0	0	-1	Blink	test.bmp
-"""  # noqa: E501
+"""  # noqa: E501  # line-too-long
 
 
 PATTERNS: list[dict[str, Any] | str] = [
@@ -159,18 +159,9 @@ BEGAZE_EXPECTED_GAZE_DF = pl.from_dict(
             10000011.123,
             10000014.345, 10000017.345, 10000019.123, 10000020.123, 10000021.123,
         ],
-        'x_pix': [
-            850.7, 850.7, 850.7, 850.7, 850.7, 850.7, 850.7, 850.7, 850.7, np.nan,
-            np.nan,
-        ],
-        'y_pix': [
-            717.5, 717.5, 717.5, 717.5, 717.5, 717.5, 717.5, 717.5, 717.5, np.nan,
-            np.nan,
-        ],
-        'pupil': [
-            714.0, 714.0, 714.0, 714.0, 714.0, 714.0, 714.0, 714.0, np.nan, 0.0,
-            0.0,
-        ],
+        'x_pix': [850.7] * 9 + [np.nan] * 2,
+        'y_pix': [717.5] * 9 + [np.nan] * 2,
+        'pupil': [714.0] * 8 + [np.nan] + [0.0] * 2,
         'task': [None, 'A', None, 'B', 'B', 'B', 'B', None, None, None, None],
         'trial_id': [None, None, None, None, '1', '2', '3', None, None, None, None],
         'Stimulus': ['test.bmp'] * 11,

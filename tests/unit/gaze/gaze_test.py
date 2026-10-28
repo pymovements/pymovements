@@ -50,8 +50,8 @@ def fixture_make_gaze_with_events():
         if properties is not None:
             gaze.events.frame = gaze.events.frame.select(
                 [pl.all()] + [
-                    pl.int_ranges(0, 100 * len(names), 100).alias(property)
-                    for property in properties
+                    pl.int_ranges(0, 100 * len(names), 100).alias(property_name)
+                    for property_name in properties
                 ],
             )
         return gaze

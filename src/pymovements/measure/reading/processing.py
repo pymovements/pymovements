@@ -509,9 +509,9 @@ def _word_table_from_dict(
     tables = []
     entries_with_column = dict.fromkeys(layout_columns, 0)
     entries_with_char_idx = 0
-    for sequence_key, frame in zip(sequence_keys, aois_dict.values()):
+    for sequence_key, entry in zip(sequence_keys, aois_dict.values()):
         frame = _normalize_aoi_frame(
-            frame, word_index_column=word_index_column, word_column=word_column,
+            entry, word_index_column=word_index_column, word_column=word_column,
         )
         if sequence_column in frame.columns:
             raise ValueError(

@@ -40,7 +40,6 @@ from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.dataset.websource import WebSource
 from pymovements.gaze.experiment import Experiment
 
-
 yaml.add_multi_constructor('!', type_constructor, Loader=yaml.SafeLoader)
 
 
@@ -273,7 +272,6 @@ class DatasetDefinition:
        ``custom_read_kwargs={'schema_overrides': {'col1': polars.Int64, 'col2': polars.Float64}}``
     """
 
-    # pylint: disable=too-many-instance-attributes
     name: str = '.'
 
     _: KW_ONLY  # all fields below can only be passed as a positional argument.

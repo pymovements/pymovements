@@ -31,7 +31,6 @@ from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 
-
 __all__ = [
     'EventDetectionLibrary',
     'register_event_detection',

@@ -80,7 +80,8 @@ def test_gaze_save_with_empty_events(tmp_path, gaze_all):
 def test_gaze_save_wrong_extension(tmp_path, gaze_all, save_kwargs):
     gaze = gaze_all
 
-    with pytest.raises(ValueError):
+    message = r'unsupported file format "blabla"\. Supported formats are: '
+    with pytest.raises(ValueError, match=message):
         gaze.save(dirpath=tmp_path, verbose=0, extension='blabla', **save_kwargs)
 
 
@@ -371,7 +372,8 @@ def test_gaze_save_method_wrong_extension(tmp_path, save_method, data):
     gaze_kwargs = {save_method.replace('save_', ''): data}
     gaze = Gaze(pl.DataFrame({'x': [1, 2], 'y': [3, 4]}), pixel_columns=['x', 'y'], **gaze_kwargs)
 
-    with pytest.raises(ValueError, match='unsupported file format'):
+    message = r'unsupported file format "txt"\. Supported formats are: '
+    with pytest.raises(ValueError, match=message):
         getattr(gaze, save_method)(tmp_path / 'test.txt')
 
 

@@ -53,7 +53,6 @@ import polars as pl
 
 from pymovements._utils._expressions import as_expr
 
-
 # ---------------------------
 # Basic fixation-based counts
 # ---------------------------

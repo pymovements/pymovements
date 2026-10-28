@@ -48,7 +48,7 @@ def _make_text_stimulus(
 
 
 @pytest.fixture(name='stimulus_both_columns')
-def _stimulus_both_columns() -> TextStimulus:  # noqa: D403
+def _stimulus_both_columns() -> TextStimulus:
     """AOIs with both trial and page columns for filtering tests.
 
     Two AOIs with identical spatial boxes but different (trial, page) keys,
@@ -69,7 +69,7 @@ def _stimulus_both_columns() -> TextStimulus:  # noqa: D403
 
 
 @pytest.fixture(name='stimulus_only_trial')
-def _stimulus_only_trial() -> TextStimulus:  # noqa: D403
+def _stimulus_only_trial() -> TextStimulus:
     """AOIs that are split by trial only (no page column)."""
     df = pl.DataFrame(
         {
@@ -85,7 +85,7 @@ def _stimulus_only_trial() -> TextStimulus:  # noqa: D403
 
 
 @pytest.fixture(name='stimulus_only_page')
-def _stimulus_only_page() -> TextStimulus:  # noqa: D403
+def _stimulus_only_page() -> TextStimulus:
     """AOIs that are split by page only (no trial column)."""
     df = pl.DataFrame(
         {

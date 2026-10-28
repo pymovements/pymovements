@@ -32,19 +32,18 @@ import datetime
 import io
 import math
 import re
-
 import warnings
 from collections import defaultdict
 from collections.abc import Sequence
-
 from pathlib import Path
-from typing import IO, Any
+from typing import Any
+from typing import IO
 
 import polars as pl
 
-from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys, \
-    check_nan
-
+from pymovements.gaze._utils._parsing import check_nan
+from pymovements.gaze._utils._parsing import compile_patterns
+from pymovements.gaze._utils._parsing import get_pattern_keys
 
 # Define separate regex patterns for monocular and binocular cases
 EYE_TRACKING_SAMPLE_MONOCULAR = (
@@ -476,7 +475,7 @@ def _migrate_samples_to_binocular(samples: dict[str, list[Any]]) -> None:
     samples['pupil_right'] = [math.nan] * n_prev
 
 
-def parse_eyelink(
+def parse_eyelink(  # noqa: PLR0912, PLR0915  # too-many-branches, too-many-statements
         file: Path | str | IO[str] | IO[bytes],
         patterns: list[dict[str, Any] | str] | None = None,
         schema: dict[str, Any] | None = None,
@@ -546,7 +545,6 @@ def parse_eyelink(
     the current context (values derived from the provided ``patterns`` at that line), so trial/task
     information is preserved when available.
     """
-    # pylint: disable=too-many-branches, too-many-statements, too-many-nested-blocks
     msg_prefix = r'MSG\s+\d+[.]?\d*\s+'
 
     if patterns is None:
@@ -636,7 +634,7 @@ def parse_eyelink(
     is_binocular = False
 
     # Single pass: collect events, patterns, samples, samples config, and metadata
-    for line in lines:
+    for line in lines:  # noqa: PLR1702  # too-many-nested-blocks
         # Gaze sample lines start with a digit (their timestamp); every other line is an event,
         # config or metadata line. Dispatch on the first character so the many non-sample regexes
         # are not evaluated for every sample line.

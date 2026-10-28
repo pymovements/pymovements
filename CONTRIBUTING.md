@@ -131,12 +131,12 @@ line-width of 100 characters. We additionally use type annotations as in [PEP-48
 https://peps.python.org/pep-0484). For docstrings we use the [numpydoc](
 https://numpydoc.readthedocs.io/en/latest/format.html) formatting standard.
 
-We use [`flake8`](https://pypi.org/project/flake8/) for quick style checks and
-[`pylint`](https://pypi.org/project/pylint/) for thorough style checks and [`mypy`](
-https://pypi.org/project/mypy/) for checking type annotations.
+We use [`ruff`](https://docs.astral.sh/ruff/) for style checks, import sorting and docstring
+style, [`pylint`](https://pypi.org/project/pylint/) for additional linting,
+[`mypy`](https://pypi.org/project/mypy/) for checking type annotations and
+[`pydoclint`](https://pypi.org/project/pydoclint/) for checking docstrings against signatures.
 
 You can check your code style by using [pre-commit](https://www.pre-commit.com).
-You can install `pre-commit` and `pylint` via pip.
 
 **Note**: Quoting '.[dev]' ensures the command works in both bash and zsh.
 
@@ -163,7 +163,7 @@ If you want to run a specific hook, you can use
 
 ```bash
 pre-commit run mypy
-pre-commit run pydocstyle
+pre-commit run ruff-check
 ```
 
 If you want to run a specific hook on a single file, you can use
@@ -182,6 +182,12 @@ For running a specific hook on all git repository files use
 
 ```bash
 pre-commit run mypy -a
+```
+
+pylint runs as a pre-commit hook and in CI, or on its own with:
+
+```bash
+tox -e pylint
 ```
 
 ### Testing

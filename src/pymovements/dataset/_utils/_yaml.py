@@ -29,8 +29,8 @@ import yaml
 
 # generalized constructor for !* tags
 def type_constructor(
-        loader: yaml.SafeLoader,
-        prefix: str,
+        loader: yaml.SafeLoader,  # noqa: ARG001  # unused-function-argument
+        prefix: str,  # noqa: ARG001  # unused-function-argument
         node: yaml.Node,
 ) -> type:
     """Resolve a YAML tag to a corresponding Python type.
@@ -66,7 +66,6 @@ def type_constructor(
         # Resolves to the Python type `pl.Int64` (assuming `pl` is a valid module).
 
     """
-    # pylint: disable=unused-argument
     # extract the type name (e.g., from !polars.Int64 to polars.Int64)
     type_name = node.tag[1:]
 

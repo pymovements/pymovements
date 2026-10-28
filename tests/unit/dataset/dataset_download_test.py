@@ -53,7 +53,7 @@ from pymovements import WebSource
         'CustomTextStimuli',
     ],
 )
-def dataset_definition_fixture(request):  # pylint: disable=too-many-return-statements
+def dataset_definition_fixture(request):  # noqa: PLR0911  # too-many-return-statements
     if request.param == 'CustomGazeAndPrecomputedSingleMirror':
         return DatasetDefinition(
             name='CustomPublicDataset',

@@ -41,7 +41,6 @@ from pymovements.events.detection.ihmm import ihmm
 from pymovements.synthetic import step_function
 from pymovements.transforms.numpy import pos2vel
 
-
 # -----------------------------------------------------------------------------
 # _emit_log_prob
 # -----------------------------------------------------------------------------

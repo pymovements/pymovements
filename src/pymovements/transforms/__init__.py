@@ -36,7 +36,6 @@ from pymovements.transforms.segmentation import events2timeratio
 from pymovements.transforms.segmentation import segmentation2events
 from pymovements.transforms.smooth import smooth
 
-
 __all__ = [
     'center_origin',
     'clip',

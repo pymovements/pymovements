@@ -248,9 +248,8 @@ def _setup_axes_and_colormap(
         cmap_norm = colors.NoNorm()
 
     elif isinstance(cmap_norm, str):
-        # pylint: disable=protected-access
         if (
-            scale_class := mpl_scale._scale_mapping.get(cmap_norm, None)  # type: ignore
+            scale_class := mpl_scale._scale_mapping.get(cmap_norm, None)  # type: ignore  # noqa: SLF001  # private-member-access
         ) is None:
             raise ValueError(f'cmap_norm string {cmap_norm} is not supported')
 

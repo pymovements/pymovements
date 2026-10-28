@@ -50,7 +50,6 @@ from pymovements.measure.reading.measures import skipped
 from pymovements.measure.reading.measures import total_fixation_count
 from pymovements.measure.reading.processing import compute_reading_measures
 
-
 __all__ = [
     # data container
     'ReadingMeasures',

@@ -81,7 +81,8 @@ dev = [
   "setuptools>=61.0.0",
   "types-tqdm>=4.67.0",
   "pre-commit>=3.0.0",
-  "pylint>=4.0.0"
+  "pylint>=4.0.0",
+  "ruff>=0.15.2"
 ]
 
 [project.urls]
@@ -91,19 +92,8 @@ Documentation = "https://pymovements.readthedocs.io/en/stable"
 "Bug Tracker" = "https://github.com/pymovements/pymovements/issues"
 Changelog = "https://github.com/pymovements/pymovements/releases"
 
-[tool.autoflake]
-in-place = true
-remove-all-unused-imports = true
-ignore-init-module-imports = true
-
-[tool.autopep8]
-max_line_length = 100
-in-place = true
-recursive = true
-aggressive = 1
-
 [tool.codespell]
-skip = "./src/pymovements/_version.py,./.git/*,./.pytest_cache/*,tests/files/*,*.bib"
+skip = "./.git/*,./.pytest_cache/*,tests/files/*,*.bib"
 count = true
 quiet-level = 3
 ignore-words-list = 'bund,InstRead'
@@ -125,7 +115,6 @@ parallel = true
 branch = true
 omit = [
   'docs/*',
-  'src/pymovements/_version.py',
   'tests/*'
 ]
 
@@ -165,6 +154,41 @@ disallow_untyped_defs = false
 skip-checking-raises = true
 treat-property-methods-as-class-attributes = true
 
+[tool.pylint.format]
+max-module-lines = 2000
+
+[tool.pylint.main]
+py-version = "3.10"
+
+# Only the checks ruff has no rule for.
+[tool.pylint."messages control"]
+disable = ["all"]
+enable = [
+  "abstract-method",
+  "arguments-differ",
+  "arguments-renamed",
+  "attribute-defined-outside-init",
+  "cyclic-import",
+  "duplicate-code",
+  "no-member",
+  "no-value-for-parameter",
+  "not-callable",
+  "redefined-outer-name",
+  "signature-differs",
+  "too-many-function-args",
+  "too-many-lines",
+  "unexpected-keyword-arg",
+  "unused-private-member",
+  "useless-suppression"
+]
+
+[tool.pylint.similarities]
+ignore-comments = true
+ignore-docstrings = true
+ignore-imports = true
+ignore-signatures = true
+min-similarity-lines = 16
+
 [tool.pytest.ini_options]
 addopts = "-ra -l --tb=long --doctest-modules --doctest-plus --remote-data=any --import-mode=importlib -p doctest_fixtures"
 doctest_optionflags = "NORMALIZE_WHITESPACE"
@@ -181,6 +205,106 @@ markers = ["network: mark a test as requiring network access"]
 pythonpath = ['docs/source', 'tests/doctest']
 testpaths = ['tests', 'src']
 xfail_strict = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+builtins = ["display"] # defined in notebooks
+
+[tool.ruff.lint]
+preview = true
+explicit-preview-rules = true # preview only for the codes listed by full code
+select = [
+  "E", # flake8, incl. E501
+  "W",
+  "F",
+  # pycodestyle whitespace and blank-line rules, preview in ruff and so listed by code:
+  # they hold the current style until ruff format arrives in its own PR
+  "E111",
+  "E112",
+  "E113",
+  "E114",
+  "E115",
+  "E116",
+  "E117",
+  "E201",
+  "E202",
+  "E203",
+  "E211",
+  "E221",
+  "E222",
+  "E225",
+  "E226",
+  "E227",
+  "E228",
+  "E231",
+  "E251",
+  "E252",
+  "E261",
+  "E262",
+  "E265",
+  "E266",
+  "E271",
+  "E272",
+  "E275",
+  "E301",
+  "E302",
+  "E303",
+  "E304",
+  "E305",
+  "E306",
+  "W391",
+  "COM812", # add-trailing-comma
+  "I",
+  "UP",
+  "D",
+  "PLC",
+  "PLE",
+  "PLR",
+  "PLW",
+  "PLR1702", # preview pylint rules, limits from the old pylintrc
+  "PLR0916",
+  "ARG",
+  "SLF",
+  "A",
+  "BLE001",
+  "B006",
+  "B023",
+  "B904",
+  "RET505",
+  "RET506",
+  "RET507",
+  "RET508",
+  "RUF100"
+]
+ignore = [
+  "D107",
+  "D203",
+  "D213",
+  "D413",
+  "D416",
+  "PLR0913",
+  "PLR0917",
+  "PLR2004",
+  "PLC0415"
+]
+
+[tool.ruff.lint.isort]
+force-single-line = true
+order-by-type = false
+known-first-party = ["pymovements"]
+force-sort-within-sections = false
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D101", "D102", "D103", "SLF001", "ARG"]
+
+[tool.ruff.lint.pylint]
+max-args = 10
+max-branches = 30
+max-returns = 11
+max-statements = 100
+max-bool-expr = 5
+max-nested-blocks = 5
 
 [tool.setuptools.package-data]
 pymovements = ["datasets/*.yaml"]
