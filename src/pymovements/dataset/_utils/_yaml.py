@@ -29,8 +29,8 @@ import yaml
 
 # generalized constructor for !* tags
 def type_constructor(
-        loader: yaml.SafeLoader,  # noqa: ARG001  # unused-function-argument
-        prefix: str,  # noqa: ARG001  # unused-function-argument
+        _loader: yaml.SafeLoader,
+        _prefix: str,
         node: yaml.Node,
 ) -> type:
     """Resolve a YAML tag to a corresponding Python type.
@@ -42,10 +42,10 @@ def type_constructor(
 
     Parameters
     ----------
-    loader: yaml.SafeLoader
-        The YAML loader being used to parse the YAML document.
-    prefix: str
-        A string prefix for the custom tag (e.g., '!').
+    _loader: yaml.SafeLoader
+        The YAML loader being used to parse the YAML document. Unused.
+    _prefix: str
+        A string prefix for the custom tag (e.g., '!'). Unused.
     node: yaml.Node
         The YAML node containing the tag and associated value.
 

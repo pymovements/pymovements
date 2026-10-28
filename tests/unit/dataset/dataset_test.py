@@ -156,13 +156,9 @@ def test_make_dataset_creates_correct_tree(files, make_dataset, tmp_path):
 def create_raw_gaze_files_from_fileinfo(gazes, fileinfo, rootpath):
     rootpath.mkdir(parents=True, exist_ok=True)
 
-    for gaze, fileinfo_row in zip(gazes, fileinfo.to_dicts()):
+    for source_gaze, fileinfo_row in zip(gazes, fileinfo.to_dicts()):
         filepath = fileinfo_row['filepath']
-
-        for key in fileinfo_row.keys():
-            if key in gaze.columns:
-                gaze = gaze.drop(key)  # noqa: PLW2901  # redefined-loop-name
-
+        gaze = source_gaze.drop([key for key in fileinfo_row if key in source_gaze.columns])
         gaze.write_csv(rootpath / filepath)
 
 

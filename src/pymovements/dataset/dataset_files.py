@@ -296,16 +296,18 @@ def load_gaze_files(
     """
     gazes: list[Gaze] = []
 
-    for file in tqdm(files, total=len(files), desc='Loading gaze files', unit='file'):
+    for raw_file in tqdm(files, total=len(files), desc='Loading gaze files', unit='file'):
         # Preprocessed files are in a separate directory.
         if preprocessed:
-            file = replace(  # noqa: PLW2901  # redefined-loop-name
-                file,
+            file = replace(
+                raw_file,
                 path=paths.get_preprocessed_filepath(
-                    file.path, preprocessed_dirname=preprocessed_dirname,
+                    raw_file.path, preprocessed_dirname=preprocessed_dirname,
                     extension=extension,
                 ),
             )
+        else:
+            file = raw_file
 
         gaze = load_gaze_file(
             file=file,
@@ -845,7 +847,7 @@ def save_preprocessed(
     """
     disable_progressbar = not verbose
 
-    for file_id, gaze in enumerate(
+    for file_id, source_gaze in enumerate(
         tqdm(
             gazes,
             total=len(gazes),
@@ -854,7 +856,7 @@ def save_preprocessed(
             disable=disable_progressbar,
         ),
     ):
-        gaze = gaze.clone()  # noqa: PLW2901  # redefined-loop-name
+        gaze = source_gaze.clone()
 
         raw_filepath = paths.raw / Path(fileinfo[file_id, 'filepath'])
         preprocessed_filepath = paths.get_preprocessed_filepath(
