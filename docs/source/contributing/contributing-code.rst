@@ -101,12 +101,14 @@ line-width of 100 characters. We additionally use type annotations as in
 `PEP-484 <https://peps.python.org/pep-0484)>`_. For docstrings we use the
 `numpydoc <https://numpydoc.readthedocs.io/en/latest/format.html>`_ formatting standard.
 
-We use `flake8 <https://pypi.org/project/flake8/>`_ for quick style checks,
-`pylint <https://pypi.org/project/pylint/>`_ for thorough style checks and
-`mypy <https://pypi.org/project/mypy/>`_ for checking type annotations.
+We use `ruff <https://docs.astral.sh/ruff/>`_ for style checks, import sorting and docstring
+formatting, `pydoclint <https://pypi.org/project/pydoclint/>`_ for checking docstrings against
+signatures and `mypy <https://pypi.org/project/mypy/>`_ for checking type annotations.
+`pylint <https://pypi.org/project/pylint/>`_ runs the few checks that need the installed package,
+such as attribute and call checks against the polars and numpy APIs.
 
 You can check your code style by using `pre-commit <https://www.pre-commit.com>`_.
-You can install ``pre-commit`` and ``pylint`` via pip.
+You can install ``pre-commit``, ``ruff`` and ``pylint`` via pip.
 
 **Note**: Quoting '.[dev]' ensures the command works in both bash and zsh.
 
@@ -134,7 +136,7 @@ If you want to run a specific hook you can use
 .. code:: bash
 
     pre-commit run mypy
-    pre-commit run pydocstyle
+    pre-commit run ruff-check
 
 If you want to run a specific hook on a single file you can use
 
@@ -153,6 +155,12 @@ For running a specific hook on all git repository files use
 .. code:: bash
 
     pre-commit run mypy -a
+
+pylint is not a pre-commit hook. Run it in its tox environment:
+
+.. code:: bash
+
+    tox -e pylint
 
 .. _testing:
 
