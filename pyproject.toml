@@ -93,7 +93,7 @@ Documentation = "https://pymovements.readthedocs.io/en/stable"
 Changelog = "https://github.com/pymovements/pymovements/releases"
 
 [tool.codespell]
-skip = "./src/pymovements/_version.py,./.git/*,./.pytest_cache/*,tests/files/*,*.bib"
+skip = "./.git/*,./.pytest_cache/*,tests/files/*,*.bib"
 count = true
 quiet-level = 3
 ignore-words-list = 'bund,InstRead'
@@ -115,7 +115,6 @@ parallel = true
 branch = true
 omit = [
   'docs/*',
-  'src/pymovements/_version.py',
   'tests/*'
 ]
 
@@ -159,7 +158,6 @@ treat-property-methods-as-class-attributes = true
 max-module-lines = 2000
 
 [tool.pylint.main]
-ignore-paths = ["src/pymovements/_version.py"]
 py-version = "3.10"
 
 # Only the checks ruff lacks; the rest of the linting runs in ruff.
@@ -211,8 +209,6 @@ xfail_strict = true
 [tool.ruff]
 line-length = 100
 target-version = "py310"
-force-exclude = true # honour excludes for files pre-commit passes explicitly
-extend-exclude = ["src/pymovements/_version.py"]
 builtins = ["display"] # notebooks, linted natively (drop nbqa)
 
 [tool.ruff.lint]

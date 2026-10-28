@@ -1,8 +1,3 @@
-exclude: |
-  (?x)^(
-    src/pymovements/_version.py
-  )$
-
 ci:
   autoupdate_commit_msg: 'ci: pre-commit autoupdate'
   skip: [ pylint ]
