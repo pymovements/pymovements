@@ -344,8 +344,6 @@ def _download_url(url: str, destination: Path, verbose: bool = True) -> None:
         If the server announced a content length and the response ended before reaching it.
     OSError
         If writing the temporary file or moving it into place fails.
-    ValueError
-        If the Content-Length header is not an integer.
     """
     request = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
     try:
@@ -360,8 +358,11 @@ def _download_url(url: str, destination: Path, verbose: bool = True) -> None:
     completed = False
     try:
         with response:
-            content_length = response.headers.get('Content-Length')
-            expected_size = int(content_length) if content_length is not None else None
+            try:
+                expected_size = int(response.headers.get('Content-Length'))
+            except (TypeError, ValueError):
+                # A missing or malformed header means no expected size.
+                expected_size = None
 
             with open(part_path, 'wb') as part_file, _DownloadProgressBar(
                     desc=destination.name, total=expected_size, disable=not verbose,

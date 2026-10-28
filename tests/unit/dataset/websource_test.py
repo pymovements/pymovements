@@ -362,6 +362,7 @@ def test_websource_download_file_not_found(tmp_path):
     [
         pytest.param({}, id='without_content_length'),
         pytest.param({'Content-Length': '12'}, id='with_content_length'),
+        pytest.param({'Content-Length': 'many'}, id='with_invalid_content_length'),
     ],
 )
 def test_websource_download_single_request_streams_to_file(tmp_path, verbose, headers):
@@ -444,18 +445,6 @@ def test_websource_download_failed_rename_leaves_no_file(tmp_path):
             with raises_download_failed(source):
                 source.download(tmp_path, verbose=False)
 
-    assert not list(tmp_path.iterdir())
-
-
-def test_websource_download_invalid_content_length_closes_response(tmp_path):
-    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
-    response = FakeResponse(b'complete content', headers={'Content-Length': 'many'})
-
-    with mock.patch('urllib.request.urlopen', return_value=response):
-        with pytest.raises(ValueError, match="'many'"):
-            source.download(tmp_path, verbose=False)
-
-    assert response.closed
     assert not list(tmp_path.iterdir())
 
 
