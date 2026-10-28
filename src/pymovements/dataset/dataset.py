@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides the Dataset class."""
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
 import logging
@@ -1149,12 +1150,13 @@ class Dataset:
             word_index_column: str = 'word_idx',
             word_column: str = 'word',
             event_name: str = 'fixation',
+            annotate_events: bool | None = None,
     ) -> ReadingMeasures:
         """Map fixations to AOIs and compute reading measures for an entire dataset.
 
         The fixations of each recording are mapped to the AOIs of its text on an internal copy,
-        see :py:meth:`~pymovements.Events.measure_reading`. The events of the dataset are not
-        modified.
+        see :py:meth:`~pymovements.Events.measure_reading`. Whether the events of the dataset are
+        annotated with the AOI columns as well is controlled by ``annotate_events``.
 
         Parameters
         ----------
@@ -1180,6 +1182,12 @@ class Dataset:
             are dropped. The name must start with ``fixation``, because the AOI mapping only maps
             fixation rows (see :py:meth:`~pymovements.Events.map_to_aois`).
             (default: ``'fixation'``)
+        annotate_events : bool | None
+            If ``True``, the events of the dataset are annotated with the AOI columns in place as
+            well, see :py:meth:`~pymovements.Events.map_to_aois`. If ``False``, the events of the
+            dataset stay untouched. ``None`` behaves like ``True`` and emits a
+            :py:class:`DeprecationWarning`, the default changes to ``False`` in v0.34.0.
+            (default: None)
 
         Returns
         -------
@@ -1188,7 +1196,25 @@ class Dataset:
             Its ``metadata['Sources']`` entry lists the event source files and AOI files
             the measures were derived from, with paths below the dataset root recorded
             relative to it.
+
+        Warns
+        -----
+        DeprecationWarning
+            If ``annotate_events`` is ``None``. Annotating the events of the dataset in place is
+            the deprecated default since v0.29.0 and will be removed in v0.34.0.
         """
+        if annotate_events is None:
+            warn(
+                'Dataset.measure_reading annotates the events of the dataset with AOI columns in '
+                'place. This default is deprecated since version v0.29.0 and will be removed in '
+                'v0.34.0. From then on the events of the dataset stay untouched. Pass '
+                'annotate_events=True to keep the annotation without this warning, or '
+                'annotate_events=False to opt in to the new behavior now.',
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            annotate_events = True
+
         reading_measures_list = []
         reading_measures_metadata: dict[str, Any] = {}
 
@@ -1208,6 +1234,9 @@ class Dataset:
                 page_column='page',
                 custom_read_kwargs={'separator': '\t'},
             )
+
+            if annotate_events:
+                events.map_to_aois(aoi_text_stimulus)
 
             reading_measures = events.measure_reading(
                 aoi_text_stimulus,
