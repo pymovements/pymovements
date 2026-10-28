@@ -1671,11 +1671,6 @@ def test_check_samples_config_key_helper(configs, key, astype, expected_value, e
         ) == expected_value
 
 
-def test_parse_tracked_eye_layout_helper_raises_on_unknown_token():
-    with pytest.raises(ValueError, match="Unknown tracked-eye token 'BOTH'"):
-        _parsing_eyelink._parse_tracked_eye_layout('BOTH')
-
-
 @pytest.mark.parametrize(
     ('configs', 'key', 'astype', 'expected_value', 'expected_warning'),
     [
@@ -1699,6 +1694,12 @@ def test_check_reccfg_key_helper(configs, key, astype, expected_value, expected_
             assert _parsing_eyelink._check_reccfg_key(configs, key, astype=astype) == expected_value
     else:
         assert _parsing_eyelink._check_reccfg_key(configs, key, astype=astype) == expected_value
+
+
+def test_parse_tracked_eye_layout_helper_raises_on_unknown_token():
+    """An eye token outside the SAMPLES regex alternatives raises instead of mislabelling."""
+    with pytest.raises(ValueError, match="Unknown tracked-eye token 'BOTH'"):
+        _parsing_eyelink._parse_tracked_eye_layout('BOTH')
 
 
 @pytest.mark.filterwarnings('ignore:No metadata found.')

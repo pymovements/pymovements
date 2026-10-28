@@ -800,7 +800,7 @@ def parse_eyelink(
         # Detect the tracking configuration independently of the elif chain below, so a
         # SAMPLES config line is never missed (e.g. if it directly follows a calibration
         # line while cal_timestamp is still set). The switch to binocular has to happen
-        # before this config block's samples are parsed further down the loop.
+        # before the next sample line is dispatched at the top of the loop.
         if samples_match := _search_regex(SAMPLES_CONFIG_REGEX, line, re.IGNORECASE):
             samples_config.append(samples_match.groupdict())
             tracked = samples_match.group('tracked_eye').upper().strip()
