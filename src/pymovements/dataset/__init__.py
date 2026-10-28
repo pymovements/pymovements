@@ -30,7 +30,6 @@ from pymovements.dataset.resources import ResourceDefinition
 from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.dataset.websource import WebSource
 
-
 __all__ = [
     'Dataset',
     'DatasetDefinition',

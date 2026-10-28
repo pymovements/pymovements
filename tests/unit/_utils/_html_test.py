@@ -54,14 +54,14 @@ class Foo:
 class ShortRepr:
     """Object with a short repr (< 50 chars)."""
 
-    def __repr__(self) -> str:  # noqa: D105 - missing docstring
+    def __repr__(self) -> str:
         return 'ShortRepr(1)'
 
 
 class LongRepr:
     """Object with a long repr (>= 50 chars)."""
 
-    def __repr__(self) -> str:  # noqa: D105 - missing docstring
+    def __repr__(self) -> str:
         return 'X' * 60
 
 

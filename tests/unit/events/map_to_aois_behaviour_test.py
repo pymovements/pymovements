@@ -26,7 +26,6 @@ import pytest
 from pymovements.events import Events
 from pymovements.stimulus.text import TextStimulus
 
-
 # Tests for Events.map_to_aois ignoring non-fixation events:
 # These tests ensure that AOIs are only mapped for fixations and that non-fixations
 # (saccades, blinks, etc.) are left with None AOI columns without raising errors,

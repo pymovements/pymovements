@@ -40,7 +40,6 @@ from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.dataset.websource import WebSource
 from pymovements.gaze.experiment import Experiment
 
-
 yaml.add_multi_constructor('!', type_constructor, Loader=yaml.SafeLoader)
 
 

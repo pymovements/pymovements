@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests pymovements asc to csv processing."""
-# flake8: noqa: E101, W191, E501
+# flake8: noqa: E101, E501
 # pylint: disable=duplicate-code
 from __future__ import annotations
 
@@ -52,7 +52,6 @@ from pymovements.dataset.dataset_files import save_preprocessed
 from pymovements.dataset.dataset_files import scan_dataset
 from pymovements.stimulus import ImageStimulus
 from pymovements.stimulus import TextStimulus
-
 
 ASC_TEXT = r"""\
 ** CONVERTED FROM D:\SamplePymovements\results\sub_1\sub_1.edf using edfapi 4.2.1 Win32  EyeLink Dataviewer Sub ComponentApr 01 1990 on Wed Sep 20 13:47:57 1989

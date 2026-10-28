@@ -29,7 +29,6 @@ from uuid import uuid4
 
 import polars as pl
 
-
 STYLE = """
 <style>
     .pymovements-section-list {

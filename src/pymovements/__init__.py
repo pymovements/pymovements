@@ -61,7 +61,6 @@ from pymovements.measure import SampleMeasureLibrary
 from pymovements.stimulus import text
 from pymovements.warnings import ExperimentalWarning
 
-
 __all__ = [
     'CheckResult',
     'Dataset',

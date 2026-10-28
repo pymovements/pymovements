@@ -32,17 +32,17 @@ __all__ = [
 
 import datetime
 import re
+import warnings
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-import warnings
-
 import numpy as np
 import polars as pl
 
-from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys, \
-    check_nan
+from pymovements.gaze._utils._parsing import check_nan
+from pymovements.gaze._utils._parsing import compile_patterns
+from pymovements.gaze._utils._parsing import get_pattern_keys
 
 # Regular expressions for BeGaze header metadata lines with named groups.
 # Regexes are compiled lazily so importing the parser does not pay the setup cost.

@@ -30,7 +30,6 @@ from polars.testing import assert_frame_equal
 
 from pymovements import Events
 
-
 EXPECTED_SCHEMA_AFTER_INIT = {
     'name': pl.Utf8,
     'onset': pl.Duration('us'),

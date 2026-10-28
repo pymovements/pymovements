@@ -20,7 +20,6 @@
 """Provides functionality for generating synthetic eye gaze data."""
 from pymovements.synthetic.step_function import step_function
 
-
 __all__ = [
     'step_function',
 ]

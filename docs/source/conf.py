@@ -350,8 +350,8 @@ html_theme_options = {
         },
     ],
     'logo': {
-        'image_light': 'https://raw.githubusercontent.com/pymovements/pymovements/main/docs/source/_static/logo.svg',  # noqa: E501
-        'image_dark': 'https://raw.githubusercontent.com/pymovements/pymovements/main/docs/source/_static/logo.svg',  # noqa: E501
+        'image_light': 'https://raw.githubusercontent.com/pymovements/pymovements/main/docs/source/_static/logo.svg',
+        'image_dark': 'https://raw.githubusercontent.com/pymovements/pymovements/main/docs/source/_static/logo.svg',
     },
 }
 
