@@ -44,7 +44,7 @@ def savitzky_golay(
         derivative: int = 0,
         padding: str | float | int | None = 'nearest',
 ) -> pl.Expr:
-    """Apply a 1-D Savitzky-Golay filter to a column|_|:cite:p:`SavitzkyGolay1964`.
+    """Apply a 1-D Savitzky-Golay filter to a column :cite:p:`SavitzkyGolay1964`.
 
     Parameters
     ----------
@@ -148,7 +148,7 @@ def savitzky_golay(
             pl.col(input_column)
             .list.get(component)
             .map_batches(func, return_dtype=pl.Float64)
-            .list.explode()
+            .list.explode(empty_as_null=True)
             for component in range(n_components)
         ],
     ).alias(output_column)

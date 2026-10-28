@@ -30,6 +30,9 @@
 import importlib.resources
 import inspect
 import os
+import pkgutil
+import re
+import string
 import sys
 from subprocess import CalledProcessError
 from subprocess import run
@@ -47,7 +50,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath('src'))))
 # -- Project information -----------------------------------------------------
 
 project = 'pymovements'
-copyright = '2022-2025 The pymovements Project Authors'
+copyright = '2022-2026 The pymovements Project Authors'
 author = 'The pymovements Project Authors'
 
 
@@ -59,6 +62,7 @@ author = 'The pymovements Project Authors'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
+    'sphinx.ext.doctest',
     'sphinx.ext.extlinks',
     'sphinx.ext.intersphinx',
     'sphinx.ext.linkcode',
@@ -81,13 +85,147 @@ source_suffix = {
 
 
 def config_inited_handler(app, config):
-    os.makedirs(os.path.join(app.srcdir, app.config.generated_path), exist_ok=True)
+    os.makedirs(os.path.join(app.srcdir, config.generated_path), exist_ok=True)
+    # Generated files are only pulled in via mdinclude and must not be picked up
+    # as standalone documents.
+    config.exclude_patterns.append(config.generated_path)
+
+
+# Matches markdown links to our own hosted documentation pages, e.g.
+# [Tutorials](https://pymovements.readthedocs.io/en/stable/tutorials/index.html).
+# Links with anchors are excluded as they have no :doc: equivalent.
+DOCS_LINK_PATTERN = re.compile(
+    r'\[([^]]+)]\(https://pymovements\.readthedocs\.io/en/stable/([^)#]+)\.html\)',
+)
+
+
+def generate_readme_handler(app, config):
+    """Write a copy of README.md with documentation links rewritten to :doc: references.
+
+    README.md must keep absolute URLs so that links render on GitHub and PyPI.
+    The landing page includes this preprocessed copy instead, so that links
+    point to the version being built and are validated as cross-references.
+    """
+    readme_path = os.path.join(app.srcdir, '..', '..', 'README.md')
+    with open(readme_path, encoding='utf-8') as readme_file:
+        content = readme_file.read()
+
+    content = DOCS_LINK_PATTERN.sub(r':doc:`\1 </\2>`', content)
+
+    generated_readme_path = os.path.join(app.srcdir, app.config.generated_path, 'README.md')
+    with open(generated_readme_path, 'w', encoding='utf-8') as generated_readme_file:
+        generated_readme_file.write(content)
+
+
+def doctree_resolved_handler(app, doctree, docname):
+    """Open all external links in a new tab."""
+    from docutils import nodes
+
+    for node in doctree.traverse(nodes.reference):
+        uri = node.get('refuri', '')
+        if uri.startswith(('http://', 'https://')):
+            node['target'] = '_blank'
+            node['rel'] = 'noopener noreferrer'
+
+
+def collect_property_members():
+    """Collect public property names for every importable pymovements class path."""
+    package = importlib.import_module('pymovements')
+    modules = [package]
+    for module_info in pkgutil.walk_packages(package.__path__, f'{package.__name__}.'):
+        modules.append(importlib.import_module(module_info.name))
+
+    property_members = {}
+    for module in modules:
+        for name, obj in inspect.getmembers(module, inspect.isclass):
+            if not obj.__module__.startswith('pymovements'):
+                continue
+            properties = []
+            for member_name in dir(obj):
+                if member_name.startswith('_'):
+                    continue
+                member = inspect.getattr_static(obj, member_name, None)
+                if not isinstance(member, property):
+                    continue
+                if getattr(member.fget, '__module__', '').startswith('pymovements'):
+                    properties.append(member_name)
+            if properties:
+                property_members[f'{module.__name__}.{name}'] = properties
+    return property_members
+
+
+def _is_section_header(lines, index):
+    """Check if the line at index starts a numpy-style docstring section."""
+    return (
+        index + 1 < len(lines)
+        and bool(lines[index].strip())
+        and not lines[index][0].isspace()
+        and set(lines[index + 1].strip()) == {'-'}
+    )
+
+
+def strip_property_attributes_handler(app, what, name, obj, options, lines):
+    """Remove property entries from the Attributes section of a class docstring.
+
+    Properties are documented on their own pages (see ``_templates/property.rst``), which are
+    the canonical cross-reference targets. Listing them in the class Attributes section as well
+    would register duplicate object descriptions. Only the in-memory docstring lines are edited,
+    the source docstrings stay complete for pydoclint. Must run before napoleon converts the
+    numpy-style sections.
+    """
+    if what != 'class':
+        return
+    properties = set(app.config.autosummary_context['property_members'].get(name, []))
+    if not properties:
+        return
+
+    start = next(
+        (
+            index for index in range(len(lines))
+            if lines[index].strip() == 'Attributes' and _is_section_header(lines, index)
+        ),
+        None,
+    )
+    if start is None:
+        return
+    end = start + 2
+    while end < len(lines) and not _is_section_header(lines, end):
+        end += 1
+
+    body = lines[start + 2:end]
+    trailing_blank_count = 0
+    while trailing_blank_count < len(body) and not body[-1 - trailing_blank_count].strip():
+        trailing_blank_count += 1
+    core = body[:len(body) - trailing_blank_count]
+
+    # An entry is its unindented name line plus the following indented or blank lines.
+    kept = []
+    index = 0
+    while index < len(core):
+        entry_end = index + 1
+        while entry_end < len(core) and not core[entry_end][:1].strip():
+            entry_end += 1
+        entry_name = core[index].split(':', 1)[0].strip()
+        if entry_name not in properties:
+            kept.extend(core[index:entry_end])
+        index = entry_end
+    while kept and not kept[-1].strip():
+        kept.pop()
+
+    if kept:
+        lines[start + 2:end] = kept + body[len(body) - trailing_blank_count:]
+    else:
+        del lines[start:end]
 
 
 def setup(app):
     app.add_config_value('REVISION', 'master', 'env')
     app.add_config_value('generated_path', '_generated', 'env')
     app.connect('config-inited', config_inited_handler)
+    app.connect('config-inited', generate_readme_handler)
+    app.connect('doctree-resolved', doctree_resolved_handler)
+    # napoleon connects with the default priority 500, lower priorities run first.
+    app.connect('autodoc-process-docstring', strip_property_attributes_handler, priority=400)
 
 
 # Add any paths that contain templates here, relative to this directory.
@@ -96,7 +234,7 @@ templates_path = ['_templates']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-# exclude_patterns = []
+exclude_patterns = ['pmep/TEMPLATE.md']
 suppress_warnings = [
     'myst.header',
 ]
@@ -163,23 +301,6 @@ nitpick_ignore_regex = [
     # Matplotlib pyplot short alias references like plt.X
     (r'py:(class|mod|func|meth|obj|attr)', r'^plt\..*'),
 
-    # Our docs might reference a plain "transforms.func" symbol coming from context
-    (r'py:(func|meth|mod)', r'^transforms\..*'),
-
-    # Shorthand alias used in docs for our own package
-    (r'py:(class|mod|func|meth|obj|attr)', r'^pm\..*'),
-
-    # Internal cross-refs to objects/attrs/methods that autosummary may not emit
-    (r'py:(obj|attr|meth)', r'^pymovements\..*'),
-
-    # Modules referenced in text but not importable via intersphinx targets
-    (r'py:mod', r'^pymovements\.events(?:\.event_properties)?$'),
-
-    # Custom exception names mentioned in text but not importable as a symbol
-    (r'py:exc', r'^UnknownMeasure$'),
-    (r'py:exc', r'^\.\.\s+deprecated:$'),
-
-
     # Matplotlib color types referenced in plotting API
     (
         r'py:class',
@@ -187,23 +308,14 @@ nitpick_ignore_regex = [
     ),
 
     # Project-internal typing aliases used only in docs
-    (r'py:class', r'^(?:ResourcesLike|DatasetDefinitionClass|SampleMeasure)$'),
+    (r'py:class', r'^(?:DatasetDefinitionClass|SampleMeasure)$'),
     # Fully-qualified generic forms that appear in docstrings
     (
         r'py:class', r'^pymovements\.(?:dataset\.dataset_library\.'
         r'DatasetDefinitionClass|measure\.samples\.library\.SampleMeasure)$',
     ),
-
-    # Fully-qualified references to our classes that aren't resolvable via intersphinx inventory
-    (r'py:class', r'^pymovements\.dataset\.(?:Dataset|DatasetDefinition|DatasetPaths)$'),
-    (r'py:class', r'^pymovements\.datasets\.Dataset$'),
-    (r'py:class', r'^pymovements\.gaze\.Experiment$'),
-
-    # Internal helper functions referenced in docs text
-    (r'py:func', r'^(?:events\.engbert\.compute_threshold|_decompress)$'),
-
-    # Residual autosummary cross-refs to attributes/methods on our high-level classes
-    (r'py:(attr|meth)', r'^(?:Dataset|Gaze|DatasetPaths|Experiment)\..*'),
+    # generic types https://github.com/sphinx-doc/sphinx/issues/14159
+    (r'py:class', r'.*dict\[str'),
 
     # Odd matplotlib reference seen in deprecated utils.plotting docs
     (r'py:class', r'^matplotlib\.pyplot\.figure$'),
@@ -211,11 +323,10 @@ nitpick_ignore_regex = [
 
 
 # -- Options for autosummary -------------------------------------------------
-numpydoc_show_class_members = False
-numpydoc_class_members_toctree = False
 autosummary_generate = True
 autosummary_generate_overwrite = True
 autosummary_imported_members = False
+autosummary_context = {'property_members': collect_property_members()}
 add_module_names = True
 
 # -- Options for HTML output -------------------------------------------------
@@ -250,7 +361,9 @@ html_theme_options = {
 myst_links_external_new_tab = True
 
 nb_execution_timeout = 60
-nb_execution_mode = 'auto'
+# Execute notebooks once and re-execute only when their content changes.
+# The cache lives in docs/.jupyter_cache, so CI and Read the Docs still start fresh.
+nb_execution_mode = 'cache'
 nb_execution_show_tb = True
 
 # -- Intersphinx options -------------------------------------------------
@@ -274,13 +387,31 @@ favicons = [
 # -- Options for BibTeX ------------------------------------------------------
 bibtex_bibfiles = ['bibliography.bib']
 bibtex_default_style = 'author_year_style'
-bibtex_reference_style = 'author_year'
+bibtex_reference_style = 'label'
 
 
 class AuthorYearLabelStyle(BaseLabelStyle):
+    template: str = '{author} et al., {year}'
+
     def format_labels(self, sorted_entries):
+        outputs: list[str] = []
         for entry in sorted_entries:
-            yield f'{entry.persons["author"][0].rich_last_names[0]} et al., {entry.fields["year"]}'
+            candidate = self.template.format(
+                author=entry.persons['author'][0].rich_last_names[0],
+                year=entry.fields['year'],
+            )
+
+            if candidate in outputs:
+                for suffix_char in string.ascii_lowercase:
+                    suffix_candidate = candidate + suffix_char
+                    if suffix_candidate not in outputs:
+                        candidate = suffix_candidate
+                        break
+                else:
+                    raise ValueError(f"character suffixes exhausted for '{candidate}'")
+
+            outputs.append(candidate)
+            yield candidate
 
 
 class AuthorYearStyle(PlainStyle):

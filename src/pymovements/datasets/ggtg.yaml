@@ -47,6 +47,19 @@ resources:
       trial_columns:
         - stimulus
 
+  - content: textstimulus
+    source:
+      url: https://osf.io/download/wtv8d/
+      filename: "aoi-csvs.zip"
+      md5: 0132c0d8dbcb04d2ecc25ade707f231d
+    filename_pattern: '{stimulus}.(?P<unit>word|char).csv'
+    load_kwargs:
+      aoi_column: content
+      start_x_column: left
+      end_x_column: right
+      start_y_column: top
+      end_y_column: bottom
+
 experiment:
   screen_width_px: 1100
   screen_height_px: 900

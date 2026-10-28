@@ -4,7 +4,7 @@
 Welcome to the pymovements documentation!
 =========================================
 
-.. mdinclude:: ../../README.md
+.. mdinclude:: _generated/README.md
 
 .. toctree::
    :hidden:
@@ -15,4 +15,6 @@ Welcome to the pymovements documentation!
    datasets/index
    reference/index
    contributing/index
+   pmep/index
+   about-us/index
    bibliography

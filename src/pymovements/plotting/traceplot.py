@@ -20,15 +20,20 @@
 """Provides the traceplot plotting function."""
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+from warnings import warn
+
 import matplotlib.pyplot as plt
 import matplotlib.scale
 import numpy as np
 
-from pymovements.gaze.gaze import Gaze
 from pymovements.plotting._matplotlib import _draw_line_data
 from pymovements.plotting._matplotlib import _set_screen_axes
 from pymovements.plotting._matplotlib import _setup_axes_and_colormap
 from pymovements.plotting._matplotlib import LinearSegmentedColormapType
+
+if TYPE_CHECKING:
+    from pymovements.gaze.gaze import Gaze
 
 
 def traceplot(
@@ -102,6 +107,33 @@ def traceplot(
         If length of x and y coordinates do not match or if ``cmap_norm`` is unknown.
 
     """
+    if add_stimulus:
+        warn(
+            DeprecationWarning(
+                "traceplot argument 'add_stimulus' is deprecated since version v0.28.0. "
+                'Use ImageStimulus.plot() and pass the returned axes to traceplot(ax=...) '
+                'instead. This argument will be removed in v0.33.0.',
+            ),
+        )
+
+    if path_to_image_stimulus is not None:
+        warn(
+            DeprecationWarning(
+                "traceplot argument 'path_to_image_stimulus' is deprecated since version "
+                'v0.28.0. Use ImageStimulus.plot() and pass the returned axes to '
+                'traceplot(ax=...) instead. This argument will be removed in v0.33.0.',
+            ),
+        )
+
+    if stimulus_origin != 'upper':
+        warn(
+            DeprecationWarning(
+                "traceplot argument 'stimulus_origin' is deprecated since version v0.28.0. "
+                'Use ImageStimulus.plot() and pass the returned axes to traceplot(ax=...) '
+                'instead. This argument will be removed in v0.33.0.',
+            ),
+        )
+
     # pylint: disable=duplicate-code
     x_signal = gaze.samples[position_column].list.get(0)
     y_signal = gaze.samples[position_column].list.get(1)
@@ -133,7 +165,13 @@ def traceplot(
     )
 
     if gaze is not None and gaze.experiment is not None:
-        _set_screen_axes(ax, gaze.experiment.screen, func_name='traceplot')
+        _set_screen_axes(
+            ax,
+            gaze.experiment.screen.width_px,
+            gaze.experiment.screen.height_px,
+            gaze.experiment.screen.origin,
+            func_name='traceplot',
+        )
 
     if show_cbar:
         # sm = matplotlib.cm.ScalarMappable(cmap=cmap, norm=cmap_norm)

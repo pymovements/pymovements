@@ -1,0 +1,1367 @@
+# Copyright (c) 2023-2026 The pymovements Project Authors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+"""Reading measure computation functions.
+
+To compute all reading measures from fixations and an AOI table at once, use
+:func:`~pymovements.measure.reading.compute_reading_measures`, which drives the full pipeline.
+The functions in this module are its building blocks, useful for computing individual measures
+or custom aggregations.
+
+Every function returns a polars aggregation expression to be used inside a
+``group_by(...).agg(...)`` over word groups, e.g.::
+
+    fixations.group_by(['trial', 'word_idx']).agg([
+        total_fixation_count(),
+        first_fixation_duration(),
+    ])
+
+The grouping itself is chosen by the caller, so any partitioning (or none at all) works. Input
+columns can be given as column names or as arbitrary polars expressions. The expressions expect
+the fixation table to be annotated (see
+:func:`~pymovements.measure.reading.annotate_fixations`) and sorted by ``onset`` within each
+group, which the annotation step guarantees.
+
+The regression-path measures are the exception to the word grouping: their windows span
+fixations on other words, so they aggregate over ``regression_path_word`` groups instead of
+``word_idx`` groups (see :func:`~pymovements.measure.reading.regression_path_word`). The
+sequence-level summary measures are the other exception: they describe a whole reading
+sequence, so they aggregate over reading-sequence groups (e.g. ``['trial', 'page']``).
+:func:`~pymovements.measure.reading.skipped` is the third exception: it is not an aggregation
+at all but a row-wise expression on the word-level table that the aggregation step produces, so
+it belongs in a ``with_columns(...)`` on that table rather than in an ``agg(...)``.
+"""
+from __future__ import annotations
+
+import polars as pl
+
+from pymovements._utils._expressions import as_expr
+
+
+# ---------------------------
+# Basic fixation-based counts
+# ---------------------------
+
+
+def total_fixation_count() -> pl.Expr:
+    """Total number of fixations on each word (TFC).
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``TFC`` column.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import total_fixation_count
+    >>> fixations = pl.DataFrame({'word_idx': [0, 1, 1, 0, 2]})
+    >>> fixations.group_by('word_idx').agg(total_fixation_count()).sort('word_idx')
+    shape: (3, 2)
+    ┌──────────┬─────┐
+    │ word_idx ┆ TFC │
+    │ ---      ┆ --- │
+    │ i64      ┆ u64 │
+    ╞══════════╪═════╡
+    │ 0        ┆ 2   │
+    │ 1        ┆ 2   │
+    │ 2        ┆ 1   │
+    └──────────┴─────┘
+
+    Grouping by trial and word keeps the counts per reading sequence:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2, 2, 2],
+    ...     'word_idx': [0, 0, 0, 1, 1],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     total_fixation_count(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (3, 3)
+    ┌───────┬──────────┬─────┐
+    │ trial ┆ word_idx ┆ TFC │
+    │ ---   ┆ ---      ┆ --- │
+    │ i64   ┆ i64      ┆ u64 │
+    ╞═══════╪══════════╪═════╡
+    │ 1     ┆ 0        ┆ 2   │
+    │ 2     ┆ 0        ┆ 1   │
+    │ 2     ┆ 1        ┆ 2   │
+    └───────┴──────────┴─────┘
+    """
+    return pl.len().cast(pl.UInt64).alias('TFC')
+
+
+def first_pass_fixation_count(is_first_pass: str | pl.Expr = 'is_first_pass') -> pl.Expr:
+    """Total number of fixations during the first pass (FPFC).
+
+    Parameters
+    ----------
+    is_first_pass : str | pl.Expr
+        Column name or expression of the first-pass flag.
+        (default: ``'is_first_pass'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``FPFC`` column.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import first_pass_fixation_count
+    >>> fixations = pl.DataFrame({
+    ...     'word_idx': [0, 1, 1, 0, 2],
+    ...     'is_first_pass': [True, True, True, False, True],
+    ... })
+    >>> fixations.group_by('word_idx').agg(first_pass_fixation_count()).sort('word_idx')
+    shape: (3, 2)
+    ┌──────────┬──────┐
+    │ word_idx ┆ FPFC │
+    │ ---      ┆ ---  │
+    │ i64      ┆ u64  │
+    ╞══════════╪══════╡
+    │ 0        ┆ 1    │
+    │ 1        ┆ 2    │
+    │ 2        ┆ 1    │
+    └──────────┴──────┘
+
+    Grouping by trial and word keeps the counts per reading sequence. In trial 2, word 1 was
+    skipped and only entered by a regression, so it has no first-pass fixations:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2, 2, 2],
+    ...     'word_idx': [0, 1, 0, 2, 1],
+    ...     'is_first_pass': [True, True, True, True, False],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     first_pass_fixation_count(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (5, 3)
+    ┌───────┬──────────┬──────┐
+    │ trial ┆ word_idx ┆ FPFC │
+    │ ---   ┆ ---      ┆ ---  │
+    │ i64   ┆ i64      ┆ u64  │
+    ╞═══════╪══════════╪══════╡
+    │ 1     ┆ 0        ┆ 1    │
+    │ 1     ┆ 1        ┆ 1    │
+    │ 2     ┆ 0        ┆ 1    │
+    │ 2     ┆ 1        ┆ 0    │
+    │ 2     ┆ 2        ┆ 1    │
+    └───────┴──────────┴──────┘
+    """
+    is_first_pass_expr = as_expr(is_first_pass)
+    return is_first_pass_expr.sum().cast(pl.UInt64).alias('FPFC')
+
+
+def first_duration(duration: str | pl.Expr = 'duration') -> pl.Expr:
+    """Duration of the first fixation on each word (FD), regardless of reading pass.
+
+    .. warning:: Requires onset-sorted input.
+
+    Parameters
+    ----------
+    duration : str | pl.Expr
+        Column name or expression of the fixation duration.
+        (default: ``'duration'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``FD`` column.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import first_duration
+    >>> fixations = pl.DataFrame({
+    ...     'word_idx': [0, 1, 1, 0, 2],
+    ...     'duration': [100, 200, 150, 120, 130],
+    ... })
+    >>> fixations.group_by('word_idx').agg(first_duration()).sort('word_idx')
+    shape: (3, 2)
+    ┌──────────┬─────┐
+    │ word_idx ┆ FD  │
+    │ ---      ┆ --- │
+    │ i64      ┆ i64 │
+    ╞══════════╪═════╡
+    │ 0        ┆ 100 │
+    │ 1        ┆ 200 │
+    │ 2        ┆ 130 │
+    └──────────┴─────┘
+
+    Grouping by trial and word yields a first fixation per reading sequence, so the same word
+    gets a fresh FD in every trial:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2],
+    ...     'word_idx': [0, 0, 0],
+    ...     'duration': [100, 120, 90],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     first_duration(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (2, 3)
+    ┌───────┬──────────┬─────┐
+    │ trial ┆ word_idx ┆ FD  │
+    │ ---   ┆ ---      ┆ --- │
+    │ i64   ┆ i64      ┆ i64 │
+    ╞═══════╪══════════╪═════╡
+    │ 1     ┆ 0        ┆ 100 │
+    │ 2     ┆ 0        ┆ 90  │
+    └───────┴──────────┴─────┘
+    """
+    duration_expr = as_expr(duration)
+    return duration_expr.first().alias('FD')
+
+
+def first_reading_time(
+    duration: str | pl.Expr = 'duration',
+    run_id: str | pl.Expr = 'run_id',
+) -> pl.Expr:
+    """Sum of fixation durations during the first run (FRT).
+
+    FRT is the total dwell time from first entering a word until first leaving it (i.e., the
+    first contiguous run of fixations).
+
+    Parameters
+    ----------
+    duration : str | pl.Expr
+        Column name or expression of the fixation duration.
+        (default: ``'duration'``)
+    run_id : str | pl.Expr
+        Column name or expression of the run ID.
+        (default: ``'run_id'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``FRT`` column.
+
+    Examples
+    --------
+    The two fixations on word 1 share the first run, so their durations are summed; the later
+    return to word 0 is a second run and does not count:
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import first_reading_time
+    >>> fixations = pl.DataFrame({
+    ...     'word_idx': [0, 1, 1, 0, 2],
+    ...     'duration': [100, 200, 150, 120, 130],
+    ...     'run_id': [1, 2, 2, 3, 4],
+    ... })
+    >>> fixations.group_by('word_idx').agg(first_reading_time()).sort('word_idx')
+    shape: (3, 2)
+    ┌──────────┬─────┐
+    │ word_idx ┆ FRT │
+    │ ---      ┆ --- │
+    │ i64      ┆ i64 │
+    ╞══════════╪═════╡
+    │ 0        ┆ 100 │
+    │ 1        ┆ 350 │
+    │ 2        ┆ 130 │
+    └──────────┴─────┘
+
+    Grouping by trial and word evaluates the first run per reading sequence; the run IDs restart
+    with each trial when :func:`~pymovements.measure.reading.run_id` is applied with
+    ``.over('trial')``:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'word_idx': [0, 0, 1, 0, 0],
+    ...     'duration': [100, 150, 200, 120, 130],
+    ...     'run_id': [1, 1, 2, 1, 1],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     first_reading_time(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (3, 3)
+    ┌───────┬──────────┬─────┐
+    │ trial ┆ word_idx ┆ FRT │
+    │ ---   ┆ ---      ┆ --- │
+    │ i64   ┆ i64      ┆ i64 │
+    ╞═══════╪══════════╪═════╡
+    │ 1     ┆ 0        ┆ 250 │
+    │ 1     ┆ 1        ┆ 200 │
+    │ 2     ┆ 0        ┆ 250 │
+    └───────┴──────────┴─────┘
+    """
+    duration_expr = as_expr(duration)
+    run_id_expr = as_expr(run_id)
+    return (
+        duration_expr
+        .filter(run_id_expr == run_id_expr.min())
+        .sum()
+        .alias('FRT')
+    )
+
+
+def first_fixation_duration(
+    duration: str | pl.Expr = 'duration',
+    is_first_pass: str | pl.Expr = 'is_first_pass',
+) -> pl.Expr:
+    """Duration of the first fixation during first pass only (FFD).
+
+    .. warning:: Requires onset-sorted input.
+
+    Parameters
+    ----------
+    duration : str | pl.Expr
+        Column name or expression of the fixation duration.
+        (default: ``'duration'``)
+    is_first_pass : str | pl.Expr
+        Column name or expression of the first-pass flag.
+        (default: ``'is_first_pass'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``FFD`` column.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import first_fixation_duration
+    >>> fixations = pl.DataFrame({
+    ...     'word_idx': [0, 1, 1, 0, 2],
+    ...     'duration': [100, 200, 150, 120, 130],
+    ...     'is_first_pass': [True, True, True, False, True],
+    ... })
+    >>> fixations.group_by('word_idx').agg(first_fixation_duration()).sort('word_idx')
+    shape: (3, 2)
+    ┌──────────┬─────┐
+    │ word_idx ┆ FFD │
+    │ ---      ┆ --- │
+    │ i64      ┆ i64 │
+    ╞══════════╪═════╡
+    │ 0        ┆ 100 │
+    │ 1        ┆ 200 │
+    │ 2        ┆ 130 │
+    └──────────┴─────┘
+
+    Grouping by trial and word evaluates each reading sequence on its own. In trial 2, word 1 was
+    skipped and only entered by a regression, so it has no first-pass fixation at all and its FFD
+    is null (unlike its FD, see :func:`first_duration`):
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2, 2, 2],
+    ...     'word_idx': [0, 1, 0, 2, 1],
+    ...     'duration': [100, 200, 150, 180, 120],
+    ...     'is_first_pass': [True, True, True, True, False],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     first_fixation_duration(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (5, 3)
+    ┌───────┬──────────┬──────┐
+    │ trial ┆ word_idx ┆ FFD  │
+    │ ---   ┆ ---      ┆ ---  │
+    │ i64   ┆ i64      ┆ i64  │
+    ╞═══════╪══════════╪══════╡
+    │ 1     ┆ 0        ┆ 100  │
+    │ 1     ┆ 1        ┆ 200  │
+    │ 2     ┆ 0        ┆ 150  │
+    │ 2     ┆ 1        ┆ null │
+    │ 2     ┆ 2        ┆ 180  │
+    └───────┴──────────┴──────┘
+    """
+    duration_expr = as_expr(duration)
+    is_first_pass_expr = as_expr(is_first_pass)
+    return duration_expr.filter(is_first_pass_expr).first().alias('FFD')
+
+
+def first_pass_reading_time(
+    duration: str | pl.Expr = 'duration',
+    is_first_pass: str | pl.Expr = 'is_first_pass',
+) -> pl.Expr:
+    """Sum of fixation durations during the first pass (FPRT).
+
+    Parameters
+    ----------
+    duration : str | pl.Expr
+        Column name or expression of the fixation duration.
+        (default: ``'duration'``)
+    is_first_pass : str | pl.Expr
+        Column name or expression of the first-pass flag.
+        (default: ``'is_first_pass'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``FPRT`` column.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import first_pass_reading_time
+    >>> fixations = pl.DataFrame({
+    ...     'word_idx': [0, 1, 1, 0, 2],
+    ...     'duration': [100, 200, 150, 120, 130],
+    ...     'is_first_pass': [True, True, True, False, True],
+    ... })
+    >>> fixations.group_by('word_idx').agg(first_pass_reading_time()).sort('word_idx')
+    shape: (3, 2)
+    ┌──────────┬──────┐
+    │ word_idx ┆ FPRT │
+    │ ---      ┆ ---  │
+    │ i64      ┆ i64  │
+    ╞══════════╪══════╡
+    │ 0        ┆ 100  │
+    │ 1        ┆ 350  │
+    │ 2        ┆ 130  │
+    └──────────┴──────┘
+
+    Grouping by trial and word evaluates each reading sequence on its own. In trial 2, word 1 was
+    skipped and only entered by a regression, so no first-pass time accumulates and the sum over
+    the empty selection is 0 (while its FFD is null, see :func:`first_fixation_duration`):
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2, 2, 2],
+    ...     'word_idx': [0, 1, 0, 2, 1],
+    ...     'duration': [100, 200, 150, 180, 120],
+    ...     'is_first_pass': [True, True, True, True, False],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     first_pass_reading_time(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (5, 3)
+    ┌───────┬──────────┬──────┐
+    │ trial ┆ word_idx ┆ FPRT │
+    │ ---   ┆ ---      ┆ ---  │
+    │ i64   ┆ i64      ┆ i64  │
+    ╞═══════╪══════════╪══════╡
+    │ 1     ┆ 0        ┆ 100  │
+    │ 1     ┆ 1        ┆ 200  │
+    │ 2     ┆ 0        ┆ 150  │
+    │ 2     ┆ 1        ┆ 0    │
+    │ 2     ┆ 2        ┆ 180  │
+    └───────┴──────────┴──────┘
+    """
+    duration_expr = as_expr(duration)
+    is_first_pass_expr = as_expr(is_first_pass)
+    return duration_expr.filter(is_first_pass_expr).sum().alias('FPRT')
+
+
+def rereading_time(
+    duration: str | pl.Expr = 'duration',
+    is_first_pass: str | pl.Expr = 'is_first_pass',
+) -> pl.Expr:
+    """Sum of fixation durations outside the first pass (RRT).
+
+    Parameters
+    ----------
+    duration : str | pl.Expr
+        Column name or expression of the fixation duration.
+        (default: ``'duration'``)
+    is_first_pass : str | pl.Expr
+        Column name or expression of the first-pass flag.
+        (default: ``'is_first_pass'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``RRT`` column.
+
+    Examples
+    --------
+    Only the regression to word 0 falls outside its first pass, so every other word rereads for
+    zero:
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import rereading_time
+    >>> fixations = pl.DataFrame({
+    ...     'word_idx': [0, 1, 1, 0, 2],
+    ...     'duration': [100, 200, 150, 120, 130],
+    ...     'is_first_pass': [True, True, True, False, True],
+    ... })
+    >>> fixations.group_by('word_idx').agg(rereading_time()).sort('word_idx')
+    shape: (3, 2)
+    ┌──────────┬─────┐
+    │ word_idx ┆ RRT │
+    │ ---      ┆ --- │
+    │ i64      ┆ i64 │
+    ╞══════════╪═════╡
+    │ 0        ┆ 120 │
+    │ 1        ┆ 0   │
+    │ 2        ┆ 0   │
+    └──────────┴─────┘
+
+    Grouping by trial and word evaluates each reading sequence on its own. In trial 2, word 1 was
+    only entered by a regression, so its whole fixation time counts as rereading:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2, 2, 2],
+    ...     'word_idx': [0, 1, 0, 2, 1],
+    ...     'duration': [100, 200, 150, 180, 120],
+    ...     'is_first_pass': [True, True, True, True, False],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     rereading_time(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (5, 3)
+    ┌───────┬──────────┬─────┐
+    │ trial ┆ word_idx ┆ RRT │
+    │ ---   ┆ ---      ┆ --- │
+    │ i64   ┆ i64      ┆ i64 │
+    ╞═══════╪══════════╪═════╡
+    │ 1     ┆ 0        ┆ 0   │
+    │ 1     ┆ 1        ┆ 0   │
+    │ 2     ┆ 0        ┆ 0   │
+    │ 2     ┆ 1        ┆ 120 │
+    │ 2     ┆ 2        ┆ 0   │
+    └───────┴──────────┴─────┘
+    """
+    duration_expr = as_expr(duration)
+    is_first_pass_expr = as_expr(is_first_pass)
+    return duration_expr.filter(~is_first_pass_expr).sum().alias('RRT')
+
+
+# ---------------------------
+# Transition-based measures
+# ---------------------------
+
+
+def regression_count_in(is_reg_in: str | pl.Expr = 'is_reg_in') -> pl.Expr:
+    """Regression count into each word (TRC_in).
+
+    Parameters
+    ----------
+    is_reg_in : str | pl.Expr
+        Column name or expression of the regression-in flag.
+        (default: ``'is_reg_in'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``TRC_in`` column.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import regression_count_in
+    >>> fixations = pl.DataFrame({
+    ...     'word_idx': [0, 1, 1, 0, 2],
+    ...     'is_reg_in': [None, False, False, True, False],
+    ... })
+    >>> fixations.group_by('word_idx').agg(regression_count_in()).sort('word_idx')
+    shape: (3, 2)
+    ┌──────────┬────────┐
+    │ word_idx ┆ TRC_in │
+    │ ---      ┆ ---    │
+    │ i64      ┆ u64    │
+    ╞══════════╪════════╡
+    │ 0        ┆ 1      │
+    │ 1        ┆ 0      │
+    │ 2        ┆ 0      │
+    └──────────┴────────┘
+
+    Grouping by trial and word keeps the counts per reading sequence, so the regression into
+    word 0 of trial 1 does not leak into trial 2:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'word_idx': [0, 1, 0, 0, 1],
+    ...     'is_reg_in': [None, False, True, None, False],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     regression_count_in(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (4, 3)
+    ┌───────┬──────────┬────────┐
+    │ trial ┆ word_idx ┆ TRC_in │
+    │ ---   ┆ ---      ┆ ---    │
+    │ i64   ┆ i64      ┆ u64    │
+    ╞═══════╪══════════╪════════╡
+    │ 1     ┆ 0        ┆ 1      │
+    │ 1     ┆ 1        ┆ 0      │
+    │ 2     ┆ 0        ┆ 0      │
+    │ 2     ┆ 1        ┆ 0      │
+    └───────┴──────────┴────────┘
+    """
+    is_reg_in_expr = as_expr(is_reg_in)
+    return is_reg_in_expr.sum().cast(pl.UInt64).alias('TRC_in')
+
+
+def regression_count_out(is_reg_out: str | pl.Expr = 'is_reg_out') -> pl.Expr:
+    """Regression count out of each word (TRC_out).
+
+    Parameters
+    ----------
+    is_reg_out : str | pl.Expr
+        Column name or expression of the regression-out flag.
+        (default: ``'is_reg_out'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``TRC_out`` column.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import regression_count_out
+    >>> fixations = pl.DataFrame({
+    ...     'word_idx': [0, 1, 1, 0, 2],
+    ...     'is_reg_out': [False, False, True, False, None],
+    ... })
+    >>> fixations.group_by('word_idx').agg(regression_count_out()).sort('word_idx')
+    shape: (3, 2)
+    ┌──────────┬─────────┐
+    │ word_idx ┆ TRC_out │
+    │ ---      ┆ ---     │
+    │ i64      ┆ u64     │
+    ╞══════════╪═════════╡
+    │ 0        ┆ 0       │
+    │ 1        ┆ 1       │
+    │ 2        ┆ 0       │
+    └──────────┴─────────┘
+
+    Grouping by trial and word keeps the counts per reading sequence, so the regression out of
+    word 1 of trial 1 does not leak into trial 2:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'word_idx': [0, 1, 0, 0, 1],
+    ...     'is_reg_out': [False, True, None, False, None],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     regression_count_out(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (4, 3)
+    ┌───────┬──────────┬─────────┐
+    │ trial ┆ word_idx ┆ TRC_out │
+    │ ---   ┆ ---      ┆ ---     │
+    │ i64   ┆ i64      ┆ u64     │
+    ╞═══════╪══════════╪═════════╡
+    │ 1     ┆ 0        ┆ 0       │
+    │ 1     ┆ 1        ┆ 1       │
+    │ 2     ┆ 0        ┆ 0       │
+    │ 2     ┆ 1        ┆ 0       │
+    └───────┴──────────┴─────────┘
+    """
+    is_reg_out_expr = as_expr(is_reg_out)
+    return is_reg_out_expr.sum().cast(pl.UInt64).alias('TRC_out')
+
+
+def landing_position(char_idx: str | pl.Expr = 'char_idx') -> pl.Expr:
+    """One-based character position of the first fixation on each word (LP).
+
+    The aggregation emits the ``char_idx`` of the word's first
+    fixation plus one. Within :func:`~pymovements.measure.reading.compute_reading_measures` the
+    word's start character is subtracted, making the position relative to the word (its first
+    character is 1), and words that were never fixated are filled with 0; a fixated word whose
+    first fixation has a null ``char_idx`` keeps a null position. The resulting values
+    match the landing position of the PoTeC reference implementation.
+
+    .. warning:: Requires onset-sorted input.
+
+    Parameters
+    ----------
+    char_idx : str | pl.Expr
+        Column name or expression of the fixated character index.
+        (default: ``'char_idx'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``LP`` column.
+
+    Examples
+    --------
+    The raw aggregation returns the absolute character index plus one; the pipeline later makes it
+    relative to the word start (see
+    :func:`~pymovements.measure.reading.compute_reading_measures`):
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import landing_position
+    >>> fixations = pl.DataFrame({
+    ...     'word_idx': [0, 1, 1, 0, 2],
+    ...     'char_idx': [0, 4, 5, 1, 8],
+    ... })
+    >>> fixations.group_by('word_idx').agg(landing_position()).sort('word_idx')
+    shape: (3, 2)
+    ┌──────────┬─────┐
+    │ word_idx ┆ LP  │
+    │ ---      ┆ --- │
+    │ i64      ┆ i64 │
+    ╞══════════╪═════╡
+    │ 0        ┆ 1   │
+    │ 1        ┆ 5   │
+    │ 2        ┆ 9   │
+    └──────────┴─────┘
+
+    Grouping by trial and word evaluates the first fixation per reading sequence, so the same
+    word gets a fresh landing position in every trial:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2],
+    ...     'word_idx': [0, 1, 0],
+    ...     'char_idx': [0, 4, 2],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     landing_position(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (3, 3)
+    ┌───────┬──────────┬─────┐
+    │ trial ┆ word_idx ┆ LP  │
+    │ ---   ┆ ---      ┆ --- │
+    │ i64   ┆ i64      ┆ i64 │
+    ╞═══════╪══════════╪═════╡
+    │ 1     ┆ 0        ┆ 1   │
+    │ 1     ┆ 1        ┆ 5   │
+    │ 2     ┆ 0        ┆ 3   │
+    └───────┴──────────┴─────┘
+    """
+    char_idx_expr = as_expr(char_idx)
+    return (char_idx_expr.first() + 1).alias('LP')
+
+
+def saccade_length_in(
+    word_idx: str | pl.Expr = 'word_idx',
+    prev_word_idx: str | pl.Expr = 'prev_word_idx',
+    is_first_fix: str | pl.Expr = 'is_first_fix',
+) -> pl.Expr:
+    """Saccade length at word entry (SL_in).
+
+    SL_in is the signed word distance between the current word and the previously fixated word
+    at the moment of the very first fixation on the current word, selected via the
+    ``is_first_fix`` annotation (see :func:`~pymovements.measure.reading.is_first_fixation`).
+    Null when the word starts the sequence.
+
+    Parameters
+    ----------
+    word_idx : str | pl.Expr
+        Column name or expression of the fixated word index.
+        (default: ``'word_idx'``)
+    prev_word_idx : str | pl.Expr
+        Column name or expression of the previous fixation's word index.
+        (default: ``'prev_word_idx'``)
+    is_first_fix : str | pl.Expr
+        Column name or expression of the first-fixation flag.
+        (default: ``'is_first_fix'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``SL_in`` column.
+
+    Examples
+    --------
+    Word 0 starts the sequence, so it has no entry saccade (null):
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import saccade_length_in
+    >>> fixations = pl.DataFrame({
+    ...     'word_idx': [0, 1, 1, 0, 2],
+    ...     'prev_word_idx': [None, 0, 1, 1, 0],
+    ...     'is_first_fix': [True, True, False, False, True],
+    ... })
+    >>> fixations.group_by('word_idx').agg(saccade_length_in()).sort('word_idx')
+    shape: (3, 2)
+    ┌──────────┬───────┐
+    │ word_idx ┆ SL_in │
+    │ ---      ┆ ---   │
+    │ i64      ┆ i64   │
+    ╞══════════╪═══════╡
+    │ 0        ┆ null  │
+    │ 1        ┆ 1     │
+    │ 2        ┆ 2     │
+    └──────────┴───────┘
+
+    Grouping by trial and word evaluates each reading sequence on its own, so the first word of
+    every trial has a null entry saccade:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2, 2],
+    ...     'word_idx': [0, 1, 0, 2],
+    ...     'prev_word_idx': [None, 0, None, 0],
+    ...     'is_first_fix': [True, True, True, True],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     saccade_length_in(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (4, 3)
+    ┌───────┬──────────┬───────┐
+    │ trial ┆ word_idx ┆ SL_in │
+    │ ---   ┆ ---      ┆ ---   │
+    │ i64   ┆ i64      ┆ i64   │
+    ╞═══════╪══════════╪═══════╡
+    │ 1     ┆ 0        ┆ null  │
+    │ 1     ┆ 1        ┆ 1     │
+    │ 2     ┆ 0        ┆ null  │
+    │ 2     ┆ 2        ┆ 2     │
+    └───────┴──────────┴───────┘
+    """
+    word_idx_expr = as_expr(word_idx)
+    prev_word_idx_expr = as_expr(prev_word_idx)
+    is_first_fix_expr = as_expr(is_first_fix)
+    return (
+        (word_idx_expr - prev_word_idx_expr)
+        .filter(is_first_fix_expr)
+        .first()
+        .alias('SL_in')
+    )
+
+
+def saccade_length_out(
+    word_idx: str | pl.Expr = 'word_idx',
+    next_word_idx: str | pl.Expr = 'next_word_idx',
+    run_id: str | pl.Expr = 'run_id',
+) -> pl.Expr:
+    """Saccade length at first-pass word exit (SL_out).
+
+    SL_out is the signed word distance from the current word to the next fixated word, measured
+    at the last fixation of the first run. Zero when the word ends the sequence.
+
+    .. warning:: Requires onset-sorted input.
+
+    Parameters
+    ----------
+    word_idx : str | pl.Expr
+        Column name or expression of the fixated word index.
+        (default: ``'word_idx'``)
+    next_word_idx : str | pl.Expr
+        Column name or expression of the next fixation's word index.
+        (default: ``'next_word_idx'``)
+    run_id : str | pl.Expr
+        Column name or expression of the run ID.
+        (default: ``'run_id'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``SL_out`` column.
+
+    Examples
+    --------
+    Word 2 ends the sequence, so its exit saccade is filled with 0:
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import saccade_length_out
+    >>> fixations = pl.DataFrame({
+    ...     'word_idx': [0, 1, 1, 0, 2],
+    ...     'next_word_idx': [1, 1, 0, 2, None],
+    ...     'run_id': [1, 2, 2, 3, 4],
+    ... })
+    >>> fixations.group_by('word_idx').agg(saccade_length_out()).sort('word_idx')
+    shape: (3, 2)
+    ┌──────────┬────────┐
+    │ word_idx ┆ SL_out │
+    │ ---      ┆ ---    │
+    │ i64      ┆ i64    │
+    ╞══════════╪════════╡
+    │ 0        ┆ 1      │
+    │ 1        ┆ -1     │
+    │ 2        ┆ 0      │
+    └──────────┴────────┘
+
+    Grouping by trial and word evaluates each reading sequence on its own, so the last word of
+    every trial gets a 0 exit saccade:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2, 2],
+    ...     'word_idx': [0, 1, 0, 2],
+    ...     'next_word_idx': [1, None, 2, None],
+    ...     'run_id': [1, 2, 1, 2],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     saccade_length_out(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (4, 3)
+    ┌───────┬──────────┬────────┐
+    │ trial ┆ word_idx ┆ SL_out │
+    │ ---   ┆ ---      ┆ ---    │
+    │ i64   ┆ i64      ┆ i64    │
+    ╞═══════╪══════════╪════════╡
+    │ 1     ┆ 0        ┆ 1      │
+    │ 1     ┆ 1        ┆ 0      │
+    │ 2     ┆ 0        ┆ 2      │
+    │ 2     ┆ 2        ┆ 0      │
+    └───────┴──────────┴────────┘
+    """
+    word_idx_expr = as_expr(word_idx)
+    next_word_idx_expr = as_expr(next_word_idx)
+    run_id_expr = as_expr(run_id)
+    return (
+        (next_word_idx_expr - word_idx_expr)
+        .filter(run_id_expr == run_id_expr.min())
+        .last()
+        .fill_null(0)
+        .alias('SL_out')
+    )
+
+
+# ---------------------------
+# Regression-path measures
+# ---------------------------
+
+
+def regression_path_duration_inclusive(duration: str | pl.Expr = 'duration') -> pl.Expr:
+    """Sum of all fixation durations within the regression-path window of a word (RPD_inc).
+
+    The window spans from first entering the word until the first fixation to its right,
+    *including* fixations on the word itself. Aggregate over ``regression_path_word`` groups
+    instead of ``word_idx`` groups (see
+    :func:`~pymovements.measure.reading.regression_path_word`).
+
+    Parameters
+    ----------
+    duration : str | pl.Expr
+        Column name or expression of the fixation duration.
+        (default: ``'duration'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``RPD_inc`` column.
+
+    Examples
+    --------
+    Grouped over ``regression_path_word``: the regression to word 0 falls inside word 1's window,
+    so its duration is included there:
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import regression_path_duration_inclusive
+    >>> fixations = pl.DataFrame({
+    ...     'regression_path_word': [0, 1, 1, 1, 2],
+    ...     'duration': [100, 200, 150, 120, 130],
+    ... })
+    >>> fixations.group_by('regression_path_word').agg(
+    ...     regression_path_duration_inclusive(),
+    ... ).sort('regression_path_word')
+    shape: (3, 2)
+    ┌──────────────────────┬─────────┐
+    │ regression_path_word ┆ RPD_inc │
+    │ ---                  ┆ ---     │
+    │ i64                  ┆ i64     │
+    ╞══════════════════════╪═════════╡
+    │ 0                    ┆ 100     │
+    │ 1                    ┆ 470     │
+    │ 2                    ┆ 130     │
+    └──────────────────────┴─────────┘
+
+    Grouping by trial and regression-path word keeps the windows per reading sequence:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'regression_path_word': [0, 1, 1, 0, 1],
+    ...     'duration': [100, 200, 150, 120, 130],
+    ... })
+    >>> fixations.group_by(['trial', 'regression_path_word']).agg(
+    ...     regression_path_duration_inclusive(),
+    ... ).sort(['trial', 'regression_path_word'])
+    shape: (4, 3)
+    ┌───────┬──────────────────────┬─────────┐
+    │ trial ┆ regression_path_word ┆ RPD_inc │
+    │ ---   ┆ ---                  ┆ ---     │
+    │ i64   ┆ i64                  ┆ i64     │
+    ╞═══════╪══════════════════════╪═════════╡
+    │ 1     ┆ 0                    ┆ 100     │
+    │ 1     ┆ 1                    ┆ 350     │
+    │ 2     ┆ 0                    ┆ 120     │
+    │ 2     ┆ 1                    ┆ 130     │
+    └───────┴──────────────────────┴─────────┘
+    """
+    duration_expr = as_expr(duration)
+    return duration_expr.sum().alias('RPD_inc')
+
+
+def regression_path_duration_exclusive(
+    duration: str | pl.Expr = 'duration',
+    word_idx: str | pl.Expr = 'word_idx',
+    regression_path_word: str | pl.Expr = 'regression_path_word',
+) -> pl.Expr:
+    """Sum of the regressed-time fixation durations within the regression-path window (RPD_exc).
+
+    Same window as :func:`regression_path_duration_inclusive`, but *excluding* fixations on the
+    word itself (i.e., time spent on regressed words only). Aggregate over ``regression_path_word``
+    groups.
+
+    Parameters
+    ----------
+    duration : str | pl.Expr
+        Column name or expression of the fixation duration.
+        (default: ``'duration'``)
+    word_idx : str | pl.Expr
+        Column name or expression of the fixated word index.
+        (default: ``'word_idx'``)
+    regression_path_word : str | pl.Expr
+        Column name or expression of the regression-path target word index.
+        (default: ``'regression_path_word'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``RPD_exc`` column.
+
+    Examples
+    --------
+    Same window as RPD_inc but excluding fixations on the word itself, so only the regressed time
+    on word 0 (120) remains in word 1's window:
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import regression_path_duration_exclusive
+    >>> fixations = pl.DataFrame({
+    ...     'regression_path_word': [0, 1, 1, 1, 2],
+    ...     'word_idx': [0, 1, 1, 0, 2],
+    ...     'duration': [100, 200, 150, 120, 130],
+    ... })
+    >>> fixations.group_by('regression_path_word').agg(
+    ...     regression_path_duration_exclusive(),
+    ... ).sort('regression_path_word')
+    shape: (3, 2)
+    ┌──────────────────────┬─────────┐
+    │ regression_path_word ┆ RPD_exc │
+    │ ---                  ┆ ---     │
+    │ i64                  ┆ i64     │
+    ╞══════════════════════╪═════════╡
+    │ 0                    ┆ 0       │
+    │ 1                    ┆ 120     │
+    │ 2                    ┆ 0       │
+    └──────────────────────┴─────────┘
+
+    Grouping by trial and regression-path word keeps the windows per reading sequence; only
+    trial 1 contains a regression (to word 0, inside word 1's window):
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'regression_path_word': [0, 1, 1, 0, 1],
+    ...     'word_idx': [0, 1, 0, 0, 1],
+    ...     'duration': [100, 200, 150, 120, 130],
+    ... })
+    >>> fixations.group_by(['trial', 'regression_path_word']).agg(
+    ...     regression_path_duration_exclusive(),
+    ... ).sort(['trial', 'regression_path_word'])
+    shape: (4, 3)
+    ┌───────┬──────────────────────┬─────────┐
+    │ trial ┆ regression_path_word ┆ RPD_exc │
+    │ ---   ┆ ---                  ┆ ---     │
+    │ i64   ┆ i64                  ┆ i64     │
+    ╞═══════╪══════════════════════╪═════════╡
+    │ 1     ┆ 0                    ┆ 0       │
+    │ 1     ┆ 1                    ┆ 150     │
+    │ 2     ┆ 0                    ┆ 0       │
+    │ 2     ┆ 1                    ┆ 0       │
+    └───────┴──────────────────────┴─────────┘
+    """
+    duration_expr = as_expr(duration)
+    word_idx_expr = as_expr(word_idx)
+    regression_path_word_expr = as_expr(regression_path_word)
+    return (
+        duration_expr
+        .filter(word_idx_expr != regression_path_word_expr)
+        .sum()
+        .alias('RPD_exc')
+    )
+
+
+def right_bounded_reading_time(
+    duration: str | pl.Expr = 'duration',
+    word_idx: str | pl.Expr = 'word_idx',
+    regression_path_word: str | pl.Expr = 'regression_path_word',
+) -> pl.Expr:
+    """Sum of fixation durations on a word before any word to its right is visited (RBRT).
+
+    Aggregate over ``regression_path_word`` groups (see
+    :func:`~pymovements.measure.reading.regression_path_word`).
+
+    Parameters
+    ----------
+    duration : str | pl.Expr
+        Column name or expression of the fixation duration.
+        (default: ``'duration'``)
+    word_idx : str | pl.Expr
+        Column name or expression of the fixated word index.
+        (default: ``'word_idx'``)
+    regression_path_word : str | pl.Expr
+        Column name or expression of the regression-path target word index.
+        (default: ``'regression_path_word'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``RBRT`` column.
+
+    Examples
+    --------
+    Grouped over ``regression_path_word``, summing only the fixations on the word itself (before
+    any word to its right is visited):
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import right_bounded_reading_time
+    >>> fixations = pl.DataFrame({
+    ...     'regression_path_word': [0, 1, 1, 1, 2],
+    ...     'word_idx': [0, 1, 1, 0, 2],
+    ...     'duration': [100, 200, 150, 120, 130],
+    ... })
+    >>> fixations.group_by('regression_path_word').agg(
+    ...     right_bounded_reading_time(),
+    ... ).sort('regression_path_word')
+    shape: (3, 2)
+    ┌──────────────────────┬──────┐
+    │ regression_path_word ┆ RBRT │
+    │ ---                  ┆ ---  │
+    │ i64                  ┆ i64  │
+    ╞══════════════════════╪══════╡
+    │ 0                    ┆ 100  │
+    │ 1                    ┆ 350  │
+    │ 2                    ┆ 130  │
+    └──────────────────────┴──────┘
+
+    Grouping by trial and regression-path word keeps the windows per reading sequence; the
+    regressed time on word 0 of trial 1 is excluded from word 1's RBRT:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'regression_path_word': [0, 1, 1, 0, 1],
+    ...     'word_idx': [0, 1, 0, 0, 1],
+    ...     'duration': [100, 200, 150, 120, 130],
+    ... })
+    >>> fixations.group_by(['trial', 'regression_path_word']).agg(
+    ...     right_bounded_reading_time(),
+    ... ).sort(['trial', 'regression_path_word'])
+    shape: (4, 3)
+    ┌───────┬──────────────────────┬──────┐
+    │ trial ┆ regression_path_word ┆ RBRT │
+    │ ---   ┆ ---                  ┆ ---  │
+    │ i64   ┆ i64                  ┆ i64  │
+    ╞═══════╪══════════════════════╪══════╡
+    │ 1     ┆ 0                    ┆ 100  │
+    │ 1     ┆ 1                    ┆ 200  │
+    │ 2     ┆ 0                    ┆ 120  │
+    │ 2     ┆ 1                    ┆ 130  │
+    └───────┴──────────────────────┴──────┘
+    """
+    duration_expr = as_expr(duration)
+    word_idx_expr = as_expr(word_idx)
+    regression_path_word_expr = as_expr(regression_path_word)
+    return (
+        duration_expr
+        .filter(word_idx_expr == regression_path_word_expr)
+        .sum()
+        .alias('RBRT')
+    )
+
+
+# ---------------------------
+# Sequence-level summary measures
+# ---------------------------
+
+
+def non_aoi_fixation_count_ratio(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
+    """Ratio of fixations outside any AOI, by count (NAFCR).
+
+    NAFCR is a summary of a whole reading sequence, not a word-level measure: aggregate it over
+    reading-sequence groups (e.g. ``['trial', 'page']``) instead of word groups.
+
+    A fixation counts as outside all AOIs if and only if its word index is null, which is the
+    convention produced by :py:meth:`~pymovements.Events.map_to_aois`. Datasets that encode
+    outside-AOI fixations with a sentinel value such as ``-1`` must convert those values to null
+    first, otherwise the ratio is silently underestimated.
+
+    The input must contain only fixation events, so filter the event frame to fixations first:
+    non-fixation rows carry null AOI columns after :py:meth:`~pymovements.Events.map_to_aois`
+    and would inflate the ratio.
+
+    Parameters
+    ----------
+    word_idx : str | pl.Expr
+        Column name or expression of the fixated word index.
+        (default: ``'word_idx'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``NAFCR`` column (proportion of fixations without
+        a mapped word, 0.0 to 1.0).
+
+    Examples
+    --------
+    A sequence-level summary (aggregate over the whole reading sequence, not per word). Here one
+    of four fixations has a null word index:
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import non_aoi_fixation_count_ratio
+    >>> fixations = pl.DataFrame({'word_idx': [0, 1, None, 2]})
+    >>> fixations.select(non_aoi_fixation_count_ratio())
+    shape: (1, 1)
+    ┌───────┐
+    │ NAFCR │
+    │ ---   │
+    │ f64   │
+    ╞═══════╡
+    │ 0.25  │
+    └───────┘
+
+    Grouping by the reading-sequence columns yields one ratio per sequence:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2, 2],
+    ...     'word_idx': [0, None, 1, 2],
+    ... })
+    >>> fixations.group_by('trial').agg(non_aoi_fixation_count_ratio()).sort('trial')
+    shape: (2, 2)
+    ┌───────┬───────┐
+    │ trial ┆ NAFCR │
+    │ ---   ┆ ---   │
+    │ i64   ┆ f64   │
+    ╞═══════╪═══════╡
+    │ 1     ┆ 0.5   │
+    │ 2     ┆ 0.0   │
+    └───────┴───────┘
+    """
+    word_idx_expr = as_expr(word_idx)
+    return word_idx_expr.is_null().mean().alias('NAFCR')
+
+
+def non_aoi_fixation_duration_ratio(
+    duration: str | pl.Expr = 'duration',
+    word_idx: str | pl.Expr = 'word_idx',
+) -> pl.Expr:
+    """Ratio of fixation duration outside any AOI (NAFDR).
+
+    NAFDR is a summary of a whole reading sequence, not a word-level measure: aggregate it over
+    reading-sequence groups (e.g. ``['trial', 'page']``) instead of word groups. Null when the
+    total fixation duration of the group is zero.
+
+    A fixation counts as outside all AOIs if and only if its word index is null, which is the
+    convention produced by :py:meth:`~pymovements.Events.map_to_aois`. Datasets that encode
+    outside-AOI fixations with a sentinel value such as ``-1`` must convert those values to null
+    first, otherwise the ratio is silently underestimated.
+
+    The input must contain only fixation events, so filter the event frame to fixations first:
+    non-fixation rows carry null AOI columns after :py:meth:`~pymovements.Events.map_to_aois`
+    and would inflate the ratio.
+
+    Parameters
+    ----------
+    duration : str | pl.Expr
+        Column name or expression of the fixation duration.
+        (default: ``'duration'``)
+    word_idx : str | pl.Expr
+        Column name or expression of the fixated word index.
+        (default: ``'word_idx'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``NAFDR`` column (proportion of fixation duration
+        without a mapped word, 0.0 to 1.0).
+
+    Examples
+    --------
+    A sequence-level summary (aggregate over the whole reading sequence, not per word). The null
+    word index accounts for 50 of the 500 total duration units:
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import non_aoi_fixation_duration_ratio
+    >>> fixations = pl.DataFrame({
+    ...     'word_idx': [0, 1, None, 2],
+    ...     'duration': [100, 200, 50, 150],
+    ... })
+    >>> fixations.select(non_aoi_fixation_duration_ratio())
+    shape: (1, 1)
+    ┌───────┐
+    │ NAFDR │
+    │ ---   │
+    │ f64   │
+    ╞═══════╡
+    │ 0.1   │
+    └───────┘
+
+    Grouping by the reading-sequence columns yields one ratio per sequence:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2, 2],
+    ...     'word_idx': [0, None, 1, 2],
+    ...     'duration': [150, 50, 100, 100],
+    ... })
+    >>> fixations.group_by('trial').agg(non_aoi_fixation_duration_ratio()).sort('trial')
+    shape: (2, 2)
+    ┌───────┬───────┐
+    │ trial ┆ NAFDR │
+    │ ---   ┆ ---   │
+    │ i64   ┆ f64   │
+    ╞═══════╪═══════╡
+    │ 1     ┆ 0.25  │
+    │ 2     ┆ 0.0   │
+    └───────┴───────┘
+    """
+    duration_expr = as_expr(duration)
+    word_idx_expr = as_expr(word_idx)
+    total_duration = duration_expr.sum()
+    non_aoi_duration = duration_expr.filter(word_idx_expr.is_null()).sum()
+    # A group with zero total duration has no defined ratio; dividing would yield NaN, so it
+    # becomes null instead. Empty groups cannot occur inside group_by, so unlike this zero
+    # total duration case they need no guard.
+    return (
+        pl.when(total_duration > 0)
+        .then(non_aoi_duration / total_duration)
+        .otherwise(None)
+        .alias('NAFDR')
+    )
+
+
+# ---------------------------
+# Word-level derived measures
+# ---------------------------
+
+
+def skipped(tfc: str | pl.Expr = 'TFC') -> pl.Expr:
+    """Binary indicator for total word skipping (``skipped``).
+
+    A word is skipped when it received no fixation at all. The expression works row-wise on
+    the word-level table and expects ``TFC`` to be zero for every unfixated word, as
+    :func:`~pymovements.measure.reading.compute_reading_measures` produces it. A null ``TFC``,
+    for example from a left join of per-word counts onto a word list, yields a null
+    ``skipped`` instead of 1, so zero-fill such join misses first.
+
+    Within the pipeline, ``skipped`` is computed before the ``LP`` post-processing, which
+    depends on it.
+
+    Parameters
+    ----------
+    tfc : str | pl.Expr
+        Column name or expression of the total fixation count.
+        (default: ``'TFC'``)
+
+    Returns
+    -------
+    pl.Expr
+        Expression producing the ``skipped`` column (1 if skipped, 0 otherwise, null for a
+        null ``tfc``).
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import skipped
+    >>> words = pl.DataFrame({'word': ['The', 'quick', 'brown'], 'TFC': [2, 0, 1]})
+    >>> words.with_columns(skipped())
+    shape: (3, 3)
+    ┌───────┬─────┬─────────┐
+    │ word  ┆ TFC ┆ skipped │
+    │ ---   ┆ --- ┆ ---     │
+    │ str   ┆ i64 ┆ i64     │
+    ╞═══════╪═════╪═════════╡
+    │ The   ┆ 2   ┆ 0       │
+    │ quick ┆ 0   ┆ 1       │
+    │ brown ┆ 1   ┆ 0       │
+    └───────┴─────┴─────────┘
+    """
+    tfc_expr = as_expr(tfc)
+    return (tfc_expr == 0).cast(pl.Int64).alias('skipped')

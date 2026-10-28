@@ -129,24 +129,6 @@ from pymovements import Gaze
             id='df_single_row_two_pixel_columns',
         ),
 
-        pytest.param(
-            {
-                'data': pl.from_dict(
-                    {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
-                ),
-                'pixel_columns': ['x', 'y'],
-            },
-            pl.from_dict(
-                {'pixel': [[1.23, 4.56]]},
-                schema={'pixel': pl.List(pl.Float64)},
-            ),
-            2,
-            marks=pytest.mark.filterwarnings(
-                'ignore:.*data.*samples.*:DeprecationWarning',
-            ),
-            id='deprecated_data_argument',
-        ),
-
 
         pytest.param(
             {
@@ -1115,8 +1097,30 @@ from pymovements import Gaze
 )
 def test_init_gaze_has_expected_attrs(init_kwargs, expected_samples, expected_n_components):
     gaze = Gaze(**init_kwargs)
+    if 'time' in expected_samples.columns:
+        time_dtype = expected_samples.schema['time']
+        if time_dtype in (pl.Float64, pl.Int64, pl.Int32, pl.Float32):
+            expected_samples = expected_samples.with_columns(
+                (pl.col('time').cast(pl.Float64) * 1000).round().cast(pl.Duration('us')),
+            )
     assert_frame_equal(gaze.samples, expected_samples)
     assert gaze.n_components == expected_n_components
+
+
+def test_init_rounds_sub_microsecond_duration_time():
+    # A sub-microsecond Duration time column is rounded to the nearest microsecond, not truncated.
+    gaze = Gaze(
+        pl.DataFrame({
+            'time': pl.Series([1500, 2600, 4500], dtype=pl.Duration('ns')),
+            'x': [1.0, 2.0, 3.0],
+            'y': [1.0, 2.0, 3.0],
+        }),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+    )
+
+    assert gaze.samples.schema['time'] == pl.Duration('us')
+    assert gaze.samples['time'].dt.total_microseconds().to_list() == [2, 3, 4]
 
 
 @pytest.mark.parametrize(
@@ -1727,13 +1731,21 @@ def test_init_gaze_has_expected_trial_columns(init_kwargs, expected_trial_column
 
         pytest.param(
             {
-                'samples': pl.DataFrame(),
-                'data': pl.DataFrame(),
+                'samples': pl.DataFrame(
+                    schema={
+                        'x': pl.Float64, 'y': pl.Float64,
+                        'time': pl.Duration('us'),
+                    },
+                ),
+                'pixel_columns': ['x', 'y'],
+                'time_column': 'time',
+                'time_unit': 'invalid',
             },
             ValueError,
-            'The arguments "samples" and "data" are mutually exclusive.',
-            marks=pytest.mark.filterwarnings('ignore:.*data.*samples.*:DeprecationWarning'),
-            id='samples_data_mutually_exclusive',
+            "unsupported time unit 'invalid'. "
+            "Supported units are 's' for seconds, 'ms' for milliseconds, "
+            "'us' for microseconds and 'step' for steps.",
+            id='time_unit_unsupported_with_duration_time',
         ),
 
         pytest.param(
@@ -1847,6 +1859,68 @@ def test_gaze_has_correct_metadata(metadata, expected_metadata):
     assert gaze.metadata == expected_metadata
 
 
+def test_gaze_init_propagates_sources_to_events():
+    gaze = Gaze(
+        samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+        metadata={'Sources': ['raw/sub_1.csv']},
+    )
+    assert gaze.events.metadata['Sources'] == ['raw/sub_1.csv']
+
+
+def test_gaze_init_without_sources_leaves_events_metadata_empty():
+    gaze = Gaze(
+        samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+    )
+    assert gaze.events.metadata == {}
+
+
+def test_gaze_init_merges_sources_into_passed_events():
+    events = Events(
+        name='fixation', onsets=[0], offsets=[1],
+        metadata={'Sources': ['events/sub_1.feather']},
+    )
+    gaze = Gaze(
+        samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+        events=events,
+        metadata={'Sources': ['raw/sub_1.csv']},
+    )
+    assert gaze.events.metadata['Sources'] == ['events/sub_1.feather', 'raw/sub_1.csv']
+
+
+def test_gaze_init_raises_on_non_list_sources():
+    with pytest.raises(TypeError) as excinfo:
+        Gaze(
+            samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+            time_column='time',
+            pixel_columns=['x', 'y'],
+            metadata={'Sources': 'raw/sub_1.csv'},
+        )
+    assert str(excinfo.value) == (
+        "metadata['Sources'] must be a list of path strings "
+        "but is of type str: 'raw/sub_1.csv'"
+    )
+
+
+def test_gaze_init_raises_on_non_path_sources_entry():
+    with pytest.raises(TypeError) as excinfo:
+        Gaze(
+            samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+            time_column='time',
+            pixel_columns=['x', 'y'],
+            metadata={'Sources': ['raw/sub_1.csv', 123]},
+        )
+    assert str(excinfo.value) == (
+        "metadata['Sources'] entries must be path strings "
+        'but found entry of type int: 123'
+    )
+
+
 def test_gaze_init_warnings():
     with pytest.warns(UserWarning) as record:
         Gaze(samples=pl.from_dict({'a': [1, 2, 3]}))
@@ -1855,38 +1929,3 @@ def test_gaze_init_warnings():
 
     assert len(record) == 1
     assert record[0].message.args[0].startswith(expected_msg_prefix)
-
-
-@pytest.mark.parametrize(
-    'init_kwargs',
-    [
-        pytest.param(
-            {'data': pl.DataFrame()},
-            id='data',
-        ),
-    ],
-)
-def test_gaze_init_parameter_is_deprecated(init_kwargs):
-    with pytest.warns(DeprecationWarning):
-        Gaze(**init_kwargs)
-
-
-@pytest.mark.parametrize(
-    'init_kwargs',
-    [
-        pytest.param(
-            {'data': pl.DataFrame()},
-            id='data',
-        ),
-    ],
-)
-def test_gaze_init_parameter_is_removed(init_kwargs, assert_deprecation_is_removed):
-    with pytest.raises(DeprecationWarning) as info:
-        Gaze(**init_kwargs)
-
-    assert_deprecation_is_removed(
-        function_name=f'Gaze init argument {list(init_kwargs.keys())[0]}',
-        warning_message=info.value.args[0],
-        scheduled_version='0.28.0',
-
-    )

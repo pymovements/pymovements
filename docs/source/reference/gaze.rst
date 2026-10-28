@@ -15,7 +15,6 @@ setup.
     :template: class.rst
 
     Gaze
-    GazeDataFrame
 
 .. currentmodule:: pymovements.gaze
 

@@ -15,11 +15,15 @@ in different formats.
     :nosignatures:
     :template: class.rst
 
+    CheckResult
+    DataQualityReport
     Dataset
     DatasetDefinition
     DatasetLibrary
     DatasetPaths
+    ValidationError
     ResourceDefinition
     ResourceDefinitions
     WebSource
     Participants
+    Phenotype

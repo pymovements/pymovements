@@ -40,8 +40,8 @@ class EventDetectionLibrary:
     def add(cls, method: Callable[..., Events]) -> None:
         """Add an event detection method to the library.
 
-        Parameter
-        ---------
+        Parameters
+        ----------
         method: Callable[..., Events]
             The event detection method to add to the library.
         """
@@ -51,10 +51,15 @@ class EventDetectionLibrary:
     def get(cls, name: str) -> Callable[..., Events]:
         """Get event detection method py name.
 
-        Parameter
-        ---------
+        Parameters
+        ----------
         name: str
             Name of the event detection method in the library.
+
+        Returns
+        -------
+        Callable[..., Events]
+            Event detection function.
         """
         return cls.methods[name]
 

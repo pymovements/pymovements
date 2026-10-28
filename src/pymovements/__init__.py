@@ -34,19 +34,23 @@ from pymovements.dataset import DatasetFile
 from pymovements.dataset import DatasetLibrary
 from pymovements.dataset import DatasetPaths
 from pymovements.dataset import Participants
+from pymovements.dataset import Phenotype
 from pymovements.dataset import register_dataset
 from pymovements.dataset import ResourceDefinition
 from pymovements.dataset import ResourceDefinitions
 from pymovements.dataset.websource import WebSource
-from pymovements.events import EventDataFrame
 from pymovements.events import Events
+from pymovements.exceptions import ChecksumError
 from pymovements.exceptions import UnknownFileType
 from pymovements.exceptions import UnknownMeasure
 from pymovements.gaze import Experiment
 from pymovements.gaze import EyeTracker
 from pymovements.gaze import Gaze
-from pymovements.gaze import GazeDataFrame
 from pymovements.gaze import Screen
+from pymovements.gaze.quality import CheckResult
+from pymovements.gaze.quality import DataQualityReport
+from pymovements.gaze.quality import ValidationError
+from pymovements.measure import annotate_fixations
 from pymovements.measure import EVENT_MEASURES
 from pymovements.measure import EventProcessor
 from pymovements.measure import EventSamplesProcessor
@@ -59,12 +63,17 @@ from pymovements.warnings import ExperimentalWarning
 
 
 __all__ = [
+    'CheckResult',
     'Dataset',
     'DatasetDefinition',
+    'DataQualityReport',
     'DatasetFile',
     'DatasetLibrary',
     'DatasetPaths',
+    'datasets',
+    'ValidationError',
     'Participants',
+    'Phenotype',
     'register_dataset',
     'ResourceDefinition',
     'ResourceDefinitions',
@@ -72,7 +81,6 @@ __all__ = [
 
     'events',
     'Events',
-    'EventDataFrame',
     'EventSamplesProcessor',
     'EventProcessor',
 
@@ -81,13 +89,13 @@ __all__ = [
     'EyeTracker',
     'Screen',
     'Gaze',
-    'GazeDataFrame',
 
     'measure',
     'EVENT_MEASURES',
     'register_event_measure',
     'EventProcessor',
     'EventSamplesProcessor',
+    'annotate_fixations',
     'ReadingMeasures',
     'SampleMeasureLibrary',
     'register_sample_measure',
@@ -98,6 +106,7 @@ __all__ = [
     'transforms',
 
     'exceptions',
+    'ChecksumError',
     'UnknownFileType',
     'UnknownMeasure',
 

@@ -19,15 +19,31 @@
 # SOFTWARE.
 """Tests for WebSource and download utilities."""
 import hashlib
+import io
 from pathlib import Path
 from unittest import mock
 from unittest.mock import patch
+from urllib.error import ContentTooShortError
+from urllib.error import HTTPError
 
 import pytest
 
-from pymovements.dataset.websource import _DownloadProgressBar
-from pymovements.dataset.websource import _get_redirected_url
+from pymovements._version import __version__
+from pymovements.dataset.websource import ChecksumError
 from pymovements.dataset.websource import WebSource
+
+
+class FakeResponse(io.BytesIO):
+    """Minimal stand-in for the response object returned by ``urllib.request.urlopen``."""
+
+    def __init__(self, content: bytes, headers: dict[str, str] | None = None):
+        super().__init__(content)
+        self.headers = headers if headers is not None else {}
+
+
+def raises_download_failed(source):
+    """Return the ``pytest.raises`` context for a failed ``source.download()`` call."""
+    return pytest.raises(RuntimeError, match=f'Downloading resource {source.url} failed')
 
 
 def test_websource_init():
@@ -197,6 +213,70 @@ def test_websource_download(tmp_path, verbose):
 
 
 @pytest.mark.network
+@pytest.mark.parametrize(
+    'verbose',
+    [
+        pytest.param(False, id='verbose_false'),
+        pytest.param(True, id='verbose_true'),
+    ],
+)
+@pytest.mark.parametrize(
+    'verify_checksum',
+    [
+        pytest.param(False, id='verify_checksum_false'),
+        pytest.param(True, id='verify_checksum_true'),
+    ],
+)
+def test_websource_download_existing_file_verified(tmp_path, verbose, verify_checksum):
+    source = WebSource(
+        url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
+        filename='pymovements-0.4.0.tar.gz',
+        md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+    )
+    filepath = source.download(tmp_path, verify_checksum=verify_checksum, verbose=verbose)
+
+    assert filepath.exists()
+    last_mtime = filepath.stat().st_mtime
+
+    new_filepath = source.download(tmp_path, verify_checksum=verify_checksum, verbose=verbose)
+
+    new_mtime = filepath.stat().st_mtime
+
+    assert new_filepath.exists()
+    assert new_filepath == filepath
+    assert new_mtime == last_mtime
+
+
+@pytest.mark.network
+@pytest.mark.parametrize(
+    'verbose',
+    [
+        pytest.param(False, id='verbose_false'),
+        pytest.param(True, id='verbose_true'),
+    ],
+)
+def test_websource_download_existing_file_checksum_fail(make_text_file, verbose):
+    source = WebSource(
+        url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
+        filename='pymovements-0.4.0.tar.gz',
+        md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+    )
+
+    filepath = make_text_file(source.filename)
+
+    assert filepath.exists()
+    last_mtime = filepath.stat().st_mtime
+
+    new_filepath = source.download(filepath.parent, verify_checksum=True, verbose=verbose)
+
+    new_mtime = filepath.stat().st_mtime
+
+    assert new_filepath.exists()
+    assert new_filepath == filepath
+    assert new_mtime > last_mtime
+
+
+@pytest.mark.network
 def test_websource_download_md5_None(tmp_path):
     source = WebSource(
         url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
@@ -216,8 +296,7 @@ def test_websource_download_404(tmp_path):
         md5='52bbf03a7c50ee7152ccb9d357c2bb30',
     )
 
-    message = f'Downloading resource {source.url} failed'
-    with pytest.raises(RuntimeError, match=message):
+    with raises_download_failed(source):
         source.download(tmp_path)
 
 
@@ -235,9 +314,8 @@ def test_websource_download_os_error(verbose, tmp_path):
         md5='52bbf03a7c50ee7152ccb9d357c2bb30',
     )
 
-    with mock.patch('pymovements.dataset.websource._download_url', side_effect=OSError()):
-        message = f'Downloading resource {source.url} failed'
-        with pytest.raises(RuntimeError, match=message):
+    with mock.patch('urllib.request.urlopen', side_effect=OSError()):
+        with raises_download_failed(source):
             source.download(tmp_path, verbose=verbose)
 
 
@@ -248,13 +326,13 @@ def test_websource_download_http_failure(tmp_path):
         md5='52bbf03a7c50ee7152ccb9d357c2bb30',
     )
 
-    with mock.patch('pymovements.dataset.websource._download_url', side_effect=OSError()):
-        with pytest.raises(RuntimeError, match=f'Downloading resource {source.url} failed'):
+    with mock.patch('urllib.request.urlopen', side_effect=OSError()):
+        with raises_download_failed(source):
             source.download(tmp_path)
 
 
 @pytest.mark.network
-def test_websource_download_with_invalid_md5(tmp_path):
+def test_websource_download_file_not_found(tmp_path):
     source = WebSource(
         url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
         filename='pymovements-0.4.0.tar.gz',
@@ -264,55 +342,125 @@ def test_websource_download_with_invalid_md5(tmp_path):
     with pytest.raises(RuntimeError) as excinfo:
         source.download(tmp_path)
 
-    message = f"File {tmp_path / source.filename} not found or download corrupted."
-    assert isinstance(excinfo.value.__cause__, RuntimeError)
+    message = (
+        f"MD5 checksum mismatch for file '{tmp_path / source.filename}'"
+        f": expected '{source.md5}', got '52bbf03a7c50ee7152ccb9d357c2bb30'"
+    )
+    assert isinstance(excinfo.value.__cause__, ChecksumError)
     assert str(excinfo.value.__cause__) == message
 
 
-@pytest.mark.network
-def test__get_redirected_url():
-    url = 'https://codeload.github.com/pymovements/pymovements/tar.gz/refs/tags/v0.4.0'
-    expected_url = 'https://codeload.github.com/pymovements/pymovements/tar.gz/refs/tags/v0.4.0'
+@pytest.mark.parametrize(
+    'verbose',
+    [
+        pytest.param(False, id='verbose_false'),
+        pytest.param(True, id='verbose_true'),
+    ],
+)
+@pytest.mark.parametrize(
+    'headers',
+    [
+        pytest.param({}, id='without_content_length'),
+        pytest.param({'Content-Length': '12'}, id='with_content_length'),
+        pytest.param({'Content-Length': 'many'}, id='with_invalid_content_length'),
+    ],
+)
+def test_websource_download_single_request_streams_to_file(tmp_path, verbose, headers):
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    content = b'file content'
 
-    final_url = _get_redirected_url(url)
+    with mock.patch(
+        'urllib.request.urlopen', return_value=FakeResponse(content, headers),
+    ) as mock_urlopen:
+        filepath = source.download(tmp_path, verbose=verbose)
 
-    assert final_url == expected_url
+    assert filepath == tmp_path / 'file.zip'
+    assert filepath.read_bytes() == content
+    assert sorted(path.name for path in tmp_path.iterdir()) == ['file.zip']
 
-
-@pytest.mark.network
-def test__get_redirected_url_with_redirects():
-    url = 'https://github.com/pymovements/pymovements/archive/master.zip'
-    expected_final_url = 'https://codeload.github.com/pymovements/pymovements/zip/main'
-
-    final_url = _get_redirected_url(url)
-
-    assert final_url == expected_final_url
-
-
-@pytest.mark.network
-def test__get_redirected_url_with_redirects_max_hops():
-    url = 'https://github.com/pymovements/pymovements/archive/master.zip'
-
-    with pytest.raises(RuntimeError) as excinfo:
-        _get_redirected_url(url, max_hops=0)
-
-    msg, = excinfo.value.args
-    assert msg == 'Request to '\
-        'https://github.com/pymovements/pymovements/archive/master.zip '\
-        'exceeded 0 redirects. The last redirect points to '\
-        'https://codeload.github.com/pymovements/pymovements/zip/main.'
+    mock_urlopen.assert_called_once()
+    request, = mock_urlopen.call_args.args
+    assert request.full_url == source.url
+    assert request.get_header('User-agent') == f'pymovements/{__version__}'
 
 
-def test__DownloadProgressBar_tsize_not_None():
-    download_progress_bar = _DownloadProgressBar()
-    assert download_progress_bar.n == 0
-    assert download_progress_bar.total is None
-    download_progress_bar.update_to()
-    assert download_progress_bar.n == 1
-    assert download_progress_bar.total is None
-    download_progress_bar.update_to(tsize=100)
-    assert download_progress_bar.n == 1
-    assert download_progress_bar.total == 100
+def test_websource_download_replaces_stale_part_file(tmp_path):
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    content = b'file content'
+    (tmp_path / 'file.zip.part').write_bytes(b'leftover from an interrupted download')
+
+    with mock.patch('urllib.request.urlopen', return_value=FakeResponse(content)):
+        filepath = source.download(tmp_path, verbose=False)
+
+    assert filepath.read_bytes() == content
+    assert sorted(path.name for path in tmp_path.iterdir()) == ['file.zip']
+
+
+def test_websource_download_http_error_closes_response(tmp_path):
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    http_error = HTTPError(
+        url=source.url, code=404, msg='Not Found', hdrs=None, fp=io.BytesIO(b''),
+    )
+
+    with mock.patch.object(http_error, 'close', wraps=http_error.close) as mock_close:
+        with mock.patch('urllib.request.urlopen', side_effect=http_error):
+            with raises_download_failed(source):
+                source.download(tmp_path, verbose=False)
+
+    mock_close.assert_called_once()
+    assert not list(tmp_path.iterdir())
+
+
+def test_websource_download_interrupted_transfer_leaves_no_file(tmp_path):
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    response = FakeResponse(b'first chunk')
+    response.read = mock.Mock(side_effect=[b'first chunk', ConnectionResetError()])
+
+    with mock.patch('urllib.request.urlopen', return_value=response):
+        with raises_download_failed(source):
+            source.download(tmp_path, verbose=False)
+
+    assert not list(tmp_path.iterdir())
+
+
+def test_websource_download_short_transfer_leaves_no_file(tmp_path):
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    response = FakeResponse(b'short', headers={'Content-Length': '100'})
+
+    with mock.patch('urllib.request.urlopen', return_value=response):
+        with raises_download_failed(source) as exc:
+            source.download(tmp_path, verbose=False)
+
+    assert isinstance(exc.value.__cause__, ContentTooShortError)
+    assert exc.value.__cause__.reason == 'retrieval incomplete: got only 5 out of 100 bytes'
+    assert not list(tmp_path.iterdir())
+
+
+def test_websource_download_failed_rename_leaves_no_file(tmp_path):
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    response = FakeResponse(b'complete content')
+
+    with mock.patch('urllib.request.urlopen', return_value=response):
+        with mock.patch('os.replace', side_effect=PermissionError('file.zip is locked')):
+            with raises_download_failed(source):
+                source.download(tmp_path, verbose=False)
+
+    assert not list(tmp_path.iterdir())
+
+
+def test_websource_download_interrupted_transfer_without_md5_redownloads(tmp_path):
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    broken_response = FakeResponse(b'')
+    broken_response.read = mock.Mock(side_effect=[b'partial', ConnectionResetError()])
+    responses = [broken_response, FakeResponse(b'complete content')]
+
+    with mock.patch('urllib.request.urlopen', side_effect=responses) as mock_urlopen:
+        with raises_download_failed(source):
+            source.download(tmp_path, verbose=False)
+        filepath = source.download(tmp_path, verbose=False)
+
+    assert mock_urlopen.call_count == 2
+    assert filepath.read_bytes() == b'complete content'
 
 
 @pytest.mark.parametrize(
@@ -371,6 +519,7 @@ def test_websource_download_fail(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
     ])
 
@@ -405,6 +554,7 @@ def test_websource_download_mirror_fail(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
         mock.call(
             url='https://mirror.example.com/test.gz.tar',
@@ -412,6 +562,7 @@ def test_websource_download_mirror_fail(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
     ])
 
@@ -449,6 +600,7 @@ def test_websource_download_fail_two_mirrors(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
         mock.call(
             url='https://mirror1.example.com/test.gz.tar',
@@ -456,6 +608,7 @@ def test_websource_download_fail_two_mirrors(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
         mock.call(
             url='https://mirror2.example.com/test.gz.tar',
@@ -463,6 +616,7 @@ def test_websource_download_fail_two_mirrors(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
     ])
 
@@ -489,6 +643,7 @@ def test_websource_download_first_mirror(mock_download_file, side_effect, tmp_pa
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
         mock.call(
             url='https://mirror.example.com/test.gz.tar',
@@ -496,6 +651,7 @@ def test_websource_download_first_mirror(mock_download_file, side_effect, tmp_pa
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
     ])
 
@@ -527,6 +683,7 @@ def test_websource_download_first_of_two_mirrors_gaze_fails(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
         mock.call(
             url='https://mirror1.example.com/test.gz.tar',
@@ -534,6 +691,7 @@ def test_websource_download_first_of_two_mirrors_gaze_fails(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
         mock.call(
             url='https://mirror2.example.com/test.gz.tar',
@@ -541,5 +699,62 @@ def test_websource_download_first_of_two_mirrors_gaze_fails(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
     ])
+
+
+@pytest.mark.parametrize(
+    ('filename', 'expected_checksum'),
+    [
+        pytest.param('rda_test_file.rda', 'db8a1766878007ccfdcbd112cb084249', id='rda'),
+        pytest.param('monocular_example.csv', 'b56e208f6442bab645789defe865183b', id='csv'),
+    ],
+)
+class TestWebSourceChecksum:
+    def test_websource_checksum(self, filename, expected_checksum, testfiles_dirpath):
+        path = testfiles_dirpath / filename
+
+        result = WebSource.checksum(path)
+
+        assert result == expected_checksum
+
+    def test_websource_verify_checksum_success(
+            self, filename, expected_checksum, testfiles_dirpath,
+    ):
+        path = testfiles_dirpath / filename
+
+        WebSource(url='test', md5=expected_checksum).verify_checksum(path)
+
+    def test_websource_verify_checksum_mismatch(
+            self, filename, expected_checksum, testfiles_dirpath,
+    ):
+        path = testfiles_dirpath / filename
+
+        wrong_checksum = '123456'
+
+        with pytest.raises(ChecksumError) as exc:
+            WebSource(url='test', md5=wrong_checksum).verify_checksum(path)
+
+        assert exc.value.actual == expected_checksum
+        assert exc.value.expected == wrong_checksum
+        assert exc.value.path == path
+        assert exc.value.algorithm == 'MD5'
+
+
+def test_websource_verify_checksum_no_checksum(make_text_file):
+    path = make_text_file('test.txt', 'test')
+
+    message = 'WebSource.md5 must be of type string but got NoneType'
+
+    with pytest.raises(TypeError, match=message):
+        WebSource(url='test', md5=None).verify_checksum(path)
+
+
+def test_websource_verify_checksum_no_file(tmp_path):
+    path = tmp_path / 'test.txt'
+
+    message = 'No such file or directory'
+
+    with pytest.raises(FileNotFoundError, match=message):
+        WebSource(url='test', md5='123456').verify_checksum(path)

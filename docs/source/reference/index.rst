@@ -24,6 +24,8 @@
      - Overview of data generation functionality
    * - :doc:`plotting`
      - Overview of plotting functionality
+   * - :doc:`exceptions`
+     - Overview of exceptions
    * - :doc:`extending`
      - Overview on how to extend pymovements with your own functions
 
@@ -41,4 +43,5 @@
    stimulus
    synthetic
    plotting
+   exceptions
    extending

@@ -26,6 +26,7 @@ import numpy
 import polars
 
 from pymovements._utils import _checks
+from pymovements._utils._time import normalize_timesteps
 from pymovements.events._utils._filters import filter_candidates_remove_nans
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
@@ -35,7 +36,7 @@ from pymovements.transforms.numpy import consecutive
 @register_event_detection
 def microsaccades(
         velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series,
-        timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
+        timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None = None,
         minimum_duration: int = 6,
         threshold: numpy.ndarray | tuple[float, float] | str = 'engbert2015',
         threshold_factor: float = 6,
@@ -57,18 +58,20 @@ def microsaccades(
     velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series
         shape (N, 2)
         x and y velocities of N samples in chronological order
-    timesteps: list[int] | numpy.ndarray | polars.Series | None
+    timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None
         shape (N, )
-        Corresponding continuous 1D timestep time series. If None, sample based timesteps are
-        assumed. (default: None)
+        Corresponding continuous 1D timestep time series. Fractional (float) timesteps are
+        accepted. If None, sample based timesteps are assumed. (default: None)
     minimum_duration: int
-        Minimum saccade duration. The duration is specified in the units used in ``timesteps``.
-         If ``timesteps`` is None, then ``minimum_duration`` is specified in numbers of samples.
+        Minimum saccade duration. The duration is specified in the units used in ``timesteps``;
+         for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
+         None, then ``minimum_duration`` is specified in numbers of samples.
          (default: 6)
     threshold: numpy.ndarray | tuple[float, float] | str
         If tuple of floats then use this as explicit elliptic threshold. If str, then use
-        a data-driven velocity threshold method. See :func:`~events.engbert.compute_threshold` for
-        a reference of valid methods. (default: 'engbert2015')
+        a data-driven velocity threshold method. Refer to
+        :func:`~pymovements.events.detection.microsaccades.compute_threshold`
+        for valid methods. (default: 'engbert2015')
     threshold_factor: float
         factor for relative velocity threshold computation. (default: 6)
     minimum_threshold: float
@@ -89,7 +92,9 @@ def microsaccades(
     ------
     TypeError
         If velocities is a polars Series and dtype not List
+        If timesteps is neither a Duration series nor of a numeric dtype
     ValueError
+        If timesteps are not in ascending order.
         If `threshold` value is below `min_threshold` value.
         If passed `threshold` is either not two-dimensional or not a supported method.
 
@@ -113,25 +118,25 @@ def microsaccades(
 
     >>> microsaccades(velocities)
     shape: (1, 4)
-    ┌─────────┬───────┬────────┬──────────┐
-    │ name    ┆ onset ┆ offset ┆ duration │
-    │ ---     ┆ ---   ┆ ---    ┆ ---      │
-    │ str     ┆ i64   ┆ i64    ┆ i64      │
-    ╞═════════╪═══════╪════════╪══════════╡
-    │ saccade ┆ 2     ┆ 199    ┆ 197      │
-    └─────────┴───────┴────────┴──────────┘
+    ┌─────────┬──────────────┬──────────────┬──────────────┐
+    │ name    ┆ onset        ┆ offset       ┆ duration     │
+    │ ---     ┆ ---          ┆ ---          ┆ ---          │
+    │ str     ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+    ╞═════════╪══════════════╪══════════════╪══════════════╡
+    │ saccade ┆ 2ms          ┆ 199ms        ┆ 197ms        │
+    └─────────┴──────────────┴──────────────┴──────────────┘
 
     Run saccade detection with custom parameters:
 
     >>> microsaccades(velocities, minimum_duration=10, threshold=0.1)
     shape: (1, 4)
-    ┌─────────┬───────┬────────┬──────────┐
-    │ name    ┆ onset ┆ offset ┆ duration │
-    │ ---     ┆ ---   ┆ ---    ┆ ---      │
-    │ str     ┆ i64   ┆ i64    ┆ i64      │
-    ╞═════════╪═══════╪════════╪══════════╡
-    │ saccade ┆ 111   ┆ 149    ┆ 38       │
-    └─────────┴───────┴────────┴──────────┘
+    ┌─────────┬──────────────┬──────────────┬──────────────┐
+    │ name    ┆ onset        ┆ offset       ┆ duration     │
+    │ ---     ┆ ---          ┆ ---          ┆ ---          │
+    │ str     ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+    ╞═════════╪══════════════╪══════════════╪══════════════╡
+    │ saccade ┆ 111ms        ┆ 149ms        ┆ 38ms         │
+    └─────────┴──────────────┴──────────────┴──────────────┘
 
     Polars series are also supported as input. Let's create a nested position series from our numpy
     array:
@@ -159,13 +164,13 @@ def microsaccades(
 
     >>> microsaccades(velocity_series)
     shape: (1, 4)
-    ┌─────────┬───────┬────────┬──────────┐
-    │ name    ┆ onset ┆ offset ┆ duration │
-    │ ---     ┆ ---   ┆ ---    ┆ ---      │
-    │ str     ┆ i64   ┆ i64    ┆ i64      │
-    ╞═════════╪═══════╪════════╪══════════╡
-    │ saccade ┆ 2     ┆ 199    ┆ 197      │
-    └─────────┴───────┴────────┴──────────┘
+    ┌─────────┬──────────────┬──────────────┬──────────────┐
+    │ name    ┆ onset        ┆ offset       ┆ duration     │
+    │ ---     ┆ ---          ┆ ---          ┆ ---          │
+    │ str     ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+    ╞═════════╪══════════════╪══════════════╪══════════════╡
+    │ saccade ┆ 2ms          ┆ 199ms        ┆ 197ms        │
+    └─────────┴──────────────┴──────────────┴──────────────┘
 
     We can also apply the detection on a :py:class:`~pymovements.Gaze` object.
 
@@ -176,52 +181,51 @@ def microsaccades(
     ... )
     >>> gaze  # doctest: +SKIP
     shape: (200, 2)
-    ┌──────┬────────────────────────┐
-    │ time ┆ velocity               │
-    │ ---  ┆ ---                    │
-    │ i64  ┆ list[f64]              │
-    ╞══════╪════════════════════════╡
-    │ 0    ┆ [-0.000628, 0.000055]  │
-    │ 1    ┆ [-0.000818, -0.000694] │
-    │ 2    ┆ [0.50097, 0.498064]    │
-    │ 3    ┆ [0.500475, 0.500865]   │
-    │ 4    ┆ [0.498559, 0.499092]   │
-    │ …    ┆ …                      │
-    │ 195  ┆ [0.100042, 0.100217]   │
-    │ 196  ┆ [0.099627, 0.099812]   │
-    │ 197  ┆ [0.101374, 0.098537]   │
-    │ 198  ┆ [0.099669, 0.100079]   │
-    │ 199  ┆ [0.098491, 0.101448]   │
-    └──────┴────────────────────────┘
+    ┌──────────────┬────────────────────────┐
+    │ time         ┆ velocity               │
+    │ ---          ┆ ---                    │
+    │ duration[μs] ┆ list[f64]              │
+    ╞══════════════╪════════════════════════╡
+    │ 0µs          ┆ [-0.000628, 0.000055]  │
+    │ 1ms          ┆ [-0.000818, -0.000694] │
+    │ 2ms          ┆ [0.50097, 0.498064]    │
+    │ 3ms          ┆ [0.500475, 0.500865]   │
+    │ 4ms          ┆ [0.498559, 0.499092]   │
+    │ …            ┆ …                      │
+    │ 195ms        ┆ [0.100042, 0.100217]   │
+    │ 196ms        ┆ [0.099627, 0.099812]   │
+    │ 197ms        ┆ [0.101374, 0.098537]   │
+    │ 198ms        ┆ [0.099669, 0.100079]   │
+    │ 199ms        ┆ [0.098491, 0.101448]   │
+    └──────────────┴────────────────────────┘
 
     Run saccade detection by using the :py:meth:`~pymovements.Gaze.detect` method.
 
     >>> gaze.detect('microsaccades')
     >>> gaze.events
     shape: (1, 4)
-    ┌─────────┬───────┬────────┬──────────┐
-    │ name    ┆ onset ┆ offset ┆ duration │
-    │ ---     ┆ ---   ┆ ---    ┆ ---      │
-    │ str     ┆ i64   ┆ i64    ┆ i64      │
-    ╞═════════╪═══════╪════════╪══════════╡
-    │ saccade ┆ 2     ┆ 199    ┆ 197      │
-    └─────────┴───────┴────────┴──────────┘
+    ┌─────────┬──────────────┬──────────────┬──────────────┐
+    │ name    ┆ onset        ┆ offset       ┆ duration     │
+    │ ---     ┆ ---          ┆ ---          ┆ ---          │
+    │ str     ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+    ╞═════════╪══════════════╪══════════════╪══════════════╡
+    │ saccade ┆ 2ms          ┆ 199ms        ┆ 197ms        │
+    └─────────┴──────────────┴──────────────┴──────────────┘
 
     Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
 
     >>> gaze.detect('microsaccades', minimum_duration=10, threshold=0.1, name='microsaccade')
     >>> gaze.events.filter_by_name('microsaccade')
     shape: (1, 4)
-    ┌──────────────┬───────┬────────┬──────────┐
-    │ name         ┆ onset ┆ offset ┆ duration │
-    │ ---          ┆ ---   ┆ ---    ┆ ---      │
-    │ str          ┆ i64   ┆ i64    ┆ i64      │
-    ╞══════════════╪═══════╪════════╪══════════╡
-    │ microsaccade ┆ 111   ┆ 149    ┆ 38       │
-    └──────────────┴───────┴────────┴──────────┘
+    ┌──────────────┬──────────────┬──────────────┬──────────────┐
+    │ name         ┆ onset        ┆ offset       ┆ duration     │
+    │ ---          ┆ ---          ┆ ---          ┆ ---          │
+    │ str          ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+    ╞══════════════╪══════════════╪══════════════╪══════════════╡
+    │ microsaccade ┆ 111ms        ┆ 149ms        ┆ 38ms         │
+    └──────────────┴──────────────┴──────────────┴──────────────┘
 
     """
-    numeric_dtypes = polars.datatypes.FloatType, polars.datatypes.IntegerType
     if isinstance(velocities, polars.Series):
         if not isinstance(velocities.dtype, polars.List):
             raise TypeError(f'velocities dtype must be List but is {velocities.dtype}')
@@ -232,15 +236,7 @@ def microsaccades(
     velocities = numpy.array(velocities)
     _checks.check_shapes(velocities=velocities)
 
-    if isinstance(timesteps, polars.Series):
-        if not isinstance(timesteps.dtype, numeric_dtypes):
-            raise TypeError(f'timesteps dtype must be float or int but is {timesteps.dtype}')
-        timesteps = timesteps.to_numpy()
-    elif timesteps is not None:
-        timesteps = numpy.array(timesteps)
-    else:
-        timesteps = numpy.arange(len(velocities), dtype=numpy.int64)
-    timesteps = numpy.array(timesteps).flatten()
+    timesteps = normalize_timesteps(timesteps, length=len(velocities))
     _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
     if isinstance(threshold, str):

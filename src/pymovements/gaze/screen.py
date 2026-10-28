@@ -25,12 +25,18 @@ from dataclasses import dataclass
 from dataclasses import fields
 from numbers import Number
 from typing import Any
+from typing import TYPE_CHECKING
 
 import numpy as np
+from deprecated.sphinx import deprecated
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
+from pymovements.plotting.screen import make_screen_axes
 from pymovements.transforms.numpy import pix2deg
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
 
 
 @repr_html()
@@ -49,6 +55,26 @@ class Screen:
         Specifies the screen location of the origin of the pixel
         coordinate system.
         (default: None)
+    width_px: int | None
+        Width of screen in pixels.
+    height_px: int | None
+        Height of screen in pixels.
+    resolution: tuple[int | None, int | None] | None
+        Resolution of screen in pixels (width, height).
+    width_cm: float | None
+        Width of screen in centimeters.
+    height_cm: float | None
+        Height of screen in centimeters.
+    size: tuple[float | None, float | None] | None
+        Size of screen in centimeters (width, height).
+    x_max_dva: float
+        Maximum screen x-coordinate in degrees of visual angle.
+    y_max_dva: float
+        Maximum screen y-coordinate in degrees of visual angle.
+    x_min_dva: float
+        Minimum screen x-coordinate in degrees of visual angle.
+    y_min_dva: float
+        Minimum screen y-coordinate in degrees of visual angle.
 
     Parameters
     ----------
@@ -138,23 +164,6 @@ class Screen:
         self.size = size if size is not None else (width_cm, height_cm)
         self.distance_cm = distance_cm
         self.origin = origin
-
-    def __post_init__(self) -> None:
-        """Check fields for validity."""
-        if self.width_px is not None:
-            _checks.check_is_greater_than_zero(width_px=self.width_px)
-
-        if self.height_px is not None:
-            _checks.check_is_greater_than_zero(height_px=self.height_px)
-
-        if self.width_cm is not None:
-            _checks.check_is_greater_than_zero(width_cm=self.width_cm)
-
-        if self.height_cm is not None:
-            _checks.check_is_greater_than_zero(height_cm=self.height_cm)
-
-        if self.distance_cm is not None:
-            _checks.check_is_greater_than_zero(distance_cm=self.distance_cm)
 
     @property
     def width_px(self) -> int | None:
@@ -356,11 +365,20 @@ class Screen:
             ),
         )
 
+    @deprecated(
+        reason='Please use pymovements.transforms.pix2deg() instead. '
+               'This method will be removed in v0.32.0.',
+        version='v0.27.1',
+    )
     def pix2deg(
             self,
             arr: float | list[float] | list[list[float]] | np.ndarray,
     ) -> np.ndarray:
         """Convert pixel screen coordinates to degrees of visual angle.
+
+        .. deprecated:: v0.27.1
+           Please use :py:func:`~pymovements.transforms.pix2deg` instead.
+           This method will be removed in v0.32.0.
 
         Parameters
         ----------
@@ -388,7 +406,7 @@ class Screen:
         ...     distance_cm=68.0,
         ...     origin='upper left',
         ... )
-        >>> screen.pix2deg(arr=arr)
+        >>> screen.pix2deg(arr=arr)# doctest: +SKIP
         array([[-12.70732231, 8.65963972]])
 
         >>> screen = Screen(
@@ -399,7 +417,7 @@ class Screen:
         ...     distance_cm=68.0,
         ...     origin='center',
         ... )
-        >>> screen.pix2deg(arr=arr)
+        >>> screen.pix2deg(arr=arr)# doctest: +SKIP
         array([[ 3.07379946, 20.43909054]])
         """
         self._check_numerical_attribute('width_px')
@@ -494,6 +512,51 @@ class Screen:
                     del data[key]
 
         return data
+
+    def plot(self, *, ax: plt.Axes | None = None) -> tuple[plt.Figure, plt.Axes]:
+        """Create an empty axes spanning the screen's pixel extent.
+
+        The axes is set up from the screen's ``width_px``, ``height_px`` and ``origin``.
+
+        Parameters
+        ----------
+        ax: plt.Axes | None
+            Axes to set up. A new figure and axes are created if ``None``.
+            (default: None)
+
+        Returns
+        -------
+        tuple[plt.Figure, plt.Axes]
+            The figure and the display-space axes.
+
+        Raises
+        ------
+        ValueError
+            If ``width_px`` or ``height_px`` is unset.
+        ValueError
+            If ``origin`` is unset or not a supported origin.
+
+        See Also
+        --------
+        pymovements.plotting.make_screen_axes : Create an empty axes for a display's pixel extent.
+
+        Examples
+        --------
+        >>> screen = Screen(
+        ...     width_px=1280,
+        ...     height_px=1024,
+        ...     width_cm=38.0,
+        ...     height_cm=30.0,
+        ...     distance_cm=68.0,
+        ...     origin='upper left',
+        ... )
+        >>> fig, ax = screen.plot()
+        >>> tuple(float(value) for value in ax.get_xlim())
+        (0.0, 1280.0)
+        >>> tuple(float(value) for value in ax.get_ylim())
+        (1024.0, 0.0)
+        """
+        return make_screen_axes(self.width_px, self.height_px, origin=self.origin, ax=ax)
 
     def __bool__(self) -> bool:
         """Return True if the screen has data defined, else False."""

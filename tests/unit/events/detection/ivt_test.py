@@ -67,6 +67,17 @@ from pymovements.transforms.numpy import pos2vel as pos2vel_numpy
         ),
         pytest.param(
             {
+                'velocities': np.zeros(shape=(10, 2)),
+                'velocity_threshold': 1.,
+                'minimum_duration': 1,
+                'timesteps': [0, 1, 2, 3, 4, 9, 8, 7, 6, 5],
+            },
+            ValueError,
+            'timesteps must be in ascending order',
+            id='timesteps_not_ascending_raises_value_error',
+        ),
+        pytest.param(
+            {
                 'velocities': np.ones(100),
                 'velocity_threshold': 1.,
                 'minimum_duration': 1,
@@ -262,6 +273,34 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
                 offsets=[1099],
             ),
             id='constant_position_single_fixation_with_timesteps',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'timesteps': pl.Series(np.arange(1000, 1100)).cast(pl.Duration('ms')),
+                'velocity_threshold': 1,
+                'minimum_duration': 1,
+            },
+            Events(
+                name='fixation',
+                onsets=[1000],
+                offsets=[1099],
+            ),
+            id='constant_position_single_fixation_with_duration_timesteps',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'timesteps': pl.Series(np.arange(0, 50_000, 500)).cast(pl.Duration('us')),
+                'velocity_threshold': 1,
+                'minimum_duration': 1,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[49.5],
+            ),
+            id='constant_position_single_fixation_with_2khz_duration_timesteps',
         ),
     ],
 )

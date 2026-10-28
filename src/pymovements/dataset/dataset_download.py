@@ -21,16 +21,10 @@
 from __future__ import annotations
 
 import shutil
-from collections.abc import Sequence
-from pathlib import Path
-from urllib.error import URLError
-from warnings import warn
 
 from pymovements.dataset._utils._archives import extract_archive
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_paths import DatasetPaths
-from pymovements.dataset.resources import ResourceDefinition
-from pymovements.dataset.websource import _download_file
 from pymovements.exceptions import UnknownFileType
 
 
@@ -41,12 +35,13 @@ def download_dataset(
         extract: bool = True,
         remove_finished: bool = False,
         resume: bool = True,
+        verify_checksum: bool = True,
         verbose: bool = True,
 ) -> None:
     """Download dataset resources.
 
     This downloads all resources of the dataset. Per default this also extracts all archives
-    into :py:meth:`Dataset.paths.raw`,
+    into :py:attr:`~pymovements.DatasetPaths.raw`,
     To save space on your device, you can remove the archive files after
     successful extraction with ``remove_finished=True``.
 
@@ -69,6 +64,8 @@ def download_dataset(
     resume: bool
         Resume previous extraction by skipping existing files.
         Checks for correct size of existing files but not integrity. (default: True)
+    verify_checksum : bool
+        If True, check integrity by using the md5 checksum. (default: True)
     verbose: bool
         If True, show progress of download and print status messages for integrity checking and
         file extraction. (default: True)
@@ -76,32 +73,24 @@ def download_dataset(
     Raises
     ------
     AttributeError
-        If number of mirrors or number of resources specified for dataset is zero.
+        If no downloadable sources are found in the dataset definition.
     RuntimeError
         If downloading a resource failed for all given mirrors.
     """
-    if not definition.resources:
-        raise AttributeError('resources must be specified to download a dataset.')
+    sources = definition.resolved_sources()
 
-    downloadable_resources = [resource for resource in definition.resources if resource.source]
-
-    if not downloadable_resources:
+    if not sources:
         raise AttributeError(
-            'No downloadable resources found in DatasetDefinition. '
+            'No downloadable sources found in DatasetDefinition. '
             'ResourceDefinition.source must be specified to download a dataset.',
         )
 
-    for resource in downloadable_resources:
-        if not definition.mirrors:
-            mirrors = None
-        else:
-            # legacy mirrors defined mirror for each content type.
-            mirrors = definition.mirrors.get(resource.content, None)
-
-        if not mirrors:
-            resource.source.download(paths.downloads, verbose=verbose)
-        else:
-            _download_resource_with_legacy_mirrors(mirrors, resource, paths.downloads, verbose)
+    for source in sources:
+        source.download(
+            target_dirpath=paths.downloads,
+            verbose=verbose,
+            verify_checksum=verify_checksum,
+        )
 
     if extract:
         extract_dataset(
@@ -141,7 +130,20 @@ def extract_dataset(
         Verbosity levels: (1) Print messages for extracting each dataset resource without printing
         messages for recursive archives. (2) Print messages for extracting each dataset resource and
         each recursive archive extract. (default: 1)
+
+    Raises
+    ------
+    AttributeError
+        If a resource resolves to a source without a filename, since such a file can never have
+        been downloaded.
+    ValueError
+        If the resolved sources of the resources conflict (see
+        :py:meth:`~pymovements.DatasetDefinition.resolved_sources`).
     """
+    # Re-validate resolved sources like the download path does, to catch conflicts
+    # introduced by mutation after initialization.
+    definition.resolved_sources()
+
     content_dirnames = {
         'gaze': 'raw',
         'precomputed_events': 'precomputed_events',
@@ -157,7 +159,16 @@ def extract_dataset(
             destination_dirpath = getattr(paths, content_directory)
             destination_dirpath.mkdir(parents=True, exist_ok=True)
             for resource in definition.resources.filter(content):
-                source_path = paths.downloads / resource.source.filename
+                source = definition.resolve_source(resource)
+                if source is None:
+                    continue
+                if source.filename is None:
+                    raise AttributeError(
+                        'WebSource.filename must not be None for source of resource '
+                        f"with content '{resource.content}'",
+                    )
+
+                source_path = paths.downloads / source.filename
 
                 try:
                     extract_archive(
@@ -170,43 +181,4 @@ def extract_dataset(
                         verbose=verbose,
                     )
                 except UnknownFileType:  # just copy file to target if not an archive.
-                    shutil.copy(source_path, destination_dirpath / resource.source.filename)
-
-
-def _download_resource_with_legacy_mirrors(
-        mirrors: Sequence[str],
-        resource: ResourceDefinition,
-        target_dirpath: Path,
-        verbose: bool,
-) -> None:
-    """Download resource with mirrors."""
-    if resource.source is None or resource.source.url is None:
-        raise AttributeError('WebSource.url must not be None')
-    if resource.source.filename is None:
-        raise AttributeError('WebSource.filename must not be None')
-
-    for mirror_idx, mirror in enumerate(mirrors, start=1):
-        mirror_url = f'{mirror}{resource.source.url}'
-        try:
-            _download_file(
-                url=mirror_url,
-                dirpath=target_dirpath,
-                filename=resource.source.filename or '',  # filename should be set in WebSource
-                md5=resource.source.md5,
-                verbose=verbose,
-            )
-            return  # Download successful
-        # pylint: disable=overlapping-except
-        except (URLError, OSError, RuntimeError) as error:
-            # Error downloading the resource, try next mirror
-            if mirror_idx < len(mirrors):
-                warning = UserWarning(
-                    f'Downloading resource from mirror {mirror_url} failed.'
-                    f' Trying next mirror ({len(mirrors) - mirror_idx} remaining).',
-                )
-                warning.__cause__ = error
-                warn(warning)
-
-    raise RuntimeError(
-        f'Downloading resource {resource.source.url} failed for all mirrors.',
-    )
+                    shutil.copy(source_path, destination_dirpath / source.filename)

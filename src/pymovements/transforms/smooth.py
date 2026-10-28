@@ -77,9 +77,9 @@ def smooth(
     The following methods are available for smoothing:
 
     * ``savitzky_golay``: Smooth data by applying a Savitzky-Golay filter.
-    See :py:func:`~pymovements.transforms.savitzky_golay` for further details.
+      See :py:func:`~pymovements.transforms.savitzky_golay` for further details.
     * ``moving_average``: Smooth data by calculating the mean of the subsequent samples.
-    Each smoothed sample is calculated by the mean of the samples in the window around the sample.
+      Each smoothed sample is calculated by the mean of the samples in the window around the sample.
     * ``exponential_moving_average``: Smooth data by exponentially weighted moving average.
 
     Details on the `padding` options:
@@ -150,7 +150,7 @@ def smooth(
                     pl.col(column)
                     .list.get(component)
                     .map_batches(pad_func, return_dtype=pl.Float64)
-                    .list.explode()
+                    .list.explode(empty_as_null=True)
                     .rolling_mean(window_size=window_length, center=True)
                     .shift(n=pad_kwargs['pad_width'])
                     .slice(pad_kwargs['pad_width'] * 2)
@@ -163,7 +163,7 @@ def smooth(
                 pl.col(column)
                 .list.get(component)
                 .map_batches(pad_func, return_dtype=pl.Float64)
-                .list.explode()
+                .list.explode(empty_as_null=True)
                 .ewm_mean(
                     span=window_length,
                     adjust=False,

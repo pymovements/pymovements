@@ -20,21 +20,28 @@
 """WebSource definition and download helper."""
 from __future__ import annotations
 
+import errno
 import hashlib
+import os
 import urllib.request
 from dataclasses import asdict
 from dataclasses import dataclass
 from dataclasses import KW_ONLY
 from pathlib import Path
 from typing import Any
+from urllib.error import ContentTooShortError
+from urllib.error import HTTPError
 from urllib.error import URLError
 from warnings import warn
 
 from tqdm.auto import tqdm
 
 from pymovements._version import __version__
+from pymovements.exceptions import ChecksumError
 
 USER_AGENT: str = f'pymovements/{__version__}'
+
+_CHUNK_SIZE: int = 64 * 1024
 
 
 @dataclass(frozen=True)
@@ -46,7 +53,8 @@ class WebSource:
     url: str
         Primary URL of the resource to be downloaded.
     filename: str | None
-        Optional target filename. If not provided, the basename of the URL path is used.
+        Optional target filename. Must be provided for calling
+        :py:meth:`~pymovements.WebSource.download`.
     md5: str | None
         Optional MD5 checksum for integrity verification.
     mirrors: list[str] | None
@@ -85,12 +93,17 @@ class WebSource:
             self,
             target_dirpath: Path | str,
             *,
+            verify_checksum: bool = True,
             verbose: bool = True,
     ) -> Path:
         """Download this resource into `target_dirpath`.
 
         Tries the primary `url` first, then any `mirrors` in order. Integrity is
-        validated via MD5 when provided. Returns the local file path.
+        validated via MD5 when available. Returns the local file path.
+
+        The file is streamed into a temporary ``<filename>.part`` next to the target and moved
+        into place once the download has completed, so a failed download never leaves a file at
+        the target path.
         """
         dirpath = Path(target_dirpath).expanduser()
 
@@ -107,8 +120,9 @@ class WebSource:
                 filename=self.filename,
                 md5=self.md5,
                 verbose=verbose,
+                verify_checksum=verify_checksum,
             )
-        except (OSError, RuntimeError) as primary_error:
+        except (OSError, RuntimeError, ChecksumError) as primary_error:
             # No mirrors to try
             if not self.mirrors:
                 raise RuntimeError(f"Downloading resource {self.url} failed.") from primary_error
@@ -124,6 +138,7 @@ class WebSource:
                         filename=self.filename,
                         md5=self.md5,
                         verbose=verbose,
+                        verify_checksum=verify_checksum,
                     )
                 # pylint: disable=overlapping-except
                 except (URLError, OSError, RuntimeError) as mirror_error:
@@ -141,6 +156,76 @@ class WebSource:
                 f"Downloading resource {self.filename} failed for all mirrors.",
             ) from primary_error
 
+    def verify_checksum(self, path: Path, *, chunk_size: int = 1024 * 1024) -> None:
+        """Verify file integrity by comparing MD5 checksums.
+
+        The checksum from `path` is compared against :py:attr:`~pymovements.WebSource.md5`.
+
+        Parameters
+        ----------
+        path: Path
+            Path to file to verify checksum for.
+        chunk_size : int
+            Byte size of processed chunks. (default: 1024 * 1024)
+
+        Raises
+        ------
+        ChecksumError
+            If file checksum does not match passed `md5` or `filepath` doesn't exist.
+        FileNotFoundError
+            If file does not exist.
+        TypeError
+            If :py:attr:`~pymovements.WebSource.md5` is not of type string.
+        """
+        if not isinstance(self.md5, str):
+            raise TypeError(
+                f"WebSource.md5 must be of type string but got {type(self.md5).__name__}",
+            )
+
+        if not path.is_file():
+            raise FileNotFoundError(
+                errno.ENOENT,  # errno
+                os.strerror(errno.ENOENT),  # strerror
+                path,  # filename
+            )
+
+        # Calculate checksum and check for match.
+        actual_checksum = WebSource.checksum(path, chunk_size=chunk_size)
+
+        if actual_checksum != self.md5:
+            raise ChecksumError(
+                expected=self.md5,
+                actual=actual_checksum,
+                path=path,
+                algorithm='MD5',
+            )
+
+    @staticmethod
+    def checksum(path: Path, *, chunk_size: int = 1024 * 1024) -> str:
+        """Calculate MD5 checksum.
+
+        Parameters
+        ----------
+        path: Path
+            Path to file to calculate checksum for.
+        chunk_size : int
+            Byte size of processed chunks. (default: 1024 * 1024)
+
+        Returns
+        -------
+        str
+            Calculated MD5 checksum.
+        """
+        # Setting the `usedforsecurity` flag does not change anything about the functionality, but
+        # indicates that we are not using the MD5 checksum for cryptography.
+        # This enables its usage in restricted environments like FIPS without raising an error.
+        file_md5 = hashlib.new('md5', usedforsecurity=False)
+
+        with open(path, 'rb') as f:
+            while chunk := f.read(chunk_size):
+                file_md5.update(chunk)
+        return file_md5.hexdigest()
+
 
 def _download_file(
         url: str,
@@ -148,7 +233,7 @@ def _download_file(
         filename: str,
         md5: str | None = None,
         *,
-        max_redirect_hops: int = 3,
+        verify_checksum: bool = True,
         verbose: bool = True,
 ) -> Path:
     """Download a file from a URL and place it in root.
@@ -163,8 +248,8 @@ def _download_file(
         Target filename of saved file.
     md5 : str | None
         MD5 checksum of downloaded file. If None, do not check. (default: None)
-    max_redirect_hops : int
-        Maximum number of redirect hops allowed. (default: 3)
+    verify_checksum : bool
+        If True, check integrity by using the md5 checksum. (default: True)
     verbose : bool
         If True, show a progress bar and print info messages on the downloading file.
         (default: True)
@@ -178,93 +263,51 @@ def _download_file(
     ------
     OSError
         If the download process failed.
-    RuntimeError
+    ChecksumError
         If the MD5 checksum of the downloaded file did not match the expected checksum.
     """
     dirpath = dirpath.expanduser()
     dirpath.mkdir(parents=True, exist_ok=True)
     filepath = dirpath / filename
 
-    # check if file is already present locally
-    if _check_integrity(filepath, md5):
-        if verbose:
-            print('Using already downloaded and verified file:', filepath)
-        return filepath
+    if filepath.is_file():
+        if verify_checksum and md5:
+            if verbose:
+                print('Verifying existing file:', filepath)
+            try:
+                WebSource(url=url, md5=md5).verify_checksum(filepath)
+            except ChecksumError as e:
+                if verbose:
+                    print('Local file failed checksum verification:')
+                    print(f"expected '{e.expected}', got '{e.actual}'")
+                    print('Re-downloading file.')
+            else:
+                if verbose:
+                    print('Using existing verified file:', filepath)
+                return filepath
+        else:
+            if verbose:
+                print('Using existing unverified file:', filepath)
+                print('Please set verify_checksum to True if you require checksum verification.')
+            return filepath
 
     if verbose:
         print(f'Downloading {url} to {filepath}')
 
-    # expand redirect chain if needed
-    url = _get_redirected_url(url=url, max_hops=max_redirect_hops)
-
     # download the file
-    try:
-        _download_url(url=url, destination=filepath, verbose=verbose)
-
-    except OSError as e:
-        if url[:5] == 'https':
-            print('Download failed. Trying https -> http instead.')
-            url = url.replace('https:', 'http:')
-
-            if verbose:
-                print(f'Downloading {url} to {filepath}')
-            _download_url(url=url, destination=filepath, verbose=verbose)
-        else:
-            raise e
+    _download_url(url=url, destination=filepath, verbose=verbose)
 
     # check integrity of downloaded file
-    if verbose:
-        print(f'Checking integrity of {filepath.name}')
-    if not _check_integrity(filepath=filepath, md5=md5):
-        raise RuntimeError(f'File {filepath} not found or download corrupted.')
+    if verify_checksum and md5:
+        if verbose:
+            print(f'Checking integrity of {filepath.name}')
+        WebSource(url=url, md5=md5).verify_checksum(filepath)
 
     return filepath
 
 
-def _get_redirected_url(url: str, max_hops: int = 3) -> str:
-    """Get redirected URL.
-
-    Parameters
-    ----------
-    url: str
-        Initial URL to be requested for redirection.
-    max_hops: int
-        Maximum number of redirection hops. (default: 3)
-
-    Returns
-    -------
-    str
-        Final URL after all redirections.
-
-    Raises
-    ------
-    RuntimeError
-        If number of redirects exceed `max_hops`.
-    """
-    initial_url = url
-    headers = {'Method': 'HEAD', 'User-Agent': USER_AGENT}
-    opener = urllib.request.build_opener()
-    opener.addheaders = [('User-Agent', USER_AGENT)]
-    urllib.request.install_opener(opener)
-
-    for _ in range(max_hops + 1):
-        with urllib.request.urlopen(urllib.request.Request(url, headers=headers)) as response:
-            if response.url == url or response.url is None:
-                return url
-            url = response.url
-
-    raise RuntimeError(
-        f'Request to {initial_url} exceeded {max_hops} redirects.'
-        f' The last redirect points to {url}.',
-    )
-
-
 class _DownloadProgressBar(tqdm):
-    """Progress bar for downloads.
-
-    Provides `update_to(n)` which uses `tqdm.update(delta_n)`.
-
-    Reference: https://github.com/tqdm/tqdm#hooks-and-callbacks
+    """Progress bar for downloads, counting bytes.
 
     Parameters
     ----------
@@ -274,31 +317,13 @@ class _DownloadProgressBar(tqdm):
     def __init__(self, **kwargs: Any):
         super().__init__(unit='B', unit_scale=True, unit_divisor=1024, miniters=1, **kwargs)
 
-    def update_to(self, b: int = 1, bsize: int = 1, tsize: int | None = None) -> bool | None:
-        """Update progress bar.
-
-        Parameters
-        ----------
-        b  : int
-            Number of blocks transferred so far (default: 1).
-        bsize  : int
-            Size of each block (in tqdm units) (default: 1).
-        tsize  : int | None
-            Total size (in tqdm units). If None it remains unchanged (default: None).
-
-        Returns
-        -------
-        bool | None
-            Returns `None` if the update was successful, `False` if the update was skipped
-            because the last update was too recent.
-        """
-        if tsize is not None:
-            self.total = tsize
-        return self.update(b * bsize - self.n)  # also sets self.n = b * bsize
-
 
 def _download_url(url: str, destination: Path, verbose: bool = True) -> None:
     """Download file from URL and save to destination.
+
+    A single request is issued, redirects are followed by urllib. The response is streamed into
+    ``<destination>.part`` and moved to ``destination`` only after the transfer has completed, so
+    a failed download never leaves a file at ``destination``.
 
     Parameters
     ----------
@@ -308,59 +333,55 @@ def _download_url(url: str, destination: Path, verbose: bool = True) -> None:
         Destination path of downloaded file.
     verbose : bool
         If True, show progressbar.
+
+    Raises
+    ------
+    HTTPError
+        If the server returns an HTTP error status.
+    URLError
+        If the connection to the server fails.
+    ContentTooShortError
+        If the server announced a content length and the response ended before reaching it.
+    OSError
+        If writing the temporary file or moving it into place fails.
     """
-    with _DownloadProgressBar(desc=destination.name, disable=not verbose) as t:
-        urllib.request.urlretrieve(url=url, filename=destination, reporthook=t.update_to)
-        t.total = t.n
+    request = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
+    try:
+        response = urllib.request.urlopen(request)
+    except HTTPError as e:
+        # Close explicitly, otherwise the buffered error response leaks a temporary file
+        # on Python 3.14, causing a ResourceWarning during garbage collection.
+        e.close()
+        raise
 
+    part_path = destination.with_name(f'{destination.name}.part')
+    completed = False
+    try:
+        with response:
+            try:
+                expected_size = int(response.headers.get('Content-Length'))
+            except (TypeError, ValueError):
+                # A missing or malformed header means no expected size.
+                expected_size = None
 
-def _check_integrity(filepath: Path, md5: str | None = None) -> bool:
-    """Check file integrity by MD5 checksum.
+            with open(part_path, 'wb') as part_file, _DownloadProgressBar(
+                    desc=destination.name, total=expected_size, disable=not verbose,
+            ) as progress_bar:
+                bytes_read = 0
+                while chunk := response.read(_CHUNK_SIZE):
+                    part_file.write(chunk)
+                    bytes_read += len(chunk)
+                    progress_bar.update(len(chunk))
 
-    Parameters
-    ----------
-    filepath : Path
-        Path to file.
-    md5: str | None
-        Expected MD5 checksum of file. If None, do not check. (default: None)
+                progress_bar.total = bytes_read
+                if expected_size is not None and bytes_read < expected_size:
+                    raise ContentTooShortError(
+                        f'retrieval incomplete: got only {bytes_read} out of {expected_size} bytes',
+                        (str(destination), response.headers),
+                    )
 
-    Returns
-    -------
-    bool
-        True if file checksum matches passed `md5` or if passed `md5` is None. False if file
-        checksum does not match passed `md5` or `filepath` doesn't exist.
-    """
-    if not filepath.is_file():
-        return False
-    if md5 is None:
-        return True
-
-    # Calculate checksum and check for match.
-    file_md5 = _calculate_md5(filepath)
-    return file_md5 == md5
-
-
-def _calculate_md5(filepath: Path, chunk_size: int = 1024 * 1024) -> str:
-    """Calculate MD5 checksum.
-
-    Parameters
-    ----------
-    filepath : Path
-        Path to file.
-    chunk_size : int
-        Byte size of processed chunks. (default: 1024 * 1024)
-
-    Returns
-    -------
-    str
-        Calculated MD5 checksum.
-    """
-    # Setting the `usedforsecurity` flag does not change anything about the functionality, but
-    # indicates that we are not using the MD5 checksum for cryptography.
-    # This enables its usage in restricted environments like FIPS without raising an error.
-    file_md5 = hashlib.new('md5', usedforsecurity=False)
-
-    with open(filepath, 'rb') as f:
-        for chunk in iter(lambda: f.read(chunk_size), b''):
-            file_md5.update(chunk)
-    return file_md5.hexdigest()
+        os.replace(part_path, destination)
+        completed = True
+    finally:
+        if not completed:
+            part_path.unlink(missing_ok=True)

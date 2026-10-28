@@ -435,15 +435,15 @@ def mock_toy(
         events = pl.from_dict(
             {
                 'name': ['saccade', 'fixation'] * 5,
-                'onset': np.arange(0, 100, 10),
-                'offset': np.arange(5, 105, 10),
-                'duration': np.array([5] * 10),
+                'onset': np.arange(0, 100_000, 10_000),
+                'offset': np.arange(5_000, 105_000, 10_000),
+                'duration': np.array([5_000] * 10),
             },
             schema={
                 'name': pl.String,
-                'onset': pl.Int64,
-                'offset': pl.Int64,
-                'duration': pl.Int64,
+                'onset': pl.Duration('us'),
+                'offset': pl.Duration('us'),
+                'duration': pl.Duration('us'),
             },
         )
         events_list.append(events)
@@ -834,9 +834,12 @@ def test_load_gaze_has_correct_metadata(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
     dataset.load(stimuli=False)
 
-    expected_fileinfo = gaze_dataset_configuration['fileinfo']['gaze'].drop('filepath')
+    expected_fileinfo = gaze_dataset_configuration['fileinfo']['gaze']
     for gaze, gaze_fileinfo in zip(dataset.gaze, expected_fileinfo.iter_rows(named=True)):
-        assert gaze.metadata == gaze_fileinfo
+        # The loaded file is recorded in the Sources entry, relative to the dataset root.
+        raw_filepath = dataset.paths.raw / gaze_fileinfo.pop('filepath')
+        expected_sources = [raw_filepath.relative_to(dataset.paths.dataset).as_posix()]
+        assert gaze.metadata == {**gaze_fileinfo, 'Sources': expected_sources}
 
 
 def test_stimuli_list_exists(gaze_dataset_configuration):
@@ -988,6 +991,20 @@ def test_load_subset(subset, fileinfo_idx, gaze_dataset_configuration):
     expected_fileinfo = expected_fileinfo['gaze'][fileinfo_idx]
 
     assert_frame_equal(dataset.fileinfo['gaze'], expected_fileinfo)
+
+
+@pytest.mark.filterwarnings('ignore:Stimulus support:pymovements.ExperimentalWarning')
+@pytest.mark.parametrize(
+    'gaze_dataset_configuration',
+    ['ToyAOI'],
+    indirect=['gaze_dataset_configuration'],
+)
+def test_load_subset_loads_stimuli(gaze_dataset_configuration):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+    dataset.load(subset={'subject_id': 1})
+
+    assert len(dataset.stimuli) == 3
+    assert all(isinstance(stimulus, TextStimulus) for stimulus in dataset.stimuli)
 
 
 @pytest.mark.parametrize(
@@ -1287,9 +1304,9 @@ def test_detect_events_auto_eye(detect_event_kwargs, gaze_dataset_configuration)
         'task': pl.String,
         'trial': pl.Int64,
         'name': pl.String,
-        'onset': pl.Int64,
-        'offset': pl.Int64,
-        'duration': pl.Int64,
+        'onset': pl.Duration('us'),
+        'offset': pl.Duration('us'),
+        'duration': pl.Duration('us'),
     }
     for result_events in dataset.events:
         assert result_events.schema == expected_schema
@@ -1336,9 +1353,9 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
             'task': pl.String,
             'trial': pl.Int64,
             'name': pl.String,
-            'onset': pl.Int64,
-            'offset': pl.Int64,
-            'duration': pl.Int64,
+            'onset': pl.Duration('us'),
+            'offset': pl.Duration('us'),
+            'duration': pl.Duration('us'),
         }
 
         for result_events in dataset.events:
@@ -1368,9 +1385,9 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
                 'task': pl.String,
                 'trial': pl.Int64,
                 'name': pl.String,
-                'onset': pl.Int64,
-                'offset': pl.Int64,
-                'duration': pl.Int64,
+                'onset': pl.Duration('us'),
+                'offset': pl.Duration('us'),
+                'duration': pl.Duration('us'),
             },
             id='two-saccade-runs',
         ),
@@ -1389,9 +1406,9 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
                 'task': pl.String,
                 'trial': pl.Int64,
                 'name': pl.String,
-                'onset': pl.Int64,
-                'offset': pl.Int64,
-                'duration': pl.Int64,
+                'onset': pl.Duration('us'),
+                'offset': pl.Duration('us'),
+                'duration': pl.Duration('us'),
             },
             id='one-saccade-one-fixation-run',
         ),
@@ -2112,9 +2129,9 @@ def test_event_dataframe_add_property_has_expected_height(
             {'event_properties': 'peak_velocity'},
             {
                 'name': pl.String,
-                'onset': pl.Int64,
-                'offset': pl.Int64,
-                'duration': pl.Int64,
+                'onset': pl.Duration('us'),
+                'offset': pl.Duration('us'),
+                'duration': pl.Duration('us'),
                 'peak_velocity': pl.Float64,
             },
             id='single_event_peak_velocity',
@@ -2123,9 +2140,9 @@ def test_event_dataframe_add_property_has_expected_height(
             {'event_properties': 'location'},
             {
                 'name': pl.String,
-                'onset': pl.Int64,
-                'offset': pl.Int64,
-                'duration': pl.Int64,
+                'onset': pl.Duration('us'),
+                'offset': pl.Duration('us'),
+                'duration': pl.Duration('us'),
                 'location': pl.List(pl.Float64),
             },
             id='single_event_position',
@@ -2264,6 +2281,75 @@ def test_compute_event_properties_alias(gaze_dataset_configuration, property_kwa
 
     dataset.compute_properties(**property_kwargs)
     mock.assert_called_with(**property_kwargs)
+
+
+@pytest.mark.parametrize(
+    ['kwargs', 'expected_samples_dropped', 'expected_events_dropped'],
+    [
+        pytest.param(
+            {
+                'subset': ['time'],
+                'events': False,
+            },
+            1,
+            0,
+            id='samples_only',
+        ),
+        pytest.param(
+            {
+                'subset': ['onset', 'offset'],
+                'samples': False,
+            },
+            0,
+            1,
+            id='events_only',
+        ),
+        pytest.param(
+            {
+                'samples': False,
+                'events': False,
+            },
+            0,
+            0,
+            id='none',
+        ),
+        pytest.param(
+            {},
+            1,
+            1,
+            id='samples_and_events_default',
+        ),
+    ],
+)
+def test_drop_nulls(
+        gaze_dataset_configuration, kwargs, expected_samples_dropped, expected_events_dropped,
+):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+    dataset.load(preprocessed=True, events=True, stimuli=False)
+
+    # Append rows with null values
+    gaze = dataset.gaze[0]
+    events = dataset.events[0]
+    gaze.samples = pl.concat([
+        gaze.samples, pl.DataFrame({
+            column.name: [None] for column in gaze.samples
+        }),
+    ])
+    events.frame = pl.concat([
+        events.frame, pl.DataFrame({
+            column.name: [None] for column in events.frame
+        }),
+    ])
+
+    samples_before = len(dataset.gaze[0].samples)
+    events_before = len(dataset.events[0].frame)
+    result = dataset.drop_nulls(**kwargs)
+    samples_after = len(dataset.gaze[0].samples)
+    events_after = len(dataset.events[0].frame)
+
+    assert result is dataset
+    assert samples_before - samples_after == expected_samples_dropped
+    assert events_before - events_after == expected_events_dropped
 
 
 @pytest.fixture(
@@ -2432,8 +2518,20 @@ def test_load_no_files_precomputed_rm_raises_exception(precomputed_rm_dataset_co
 def test_load_split_precomputed_events(precomputed_dataset_configuration, by, expected_len):
     dataset = Dataset(**precomputed_dataset_configuration['init_kwargs'])
     dataset.load(stimuli=False)
+
+    # Loaded precomputed events list their source file relative to the dataset root.
+    metadata_pre = [dict(precomputed.metadata) for precomputed in dataset.precomputed_events]
+    for metadata in metadata_pre:
+        assert len(metadata['Sources']) == 1
+        assert not Path(metadata['Sources'][0]).is_absolute()
+        assert (dataset.paths.dataset / metadata['Sources'][0]).is_file()
+
     dataset.split_precomputed_events(by)
     assert len(dataset.precomputed_events) == expected_len
+
+    # Each split frame keeps the metadata of the frame it was split from.
+    for precomputed in dataset.precomputed_events:
+        assert precomputed.metadata in metadata_pre
 
 
 def test_dataset_definition_from_yaml(tmp_path):

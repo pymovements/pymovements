@@ -23,12 +23,17 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
+from pymovements import Events
 from pymovements import Experiment
 from pymovements import Gaze
 
 
 def my_test_measure(column: str) -> pl.Expr:
     return pl.col(column).len().cast(pl.Int64).alias('my_measure')
+
+
+def my_non_aggregating_measure(column: str) -> pl.Expr:
+    return pl.col(column)
 
 
 @pytest.mark.filterwarnings('ignore:Gaze contains samples but no.*:UserWarning')
@@ -300,6 +305,84 @@ def my_test_measure(column: str) -> pl.Expr:
 
         pytest.param(
             {
+                'samples': pl.DataFrame({'time': [10, 15, 12]}),
+            },
+            'duration',
+            {},
+            pl.DataFrame({'duration': [5.0]}),
+            id='duration_complete_gaze',
+        ),
+
+        pytest.param(
+            {
+                'samples': pl.DataFrame({
+                    'time': [10, 15, 20, 28],
+                    'trial': [1, 1, 2, 2],
+                }),
+                'trial_columns': 'trial',
+            },
+            'duration',
+            {},
+            pl.DataFrame({
+                'trial': [1, 2],
+                'duration': [5.0, 8.0],
+            }),
+            id='duration_two_trials',
+        ),
+
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    data={
+                        'position': [[0.0, 0.0], [3.0, 4.0], [1.0, 1.0], [1.0, 1.0]],
+                        'trial': [1, 1, 2, 2],
+                    },
+                    schema={'position': pl.List(pl.Float64), 'trial': pl.Int64},
+                ),
+                'trial_columns': 'trial',
+            },
+            'disposition',
+            {},
+            pl.DataFrame(data={'trial': [1, 2], 'disposition': [5.0, 0.0]}),
+            id='disposition_two_trials',
+        ),
+
+        pytest.param(
+            {
+                'samples': pl.DataFrame(
+                    data={'A': [], 'trial': []},
+                    schema={'A': pl.Int64, 'trial': pl.Int64},
+                ),
+                'trial_columns': 'trial',
+            },
+            'null_ratio',
+            {'column': 'A'},
+            pl.DataFrame(
+                data={'trial': [], 'null_ratio': []},
+                schema={'trial': pl.Int64, 'null_ratio': pl.Float64},
+            ),
+            id='null_ratio_empty_samples_with_trials',
+        ),
+
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    data={'A': [1, 2, 3, 4], 'trial': [1, 1, 2, 2]},
+                    schema={'A': pl.Int64, 'trial': pl.Int64},
+                ),
+                'trial_columns': 'trial',
+            },
+            my_non_aggregating_measure,
+            {'column': 'A'},
+            pl.DataFrame(
+                data={'trial': [1, 2], 'A': [[1, 2], [3, 4]]},
+                schema={'trial': pl.Int64, 'A': pl.List(pl.Int64)},
+            ),
+            id='non_aggregating_measure_two_trials_returns_list',
+        ),
+
+        pytest.param(
+            {
                 'samples': pl.from_dict(
                     data={
                         'A': [1000, 1001, 1002, 1003],
@@ -427,3 +510,25 @@ def test_measure_samples_raises(gaze_init_kwargs, measure, kwargs, expected_exce
     gaze = Gaze(**gaze_init_kwargs)
     with pytest.raises(expected_exception, match=message):
         gaze.measure_samples(measure, **kwargs)
+
+
+def test_gaze_compute_event_properties_time_based_sample_measure():
+    # Sample measures using the time column (data_loss) expect numeric milliseconds
+    # and must work on the Duration time column of the samples frame.
+    gaze = Gaze(
+        pl.DataFrame(
+            {
+                'time': [0, 1, 2, 3],
+                'x': [0.0, None, 2.0, 3.0],
+                'y': [0.0, None, 2.0, 3.0],
+            },
+        ),
+        time_column='time',
+        time_unit='ms',
+        pixel_columns=['x', 'y'],
+        events=Events(name=['fixation'], onsets=[0], offsets=[3]),
+    )
+
+    gaze.compute_event_properties(('data_loss', {'column': 'pixel', 'sampling_rate': 1000.0}))
+
+    assert gaze.events.frame['data_loss_ratio'].to_list() == [0.25]

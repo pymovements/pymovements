@@ -1,6 +1,7 @@
 Dataset,Samples,Events,Reading Measures,# Subjects,# Sessions per Subject,Sampling Rate,Stimulus Type
 ":ref:`BSC` :cite:p:`BSC`",,X,,60,1,500 Hz,Text (sentences)
 ":ref:`BSCII` :cite:p:`BSCII`",,X,,60,1,1000 Hz,Text (sentences)
+":ref:`CERVINO` :cite:p:`CERVINO-Paper,CERVINO-Zenodo`",,X,X,207,1,120 Hz,Text (documents)
 ":ref:`ChineseReading` :cite:p:`ChineseReading`",,X,X,303,1,1000 Hz,Text (sentences)
 ":ref:`CodeComprehension` :cite:p:`CodeComprehension`",,X,,27,1-2,2000 Hz,Text (code)
 ":ref:`CoLAGaze` :cite:p:`CoLAGaze`",,X,X,42,1,2000 Hz,Text (sentences)
@@ -20,7 +21,7 @@ Dataset,Samples,Events,Reading Measures,# Subjects,# Sessions per Subject,Sampli
 ":ref:`InteRead` :cite:p:`InteRead`",X,X,,50,1,1200 Hz,Text (documents)
 ":ref:`IITB_HGC` :cite:p:`IITB_HGC`",,X,,5,1,2000 Hz,Text (documents)
 ":ref:`JuDo1000` :cite:p:`JuDo1000`",X,,,150,4,1000 Hz,Random Dots
-":ref:`MCFW-Gaze` :cite:p:`MCFW-Gaze`",X,,,15,1,120 Hz,"Image, Gaze Authentication, Web Browsing, Text, Video"
+":ref:`MCFW-Gaze` :cite:p:`MCFW-Gaze-Paper,MCFW-Gaze-Zenodo`",X,,,15,1,120 Hz,"Image, Gaze Authentication, Web Browsing, Text, Video"
 ":ref:`MECOL1W1` :cite:p:`MECOL1W1`",,X,X,580,1,Various Hz,Text (documents)
 ":ref:`MECOL1W2` :cite:p:`MECOL1W2`",,X,X,654,1,Various Hz,Text (documents)
 ":ref:`MECOL2W1` :cite:p:`MECOL2W1`",,X,,542,1,Various Hz,Text (documents)
