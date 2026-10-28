@@ -1490,6 +1490,55 @@ def test_detect_after_clear_events_with_trial_columns():
     assert_frame_equal(gaze.events.frame, expected_events.frame, check_row_order=False)
 
 
+def test_detect_fill_with_empty_events_and_trial_columns():
+    """Fill on empty events yields one unclassified event per trial."""
+    gaze = pm.gaze.from_numpy(
+        time=np.arange(100),
+        position=np.zeros((2, 100)),
+        trial=np.array(['A'] * 50 + ['B'] * 50),
+        experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+    )
+
+    # `fill` fills each trial with an unclassified event when no events are given, which
+    # exercises the shared empty events frame path.
+    gaze.detect('fill')
+
+    assert gaze.events.frame['trial'].to_list() == ['A', 'B']
+    assert gaze.events.frame['name'].to_list() == ['unclassified', 'unclassified']
+
+
+def test_detect_selects_group_events_for_multiple_trial_columns():
+    """Detectors that accept events receive only the events of the current trial."""
+    gaze = pm.gaze.from_pandas(
+        samples=pl.DataFrame({
+            'trial': ['A'] * 50 + ['B'] * 50,
+            'screen': ['1'] * 25 + ['2'] * 25 + ['1'] * 25 + ['2'] * 25,
+            'position': [(0, 0)] * 100,
+        }).to_pandas(),
+        trial_columns=['trial', 'screen'],
+        experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+    )
+    gaze.events = pm.Events(
+        pl.DataFrame({
+            'trial': ['A', 'A', 'B', 'B'],
+            'screen': ['1', '2', '1', '2'],
+            'name': ['fixation', 'fixation', 'fixation', 'fixation'],
+            'onset': [0, 25, 50, 75],
+            'offset': [24, 49, 74, 99],
+        }),
+    )
+
+    group_sizes: list[int] = []
+
+    def detect_counting_events(events, **_kwargs):
+        group_sizes.append(events.frame.height)
+        return pm.Events(name='fixation', onsets=[0], offsets=[1])
+
+    gaze.detect(detect_counting_events)
+
+    assert group_sizes == [1, 1, 1, 1]
+
+
 def test_gaze_detect_with_numeric_time_column_passes_timesteps_unconverted():
     # A numeric time column (possible via direct samples mutation) must be passed
     # to the detection method as is, without any Duration conversion.
@@ -1506,3 +1555,42 @@ def test_gaze_detect_with_numeric_time_column_passes_timesteps_unconverted():
     gaze.detect('idt', dispersion_threshold=1, minimum_duration=10)
 
     assert_frame_equal(gaze.events.frame, expected.events.frame)
+
+
+@pytest.fixture(name='gaze_with_sources')
+def fixture_gaze_with_sources():
+    return pm.Gaze(
+        samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+        metadata={'Sources': ['raw/sub_1.csv']},
+    )
+
+
+@pytest.fixture(name='detect_fixation')
+def fixture_detect_fixation():
+    return lambda: pm.Events(name='fixation', onsets=[0], offsets=[1])
+
+
+def test_gaze_detect_keeps_sources_on_events(gaze_with_sources, detect_fixation):
+    gaze_with_sources.detect(detect_fixation)
+    assert gaze_with_sources.events.metadata['Sources'] == ['raw/sub_1.csv']
+
+
+def test_gaze_detect_clear_repropagates_sources(gaze_with_sources, detect_fixation):
+    gaze_with_sources.detect(detect_fixation, clear=True)
+    assert gaze_with_sources.events.metadata['Sources'] == ['raw/sub_1.csv']
+
+
+def test_gaze_detect_after_events_reset_repropagates_sources(gaze_with_sources, detect_fixation):
+    # Simulates Dataset.clear_events(), which replaces the events container.
+    gaze_with_sources.events = pm.Events()
+    gaze_with_sources.detect(detect_fixation)
+    assert gaze_with_sources.events.metadata['Sources'] == ['raw/sub_1.csv']
+
+
+def test_gaze_detect_unknown_method_leaves_events_metadata_unchanged(gaze_with_sources):
+    gaze_with_sources.events = pm.Events()
+    with pytest.raises(KeyError):
+        gaze_with_sources.detect('unknown_method')
+    assert gaze_with_sources.events.metadata == {}
