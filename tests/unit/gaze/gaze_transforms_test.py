@@ -22,7 +22,9 @@ from __future__ import annotations
 
 import polars as pl
 import pytest
+from polars.testing import assert_frame_equal
 
+from pymovements import Experiment
 from pymovements import Gaze
 
 
@@ -93,6 +95,46 @@ def test_transform_grouped_path_non_empty_samples(trials):
     # Verify that the transform was applied through the grouped path
     assert 'dummy' in gaze.samples.columns
     assert gaze.samples['dummy'].to_list() == [7] * len(trials)
+
+
+@pytest.mark.parametrize(
+    'trials',
+    [
+        pytest.param([1, 1, 2, 2], id='contiguous_trials'),
+        pytest.param([1, 2, 1, 2], id='interleaved_trials'),
+    ],
+)
+@pytest.mark.parametrize(
+    ('method', 'columns_kwarg', 'x', 'y'),
+    [
+        pytest.param(
+            'pix2deg', 'pixel_columns', [0.0, 100.0, 200.0, 300.0], [0.0, 50.0, 100.0, 150.0],
+            id='pix2deg',
+        ),
+        pytest.param(
+            'deg2pix', 'position_columns', [0.0, 1.0, 2.0, 3.0], [0.0, 1.0, 2.0, 3.0],
+            id='deg2pix',
+        ),
+    ],
+)
+def test_element_wise_transform_ignores_trial_columns(method, columns_kwarg, x, y, trials):
+    """Element-wise transforms are unaffected by grouping by trials and keep the input order."""
+    samples = pl.DataFrame({'trial': trials, 'x': x, 'y': y})
+    experiment = Experiment(1024, 768, 38, 30, 60, 'center', 1000)
+
+    ungrouped = Gaze(
+        samples=samples.select('x', 'y'), experiment=experiment, **{columns_kwarg: ['x', 'y']},
+    )
+    grouped = Gaze(
+        samples=samples, experiment=experiment, trial_columns='trial',
+        **{columns_kwarg: ['x', 'y']},
+    )
+
+    getattr(ungrouped, method)()
+    getattr(grouped, method)()
+
+    assert_frame_equal(grouped.samples.drop('trial'), ungrouped.samples, check_row_order=True)
+    assert grouped.samples['trial'].to_list() == trials
 
 
 def test_transform_grouped_path_empty_samples_early_return():

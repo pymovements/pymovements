@@ -22,7 +22,7 @@ from pymovements.plotting.data_loss_histogram import data_loss_histogram
 from pymovements.plotting.heatmap import heatmap
 from pymovements.plotting.main_sequence_plot import main_sequence_plot
 from pymovements.plotting.scanpathplot import scanpathplot
-from pymovements.plotting.screen import screen
+from pymovements.plotting.screen import make_screen_axes
 from pymovements.plotting.traceplot import traceplot
 from pymovements.plotting.tsplot import tsplot
 
@@ -30,8 +30,8 @@ __all__ = [
     'data_loss_histogram',
     'heatmap',
     'main_sequence_plot',
+    'make_screen_axes',
     'scanpathplot',
-    'screen',
     'traceplot',
     'tsplot',
 ]
