@@ -29,8 +29,8 @@ import yaml
 
 # generalized constructor for !* tags
 def type_constructor(
-        loader: yaml.SafeLoader,  # noqa: ARG001
-        prefix: str,  # noqa: ARG001
+        loader: yaml.SafeLoader,  # noqa: ARG001  # unused-function-argument
+        prefix: str,  # noqa: ARG001  # unused-function-argument
         node: yaml.Node,
 ) -> type:
     """Resolve a YAML tag to a corresponding Python type.

@@ -116,7 +116,7 @@ Time	Type	Trial	L POR X [px]	L POR Y [px]	L Pupil Diameter [mm]	Timing	Pupil Con
 10000019123	SMP	1	850.71	717.53	714.00	0	0	-1	Saccade	test.bmp
 10000020123	SMP	1	850.71	717.53	714.00	0	0	-1	Blink	test.bmp
 10000021123	SMP	1	850.71	717.53	714.00	0	0	-1	Blink	test.bmp
-"""  # noqa: E501
+"""  # noqa: E501  # line-too-long
 
 
 PATTERNS: list[dict[str, Any] | str] = [

@@ -87,7 +87,7 @@ def _build_time_series(values: list[int | float] | np.ndarray) -> polars.Series:
 
 
 @repr_html(['frame', 'trial_columns'])
-class Events:  # noqa: PLW1641
+class Events:  # noqa: PLW1641  # eq-without-hash
     """A data structure for event data.
 
     Each row has at least an event name with its onset and offset specified.

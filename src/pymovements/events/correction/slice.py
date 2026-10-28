@@ -33,7 +33,7 @@ from pymovements.events.correction._utils import nearest_index
 from pymovements.events.correction._utils import to_line_values
 
 
-def slice(  # noqa: A001
+def slice(  # noqa: A001  # builtin-variable-shadowing
     line_ys: pl.Series | Sequence[float],
     *,
     x_thresh: float = 192,

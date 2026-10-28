@@ -180,7 +180,7 @@ def test_map_to_aois_get_aoi_exception_sets_none_without_crash(
     covered by existing tests elsewhere.
     """
 
-    def _boom(*args, **kwargs):  # noqa: ANN001, ANN002 - test helper
+    def _boom(*args, **kwargs):  # test helper
         raise TypeError('simulated get_aoi type error')
 
     # Patch TextStimulus.get_aoi to raise on call for a fixation row

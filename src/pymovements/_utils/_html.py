@@ -133,7 +133,7 @@ def _obj_html(obj: object, attrs: list[str] | None = None) -> str:
             # Skip properties that raise errors
             try:
                 value = getattr(obj, attr)
-            except BaseException:  # noqa: BLE001
+            except BaseException:  # noqa: BLE001  # blind-except
                 continue
             # Skip methods
             if not callable(value):

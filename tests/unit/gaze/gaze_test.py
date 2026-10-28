@@ -51,7 +51,7 @@ def fixture_make_gaze_with_events():
             gaze.events.frame = gaze.events.frame.select(
                 [pl.all()] + [
                     pl.int_ranges(0, 100 * len(names), 100).alias(property)
-                    for property in properties  # noqa: A001
+                    for property in properties  # noqa: A001  # builtin-variable-shadowing
                 ],
             )
         return gaze

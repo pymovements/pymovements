@@ -69,7 +69,7 @@ __all__ = [
     'DatasetFile',
     'DatasetLibrary',
     'DatasetPaths',
-    'datasets',  # noqa: F822
+    'datasets',  # noqa: F822  # undefined-export
     'ValidationError',
     'Participants',
     'Phenotype',

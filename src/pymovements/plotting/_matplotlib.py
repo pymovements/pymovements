@@ -249,7 +249,7 @@ def _setup_axes_and_colormap(
 
     elif isinstance(cmap_norm, str):
         if (
-            scale_class := mpl_scale._scale_mapping.get(cmap_norm, None)  # type: ignore  # noqa: SLF001
+            scale_class := mpl_scale._scale_mapping.get(cmap_norm, None)  # type: ignore  # noqa: SLF001  # private-member-access
         ) is None:
             raise ValueError(f'cmap_norm string {cmap_norm} is not supported')
 

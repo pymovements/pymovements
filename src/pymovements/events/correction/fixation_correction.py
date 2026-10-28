@@ -75,7 +75,7 @@ from pymovements.events.correction.compare import compare
 from pymovements.events.correction.merge import merge
 from pymovements.events.correction.regress import regress
 from pymovements.events.correction.segment import segment
-from pymovements.events.correction.slice import slice  # noqa: A004
+from pymovements.events.correction.slice import slice  # noqa: A004  # builtin-import-shadowing
 from pymovements.events.correction.split import split
 from pymovements.events.correction.stretch import stretch
 from pymovements.events.correction.warp import warp

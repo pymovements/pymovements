@@ -290,7 +290,6 @@ ignore = [
   "PLR2004",
   "PLC0415"
 ]
-external = ["ANN"]
 
 [tool.ruff.lint.isort]
 force-single-line = true

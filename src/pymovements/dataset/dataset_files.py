@@ -299,7 +299,7 @@ def load_gaze_files(
     for file in tqdm(files, total=len(files), desc='Loading gaze files', unit='file'):
         # Preprocessed files are in a separate directory.
         if preprocessed:
-            file = replace(  # noqa: PLW2901
+            file = replace(  # noqa: PLW2901  # redefined-loop-name
                 file,
                 path=paths.get_preprocessed_filepath(
                     file.path, preprocessed_dirname=preprocessed_dirname,
@@ -854,7 +854,7 @@ def save_preprocessed(
             disable=disable_progressbar,
         ),
     ):
-        gaze = gaze.clone()  # noqa: PLW2901
+        gaze = gaze.clone()  # noqa: PLW2901  # redefined-loop-name
 
         raw_filepath = paths.raw / Path(fileinfo[file_id, 'filepath'])
         preprocessed_filepath = paths.get_preprocessed_filepath(

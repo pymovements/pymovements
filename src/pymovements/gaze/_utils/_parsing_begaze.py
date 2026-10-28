@@ -103,7 +103,7 @@ def parse_event_for_eye(row: list[str], eye: str, header_idx: dict[str, int]) ->
     return '-'
 
 
-def parse_begaze(  # noqa: PLR0912, PLR0915
+def parse_begaze(  # noqa: PLR0912, PLR0915  # too-many-branches, too-many-statements
         filepath: Path | str,
         *,
         patterns: list[dict[str, Any] | str] | None = None,
@@ -376,7 +376,7 @@ def parse_begaze(  # noqa: PLR0912, PLR0915
             )
         metadata[key] = value
 
-    for line in lines[header_row_index + 1:]:  # noqa: PLR1702
+    for line in lines[header_row_index + 1:]:  # noqa: PLR1702  # too-many-nested-blocks
         # Apply message-driven additional columns first
         for pattern_dict in compiled_patterns:
             if match := pattern_dict['pattern'].match(line):

@@ -310,7 +310,7 @@ def test_preserve_structure_true_tolerates_unnest_exceptions(
     df = pl.DataFrame({'pixel_xr': [5.0], 'pixel_yr': [5.0]})
     gaze = pm.Gaze(samples=df)
 
-    def boom(self):  # noqa: ANN001
+    def boom(self):
         raise exc()
 
     monkeypatch.setattr(pm.Gaze, 'unnest', boom, raising=True)
