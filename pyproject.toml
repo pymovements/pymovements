@@ -297,8 +297,6 @@ force-sort-within-sections = false
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D101", "D102", "D103", "SLF001", "ARG"]
-"docs/source/conf.py" = ["A001", "ARG001", "BLE001", "D"]
-"docs/**/*.ipynb" = ["BLE001"]
 
 [tool.ruff.lint.pylint]
 max-args = 10
