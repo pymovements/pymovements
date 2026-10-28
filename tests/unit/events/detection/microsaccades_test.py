@@ -96,6 +96,16 @@ from pymovements.synthetic import step_function
             r'timesteps dtype must be float or int but is String',
             id='timesteps_str_raises_type_error',
         ),
+        pytest.param(
+            {
+                'velocities': pl.repeat((1, 2), 10, eager=True),
+                'threshold': 1.0,
+                'timesteps': [0, 1, 2, 3, 4, 9, 8, 7, 6, 5],
+            },
+            ValueError,
+            r'timesteps must be in ascending order',
+            id='timesteps_not_ascending_raises_value_error',
+        ),
     ],
 )
 def test_microsaccades_raises_error(kwargs, expected_error, expected_message):

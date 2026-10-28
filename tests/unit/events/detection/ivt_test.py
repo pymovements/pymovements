@@ -67,6 +67,17 @@ from pymovements.transforms.numpy import pos2vel as pos2vel_numpy
         ),
         pytest.param(
             {
+                'velocities': np.zeros(shape=(10, 2)),
+                'velocity_threshold': 1.,
+                'minimum_duration': 1,
+                'timesteps': [0, 1, 2, 3, 4, 9, 8, 7, 6, 5],
+            },
+            ValueError,
+            'timesteps must be in ascending order',
+            id='timesteps_not_ascending_raises_value_error',
+        ),
+        pytest.param(
+            {
                 'velocities': np.ones(100),
                 'velocity_threshold': 1.,
                 'minimum_duration': 1,

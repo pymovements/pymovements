@@ -175,6 +175,7 @@ def normalize_timesteps(
     A ``polars.Series`` is converted with :py:func:`timesteps_to_numpy`, so ``polars.Duration``
     series arrive as fractional milliseconds. Any other array-like input is flattened as given.
     If ``timesteps`` is None, sample based timesteps ``0`` to ``length - 1`` are returned.
+    The timesteps must be numeric and in ascending order. Repeated timesteps are allowed.
 
     Parameters
     ----------
@@ -191,13 +192,20 @@ def normalize_timesteps(
     Raises
     ------
     TypeError
-        If the series is neither a Duration nor a numeric dtype.
+        If the timesteps are neither a Duration series nor of a numeric dtype.
+    ValueError
+        If the timesteps are not in ascending order.
     """
     if timesteps is None:
         return np.arange(length, dtype=np.int64)
     if isinstance(timesteps, pl.Series):
         timesteps = timesteps_to_numpy(timesteps)
-    return np.array(timesteps).flatten()
+    timesteps = np.array(timesteps).flatten()
+    if not np.issubdtype(timesteps.dtype, np.number):
+        raise TypeError(f'timesteps dtype must be float or int but is {timesteps.dtype}')
+    if np.any(np.diff(timesteps) < 0):
+        raise ValueError('timesteps must be in ascending order')
+    return timesteps
 
 
 def durations_to_ms(frame: pl.DataFrame) -> pl.DataFrame:

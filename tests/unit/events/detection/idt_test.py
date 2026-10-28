@@ -661,6 +661,20 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             ),
             id='constant_position_single_fixation_with_float_minimum_duration',
         ),
+        pytest.param(
+            {
+                'positions': step_function(length=10, steps=[0], values=[(0, 0)]),
+                'timesteps': [0, 1, 2, 2, 3, 4, 5, 6, 7, 8],
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[8],
+            ),
+            id='constant_position_single_fixation_with_repeated_timestep',
+        ),
     ],
 )
 def test_idt_detects_fixations(kwargs, expected):
@@ -682,6 +696,36 @@ def test_idt_detects_fixations(kwargs, expected):
             TypeError,
             r'timesteps dtype must be float or int but is String',
             id='timesteps_str_raises_type_error',
+        ),
+        pytest.param(
+            {
+                'positions': pl.repeat((1, 2), 10, eager=True),
+                'dispersion_threshold': 1.0,
+                'timesteps': ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'],
+            },
+            TypeError,
+            r'timesteps dtype must be float or int but is <U1',
+            id='timesteps_str_list_raises_type_error',
+        ),
+        pytest.param(
+            {
+                'positions': pl.repeat((1, 2), 10, eager=True),
+                'dispersion_threshold': 1.0,
+                'timesteps': [0, 1, 2, 3, 4, 9, 8, 7, 6, 5],
+            },
+            ValueError,
+            r'timesteps must be in ascending order',
+            id='timesteps_not_ascending_raises_value_error',
+        ),
+        pytest.param(
+            {
+                'positions': pl.repeat((1, 2), 10, eager=True),
+                'dispersion_threshold': 1.0,
+                'timesteps': pl.Series(np.arange(9, -1, -1)),
+            },
+            ValueError,
+            r'timesteps must be in ascending order',
+            id='timesteps_series_descending_raises_value_error',
         ),
     ],
 )
