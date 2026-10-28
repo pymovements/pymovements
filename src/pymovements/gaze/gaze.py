@@ -3172,7 +3172,7 @@ class Gaze:  # noqa: PLW1641
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
-                f'unsupported file format "{extension}".'
+                f'unsupported file format "{extension}". '
                 f'Supported formats are: {valid_extensions}',
             )
 
@@ -3217,7 +3217,7 @@ class Gaze:  # noqa: PLW1641
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
-                f'unsupported file format "{extension}".'
+                f'unsupported file format "{extension}". '
                 f'Supported formats are: {valid_extensions}',
             )
 
@@ -3259,7 +3259,7 @@ class Gaze:  # noqa: PLW1641
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
-                f'unsupported file format "{extension}".'
+                f'unsupported file format "{extension}". '
                 f"Supported formats are: {valid_extensions}",
             )
 
@@ -3301,7 +3301,7 @@ class Gaze:  # noqa: PLW1641
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
-                f'unsupported file format "{extension}".'
+                f'unsupported file format "{extension}". '
                 f"Supported formats are: {valid_extensions}",
             )
 
@@ -3343,7 +3343,7 @@ class Gaze:  # noqa: PLW1641
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
-                f'unsupported file format "{extension}".'
+                f'unsupported file format "{extension}". '
                 f"Supported formats are: {valid_extensions}",
             )
 

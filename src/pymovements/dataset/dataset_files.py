@@ -242,7 +242,7 @@ def load_event_files(
         else:
             valid_extensions = ['csv', 'txt', 'tsv', 'feather']
             raise ValueError(
-                f'unsupported file format "{extension}".'
+                f'unsupported file format "{extension}". '
                 f'Supported formats are: {valid_extensions}',
             )
 
@@ -802,7 +802,7 @@ def save_events(
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
-                f'unsupported file format "{extension}".'
+                f'unsupported file format "{extension}". '
                 f'Supported formats are: {valid_extensions}',
             )
 
@@ -876,7 +876,7 @@ def save_preprocessed(
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
-                f'unsupported file format "{extension}".'
+                f'unsupported file format "{extension}". '
                 f'Supported formats are: {valid_extensions}',
             )
 
