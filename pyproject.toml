@@ -218,6 +218,8 @@ select = [
   "E", # flake8, incl. E501
   "W",
   "F",
+  # pycodestyle whitespace and blank-line rules, preview in ruff and so listed by code:
+  # they hold the current style until ruff format arrives in its own PR
   "E111",
   "E112",
   "E113",
@@ -251,7 +253,7 @@ select = [
   "E304",
   "E305",
   "E306",
-  "W391", # autopep8 territory
+  "W391",
   "COM812", # add-trailing-comma
   "I",
   "UP",
@@ -260,7 +262,7 @@ select = [
   "PLE",
   "PLR",
   "PLW",
-  "PLR1702",
+  "PLR1702", # preview pylint rules, limits from the old pylintrc
   "PLR0916",
   "ARG",
   "SLF",
