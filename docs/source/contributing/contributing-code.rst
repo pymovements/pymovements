@@ -102,10 +102,9 @@ line-width of 100 characters. We additionally use type annotations as in
 `numpydoc <https://numpydoc.readthedocs.io/en/latest/format.html>`_ formatting standard.
 
 We use `ruff <https://docs.astral.sh/ruff/>`_ for style checks, import sorting and docstring
-style, `pydoclint <https://pypi.org/project/pydoclint/>`_ for checking docstrings against
-signatures and `mypy <https://pypi.org/project/mypy/>`_ for checking type annotations.
-`pylint <https://pypi.org/project/pylint/>`_ runs the few checks that need the installed package,
-such as attribute and call checks against the polars and numpy APIs.
+style, `pylint <https://pypi.org/project/pylint/>`_ for additional linting,
+`mypy <https://pypi.org/project/mypy/>`_ for checking type annotations and
+`pydoclint <https://pypi.org/project/pydoclint/>`_ for checking docstrings against signatures.
 
 You can check your code style by using `pre-commit <https://www.pre-commit.com>`_.
 
