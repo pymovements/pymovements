@@ -24,6 +24,7 @@ from copy import deepcopy
 
 import polars as pl
 
+from pymovements.events.events import _rebuild_events
 from pymovements.events.events import Events
 from pymovements.synthetic._utils import check_not_negative
 from pymovements.synthetic._utils import ordered_frame
@@ -94,10 +95,8 @@ def bridge_gaps(events: Events, *, max_gap: float | None = None) -> Events:
         [*trial_columns, 'onset'], maintain_order=True,
     )
 
-    return Events(
+    return _rebuild_events(
         combined,
         trial_columns=events.trial_columns,
         metadata=deepcopy(events.metadata),
-        validate=False,
-        _silent=True,
     )

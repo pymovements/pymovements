@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Sequence
+from contextvars import ContextVar
 from copy import deepcopy
 from typing import Any
 from typing import Literal
@@ -55,6 +56,10 @@ _RESIDUAL_TOLERANCE_US = 1
 # {_INCLUSIVE_KEY: bool}. The sampling-rate entry is keyed by _SAMPLING_RATE_KEY.
 _INCLUSIVE_KEY = 'inclusive'
 _SAMPLING_RATE_KEY = 'sampling_rate'
+
+
+# True while pymovements rebuilds events from a frame it already holds, see _rebuild_events.
+_SILENT_CONSTRUCTION: ContextVar[bool] = ContextVar('_SILENT_CONSTRUCTION', default=False)
 
 
 def _entry_convention(entry: Any) -> bool | None:
@@ -650,10 +655,9 @@ class Events:
             trial_columns: list[str] | str | None = None,
             metadata: dict[str, Any] | None = None,
             time_unit: str | None = None,
-            _silent: bool = False,
     ):
-        # _silent is private: pymovements' own rebuilds of an existing frame pass it, so a
-        # construction warning is emitted once, when the frame enters pymovements.
+        # Set by _rebuild_events: a construction warning is emitted once, at entry.
+        silent = _SILENT_CONSTRUCTION.get()
         self.trial_columns: list[str] | None  # otherwise mypy gets confused.
         # A shallow copy: the entries written below never reach the caller's dict.
         self.metadata = dict(metadata) if metadata is not None else {}
@@ -803,6 +807,38 @@ class Events:
                 normalize_duration_to_us(polars.col(wrong_unit_cols)),
             )
 
+        entry_inclusive, entry_rate = self._read_entries(offsets_inclusive, sampling_rate)
+
+        self._resolve_durations(
+            durations_supplied=durations_supplied,
+            offsets_inclusive=offsets_inclusive if offsets_inclusive is not None
+            else entry_inclusive,
+            declared_by_keyword=offsets_inclusive is not None,
+            durations_from_offsets=durations_from_offsets,
+            sampling_rate=sampling_rate if sampling_rate is not None else entry_rate,
+            sampling_rate_source=(
+                'the sampling_rate keyword' if sampling_rate is not None
+                else 'the metadata entry'
+            ),
+            validate=validate,
+            silent=silent,
+        )
+
+        self._write_entries(
+            offsets_inclusive=offsets_inclusive,
+            sampling_rate=sampling_rate,
+            warn_missing_columns=validate and not silent,
+        )
+
+    def _read_entries(
+            self,
+            offsets_inclusive: bool | None,
+            sampling_rate: float | None,
+    ) -> tuple[bool | None, float | None]:
+        """Return the convention of ``offset`` and the sampling rate of the entries.
+
+        Raises if a keyword differs from its entry.
+        """
         # The convention of 'offset' and the sampling rate are declared by keyword or entry.
         entry_inclusive = _entry_convention(self.metadata.get('offset'))
         if (
@@ -830,22 +866,16 @@ class Events:
                 f"metadata['{_SAMPLING_RATE_KEY}'] = {entry_rate:g}. "
                 'Correct the entry or drop the keyword.',
             )
+        return entry_inclusive, entry_rate
 
-        self._resolve_durations(
-            durations_supplied=durations_supplied,
-            offsets_inclusive=offsets_inclusive if offsets_inclusive is not None
-            else entry_inclusive,
-            declared_by_keyword=offsets_inclusive is not None,
-            durations_from_offsets=durations_from_offsets,
-            sampling_rate=sampling_rate if sampling_rate is not None else entry_rate,
-            sampling_rate_source=(
-                'the sampling_rate keyword' if sampling_rate is not None
-                else 'the metadata entry'
-            ),
-            validate=validate,
-            silent=_silent,
-        )
-
+    def _write_entries(
+            self,
+            *,
+            offsets_inclusive: bool | None,
+            sampling_rate: float | None,
+            warn_missing_columns: bool,
+    ) -> None:
+        """Write the entries of the keywords and warn about entries without their column."""
         # Entries are written only for what the frame has.
         if offsets_inclusive is not None and 'offset' in self.frame.columns:
             entry = self.metadata.get('offset')
@@ -861,7 +891,7 @@ class Events:
             column for column, entry in self.metadata.items()
             if _entry_convention(entry) is not None and column not in self.frame.columns
         ]
-        if validate and not _silent and missing_columns:
+        if warn_missing_columns and missing_columns:
             if len(missing_columns) == 1:
                 described = f"entry for the column '{missing_columns[0]}'"
             else:
@@ -872,7 +902,7 @@ class Events:
                 f'metadata holds offset convention {described}, '
                 'which the events frame does not have. The metadata is kept.',
                 UserWarning,
-                stacklevel=2,
+                stacklevel=3,
             )
 
     def _resolve_durations(
@@ -1392,12 +1422,10 @@ class Events:
         Events
             A copy of an Events object.
         """
-        return Events(
+        return _rebuild_events(
             data=self.frame.clone(),
             trial_columns=self.trial_columns,
             metadata=deepcopy(self.metadata),
-            validate=False,
-            _silent=True,
         )
 
     @overload
@@ -1448,23 +1476,19 @@ class Events:
         if as_dict:
             # keys are tuples of the unique values of the columns specified in `by`.
             return {
-                key: Events(
+                key: _rebuild_events(
                     frame,
                     trial_columns=self.trial_columns,
                     metadata=deepcopy(self.metadata),
-                    validate=False,
-                    _silent=True,
                 )
                 for key, frame in event_dfs.items()
             }
 
         return [
-            Events(
+            _rebuild_events(
                 frame,
                 trial_columns=self.trial_columns,
                 metadata=deepcopy(self.metadata),
-                validate=False,
-                _silent=True,
             )
             for frame in event_dfs
         ]
@@ -1924,12 +1948,10 @@ class Events:
             self.frame = corrected_frame
             self.metadata = merge_sources(self.metadata, aois.metadata)
             return None
-        return Events(
+        return _rebuild_events(
             corrected_frame,
             trial_columns=self.trial_columns,
             metadata=merge_sources(deepcopy(self.metadata), aois.metadata),
-            validate=False,
-            _silent=True,
         )
 
     def measure_reading(
@@ -2061,12 +2083,10 @@ class Events:
             )
         else:
             stimuli = [stimulus]
-            mapped = Events(
+            mapped = _rebuild_events(
                 working_frame,
                 trial_columns=self.trial_columns,
                 metadata=deepcopy(self.metadata),
-                validate=False,
-                _silent=True,
             )
             mapped.map_to_aois(stimulus)
             fixations, aois = mapped.frame, stimulus.aois
@@ -2147,12 +2167,10 @@ class Events:
                 # The dict key defines the sequence column, so it must not also live in the
                 # entry handed to compute_reading_measures.
                 aois[original_key] = stim.aois.drop(sequence_column)
-            subset = Events(
+            subset = _rebuild_events(
                 frame.filter(polars.col(sequence_column) == key),
                 trial_columns=self.trial_columns,
                 metadata=deepcopy(self.metadata),
-                validate=False,
-                _silent=True,
             )
             if subset.frame.is_empty():
                 continue
@@ -2322,3 +2340,36 @@ class Events:
                 f"Merged {number_of_events} '{name}' events "
                 f'into {len(events)} events with max_gap={max_gap} ms.',
             )
+
+
+def _rebuild_events(
+        data: polars.DataFrame,
+        *,
+        trial_columns: list[str] | None,
+        metadata: dict[str, Any],
+) -> Events:
+    """Rebuild events from a frame that pymovements already holds.
+
+    The durations stay unchecked and the constructor emits no warnings, so a warning about the
+    frame is emitted once, when it enters pymovements. ``validate=False`` keeps its meaning for
+    callers.
+
+    Parameters
+    ----------
+    data: polars.DataFrame
+        The events frame.
+    trial_columns: list[str] | None
+        The trial columns of the frame.
+    metadata: dict[str, Any]
+        The metadata of the events, entries included.
+
+    Returns
+    -------
+    Events
+        The rebuilt events.
+    """
+    token = _SILENT_CONSTRUCTION.set(True)
+    try:
+        return Events(data, trial_columns=trial_columns, metadata=metadata, validate=False)
+    finally:
+        _SILENT_CONSTRUCTION.reset(token)
