@@ -468,9 +468,9 @@ def _check_positive_number(value: Any, name: str) -> float:
 
 
 def _resolve_seed(seed: Any) -> int:
-    """Return the seed as an int, or draw one fitting a signed 64-bit integer if it is ``None``."""
+    """Return the seed as an int, or draw one that any JSON reader keeps exact if it is ``None``."""
     if seed is None:
-        return secrets.randbits(63)
+        return secrets.randbits(53)
 
     if isinstance(seed, bool) or not isinstance(seed, numbers.Integral):
         raise TypeError(f'seed must be an integer but is of type {type(seed).__name__}: {seed}')
