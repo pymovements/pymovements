@@ -51,7 +51,7 @@ class Range:
         The distribution a value is drawn from, one of ``DISTRIBUTIONS``. (default: 'uniform')
     std: float | None
         The standard deviation of a normal draw, or ``None`` for the width of the range.
-        Must not be negative. (default: None)
+        Must not be negative, and is only accepted for a normal range. (default: None)
 
     Raises
     ------
@@ -59,7 +59,7 @@ class Range:
         If a bound or the standard deviation is not a number.
     ValueError
         If the range is inverted, the distribution is unknown, or the standard deviation is
-        negative.
+        negative or given for a uniform range.
 
     Examples
     --------
@@ -89,6 +89,12 @@ class Range:
 
         if self.std is not None:
             object.__setattr__(self, 'std', check_not_negative(self.std, 'std'))
+
+            if self.distribution != 'normal':
+                raise ValueError(
+                    f'std applies to a normal distribution only, but was given as {self.std} '
+                    f'for a {self.distribution!r} range',
+                )
 
     @classmethod
     def from_value(cls, value: Range | tuple[float, float] | list[float] | float) -> Range:
