@@ -21,6 +21,7 @@ https://github.com/pymovements/pymovements/issues/new/choose) or write to us at
     - [Creating a Branch](#creating-a-branch)
     - [Code Style](#code-style)
     - [Testing](#testing)
+    - [Benchmarks](#benchmarks)
     - [Documentation](#documentation)
     - [Pull Requests](#pull-requests)
     - [Continuous Integration](#continuous-integration)
