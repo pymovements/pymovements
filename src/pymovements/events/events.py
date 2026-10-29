@@ -51,6 +51,18 @@ _TIME_COLUMNS = ('onset', 'duration', 'offset')
 # onset, offset and duration are rounded to microseconds one by one
 _RESIDUAL_TOLERANCE_US = 1
 
+# Events.metadata entries. A convention entry is keyed by its offset column's name and holds
+# {_INCLUSIVE_KEY: bool}. The sampling-rate entry is keyed by _SAMPLING_RATE_KEY.
+_INCLUSIVE_KEY = 'inclusive'
+_SAMPLING_RATE_KEY = 'sampling_rate'
+
+
+def _entry_convention(entry: Any) -> bool | None:
+    """Return the convention of a metadata entry, None if it is no convention entry."""
+    if isinstance(entry, dict) and _INCLUSIVE_KEY in entry:
+        return entry[_INCLUSIVE_KEY]
+    return None
+
 
 def _format_microseconds(value: int) -> str:
     """Format a residual in microseconds, in milliseconds where it is a whole number of them."""
@@ -600,7 +612,8 @@ class Events:
             time_unit: str | None = None,
     ):
         self.trial_columns: list[str] | None  # otherwise mypy gets confused.
-        self.metadata = metadata if metadata is not None else {}
+        # A shallow copy: the entries written below never reach the caller's dict.
+        self.metadata = dict(metadata) if metadata is not None else {}
 
         # Numeric onset/offset/duration input is interpreted in this unit; None means
         # milliseconds. Duration input carries its own unit, so time_unit is ignored for it.
@@ -747,21 +760,67 @@ class Events:
                 normalize_duration_to_us(polars.col(wrong_unit_cols)),
             )
 
+        # The convention of 'offset' and the sampling rate are declared by keyword or entry.
+        entry_inclusive = _entry_convention(self.metadata.get('offset'))
+        if (
+                offsets_inclusive is not None and entry_inclusive is not None
+                and offsets_inclusive != entry_inclusive
+        ):
+            missing = (
+                '' if 'offset' in self.frame.columns
+                else ", and the events frame has no 'offset' column"
+            )
+            raise ValueError(
+                f'offsets_inclusive={offsets_inclusive} differs from the metadata entry '
+                f"metadata['offset'] = {{'{_INCLUSIVE_KEY}': {entry_inclusive}}}{missing}. "
+                'Correct the entry or drop the keyword.',
+            )
+        entry_rate = self.metadata.get(_SAMPLING_RATE_KEY)
+        if entry_rate is not None and not entry_rate > 0:
+            raise ValueError(
+                f"the metadata entry metadata['{_SAMPLING_RATE_KEY}'] must be positive, "
+                f'but is {entry_rate}.',
+            )
+        if sampling_rate is not None and entry_rate is not None and sampling_rate != entry_rate:
+            raise ValueError(
+                f'sampling_rate={sampling_rate:g} differs from the metadata entry '
+                f"metadata['{_SAMPLING_RATE_KEY}'] = {entry_rate:g}. "
+                'Correct the entry or drop the keyword.',
+            )
+
         self._resolve_durations(
             durations_supplied=durations_supplied,
-            offsets_inclusive=offsets_inclusive,
+            offsets_inclusive=offsets_inclusive if offsets_inclusive is not None
+            else entry_inclusive,
+            declared_by_keyword=offsets_inclusive is not None,
             durations_from_offsets=durations_from_offsets,
-            sampling_rate=sampling_rate,
+            sampling_rate=sampling_rate if sampling_rate is not None else entry_rate,
+            sampling_rate_source=(
+                'the sampling_rate keyword' if sampling_rate is not None
+                else 'the metadata entry'
+            ),
             validate=validate,
         )
+
+        # Entries are written only for what the frame has.
+        if offsets_inclusive is not None and 'offset' in self.frame.columns:
+            entry = self.metadata.get('offset')
+            self.metadata['offset'] = {
+                **(entry if isinstance(entry, dict) else {}),
+                _INCLUSIVE_KEY: offsets_inclusive,
+            }
+        if sampling_rate is not None:
+            self.metadata[_SAMPLING_RATE_KEY] = float(sampling_rate)
 
     def _resolve_durations(
             self,
             *,
             durations_supplied: bool,
             offsets_inclusive: bool | None,
+            declared_by_keyword: bool,
             durations_from_offsets: bool,
             sampling_rate: float | None,
+            sampling_rate_source: str,
             validate: bool,
     ) -> None:
         """Fill or check the ``duration`` column against the ``offset`` column.
@@ -770,7 +829,7 @@ class Events:
         """
         if 'offset' not in self.frame.columns:
             ignored = []
-            if offsets_inclusive is not None:
+            if declared_by_keyword:
                 ignored.append(f'offsets_inclusive={offsets_inclusive}')
             if durations_from_offsets:
                 ignored.append('durations_from_offsets=True')
@@ -832,6 +891,7 @@ class Events:
                 offsets_inclusive=offsets_inclusive,
                 sampling_rate=sampling_rate,
                 sampling_interval=sampling_interval,
+                sampling_rate_source=sampling_rate_source,
             )
 
     def _check_durations_against_offsets(
@@ -840,6 +900,7 @@ class Events:
             offsets_inclusive: bool,
             sampling_rate: float | None,
             sampling_interval: int | None,
+            sampling_rate_source: str,
     ) -> None:
         """Check the stored durations against the declared offsets.
 
@@ -918,7 +979,7 @@ class Events:
         if sampling_interval is not None and offsets_inclusive:
             expected_description = (
                 f'{_format_microseconds(sampling_interval)} '
-                f'(sampling_rate={sampling_rate:g} from the sampling_rate keyword)'
+                f'(sampling_rate={sampling_rate:g} from {sampling_rate_source})'
             )
         message = (
             f'{len(contradicting)} of {len(residuals)} rows contradict {declaration}: '
