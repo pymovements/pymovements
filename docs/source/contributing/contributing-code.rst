@@ -195,6 +195,29 @@ In case you only want to run tests locally that do not require any network acces
 
     tox -e py310 -- -m "not network"
 
+.. _benchmarks:
+
+Benchmarks
+^^^^^^^^^^
+
+Performance benchmarks live in ``tests/benchmark`` and use
+`pytest-benchmark <https://pytest-benchmark.readthedocs.io>`_. You can run them locally with
+
+.. code:: bash
+
+    tox -e benchmark
+
+The results are written to ``benchmark-data.json`` in the repository root.
+
+On every pull request, a workflow benchmarks the head of your branch and its merge-base with
+``main`` on the same runner and fails if a benchmark gets more than 1.5 times slower. This
+comparison is the authoritative regression check.
+
+Every push to ``main`` adds the result of its head commit to the
+`benchmark history chart <https://pymovements.github.io/pymovements/benchmarks/>`_. The chart is
+indicative only: its points come from shared GitHub runners of varying speed, so it shows host
+speed as well as code speed.
+
 .. _documentation:
 
 Documentation

@@ -90,6 +90,7 @@ jobs:
             ~/.tox
 
       - name: Benchmark head commit
+        id: head
         run: tox --skip-pkg-install -e benchmark
 
       # The action compares a result with the last entry in its data file, so
@@ -131,3 +132,20 @@ jobs:
           fail-on-alert: true
           summary-always: true
           alert-comment-cc-users: '@dkrako,@cbueth,@SiQube'
+
+      # Only a push to main adds a point to the chart on gh-pages. Inside
+      # workflow_call the event is the caller's, so scheduled, dispatched and
+      # release runs write nothing. The point is published even when the
+      # comparison above raised an alert.
+      - name: Publish head result to the chart
+        if: ${{ !cancelled() && steps.head.outcome == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: pytest-benchmark
+          tool: 'pytest'
+          output-file-path: benchmark-data.json
+          gh-pages-branch: gh-pages
+          gh-repository: github.com/${{ github.repository }}
+          benchmark-data-dir-path: benchmarks
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
