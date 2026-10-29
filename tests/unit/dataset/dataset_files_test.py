@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import re
 import shutil
+import sys
 from pathlib import Path
 
 import polars as pl
@@ -1028,6 +1029,48 @@ def test_load_precomputed_rm_file_xlsx(target_filename, make_example_file):
     expected_df = pl.from_dict({'test': ['foo', 'bar'], 'id': [0, 1]})
 
     assert_frame_equal(reading_measure.frame, expected_df, check_column_order=True)
+
+
+@pytest.mark.parametrize(
+    ('filename', 'content', 'load_kwargs', 'load_function', 'missing_module'),
+    [
+        pytest.param(
+            'rda_test_file.rda',
+            'precomputed_reading_measures',
+            {'r_dataframe_key': 'joint.fix'},
+            load_precomputed_reading_measure_file,
+            'pyreadr',
+            id='reading_measures_rda',
+        ),
+        pytest.param(
+            'Sentences.xlsx',
+            'precomputed_reading_measures',
+            {'sheet_name': 'Sheet 1'},
+            load_precomputed_reading_measure_file,
+            'fastexcel',
+            id='reading_measures_xlsx',
+        ),
+        pytest.param(
+            'rda_test_file.rda',
+            'precomputed_events',
+            {'r_dataframe_key': 'joint.fix'},
+            load_precomputed_event_file,
+            'pyreadr',
+            id='events_rda',
+        ),
+    ],
+)
+def test_load_precomputed_file_missing_optional_dependency_raises_install_hint(
+        filename, content, load_kwargs, load_function, missing_module, make_example_file,
+        monkeypatch,
+):
+    filepath = make_example_file(filename)
+    resource_definition = ResourceDefinition(content=content, load_kwargs=load_kwargs)
+    file = DatasetFile(path=filepath, definition=resource_definition)
+    monkeypatch.setitem(sys.modules, missing_module, None)
+
+    with pytest.raises(ImportError, match=re.escape("pip install 'pymovements[datasets]'")):
+        load_function(file, dataset_definition=DatasetDefinition())
 
 
 def test_load_precomputed_rm_file_unsupported_file_format(make_example_file):

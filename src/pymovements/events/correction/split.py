@@ -20,12 +20,12 @@
 """Provides the split drift correction algorithm."""
 from __future__ import annotations
 
+import importlib
 from collections.abc import Sequence
 from functools import partial
 from statistics import fmean
 
 import polars as pl
-from sklearn.cluster import KMeans
 
 from pymovements.events.correction._utils import is_right_to_left
 from pymovements.events.correction._utils import locations_to_lists
@@ -85,12 +85,14 @@ def _split_core(
     right_to_left: bool,
 ) -> pl.Series:
     """Split the fixation sequence of a single trial at KMeans-identified return sweeps."""
+    sklearn_cluster = importlib.import_module('sklearn.cluster')
+
     x_values, y_values = locations_to_lists(locations)
     x_diffs = [next_x - x for x, next_x in zip(x_values, x_values[1:])]
 
     # Split the saccades into two clusters. The cluster of largest leftward (rightward
     # for RTL scripts) saccades marks the return sweeps.
-    cluster_labels = KMeans(2, n_init=10, max_iter=300).fit_predict(
+    cluster_labels = sklearn_cluster.KMeans(2, n_init=10, max_iter=300).fit_predict(
         [[x_diff] for x_diff in x_diffs],
     )
     centers = [

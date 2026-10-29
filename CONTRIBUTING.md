@@ -138,10 +138,10 @@ https://pypi.org/project/mypy/) for checking type annotations.
 You can check your code style by using [pre-commit](https://www.pre-commit.com).
 You can install `pre-commit` and `pylint` via pip.
 
-**Note**: Quoting '.[dev]' ensures the command works in both bash and zsh.
+**Note**: Quoting '.[all,dev]' ensures the command works in both bash and zsh.
 
 ```bash
-pip install -e '.[dev]'
+pip install -e '.[all,dev]'
 ```
 
 To always run style checks when pushing commits upstream,
@@ -192,7 +192,7 @@ in a separate environment using [Tox](https://tox.readthedocs.io/en/latest/).
 If you have not yet installed `tox` and the testing dependencies you can do so via
 
 ```bash
-pip install -e '.[dev]'
+pip install -e '.[all,dev]'
 ```
 
 You can run all tests on all supported python versions run by simply calling `tox` in the repository root.

@@ -20,11 +20,11 @@
 """Provides the time series plotting function."""
 from __future__ import annotations
 
+import importlib
 import math
 from typing import TYPE_CHECKING
 from warnings import warn
 
-import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 
@@ -34,6 +34,8 @@ from pymovements._utils._time import duration_to_ms
 from pymovements.plotting._matplotlib import prepare_figure
 
 if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
+
     from pymovements.gaze import Gaze
 
 
@@ -132,6 +134,8 @@ def tsplot(
         If there are no channels to plot, e.g. if ``channels`` is an empty list or if ``time`` is
         the only numeric column of the gaze samples.
     """
+    plt = importlib.import_module('matplotlib.pyplot')
+
     if gap_factor is not None and gap_factor < 1:
         raise ValueError(f'gap_factor must be at least 1 or None, got {gap_factor}')
 

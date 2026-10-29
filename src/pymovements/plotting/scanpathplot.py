@@ -21,15 +21,13 @@
 from __future__ import annotations
 
 import datetime
+import importlib
 import math
 from typing import TYPE_CHECKING
 from warnings import warn
 
-import matplotlib.pyplot as plt
-import matplotlib.scale
 import numpy as np
 import polars as pl
-from matplotlib.patches import Circle
 
 from pymovements.plotting._matplotlib import _draw_arrow_data
 from pymovements.plotting._matplotlib import _draw_line_data
@@ -38,6 +36,9 @@ from pymovements.plotting._matplotlib import _setup_axes_and_colormap
 from pymovements.plotting._matplotlib import LinearSegmentedColormapType
 
 if TYPE_CHECKING:
+    import matplotlib.colors
+    import matplotlib.pyplot as plt
+
     from pymovements.gaze import Gaze
 
 
@@ -145,6 +146,8 @@ def scanpathplot(
         If length of x and y coordinates do not match or if ``cmap_norm`` is unknown.
 
     """
+    mpl_patches = importlib.import_module('matplotlib.patches')
+
     if add_stimulus:
         warn(
             DeprecationWarning(
@@ -204,7 +207,7 @@ def scanpathplot(
         duration = row['duration']
         if isinstance(duration, datetime.timedelta):
             duration = duration / datetime.timedelta(milliseconds=1)
-        fixation = Circle(
+        fixation = mpl_patches.Circle(
             row[position_column],
             math.sqrt(duration),
             color=color,
