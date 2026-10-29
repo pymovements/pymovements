@@ -1053,6 +1053,7 @@ class Events:
         Notes
         -----
         The minimal schema columns ``onset``, ``duration`` and ``name`` cannot be removed.
+        Dropping an offset column also removes its convention entry from ``metadata``.
 
         Parameters
         ----------
@@ -1083,6 +1084,9 @@ class Events:
                 )
         for column in columns:
             self.frame = self.frame.drop(column)
+            # The convention entry of a dropped offset column goes with it.
+            if _entry_convention(self.metadata.get(column)) is not None:
+                del self.metadata[column]
 
     def add_trial_column(
             self,
