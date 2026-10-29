@@ -43,7 +43,9 @@ class NoiseSampleGenerator(SampleGenerator):
 
     scale: float = 1.0
 
-    def _generate(self, *, events, gaze, sampling_rate, experiment, rng):
+    def _generate(  # pylint: disable=arguments-differ
+            self, *, sampling_rate, experiment, rng, events=None,
+    ):
         n_samples = 10 if events is None else 10 * events.frame.height
         return Gaze(
             samples=pl.DataFrame({
@@ -66,7 +68,7 @@ class UniformEventGenerator(EventGenerator):
     min_duration: float = 100.0
     max_duration: float = 300.0
 
-    def _generate(self, *, duration, rng):
+    def _generate(self, *, rng, duration):  # pylint: disable=arguments-differ
         onsets, offsets = [], []
         elapsed = 0.0
         while elapsed < duration * 1000.0:

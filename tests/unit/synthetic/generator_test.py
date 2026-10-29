@@ -114,11 +114,25 @@ def test_drawn_seed_reproduces_the_run(noise_sample_generator):
     assert_frame_equal(unseeded.samples, replayed.samples)
 
 
-def test_sample_generator_attaches_the_events_unchanged(noise_sample_generator, fixations):
-    gaze = noise_sample_generator().generate(fixations, sampling_rate=1000.0, seed=42)
+def test_sample_generator_attaches_a_copy_of_the_events(noise_sample_generator, fixations):
+    gaze = noise_sample_generator().generate(events=fixations, sampling_rate=1000.0, seed=42)
 
     assert_frame_equal(gaze.events.frame, fixations.frame)
     assert gaze.events is not fixations
+
+
+def test_sample_generator_conditions_on_the_attached_copy(noise_sample_generator, fixations):
+    """A generator that changes its input changes neither the caller's events nor the match."""
+    class MutatingGenerator(noise_sample_generator):
+        def _generate(self, *, events, **kwargs):
+            events.frame = events.frame.head(1)
+            return super()._generate(events=events, **kwargs)
+
+    gaze = MutatingGenerator().generate(events=fixations, sampling_rate=1000.0, seed=42)
+
+    assert fixations.frame.height == 2
+    assert gaze.events.frame.height == 1
+    assert gaze.samples.height == 10
 
 
 def test_sample_generator_attaches_an_experiment_with_the_sampling_rate(noise_sample_generator):
@@ -204,16 +218,16 @@ def test_sample_generator_raises_error(noise_sample_generator, kwargs, exception
     ('kwargs', 'exception', 'msg_substrings'),
     [
         pytest.param(
-            {'duration': -1.0},
+            {'duration': 1.0, 'seed': -1},
             ValueError,
-            ('duration', 'greater than zero'),
-            id='negative_duration_raises_value_error',
+            ('seed', 'negative'),
+            id='negative_seed_raises_value_error',
         ),
         pytest.param(
-            {'duration': None},
+            {'duration': 1.0, 'seed': 4.2},
             TypeError,
-            ('duration', 'number', 'NoneType'),
-            id='none_duration_raises_type_error',
+            ('seed', 'integer', 'float'),
+            id='float_seed_raises_type_error',
         ),
     ],
 )
@@ -227,21 +241,35 @@ def test_event_generator_raises_error(uniform_event_generator, kwargs, exception
 
 
 @pytest.mark.parametrize(
-    ('kwargs', 'msg_substring'),
+    ('generator', 'kwargs', 'msg_substring'),
     [
-        pytest.param({}, 'sampling_rate', id='missing_sampling_rate'),
         pytest.param(
+            'noise_sample_generator', {}, 'sampling_rate', id='missing_sampling_rate',
+        ),
+        pytest.param(
+            'noise_sample_generator',
             {'sampling_rate': 1000.0, 'sampling_rte': 500.0},
             'sampling_rte',
-            id='misspelled_run_parameter',
+            id='misspelled_sample_run_parameter',
+        ),
+        pytest.param(
+            'uniform_event_generator', {}, 'duration', id='missing_declared_run_parameter',
+        ),
+        pytest.param(
+            'uniform_event_generator',
+            {'duration': 1.0, 'duraton': 2.0},
+            'duraton',
+            id='misspelled_event_run_parameter',
         ),
     ],
 )
-def test_sample_generator_rejects_unknown_or_missing_run_parameters(
-        noise_sample_generator, kwargs, msg_substring,
+def test_generator_rejects_unknown_or_missing_run_parameters(
+        request, generator, kwargs, msg_substring,
 ):
+    generator_class = request.getfixturevalue(generator)
+
     with pytest.raises(TypeError) as excinfo:
-        noise_sample_generator().generate(**kwargs)
+        generator_class().generate(**kwargs)
 
     msg, = excinfo.value.args
     assert msg_substring in msg
@@ -279,7 +307,9 @@ def test_hyperparameters_are_empty_for_a_generator_that_is_no_dataclass():
     class PlainGenerator(SampleGenerator):
         name = 'plain'
 
-        def _generate(self, *, events, gaze, sampling_rate, experiment, rng):
+        def _generate(  # pylint: disable=arguments-differ
+                self, *, sampling_rate, experiment, rng,
+        ):
             return Gaze(samples=pl.DataFrame({'x': [0.0], 'y': [0.0]}), position_columns=['x', 'y'])
 
     assert PlainGenerator().hyperparameters() == {}

@@ -20,6 +20,7 @@
 """Provides the entry points for generating synthetic data by generator name."""
 from __future__ import annotations
 
+import dataclasses
 from typing import Any
 
 from pymovements.events.events import Events
@@ -29,27 +30,21 @@ from pymovements.synthetic.library import EventGeneratorLibrary
 from pymovements.synthetic.library import SampleGeneratorLibrary
 
 
-def generate_events(
-        name: str,
-        *,
-        duration: float,
-        seed: int | None = None,
-        **hyperparameters: Any,
-) -> Events:
+def generate_events(name: str, *, seed: int | None = None, **kwargs: Any) -> Events:
     """Generate a synthetic event sequence with the event generator registered under a name.
 
-    Equivalent to ``EventGeneratorLibrary.get(name)(**hyperparameters).generate(...)``.
+    Keyword arguments that match a field of the generator are its hyperparameters and go to the
+    constructor, the others are run parameters and go to ``generate()``. A hyperparameter
+    therefore cannot share its name with a run parameter or with ``seed``.
 
     Parameters
     ----------
     name: str
         The registered name of the event generator.
-    duration: float
-        The duration of the sequence in seconds.
     seed: int | None
         The random seed, or ``None`` to draw one. (default: None)
-    **hyperparameters: Any
-        The parameters the generator is constructed with.
+    **kwargs: Any
+        The hyperparameters and run parameters of the generator.
 
     Returns
     -------
@@ -62,40 +57,38 @@ def generate_events(
     KeyError
         If no event generator is registered under that name.
     """
-    generator = EventGeneratorLibrary.get(name)(**hyperparameters)
-    return generator.generate(duration=duration, seed=seed)
+    generator_class = EventGeneratorLibrary.get(name)
+    hyperparameters, run = _split_kwargs(generator_class, kwargs)
+    return generator_class(**hyperparameters).generate(seed=seed, **run)
 
 
 def generate_gaze(
         name: str,
-        events: Events | None = None,
         *,
-        gaze: Gaze | None = None,
         sampling_rate: float,
         seed: int | None = None,
         experiment: Experiment | None = None,
-        **hyperparameters: Any,
+        **kwargs: Any,
 ) -> Gaze:
     """Generate synthetic gaze samples with the sample generator registered under a name.
 
-    Equivalent to ``SampleGeneratorLibrary.get(name)(**hyperparameters).generate(...)``.
+    Keyword arguments that match a field of the generator are its hyperparameters and go to the
+    constructor, the others are run parameters and go to ``generate()``. A hyperparameter
+    therefore cannot share its name with a run parameter, ``sampling_rate``, ``seed`` or
+    ``experiment``.
 
     Parameters
     ----------
     name: str
         The registered name of the sample generator.
-    events: Events | None
-        An event sequence to condition on. (default: None)
-    gaze: Gaze | None
-        A gaze sequence to condition on. (default: None)
     sampling_rate: float
         The sampling rate of the generated samples in Hz.
     seed: int | None
         The random seed, or ``None`` to draw one. (default: None)
     experiment: Experiment | None
         The experiment the output belongs to. (default: None)
-    **hyperparameters: Any
-        The parameters the generator is constructed with.
+    **kwargs: Any
+        The hyperparameters and run parameters of the generator, such as ``events``.
 
     Returns
     -------
@@ -108,11 +101,22 @@ def generate_gaze(
     KeyError
         If no sample generator is registered under that name.
     """
-    generator = SampleGeneratorLibrary.get(name)(**hyperparameters)
-    return generator.generate(
-        events,
-        gaze=gaze,
-        sampling_rate=sampling_rate,
-        seed=seed,
-        experiment=experiment,
+    generator_class = SampleGeneratorLibrary.get(name)
+    hyperparameters, run = _split_kwargs(generator_class, kwargs)
+    return generator_class(**hyperparameters).generate(
+        sampling_rate=sampling_rate, seed=seed, experiment=experiment, **run,
     )
+
+
+def _split_kwargs(
+        generator_class: type,
+        kwargs: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Return the keyword arguments split into hyperparameters and run parameters."""
+    fields = (
+        {field.name for field in dataclasses.fields(generator_class) if field.init}
+        if dataclasses.is_dataclass(generator_class) else set()
+    )
+    hyperparameters = {key: value for key, value in kwargs.items() if key in fields}
+    run = {key: value for key, value in kwargs.items() if key not in fields}
+    return hyperparameters, run

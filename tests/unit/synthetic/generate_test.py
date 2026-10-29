@@ -46,10 +46,10 @@ def fixture_registered_event_generator(uniform_event_generator):
 
 def test_generate_gaze_matches_the_explicit_call(registered_sample_generator, fixations):
     gaze = pm.synthetic.generate_gaze(
-        'test_noise', fixations, sampling_rate=1000.0, seed=42, scale=2.0,
+        'test_noise', events=fixations, sampling_rate=1000.0, seed=42, scale=2.0,
     )
     explicit = registered_sample_generator(scale=2.0).generate(
-        fixations, sampling_rate=1000.0, seed=42,
+        events=fixations, sampling_rate=1000.0, seed=42,
     )
 
     assert_frame_equal(gaze.samples, explicit.samples)
@@ -75,14 +75,14 @@ def test_generate_gaze_passes_the_experiment():
 
 
 @pytest.mark.usefixtures('registered_sample_generator')
-def test_generate_gaze_passes_the_gaze_to_condition_on():
-    conditioning = pm.synthetic.generate_gaze('test_noise', sampling_rate=500.0, seed=1)
-
+def test_generate_gaze_passes_the_other_keywords_to_generate(fixations):
+    """Keywords that are not a field of the generator are run parameters."""
     gaze = pm.synthetic.generate_gaze(
-        'test_noise', gaze=conditioning, sampling_rate=500.0, seed=42,
+        'test_noise', events=fixations, sampling_rate=500.0, seed=42, scale=2.0,
     )
 
-    assert gaze.metadata['synthetic']['run']['n_gaze_samples'] == conditioning.samples.height
+    assert gaze.metadata['synthetic']['hyperparameters'] == {'scale': 2.0}
+    assert gaze.metadata['synthetic']['run'] == {'sampling_rate': 500.0, 'n_events': 2}
 
 
 def test_generate_events_matches_the_explicit_call(registered_event_generator):
