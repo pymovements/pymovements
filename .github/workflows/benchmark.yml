@@ -6,8 +6,11 @@ on:
   workflow_call:
   workflow_dispatch:
 
+# Each run on main gets its own group, so no pending run is cancelled and every
+# push adds its chart point. Concurrent publishes are safe: the action retries a
+# rejected gh-pages push on top of the fetched branch.
 concurrency:
-  group: benchmark-${{ github.workflow }}-${{ github.ref }}
+  group: benchmark-${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.ref }}
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 jobs:
