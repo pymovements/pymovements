@@ -18,9 +18,23 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides functionality for generating synthetic eye gaze data."""
+from pymovements.synthetic.generate import generate_events
+from pymovements.synthetic.generate import generate_samples
+from pymovements.synthetic.generator import EventGenerator
+from pymovements.synthetic.generator import SampleGenerator
+from pymovements.synthetic.library import EventGeneratorLibrary
+from pymovements.synthetic.library import register_generator
+from pymovements.synthetic.library import SampleGeneratorLibrary
 from pymovements.synthetic.step_function import step_function
 
 
 __all__ = [
+    'EventGenerator',
+    'EventGeneratorLibrary',
+    'SampleGenerator',
+    'SampleGeneratorLibrary',
+    'generate_events',
+    'generate_samples',
+    'register_generator',
     'step_function',
 ]
