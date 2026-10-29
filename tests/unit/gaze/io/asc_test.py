@@ -1179,7 +1179,9 @@ def test_from_asc_calibration_timestamp_followed_by_sample_line():
 def test_from_asc_message_offset(line, expected_time, expected_content):
     gaze = from_asc(io.StringIO(_MONOCULAR_HEADER + line + '\n'), messages=True)
 
-    assert gaze.messages.row(-1) == (timedelta(milliseconds=expected_time), expected_content)
+    # The header messages are at 100 ms.
+    messages = gaze.messages.filter(pl.col('time') > timedelta(milliseconds=100))
+    assert messages.rows() == [(timedelta(milliseconds=expected_time), expected_content)]
 
 
 def test_from_asc_patterns_match_behind_message_offset():
@@ -1230,7 +1232,8 @@ def test_from_asc_messages_sorted_by_corrected_time():
 
     gaze = from_asc(io.StringIO(content), messages=True)
 
-    messages = gaze.messages.tail(6)
+    # The header messages are at 100 ms.
+    messages = gaze.messages.filter(pl.col('time') > timedelta(milliseconds=100))
     assert messages['time'].to_list() == [
         timedelta(milliseconds=ms) for ms in (1000, 1001, 1002, 1002, 1003, 1003)
     ]

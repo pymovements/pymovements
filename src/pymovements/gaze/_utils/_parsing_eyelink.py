@@ -350,9 +350,10 @@ def _parse_message(line: str) -> tuple[str, tuple[float, str] | None]:
     if match is None:
         return line, None
     offset = match.group('offset')
+    stripped = line
     if offset is not None:
-        line = line[:match.start('offset')] + line[match.start('content'):]
-    return line, (float(match.group('timestamp')) - float(offset or 0), match.group('content'))
+        stripped = line[:match.start('offset')] + line[match.start('content'):]
+    return stripped, (float(match.group('timestamp')) - float(offset or 0), match.group('content'))
 
 
 def _check_patterns(line: str, compiled_patterns: list[dict[str, Any]]) -> dict[str, Any]:
