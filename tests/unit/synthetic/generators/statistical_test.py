@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test the statistical sample generator."""
+import math
+
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
@@ -57,15 +59,10 @@ def _events(*segments):
     )
 
 
-def _magnitudes(gaze, *, start=None, end=None):
+def _magnitudes(gaze, *, start=-math.inf, end=math.inf):
     """Return the velocity magnitudes of the samples in [start, end) ms."""
     time = pl.col('time').dt.total_microseconds() / 1000.0
-    samples = gaze.samples
-    if start is not None:
-        samples = samples.filter(time >= start)
-    if end is not None:
-        samples = samples.filter(time < end)
-    return samples['velocity_magnitude']
+    return gaze.samples.filter(time.is_between(start, end, closed='left'))['velocity_magnitude']
 
 
 def _saccade_peak(duration, *, seed=42, **hyperparameters):
@@ -162,6 +159,14 @@ def test_attaches_a_copy_of_the_events(contiguous_events):
     )
 
     assert_frame_equal(gaze.events.frame, contiguous_events.frame)
+
+
+def test_event_shorter_than_one_sample_gets_one_sample():
+    gaze = StatisticalSampleGenerator().generate(
+        events=_events(('saccade', 0.25)), sampling_rate=1000.0, seed=42,
+    )
+
+    assert gaze.samples.height == 1
 
 
 def test_samples_start_at_the_first_onset():
@@ -643,6 +648,15 @@ def test_statistical_raises_error(hyperparameters, exception, msg_substrings):
             {},
             ('statistical', 'gap', '250.0', '300.0', 'bridge_gaps'),
             id='gap_between_events',
+        ),
+        pytest.param(
+            Events(
+                name=['fixation', 'saccade'], onsets=[0.0, 250.75], offsets=[250.5, 300.0],
+                time_unit='ms',
+            ),
+            {},
+            ('statistical', 'gap', '250.5 ms', '250.75 ms', 'saccade'),
+            id='sub_millisecond_gap',
         ),
         pytest.param(
             Events(name=['fixation'] * 2, onsets=[0, 200], offsets=[250, 500], time_unit='ms'),
