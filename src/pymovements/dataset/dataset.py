@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides the Dataset class."""
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
 import logging
@@ -51,7 +52,6 @@ from pymovements.gaze.quality import compute_measures
 from pymovements.gaze.quality import DataQualityReport
 from pymovements.gaze.quality import ValidationError
 from pymovements.gaze.validation import _ALL_CHECKS
-from pymovements.measure.reading import compute_reading_measures
 from pymovements.measure.reading import ReadingMeasures
 from pymovements.stimulus import text
 from pymovements.stimulus.image import ImageStimulus
@@ -1149,11 +1149,14 @@ class Dataset:
             group_columns: list[str] | None = None,
             word_index_column: str = 'word_idx',
             word_column: str = 'word',
+            event_name: str = 'fixation',
+            annotate_events: bool | None = None,
     ) -> ReadingMeasures:
         """Map fixations to AOIs and compute reading measures for an entire dataset.
 
-        This method implicitly annotates fixations with AOI data. See
-        :py:meth:`~pymovements.Events.map_to_aois` for further details.
+        The fixations of each recording are mapped to the AOIs of its text on an internal copy,
+        see :py:meth:`~pymovements.Events.measure_reading`. Whether the events of the dataset are
+        annotated with the AOI columns as well is controlled by ``annotate_events``.
 
         Parameters
         ----------
@@ -1174,6 +1177,17 @@ class Dataset:
         word_column : str
             Column in AOIs with the content within each AOI.
             (default: ``'word'``)
+        event_name : str
+            Name of the fixation events to compute measures from. Rows with a different ``name``
+            are dropped. The name must start with ``fixation``, because the AOI mapping only maps
+            fixation rows (see :py:meth:`~pymovements.Events.map_to_aois`).
+            (default: ``'fixation'``)
+        annotate_events : bool | None
+            If ``True``, the events of the dataset are annotated with the AOI columns in place as
+            well, see :py:meth:`~pymovements.Events.map_to_aois`. If ``False``, the events of the
+            dataset stay untouched. ``None`` behaves like ``True`` and emits a
+            :py:class:`DeprecationWarning`, the default changes to ``False`` in v0.34.0.
+            (default: None)
 
         Returns
         -------
@@ -1182,7 +1196,25 @@ class Dataset:
             Its ``metadata['Sources']`` entry lists the event source files and AOI files
             the measures were derived from, with paths below the dataset root recorded
             relative to it.
+
+        Warns
+        -----
+        DeprecationWarning
+            If ``annotate_events`` is ``None``. Annotating the events of the dataset in place is
+            the deprecated default since v0.29.0 and will be removed in v0.34.0.
         """
+        if annotate_events is None:
+            warn(
+                'Dataset.measure_reading annotates the events of the dataset with AOI columns in '
+                'place. This default is deprecated since version v0.29.0 and will be removed in '
+                'v0.34.0. From then on the events of the dataset stay untouched. Pass '
+                'annotate_events=True to keep the annotation without this warning, or '
+                'annotate_events=False to opt in to the new behavior now.',
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            annotate_events = True
+
         reading_measures_list = []
         reading_measures_metadata: dict[str, Any] = {}
 
@@ -1191,6 +1223,7 @@ class Dataset:
                 print('+ skip due to empty DF')
                 continue
             text_id = events.frame['text_id'][0]
+            subject_id = int(events.frame['subject_id'][0])
             aoi_text_stimulus = text.from_file(
                 aoi_dict[text_id],
                 aoi_column='character',
@@ -1202,30 +1235,26 @@ class Dataset:
                 custom_read_kwargs={'separator': '\t'},
             )
 
-            events.map_to_aois(aoi_text_stimulus)
+            if annotate_events:
+                events.map_to_aois(aoi_text_stimulus)
 
-            # The reading measures are derived from the events and their AOI stimulus files.
-            # AOI files below the dataset root are recorded relative to it, like all other
-            # dataset sources. The dataset's events stay untouched.
-            events_metadata = relativize_sources(events.metadata, self.paths.dataset)
-            reading_measures_metadata = merge_sources(reading_measures_metadata, events_metadata)
-
-            fixations = events.filter_by_name('fixation')
-
-            text_id = fixations['text_id'][0]
-            subject_id = int(fixations['subject_id'][0])
-
-            aoi_df = pl.read_csv(aoi_dict[text_id], separator='\t')
-
-            rm_df = compute_reading_measures(
-                fixations=fixations,
-                aois=aoi_df,
+            reading_measures = events.measure_reading(
+                aoi_text_stimulus,
                 group_columns=group_columns,
                 word_index_column=word_index_column,
                 word_column=word_column,
+                event_name=event_name,
             )
 
-            rm_df = rm_df.with_columns([
+            # The reading measures are derived from the events and their AOI stimulus files.
+            # AOI files below the dataset root are recorded relative to it, like all other
+            # dataset sources.
+            reading_measures_metadata = merge_sources(
+                reading_measures_metadata,
+                relativize_sources(reading_measures.metadata, self.paths.dataset),
+            )
+
+            rm_df = reading_measures.frame.with_columns([
                 pl.lit(subject_id).alias('subject_id'),
                 pl.lit(text_id).alias('text_id'),
             ])

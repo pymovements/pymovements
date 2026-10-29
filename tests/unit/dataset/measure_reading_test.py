@@ -64,6 +64,7 @@ def test_compute_reading_measures(dummy_dataset, make_example_file):
         aoi_dict,
         word_index_column='aoi',
         word_column='character',
+        annotate_events=False,
     )
 
     expected_columns = [
@@ -83,10 +84,8 @@ def test_compute_reading_measures(dummy_dataset, make_example_file):
     # below the dataset root and is therefore recorded relative to it.
     assert reading_measures.metadata['Sources'] == ['raw/sub_5.csv', aoi_path.name]
 
-    # The relativization happens on a copy. The dataset's events keep their own metadata,
-    # extended by map_to_aois with the absolute AOI path, but never relativized.
-    events_sources = dummy_dataset.gaze[0].events.metadata['Sources']
-    assert events_sources == ['raw/sub_5.csv', aoi_path.as_posix()]
+    # The mapping happens on a copy. The dataset's events keep their own metadata.
+    assert dummy_dataset.gaze[0].events.metadata['Sources'] == ['raw/sub_5.csv']
 
 
 def test_compute_reading_measures_save(dummy_dataset, tmp_path, make_example_file):
@@ -98,6 +97,7 @@ def test_compute_reading_measures_save(dummy_dataset, tmp_path, make_example_fil
         save_path=tmp_path,
         word_index_column='aoi',
         word_column='character',
+        annotate_events=False,
     )
 
     expected_columns = [
@@ -124,6 +124,7 @@ def test_measure_reading_default_keeps_single_sequence(dummy_dataset, make_examp
         aoi_dict,
         word_index_column='aoi',
         word_column='character',
+        annotate_events=False,
     )
 
     assert 'trial' not in reading_measures.frame.columns
@@ -143,9 +144,112 @@ def test_measure_reading_group_columns_partition_output(dummy_dataset, make_exam
             group_columns=['trial'],
             word_index_column='aoi',
             word_column='character',
+            annotate_events=False,
         )
 
     assert 'trial' in reading_measures.frame.columns
+
+
+def test_measure_reading_event_name_selects_events(dummy_dataset, make_example_file):
+    """``event_name`` selects the events the measures are computed from."""
+    aoi_path = make_example_file('potec_word_aoi_b0.tsv')
+    aoi_dict = {'b0': aoi_path}
+    expected = dummy_dataset.measure_reading(
+        aoi_dict,
+        word_index_column='aoi',
+        word_column='character',
+        annotate_events=False,
+    )
+
+    # map_to_aois only maps event names starting with 'fixation'.
+    events = dummy_dataset.gaze[0].events
+    events.frame = events.frame.with_columns(pl.lit('fixation_ivt').alias('name'))
+
+    reading_measures = dummy_dataset.measure_reading(
+        aoi_dict,
+        word_index_column='aoi',
+        word_column='character',
+        event_name='fixation_ivt',
+        annotate_events=False,
+    )
+
+    assert reading_measures.frame.equals(expected.frame)
+
+
+def test_measure_reading_default_warns_and_annotates_events(
+        dummy_dataset, make_example_file, assert_deprecation_is_removed,
+):
+    """The default annotates the dataset's events in place and warns about the deprecation."""
+    aoi_path = make_example_file('potec_word_aoi_b0.tsv')
+    aoi_dict = {'b0': aoi_path}
+    events = dummy_dataset.gaze[0].events
+
+    with pytest.warns(DeprecationWarning, match='annotate_events') as info:
+        reading_measures = dummy_dataset.measure_reading(
+            aoi_dict,
+            word_index_column='aoi',
+            word_column='character',
+        )
+
+    assert_deprecation_is_removed(
+        function_name='Dataset.measure_reading default annotate_events=None',
+        warning_message=str(info[0].message),
+        scheduled_version='0.34.0',
+    )
+
+    assert len(reading_measures.frame) > 0
+    assert {'aoi', 'character'} <= set(events.frame.columns)
+    # Annotating in place records the AOI file as the events read it, not relative to the root.
+    assert events.metadata['Sources'] == ['raw/sub_5.csv', aoi_path.as_posix()]
+
+
+def test_measure_reading_annotate_events_true_annotates_without_warning(
+        dummy_dataset, make_example_file,
+):
+    """``annotate_events=True`` keeps the in-place annotation and stays silent."""
+    aoi_path = make_example_file('potec_word_aoi_b0.tsv')
+    aoi_dict = {'b0': aoi_path}
+    events = dummy_dataset.gaze[0].events
+
+    reading_measures = dummy_dataset.measure_reading(
+        aoi_dict,
+        word_index_column='aoi',
+        word_column='character',
+        annotate_events=True,
+    )
+
+    assert len(reading_measures.frame) > 0
+    assert {'aoi', 'character'} <= set(events.frame.columns)
+    # Annotating in place records the AOI file as the events read it, not relative to the root.
+    assert events.metadata['Sources'] == ['raw/sub_5.csv', aoi_path.as_posix()]
+
+
+def test_measure_reading_annotate_events_false_keeps_events(dummy_dataset, make_example_file):
+    """``annotate_events=False`` leaves the events untouched and computes the same measures."""
+    aoi_path = make_example_file('potec_word_aoi_b0.tsv')
+    aoi_dict = {'b0': aoi_path}
+    events = dummy_dataset.gaze[0].events
+    expected_frame = events.frame.clone()
+
+    untouched = dummy_dataset.measure_reading(
+        aoi_dict,
+        word_index_column='aoi',
+        word_column='character',
+        annotate_events=False,
+    )
+
+    assert events.frame.equals(expected_frame)
+    assert events.metadata['Sources'] == ['raw/sub_5.csv']
+
+    annotated = dummy_dataset.measure_reading(
+        aoi_dict,
+        word_index_column='aoi',
+        word_column='character',
+        annotate_events=True,
+    )
+
+    assert untouched.frame.equals(annotated.frame)
+    assert untouched.metadata == annotated.metadata
 
 
 def test_compute_reading_measures_empty_dataset(tmp_path):
@@ -170,7 +274,7 @@ def test_compute_reading_measures_empty_dataset(tmp_path):
 
     dataset.gaze = [Gaze(events=empty_events)]
 
-    reading_measures = dataset.measure_reading(aoi_dict={})
+    reading_measures = dataset.measure_reading(aoi_dict={}, annotate_events=False)
 
     assert reading_measures.frame.is_empty()
     assert isinstance(reading_measures.frame, pl.DataFrame)
