@@ -62,26 +62,20 @@ def test_generation_provenance_copies_its_inputs():
 
 
 @pytest.mark.parametrize(
-    ('events', 'expected_run'),
+    ('run', 'expected_run'),
     [
+        pytest.param({}, {'sampling_rate': 500.0}, id='unconditioned'),
         pytest.param(
-            False,
-            {'sampling_rate': 500.0, 'n_events': None, 'n_gaze_samples': None},
-            id='unconditioned',
-        ),
-        pytest.param(
-            True,
-            {'sampling_rate': 500.0, 'n_events': 2, 'n_gaze_samples': None},
+            {'events': 'fixations'},
+            {'sampling_rate': 500.0, 'n_events': 2},
             id='event_conditioned',
         ),
     ],
 )
-def test_sample_generator_records_provenance(
-        noise_sample_generator, fixations, events, expected_run,
-):
-    gaze = noise_sample_generator(scale=2.0).generate(
-        fixations if events else None, sampling_rate=500.0, seed=42,
-    )
+def test_sample_generator_records_provenance(request, noise_sample_generator, run, expected_run):
+    run = {key: request.getfixturevalue(value) for key, value in run.items()}
+
+    gaze = noise_sample_generator(scale=2.0).generate(sampling_rate=500.0, seed=42, **run)
 
     assert gaze.metadata[PROVENANCE_KEY] == {
         'generator': 'test_noise',
@@ -93,12 +87,16 @@ def test_sample_generator_records_provenance(
     }
 
 
-def test_sample_generator_records_gaze_conditioning(noise_sample_generator):
-    conditioning = noise_sample_generator().generate(sampling_rate=500.0, seed=1)
+def test_generator_can_override_how_its_run_is_recorded(noise_sample_generator, fixations):
+    class SummarisingGenerator(noise_sample_generator):
+        def _record_run(self, run):
+            return {'event_names': sorted(set(run['events'].frame['name']))}
 
-    gaze = noise_sample_generator().generate(gaze=conditioning, sampling_rate=500.0, seed=42)
+    gaze = SummarisingGenerator().generate(events=fixations, sampling_rate=500.0, seed=42)
 
-    assert gaze.metadata[PROVENANCE_KEY]['run']['n_gaze_samples'] == 10
+    assert gaze.metadata[PROVENANCE_KEY]['run'] == {
+        'sampling_rate': 500.0, 'event_names': ['fixation'],
+    }
 
 
 def test_event_generator_records_provenance(uniform_event_generator):
