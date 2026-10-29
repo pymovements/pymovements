@@ -23,27 +23,22 @@ jobs:
       - uses: actions/github-script@v8
         with:
           script: |
-            const pr = context.payload.pull_request;
-            const reviews = await github.paginate(github.rest.pulls.listReviews, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: pr.number,
-            });
-
-            // Reviews are listed oldest first. COMMENTED reviews do not change a reviewer's
-            // state, which matches GitHub's own review decision.
-            const latestState = new Map();
-            for (const review of reviews) {
-              if (!review.user || review.user.type === 'Bot') continue;
-              if (review.user.login === pr.user.login) continue;
-              if (['APPROVED', 'CHANGES_REQUESTED', 'DISMISSED'].includes(review.state)) {
-                latestState.set(review.user.login, review.state);
-              }
-            }
-
-            const reviewers = [...latestState]
-              .filter(([, state]) => state === 'CHANGES_REQUESTED')
-              .map(([login]) => login);
+            // Latest non-comment review per reviewer with write access, which matches
+            // GitHub's own review decision. Only users can be requested as reviewers.
+            const { repository } = await github.graphql(`
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    latestOpinionatedReviews(first: 100, writersOnly: true) {
+                      nodes { state author { __typename login } }
+                    }
+                  }
+                }
+              }`, { ...context.repo, number: context.issue.number });
+            const reviewers = repository.pullRequest.latestOpinionatedReviews.nodes
+              .filter((review) => review.state === 'CHANGES_REQUESTED')
+              .filter((review) => review.author?.__typename === 'User')
+              .map((review) => review.author.login);
 
             if (reviewers.length === 0) {
               core.info('No reviewer with requested changes, nothing to re-request.');
@@ -52,8 +47,7 @@ jobs:
 
             core.info(`Re-requesting review from: ${reviewers.join(', ')}`);
             await github.rest.pulls.requestReviewers({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: pr.number,
+              ...context.repo,
+              pull_number: context.issue.number,
               reviewers,
             });
