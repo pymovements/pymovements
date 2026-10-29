@@ -56,6 +56,20 @@ def test_generator_is_registered_in_the_library_of_its_level(
     assert 'registered' not in other_library.names()
 
 
+@pytest.mark.parametrize(
+    ('name', 'expected'),
+    [
+        pytest.param('registered', True, id='registered_name'),
+        pytest.param('does_not_exist', False, id='unknown_name'),
+    ],
+)
+def test_library_contains_registered_names(noise_sample_generator, name, expected):
+    """Mirrors ``name in EventDetectionLibrary()`` and ``name in SampleMeasureLibrary()``."""
+    register_generator(_named(noise_sample_generator, 'registered'))
+
+    assert (name in SampleGeneratorLibrary()) is expected
+
+
 def test_both_levels_can_use_the_same_name(noise_sample_generator, uniform_event_generator):
     sample_class = register_generator(_named(noise_sample_generator, 'statistical'))
     event_class = register_generator(_named(uniform_event_generator, 'statistical'))
