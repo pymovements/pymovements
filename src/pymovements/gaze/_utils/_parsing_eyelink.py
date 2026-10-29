@@ -152,9 +152,13 @@ STOP_RECORDING_REGEX = (
     r'(?P<xres>[\d\.]*)\s+(?P<yres>[\d\.]*)\s*'
 )
 
-# General message format
+# General message format: MSG <timestamp> [offset] <content>
+# The offset is a signed integer in ms, followed by at least one more token. The message refers to
+# an event at timestamp - offset.
 MSG_REGEX = (
-    r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+(?P<content>.*)'
+    r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+'
+    r'(?:(?P<offset>[-+]?\d+)\s+(?=\S))?'
+    r'(?P<content>.*)'
 )
 
 
@@ -334,6 +338,22 @@ def parse_eyelink_event_end(line: str) -> tuple[str, str, float, float] | None:
             float(match.group('timestamp_end')),
         )
     return None
+
+
+def _parse_message(line: str) -> tuple[str, tuple[float, str] | None]:
+    """Split the timestamp offset off an EyeLink message line.
+
+    Returns the line without the offset and the message as ``(time, content)``, with the time
+    corrected by the offset. A line that is no message is returned unchanged with ``None``.
+    """
+    match = _match_regex(MSG_REGEX, line) if line.startswith('MSG') else None
+    if match is None:
+        return line, None
+    offset = match.group('offset')
+    stripped = line
+    if offset is not None:
+        stripped = line[:match.start('offset')] + line[match.start('content'):]
+    return stripped, (float(match.group('timestamp')) - float(offset or 0), match.group('content'))
 
 
 def _check_patterns(line: str, compiled_patterns: list[dict[str, Any]]) -> dict[str, Any]:
@@ -575,12 +595,12 @@ def parse_eyelink(
     messages: bool | Sequence[str]
         Flag indicating if any additional messages should be parsed from the asc file
         and returned as a DataFrame with 'time' (f64) and 'content' (str) columns.
-        The message format is 'MSG <timestamp> <content>'.
+        The message format is 'MSG <timestamp> [offset] <content>', see Notes.
         If True, all available messages will be parsed from the asc,
         alternatively, a list of regular expressions can be passed and only the
         messages that match any of the regular expressions will be kept.
         Regular expressions are only applied to the message content,
-        implicitly parsing the `MSG <timestamp>` prefix.
+        implicitly parsing the `MSG <timestamp> [offset]` prefix.
         (default: False)
     extend_resolution: bool | None
         Flag indicating if the screen resolution should be extended by 1 pixel.
@@ -614,6 +634,9 @@ def parse_eyelink(
     emitted and the event is still recorded. In this case, the parser seeds additional columns from
     the current context (values derived from the provided ``patterns`` at that line), so trial/task
     information is preserved when available.
+
+    Message lines can carry a timestamp offset (``MSG <timestamp> [offset] <text>``). See the Notes
+    of :py:func:`pymovements.gaze.from_asc` for how the offset is applied.
     """
     # pylint: disable=too-many-branches, too-many-statements, too-many-nested-blocks
     msg_prefix = r'MSG\s+\d+[.]?\d*\s+'
@@ -691,7 +714,7 @@ def parse_eyelink(
             f'as strings. Received {messages}.',
         )
 
-    messages_list: list[list[str]] = []
+    messages_list: list[tuple[float, str]] = []
 
     cal_timestamp = ''
 
@@ -792,8 +815,12 @@ def parse_eyelink(
             event_ends.append((event_name, eye, onset, offset))
             context_timeline[offset] = {**current_additional}
 
+        # msg_prefix and the message regexes below expect no offset, so all matching from here on
+        # uses the line without it.
+        line_without_offset, message = _parse_message(line)
+
         # Then process patterns and update context for subsequent lines
-        matched_ctx = _check_patterns(line, compiled_patterns)
+        matched_ctx = _check_patterns(line_without_offset, compiled_patterns)
         if matched_ctx:
             current_additional.update(matched_ctx)
 
@@ -801,7 +828,7 @@ def parse_eyelink(
         # SAMPLES config line is never missed (e.g. if it directly follows a calibration
         # line while cal_timestamp is still set). The switch to binocular has to happen
         # before the next sample line is dispatched at the top of the loop.
-        if samples_match := _search_regex(SAMPLES_CONFIG_REGEX, line, re.IGNORECASE):
+        if samples_match := _search_regex(SAMPLES_CONFIG_REGEX, line_without_offset, re.IGNORECASE):
             samples_config.append(samples_match.groupdict())
             tracked = samples_match.group('tracked_eye').upper().strip()
             layout = _parse_tracked_eye_layout(tracked)
@@ -826,17 +853,17 @@ def parse_eyelink(
                     'timestamp': cal_timestamp,
                     **match.groupdict(),
                 }
-                if (match := _match_regex(CALIBRATION_REGEX, line))
+                if (match := _match_regex(CALIBRATION_REGEX, line_without_offset))
                 else {'timestamp': cal_timestamp},
             )
             cal_timestamp = ''
 
-        elif match := _match_regex(RECORDING_CONFIG_REGEX, line):
+        elif match := _match_regex(RECORDING_CONFIG_REGEX, line_without_offset):
             # Drop optional groups that weren't present for legacy behaviour
             rec_cfg = {k: v for k, v in match.groupdict().items() if v is not None}
             recording_config.append(rec_cfg)
 
-        elif match := _match_regex(GAZE_COORDS_REGEX, line):
+        elif match := _match_regex(GAZE_COORDS_REGEX, line_without_offset):
             left, top, right, bottom = (float(coord) for coord in match.group('resolution').split())
             # GAZE_COORDS is typically logged after RECCFG - if not, warn and skip assignment.
             if not recording_config:
@@ -860,10 +887,10 @@ def parse_eyelink(
 
                 recording_config[-1]['resolution'] = (width, height)
 
-        elif match := _match_regex(START_RECORDING_REGEX, line):
+        elif match := _match_regex(START_RECORDING_REGEX, line_without_offset):
             start_recording_timestamp = match.groupdict()['timestamp']
 
-        elif match := _match_regex(STOP_RECORDING_REGEX, line):
+        elif match := _match_regex(STOP_RECORDING_REGEX, line_without_offset):
             if start_recording_timestamp is None:
                 warnings.warn(
                     'END recording message without associated START recording message. '
@@ -875,18 +902,18 @@ def parse_eyelink(
                     float(match.groupdict()['timestamp']) - float(start_recording_timestamp)
                 )
             start_recording_timestamp = None
-        if messages and (match := _match_regex(MSG_REGEX, line)):
-            messages_list.append([match.groupdict()['timestamp'], match.groupdict()['content']])
+        if messages and message:
+            messages_list.append(message)
 
-        if match := _match_regex(CALIBRATION_TIMESTAMP_REGEX, line):
+        if match := _match_regex(CALIBRATION_TIMESTAMP_REGEX, line_without_offset):
             cal_timestamp = match.groupdict()['timestamp']
 
-        elif match := _match_regex(VALIDATION_REGEX, line):
+        elif match := _match_regex(VALIDATION_REGEX, line_without_offset):
             validations.append(match.groupdict())
 
         elif compiled_metadata_patterns:
             for pattern_dict in compiled_metadata_patterns.copy():
-                if match := pattern_dict['pattern'].match(line):
+                if match := pattern_dict['pattern'].match(line_without_offset):
                     if 'value' in pattern_dict:
                         metadata[pattern_dict['key']] = pattern_dict['value']
 
@@ -1000,6 +1027,8 @@ def parse_eyelink(
             },
             orient='row',
         )
+        # Offsets can move a message before earlier lines. Equal times keep the file order.
+        messages_df = messages_df.sort('time', maintain_order=True)
         # Filter messages with regexp if given
         if isinstance(messages, Sequence):
             # keep rows where content matches any of the regex patterns

@@ -464,12 +464,12 @@ def from_asc(
     messages: bool | list[str]
         Flag indicating if any additional messages should be parsed from the asc file
         and stored in :py:class:`pymovements.gaze.experiment.Experiment`.
-        The message format is 'MSG <timestamp> <content>'.
+        The message format is 'MSG <timestamp> [offset] <content>', see Notes.
         If True, all available messages will be parsed from the asc,
         alternatively, a list of regular expressions can be passed, and only the
         messages that match any of the regular expressions will be kept.
         Regular expressions are only applied to the message content,
-        implicitly parsing the `MSG <timestamp>` prefix.
+        implicitly parsing the `MSG <timestamp> [offset]` prefix.
         (default: False)
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. When ``file`` is a path, a ``Sources``
@@ -537,6 +537,23 @@ def from_asc(
     experiment's eye tracker then reports both eyes as tracked, the same as for a simultaneous
     binocular recording. Per-recording metadata that tells the two cases apart is planned in
     `issue 1663 <https://github.com/pymovements/pymovements/issues/1663>`_.
+
+    Message lines can carry a timestamp offset, ``MSG <timestamp> [offset] <text>``. The offset is
+    a signed integer in milliseconds, and the message refers to an event at ``timestamp - offset``.
+    The parsed message time is this corrected time, and messages are sorted by it. The offset is
+    removed from the content, so ``patterns`` and ``metadata_patterns`` match the text without it.
+
+    ==============================  ==========  ===============
+    Line                            Time        Content
+    ==============================  ==========  ===============
+    ``MSG 456119 -10 TRIAL 1``      456129      ``TRIAL 1``
+    ``MSG 1000 12``                 1000        ``12``
+    ``MSG 1000 3 trials left``      997         ``trials left``
+    ==============================  ==========  ===============
+
+    A leading integer counts as an offset only if more text follows. Message text that starts with
+    an integer is therefore misread, as in the last row. Columns added by ``patterns`` change at the
+    message's line in the file, not at its corrected time.
 
     Examples
     --------
