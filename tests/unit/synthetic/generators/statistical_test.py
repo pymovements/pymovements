@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test the statistical sample generator."""
+import json
 import math
 
 import polars as pl
@@ -502,8 +503,37 @@ def test_records_its_hyperparameters(contiguous_events):
 
     provenance = gaze.metadata['synthetic']
     assert provenance['generator'] == 'statistical'
-    assert provenance['hyperparameters']['saccade_peak_velocity'] == Range(300.0, 450.0)
+    assert provenance['hyperparameters']['saccade_peak_velocity'] == {
+        'minimum': 300.0, 'maximum': 450.0, 'distribution': 'uniform', 'std': None,
+    }
     assert provenance['hyperparameters']['profile_sampling_rate'] == 10_000.0
+
+
+def test_output_can_be_saved_and_written_to_json(contiguous_events, tmp_path):
+    """The provenance holds the ranges as plain values, so no writer chokes on them."""
+    gaze = StatisticalSampleGenerator().generate(
+        events=contiguous_events, sampling_rate=1000.0, seed=42,
+    )
+
+    json.dumps(gaze.metadata)
+    gaze.save(tmp_path, verbose=0)
+
+
+def test_run_is_replayed_from_its_record(contiguous_events):
+    gaze = StatisticalSampleGenerator(
+        saccade_peak_velocity=Range(300.0, 450.0, 'normal', std=30.0),
+    ).generate(events=contiguous_events, sampling_rate=1000.0, seed=42)
+    record = gaze.metadata['synthetic']
+
+    replayed = pm.synthetic.generate_samples(
+        record['generator'],
+        events=contiguous_events,
+        sampling_rate=record['run']['sampling_rate'],
+        seed=record['seed'],
+        **record['hyperparameters'],
+    )
+
+    assert_frame_equal(replayed.samples, gaze.samples)
 
 
 @pytest.mark.parametrize(
