@@ -120,9 +120,11 @@ def test_sample_generator_attaches_a_copy_of_the_events(noise_sample_generator, 
 def test_sample_generator_conditions_on_the_attached_copy(noise_sample_generator, fixations):
     """A generator that changes its input changes neither the caller's events nor the match."""
     class MutatingGenerator(noise_sample_generator):
-        def _generate(self, *, events, **kwargs):
+        def _generate(self, *, sampling_rate, experiment, rng, events=None):
             events.frame = events.frame.head(1)
-            return super()._generate(events=events, **kwargs)
+            return super()._generate(
+                sampling_rate=sampling_rate, experiment=experiment, rng=rng, events=events,
+            )
 
     gaze = MutatingGenerator().generate(events=fixations, sampling_rate=1000.0, seed=42)
 
@@ -184,8 +186,10 @@ def test_sample_generator_fills_the_sampling_rate_into_an_experiment_without_one
 
 def test_sample_generator_keeps_metadata_of_its_own(noise_sample_generator):
     class MetadataGenerator(noise_sample_generator):
-        def _generate(self, **kwargs):
-            gaze = super()._generate(**kwargs)
+        def _generate(self, *, sampling_rate, experiment, rng, events=None):
+            gaze = super()._generate(
+                sampling_rate=sampling_rate, experiment=experiment, rng=rng, events=events,
+            )
             gaze.metadata = {'note': 'kept'}
             return gaze
 
@@ -255,30 +259,33 @@ def test_generator_raises_error_on_seed(request, generator, run, seed, exception
 
 
 @pytest.mark.parametrize(
-    ('generator', 'kwargs', 'msg_substring'),
+    ('generator', 'kwargs', 'msg_substrings'),
     [
         pytest.param(
-            'noise_sample_generator', {}, 'sampling_rate', id='missing_sampling_rate',
+            'noise_sample_generator', {}, ('sampling_rate',), id='missing_sampling_rate',
         ),
         pytest.param(
             'noise_sample_generator',
             {'sampling_rate': 1000.0, 'sampling_rte': 500.0},
-            'sampling_rte',
+            ('NoiseSampleGenerator.generate()', 'unknown', "'sampling_rte'", "'events'"),
             id='misspelled_sample_run_parameter',
         ),
         pytest.param(
-            'uniform_event_generator', {}, 'duration', id='missing_declared_run_parameter',
+            'uniform_event_generator',
+            {},
+            ('UniformEventGenerator.generate()', 'missing', "'duration'"),
+            id='missing_declared_run_parameter',
         ),
         pytest.param(
             'uniform_event_generator',
             {'duration': 1.0, 'duraton': 2.0},
-            'duraton',
+            ('UniformEventGenerator.generate()', 'unknown', "'duraton'", "'duration'"),
             id='misspelled_event_run_parameter',
         ),
     ],
 )
 def test_generator_rejects_unknown_or_missing_run_parameters(
-        request, generator, kwargs, msg_substring,
+        request, generator, kwargs, msg_substrings,
 ):
     generator_class = request.getfixturevalue(generator)
 
@@ -286,7 +293,8 @@ def test_generator_rejects_unknown_or_missing_run_parameters(
         generator_class().generate(**kwargs)
 
     msg, = excinfo.value.args
-    assert msg_substring in msg
+    for msg_substring in msg_substrings:
+        assert msg_substring in msg
 
 
 @pytest.mark.parametrize(
@@ -385,4 +393,24 @@ def test_hyperparameters_reject_a_generator_that_is_no_dataclass():
 
     msg, = excinfo.value.args
     for msg_substring in ('_PlainGenerator', 'dataclass'):
+        assert msg_substring in msg
+
+
+@dataclasses.dataclass
+class _CatchAllGenerator(_NeverGenerates):
+    name = 'catch_all'
+
+    def _generate(  # pylint: disable=arguments-differ
+            self, *, sampling_rate, experiment, rng, **options,
+    ):
+        raise AssertionError('_generate must not run for a generator that is rejected')
+
+
+def test_generate_rejects_a_generate_method_that_takes_any_keyword():
+    """A ``**kwargs`` in ``_generate`` would swallow a misspelled run parameter silently."""
+    with pytest.raises(TypeError) as excinfo:
+        _CatchAllGenerator().generate(sampling_rate=1000.0, seed=42, swallowed=1)
+
+    msg, = excinfo.value.args
+    for msg_substring in ('_CatchAllGenerator._generate', '**options', 'keyword', 'misspelled'):
         assert msg_substring in msg
