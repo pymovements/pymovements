@@ -171,6 +171,21 @@ def test_sample_generator_attaches_the_supplied_experiment(noise_sample_generato
     assert gaze.experiment is experiment
 
 
+def test_sample_generator_fills_the_sampling_rate_into_an_experiment_without_one(
+        noise_sample_generator,
+):
+    """An experiment built for the screen geometry only gets the requested rate, as a copy."""
+    experiment = Experiment(1280, 1024, 38, 30, 68, 'upper left', None)
+
+    gaze = noise_sample_generator().generate(
+        sampling_rate=1000.0, seed=42, experiment=experiment,
+    )
+
+    assert gaze.experiment.sampling_rate == 1000.0
+    assert gaze.experiment.screen == experiment.screen
+    assert experiment.sampling_rate is None
+
+
 def test_sample_generator_keeps_metadata_of_its_own(noise_sample_generator):
     class MetadataGenerator(noise_sample_generator):
         def _generate(self, **kwargs):
