@@ -172,6 +172,33 @@ class EventGenerator(_Generator):
     ----------
     level: ClassVar[Literal['events', 'samples']]
         ``'events'``, the kind of data the generator produces.
+
+    Examples
+    --------
+    .. testsetup::
+
+        >>> getfixture('doctest_synthetic')
+
+    A generator that fills the requested duration with fixations of equal length:
+
+    >>> import dataclasses
+    >>> import pymovements as pm
+    >>> @pm.synthetic.register_generator
+    ... @dataclasses.dataclass
+    ... class EvenFixations(pm.synthetic.EventGenerator):
+    ...     name = 'even_fixations'
+    ...     fixation_duration: float = 250.0
+    ...
+    ...     def _generate(self, *, rng, duration):
+    ...         count = int(duration * 1000 // self.fixation_duration)
+    ...         onsets = [index * self.fixation_duration for index in range(count)]
+    ...         offsets = [onset + self.fixation_duration for onset in onsets]
+    ...         return pm.Events(name=['fixation'] * count, onsets=onsets, offsets=offsets)
+    >>> events = EvenFixations().generate(duration=1.0, seed=42)
+    >>> events.frame['name'].to_list()
+    ['fixation', 'fixation', 'fixation', 'fixation']
+    >>> events.metadata['synthetic']['run']
+    {'duration': 1.0}
     """
 
     level: ClassVar[Literal['events', 'samples']] = 'events'
@@ -241,6 +268,45 @@ class SampleGenerator(_Generator):
     ----------
     level: ClassVar[Literal['events', 'samples']]
         ``'samples'``, the kind of data the generator produces.
+
+    Examples
+    --------
+    .. testsetup::
+
+        >>> getfixture('doctest_synthetic')
+
+    A generator that renders each event as gaze resting at the origin, with noise. It declares
+    ``events`` as its run parameter:
+
+    >>> import dataclasses
+    >>> import numpy as np
+    >>> import polars as pl
+    >>> import pymovements as pm
+    >>> @pm.synthetic.register_generator
+    ... @dataclasses.dataclass
+    ... class StillGaze(pm.synthetic.SampleGenerator):
+    ...     name = 'still_gaze'
+    ...     noise: float = 0.1
+    ...
+    ...     def _generate(self, *, sampling_rate, experiment, rng, events):
+    ...         end = events.frame['offset'].dt.total_microseconds().max() / 1000
+    ...         time = np.arange(0, end, 1000 / sampling_rate)
+    ...         return pm.Gaze(
+    ...             samples=pl.DataFrame({
+    ...                 'time': time,
+    ...                 'x': rng.normal(0, self.noise, time.size),
+    ...                 'y': rng.normal(0, self.noise, time.size),
+    ...             }),
+    ...             time_column='time',
+    ...             time_unit='ms',
+    ...             position_columns=['x', 'y'],
+    ...         )
+    >>> events = pm.Events(name=['fixation'], onsets=[0], offsets=[500])
+    >>> gaze = StillGaze().generate(events=events, sampling_rate=1000, seed=42)
+    >>> gaze.samples.height
+    500
+    >>> gaze.events.frame.equals(events.frame)
+    True
     """
 
     level: ClassVar[Literal['events', 'samples']] = 'samples'

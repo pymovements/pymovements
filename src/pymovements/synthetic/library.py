@@ -159,6 +159,32 @@ def register_generator(generator: type[GeneratorT]) -> type[GeneratorT]:
     ------
     TypeError
         If the class is neither an event nor a sample generator.
+
+    Examples
+    --------
+    .. testsetup::
+
+        >>> getfixture('doctest_synthetic')
+
+    The decorator sorts the class into the library of its level:
+
+    >>> import dataclasses
+    >>> import pymovements as pm
+    >>> @pm.synthetic.register_generator
+    ... @dataclasses.dataclass
+    ... class EvenFixations(pm.synthetic.EventGenerator):
+    ...     name = 'even_fixations'
+    ...     fixation_duration: float = 250.0
+    ...
+    ...     def _generate(self, *, rng, duration):
+    ...         count = int(duration * 1000 // self.fixation_duration)
+    ...         onsets = [index * self.fixation_duration for index in range(count)]
+    ...         offsets = [onset + self.fixation_duration for onset in onsets]
+    ...         return pm.Events(name=['fixation'] * count, onsets=onsets, offsets=offsets)
+    >>> 'even_fixations' in pm.synthetic.EventGeneratorLibrary()
+    True
+    >>> 'even_fixations' in pm.synthetic.SampleGeneratorLibrary()
+    False
     """
     if issubclass(generator, EventGenerator):
         EventGeneratorLibrary.add(generator)

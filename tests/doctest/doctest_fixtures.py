@@ -26,6 +26,8 @@ doctest requests a fixture from within a hidden ``.. testsetup::`` block via
 """
 from __future__ import annotations
 
+import warnings
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -47,3 +49,36 @@ def fixture_doctest_tmp_cwd(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     that read repository files via relative paths must not request it.
     """
     monkeypatch.chdir(tmp_path)
+
+
+@pytest.fixture(name='doctest_synthetic')
+def fixture_doctest_synthetic() -> Generator[None]:
+    """Let the requesting doctest run synthetic generators like a user would.
+
+    Doctests of the synthetic generation framework request this fixture in a hidden
+    ``.. testsetup::`` block::
+
+        .. testsetup::
+
+            >>> getfixture('doctest_synthetic')
+
+    It silences the ``ExperimentalWarning`` that every generation run emits, which the test
+    configuration otherwise turns into an error, and restores the generator libraries afterwards,
+    so generators registered in an example do not leak into other tests.
+    """
+    # Imported here: this plugin loads before pytest-cov starts, so a module-level import of
+    # pymovements would hide the package's import-time lines from the coverage report.
+    # pylint: disable=import-outside-toplevel
+    from pymovements.synthetic import EventGeneratorLibrary
+    from pymovements.synthetic import SampleGeneratorLibrary
+    from pymovements.warnings import ExperimentalWarning
+
+    event_generators = EventGeneratorLibrary.generators.copy()
+    sample_generators = SampleGeneratorLibrary.generators.copy()
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', category=ExperimentalWarning)
+        yield
+    EventGeneratorLibrary.generators.clear()
+    EventGeneratorLibrary.generators.update(event_generators)
+    SampleGeneratorLibrary.generators.clear()
+    SampleGeneratorLibrary.generators.update(sample_generators)
