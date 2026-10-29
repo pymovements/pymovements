@@ -1328,7 +1328,7 @@ class Gaze:
         >>> gaze.events.frame.is_empty()
         True
         >>> gaze.events.frame.columns
-        ['trial', 'name', 'onset', 'offset', 'duration']
+        ['trial', 'onset', 'duration', 'name']
         >>> gaze.events.frame.schema['trial']
         Int64
         """
@@ -1432,7 +1432,12 @@ class Gaze:
             # events frame can be shared across trials instead of being filtered once per trial.
             needs_events = 'events' in method_args
             shared_empty_events = (
-                Events(self.events.frame)
+                Events(
+                    self.events.frame,
+                    trial_columns=self.events.trial_columns,
+                    metadata=deepcopy(self.events.metadata),
+                    validate=False,
+                )
                 if needs_events and self.events.frame.height == 0
                 else None
             )
@@ -1455,7 +1460,12 @@ class Gaze:
                         )
 
                     # Select group events.
-                    group_events = Events(self.events.frame.filter(group_filter_expression))
+                    group_events = Events(
+                        self.events.frame.filter(group_filter_expression),
+                        trial_columns=self.events.trial_columns,
+                        metadata=deepcopy(self.events.metadata),
+                        validate=False,
+                    )
 
                 method_kwargs = self._fill_event_detection_kwargs(
                     method,
@@ -2443,14 +2453,14 @@ class Gaze:
         └──────────────┴────────────┘
         >>> gaze.events
         shape: (2, 5)
-        ┌──────────┬──────────────┬──────────────┬───────┬──────────────┐
-        │ name     ┆ onset        ┆ offset       ┆ trial ┆ duration     │
-        │ ---      ┆ ---          ┆ ---          ┆ ---   ┆ ---          │
-        │ str      ┆ duration[μs] ┆ duration[μs] ┆ i64   ┆ duration[μs] │
-        ╞══════════╪══════════════╪══════════════╪═══════╪══════════════╡
-        │ fixation ┆ 0µs          ┆ 1ms          ┆ 1     ┆ 1ms          │
-        │ fixation ┆ 2ms          ┆ 3ms          ┆ 2     ┆ 1ms          │
-        └──────────┴──────────────┴──────────────┴───────┴──────────────┘
+        ┌──────────────┬──────────────┬──────────┬──────────────┬───────┐
+        │ onset        ┆ duration     ┆ name     ┆ offset       ┆ trial │
+        │ ---          ┆ ---          ┆ ---      ┆ ---          ┆ ---   │
+        │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] ┆ i64   │
+        ╞══════════════╪══════════════╪══════════╪══════════════╪═══════╡
+        │ 0µs          ┆ 1ms          ┆ fixation ┆ 1ms          ┆ 1     │
+        │ 2ms          ┆ 1ms          ┆ fixation ┆ 3ms          ┆ 2     │
+        └──────────────┴──────────────┴──────────┴──────────────┴───────┘
         """
         if subset is None:
             samples_subset = self.samples.columns

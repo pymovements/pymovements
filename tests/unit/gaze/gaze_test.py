@@ -2019,10 +2019,9 @@ def test_gaze_clear_events():
     expected_schema = {
         'trial': pl.Utf8,
         'page': pl.Int64,
-        'name': pl.Utf8,
         'onset': pl.Duration('us'),
-        'offset': pl.Duration('us'),
         'duration': pl.Duration('us'),
+        'name': pl.Utf8,
     }
     assert gaze.events.frame.schema == expected_schema
     assert gaze.events.frame.is_empty()
