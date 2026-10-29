@@ -394,6 +394,7 @@ adoption's choice.
 | keyword on `load` differs from its sidecar entry | keyword wins and replaces the entry in the metadata dict, with a warning, see <a href="#the-metadata-dict">The metadata dict</a> |
 | `metadata=` given on `load` | becomes the metadata dict, with `Sources` added when absent, the frame's dtypes come from it, `sidecar` is still the file as read |
 | top-level dict that names no column, a free user key or an entry whose column is gone | file-level metadata, kept in both dicts and written, silent |
+| a pymovements operation removes a column, such as `Events.drop` | the column's entry goes with it. A column removed on the frame directly leaves its entry, since pymovements cannot see that removal |
 | top-level key equals a column name, value is not a dict | load and save warn, kept as read, the column keeps its inferred dtype |
 | a file exists at `path` or at the sidecar path | save raises unless `overwrite`, the message names the file and the flag |
 | direct change to the metadata dict or the frame | not checked until the next save, `sidecar` is stale until then |
