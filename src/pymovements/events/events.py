@@ -415,23 +415,27 @@ class Events:
         length. An ``offset`` column is stored only if offsets are supplied. (default: None)
     offsets_inclusive: bool | None
         The convention of the offsets. True if an offset is the last sample of the event, False
-        if it is the first sample after the event. None leaves the convention undeclared, see
-        the notes below. (default: None)
+        if it is the first sample after the event. None leaves the convention to the convention
+        entry in ``metadata``, see the notes below. (default: None)
     durations_from_offsets: bool
         If True, durations are derived from declared offsets and replace supplied durations.
         (default: False)
     sampling_rate: float | None
         The sampling rate in Hz. Its interval is the duration of the last sample of an inclusive
-        offset. Required to derive durations from inclusive offsets. (default: None)
+        offset. Required to derive durations from inclusive offsets. If None, the sampling-rate
+        entry in ``metadata`` is used. (default: None)
     validate: bool
-        If False, supplied durations are kept unchecked beside declared offsets. (default: True)
+        If False, supplied durations are kept unchecked beside declared offsets, and a
+        convention entry without its column is kept without a warning. (default: True)
     trials: list[int | float | str | None] | np.ndarray | None
         List of trial identifiers. (default: None)
     trial_columns: list[str] | str | None
         List of trial columns in the passed dataframe. (default: None)
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. A ``Sources`` entry lists the files the
-        event data was generated from. (default: None)
+        event data was generated from. The offset convention and sampling-rate entries are
+        described in the notes below. The dictionary is copied, the entries written by the
+        constructor never reach the passed one. (default: None)
     time_unit: str | None
         The unit of the numeric ``onset``, ``offset`` and ``duration`` input: ``'s'`` for
         seconds, ``'ms'`` for milliseconds or ``'us'`` for microseconds. Ignored for
@@ -470,8 +474,9 @@ class Events:
         If ``durations`` or ``offsets`` are passed without ``onsets``, if their lengths do not
         match the length of ``onsets``, if ``time_unit`` is not one of ``'s'``, ``'ms'`` or
         ``'us'``, if ``sampling_rate`` is not positive, if durations are derived from
-        inclusive offsets without a sampling rate, or if every row contradicts the declared
-        offset convention.
+        inclusive offsets without a sampling rate, if every row contradicts the declared
+        offset convention, or if ``offsets_inclusive`` or ``sampling_rate`` differs from its
+        entry in ``metadata``.
 
     Notes
     -----
@@ -517,6 +522,31 @@ class Events:
     Without a sampling rate the durations of inclusive offsets must exceed ``offset - onset`` by
     one common positive interval. If every row contradicts the declaration, a ``ValueError``
     names the ways to fix it. If some rows do, one warning names them.
+
+    ``metadata`` carries the convention and the sampling rate, so a frame rebuilt from
+    ``frame`` and ``metadata`` needs neither keyword:
+
+    .. list-table::
+        :header-rows: 1
+        :widths: 30 35 35
+
+        * - entry
+          - written by
+          - shape
+        * - offset convention
+          - ``offsets_inclusive``, only if the frame has an ``offset`` column
+          - ``metadata['offset'] = {'inclusive': True}``, keyed by the column name
+        * - sampling rate
+          - ``sampling_rate``
+          - ``metadata['sampling_rate'] = 1000.0``
+
+    The convention of ``offset`` is declared by ``offsets_inclusive``, by its entry, or by both
+    when they agree. The sampling rate resolves from ``sampling_rate`` first, then from its
+    entry. A keyword that differs from its entry raises a ``ValueError``, also on a frame without
+    an ``offset`` column. Several offset columns may carry their own convention entries. A
+    convention entry for a column the frame does not have is kept, and with ``validate=True``
+    one warning names the column. :py:meth:`~pymovements.Events.drop` removes the convention
+    entry together with its column.
 
     Modifying ``frame`` directly is not supported: ``metadata`` is not kept consistent with it.
 
@@ -580,6 +610,16 @@ class Events:
     Traceback (most recent call last):
     ...
     ValueError: every row contradicts offsets_inclusive=True: ...
+
+    The convention and the sampling rate are kept in ``metadata``. A frame rebuilt with this
+    metadata is declared and rated without any keyword:
+
+    >>> events = Events(onsets=[0], offsets=[120], offsets_inclusive=True, sampling_rate=1000)
+    >>> events.metadata
+    {'offset': {'inclusive': True}, 'sampling_rate': 1000.0}
+    >>> rebuilt = Events(events.frame.drop('duration'), metadata=events.metadata)
+    >>> rebuilt.frame['duration'].to_list()
+    [datetime.timedelta(microseconds=121000)]
     """
 
     frame: polars.DataFrame
