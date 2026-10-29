@@ -935,3 +935,50 @@ def test_metadata_no_sampling_rate_entry_without_sampling_rate(durations, offset
 
     assert 'sampling_rate' not in events.metadata
     assert events.metadata == {'offset': {'inclusive': offsets_inclusive}}
+
+
+@pytest.mark.parametrize(
+    ('metadata', 'expected_match'),
+    [
+        pytest.param(
+            {'offset': {'inclusive': True}},
+            r"convention entry for the column 'offset', which the events frame does not have",
+            id='offset',
+        ),
+        pytest.param(
+            {'offset_vendor': {'inclusive': False}, 'offset': {'inclusive': True}},
+            r"convention entries for the columns 'offset_vendor', 'offset', "
+            r'which the events frame does not have',
+            id='two_columns',
+        ),
+    ],
+)
+def test_metadata_convention_entry_without_column_is_kept_and_warns_once(
+        metadata, expected_match,
+):
+    with pytest.warns(UserWarning, match=expected_match) as record:
+        events = Events(onsets=[0], durations=[5], metadata=metadata)
+
+    assert len(record) == 1
+    assert events.metadata == metadata
+
+
+def test_metadata_convention_entry_of_present_extra_column_does_not_warn():
+    metadata = {'offset_vendor': {'inclusive': False}}
+    data = pl.DataFrame({'onset': [0], 'duration': [5], 'offset_vendor': [5]})
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        events = Events(data, metadata=metadata)
+
+    assert events.metadata == metadata
+
+
+def test_metadata_convention_entry_without_column_does_not_warn_with_validate_false():
+    metadata = {'offset': {'inclusive': True}}
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        events = Events(onsets=[0], durations=[5], metadata=metadata, validate=False)
+
+    assert events.metadata == metadata
