@@ -845,3 +845,93 @@ def test_metadata_entries_rebuild_checks_durations_against_entries():
 
     with pytest.raises(ValueError, match=r'every row contradicts offsets_inclusive=True'):
         Events(frame, metadata=events.metadata)
+
+
+@pytest.mark.parametrize(
+    'input_kwargs',
+    [
+        pytest.param({'data': pl.DataFrame({'onset': [0], 'offset': [5]})}, id='offset'),
+        pytest.param({'data': pl.DataFrame({'onset': [0], 'duration': [5]})}, id='no_offset'),
+    ],
+)
+def test_metadata_offsets_inclusive_differing_from_entry_raises(input_kwargs):
+    message = (
+        r"offsets_inclusive=False differs from the metadata entry "
+        r"metadata\['offset'\] = \{'inclusive': True\}"
+    )
+    if 'offset' not in input_kwargs['data'].columns:
+        message += r", and the events frame has no 'offset' column"
+    message += r'\. Correct the entry or drop the keyword\.'
+
+    with warnings.catch_warnings():
+        # The comparison runs before the missing-column warning.
+        warnings.simplefilter('error')
+        with pytest.raises(ValueError, match=message):
+            Events(
+                **input_kwargs, offsets_inclusive=False,
+                metadata={'offset': {'inclusive': True}},
+            )
+
+
+@pytest.mark.parametrize(
+    'input_kwargs',
+    [
+        pytest.param({'onsets': [0], 'offsets': [5], 'offsets_inclusive': True}, id='offset'),
+        pytest.param({'onsets': [0], 'durations': [5]}, id='no_offset'),
+    ],
+)
+def test_metadata_sampling_rate_differing_from_entry_raises(input_kwargs):
+    with pytest.raises(
+            ValueError,
+            match=(
+                r"sampling_rate=500 differs from the metadata entry "
+                r"metadata\['sampling_rate'\] = 1000\. Correct the entry or drop the keyword\."
+            ),
+    ):
+        Events(**input_kwargs, sampling_rate=500, metadata={'sampling_rate': 1000.0})
+
+
+def test_metadata_keywords_agreeing_with_entries_pass():
+    metadata = {'offset': {'inclusive': True}, 'sampling_rate': 1000.0}
+
+    events = Events(
+        onsets=[0], offsets=[5], offsets_inclusive=True, sampling_rate=1000, metadata=metadata,
+    )
+
+    assert events.frame['duration'].to_list() == [timedelta(milliseconds=6)]
+    assert events.metadata == metadata
+
+
+@pytest.mark.parametrize('sampling_rate', [0, -1])
+def test_metadata_non_positive_sampling_rate_entry_raises(sampling_rate):
+    with pytest.raises(ValueError, match=r"metadata\['sampling_rate'\] must be positive"):
+        Events(onsets=[0], durations=[5], metadata={'sampling_rate': sampling_rate})
+
+
+@pytest.mark.parametrize('offsets_inclusive', [True, False])
+def test_metadata_offsets_inclusive_without_offset_column_writes_no_entry(offsets_inclusive):
+    with pytest.warns(UserWarning, match="no 'offset' column"):
+        events = Events(onsets=[0], durations=[5], offsets_inclusive=offsets_inclusive)
+
+    assert events.metadata == {}
+
+
+@pytest.mark.parametrize(
+    ('durations', 'offsets'),
+    [
+        pytest.param([6, 11], [5, 10], id='common_positive_residual'),
+        pytest.param([6, 12], [5, 10], id='unequal_residuals'),
+        pytest.param(None, [5, 10], id='exclusive_derived'),
+    ],
+)
+def test_metadata_no_sampling_rate_entry_without_sampling_rate(durations, offsets):
+    offsets_inclusive = durations is not None
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', message='.*contradict')
+        events = Events(
+            onsets=[0, 0], offsets=offsets, durations=durations,
+            offsets_inclusive=offsets_inclusive,
+        )
+
+    assert 'sampling_rate' not in events.metadata
+    assert events.metadata == {'offset': {'inclusive': offsets_inclusive}}
