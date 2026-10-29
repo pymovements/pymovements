@@ -25,19 +25,19 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import Literal
+from typing import TYPE_CHECKING
 from typing import TypeAlias
 from warnings import warn
 
-import matplotlib.pyplot as plt
 import numpy as np
-import PIL.Image
-from matplotlib import colors
-from matplotlib import scale as mpl_scale
-from matplotlib.collections import LineCollection
-from matplotlib.collections import PatchCollection
-from matplotlib.patches import FancyArrowPatch
 
 from pymovements.plotting.screen import make_screen_axes
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
+    from matplotlib import colors
+    from matplotlib.collections import LineCollection
+    from matplotlib.collections import PatchCollection
 
 LinearSegmentedColormapType: TypeAlias = dict[
     Literal['red', 'green', 'blue', 'alpha'],
@@ -84,18 +84,19 @@ DEFAULT_SEGMENTDATA_TWOSLOPE: LinearSegmentedColormapType = {
     ],
 }
 
-CmapNormType: TypeAlias = (
-    colors.TwoSlopeNorm | colors.Normalize | colors.NoNorm
-)
+if TYPE_CHECKING:
+    CmapNormType: TypeAlias = (
+        colors.TwoSlopeNorm | colors.Normalize | colors.NoNorm
+    )
 
-MatplotlibSetupType: TypeAlias = tuple[
-    plt.figure,
-    plt.Axes,
-    colors.Colormap,
-    CmapNormType,
-    np.ndarray,
-    bool,
-]
+    MatplotlibSetupType: TypeAlias = tuple[
+        plt.figure,
+        plt.Axes,
+        colors.Colormap,
+        CmapNormType,
+        np.ndarray,
+        bool,
+    ]
 
 
 def prepare_figure(
@@ -121,6 +122,8 @@ def prepare_figure(
     tuple[plt.Figure, plt.Axes]
         A tuple of a figure and its corresponding axes.
     """
+    import matplotlib.pyplot as plt  # pylint: disable=import-outside-toplevel
+
     if ax is None:
         # figsize may be None for some callers
         if figsize is None:
@@ -158,6 +161,12 @@ def _setup_axes_and_colormap(
 
     Returns fig, ax, cmap, cmap_norm, cval, show_cbar.
     """
+    # pylint: disable=import-outside-toplevel
+    import matplotlib.pyplot as plt
+    import PIL.Image
+    from matplotlib import colors
+    from matplotlib import scale as mpl_scale
+
     n = len(x_signal)
 
     if ax is None:
@@ -270,6 +279,10 @@ def _draw_arrow_data(
     mutation_scale: float = 40.,
 ) -> PatchCollection:
     """Draw arrow data as arrows and return the collection."""
+    # pylint: disable=import-outside-toplevel
+    from matplotlib.collections import PatchCollection
+    from matplotlib.patches import FancyArrowPatch
+
     arrows = []
     for i in range(len(fixation_x) - 1):
         arrow = FancyArrowPatch(
@@ -294,6 +307,8 @@ def _draw_line_data(
     cval: np.ndarray | None = None,
 ) -> LineCollection:
     """Draw line data as a colored LineCollection and return the collection."""
+    from matplotlib.collections import LineCollection  # pylint: disable=import-outside-toplevel
+
     points = np.array([x_signal, y_signal]).T.reshape((-1, 1, 2))
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
     line_collection = LineCollection(segments, cmap=cmap, norm=cmap_norm)

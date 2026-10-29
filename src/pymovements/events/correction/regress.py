@@ -26,8 +26,6 @@ from functools import partial
 
 import numpy as np
 import polars as pl
-from scipy.optimize import minimize
-from scipy.stats import norm
 
 from pymovements.events.correction._utils import locations_to_lists
 from pymovements.events.correction._utils import map_locations
@@ -113,6 +111,8 @@ def _regress_core(
     s_bounds: tuple[float, float],
 ) -> pl.Series:
     """Fit the regression parameters for a single trial and pick the likeliest lines."""
+    from scipy.optimize import minimize  # pylint: disable=import-outside-toplevel
+
     x_values, y_values = locations_to_lists(locations)
     densities_of = partial(
         _line_log_densities,
@@ -143,6 +143,8 @@ def _line_log_densities(
     s_bounds: tuple[float, float],
 ) -> list[np.ndarray]:
     """Per-line log-densities of observing the fixation y-values."""
+    from scipy.stats import norm  # pylint: disable=import-outside-toplevel
+
     slope = k_bounds[0] + (k_bounds[1] - k_bounds[0]) * norm.cdf(params[0])
     offset = o_bounds[0] + (o_bounds[1] - o_bounds[0]) * norm.cdf(params[1])
     deviation = s_bounds[0] + (s_bounds[1] - s_bounds[0]) * norm.cdf(params[2])

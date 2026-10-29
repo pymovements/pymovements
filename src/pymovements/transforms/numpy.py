@@ -23,7 +23,6 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-from scipy.signal import savgol_filter
 
 from pymovements._utils import _checks
 
@@ -227,6 +226,8 @@ def pos2acc(
 
     acc = np.zeros(arr.shape)
 
+    from scipy.signal import savgol_filter  # pylint: disable=import-outside-toplevel
+
     # transform to velocities
     if arr.ndim == 1:
         acc = savgol_filter(
@@ -365,6 +366,8 @@ def pos2vel(
         v[1:N] = (arr[1:N] - arr[0:N - 1]) * sampling_rate
 
     elif method == 'savitzky_golay':
+        from scipy.signal import savgol_filter  # pylint: disable=import-outside-toplevel
+
         # transform to velocities
         if arr.ndim == 1:
             v = savgol_filter(x=arr, deriv=1, **kwargs)

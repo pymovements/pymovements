@@ -24,7 +24,6 @@ from collections.abc import Sequence
 from functools import partial
 
 import polars as pl
-from scipy.optimize import minimize
 
 from pymovements.events.correction._utils import locations_to_lists
 from pymovements.events.correction._utils import map_locations
@@ -83,6 +82,8 @@ def _stretch_core(
     offset_bounds: tuple[float, float],
 ) -> pl.Series:
     """Fit scale and offset for the y-values of a single trial and snap them to lines."""
+    from scipy.optimize import minimize  # pylint: disable=import-outside-toplevel
+
     _, y_values = locations_to_lists(locations)
     objective = partial(_snapping_error, y_values=y_values, line_values=line_values)
     best_fit = minimize(objective, [1, 0], bounds=[scale_bounds, offset_bounds])

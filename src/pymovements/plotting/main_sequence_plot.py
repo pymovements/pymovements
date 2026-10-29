@@ -23,15 +23,15 @@ from __future__ import annotations
 from typing import Literal
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
-from matplotlib.collections import Collection
-from sklearn.metrics import r2_score
 
 from pymovements.plotting._matplotlib import prepare_figure
 
 if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
+    from matplotlib.collections import Collection
+
     from pymovements.events.events import Events
 
 
@@ -168,6 +168,8 @@ def main_sequence_plot(
             residuals = np.array(peak_velocities) - y_pred
 
             if fit_measure is True or fit_measure == 'r2':
+                from sklearn.metrics import r2_score  # pylint: disable=import-outside-toplevel
+
                 val = np.round(r2_score(peak_velocities, y_pred), 3)
                 fit_label = f'R² = {val}'
 

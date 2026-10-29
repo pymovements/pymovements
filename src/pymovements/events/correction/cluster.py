@@ -24,7 +24,6 @@ from collections.abc import Sequence
 from functools import partial
 
 import polars as pl
-from sklearn.cluster import KMeans
 
 from pymovements.events.correction._utils import locations_to_lists
 from pymovements.events.correction._utils import map_locations
@@ -65,6 +64,8 @@ def cluster(
 
 def _cluster_core(locations: pl.Series, *, line_values: list[float]) -> pl.Series:
     """Cluster the y-values of a single trial into one KMeans cluster per text line."""
+    from sklearn.cluster import KMeans  # pylint: disable=import-outside-toplevel
+
     _, y_values = locations_to_lists(locations)
     cluster_labels = KMeans(len(line_values), n_init=100, max_iter=300).fit_predict(
         [[y] for y in y_values],

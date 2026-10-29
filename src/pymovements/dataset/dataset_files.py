@@ -30,7 +30,6 @@ from typing import Any
 from warnings import warn
 
 import polars as pl
-import pyreadr
 from tqdm.auto import tqdm
 
 from pymovements._utils._paths import match_filepaths
@@ -533,6 +532,8 @@ def load_precomputed_reading_measure_file(
         precomputed_reading_measure_df = pl.read_csv(file.path, **read_kwargs)
     elif file_path_suffix in r_extensions:
         if 'r_dataframe_key' in load_kwargs:
+            import pyreadr  # pylint: disable=import-outside-toplevel
+
             precomputed_r = pyreadr.read_r(file.path)
             # convert to polars DataFrame because read_r has no .clone().
             precomputed_reading_measure_df = pl.DataFrame(
@@ -637,6 +638,8 @@ def load_precomputed_event_file(
         precomputed_event_df = pl.read_csv(file.path, **read_kwargs)
     elif file_path_suffix in r_extensions:
         if 'r_dataframe_key' in load_kwargs:
+            import pyreadr  # pylint: disable=import-outside-toplevel
+
             precomputed_r = pyreadr.read_r(file.path)
             # convert to polars DataFrame because read_r has no .clone().
             precomputed_event_df = pl.DataFrame(

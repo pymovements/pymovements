@@ -22,15 +22,17 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
-import PIL.Image
 from deprecated.sphinx import deprecated
 
 from pymovements._utils._html import repr_html
 from pymovements._utils._paths import get_filepaths
 from pymovements._utils._sources import add_source
 from pymovements._utils._strings import curly_to_regex
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
 
 
 @repr_html(['images', 'metadata'])
@@ -84,6 +86,8 @@ class ImageStimulus:
         This is a convenience wrapper that draws the stimulus via
         :py:meth:`~pymovements.stimulus.ImageStimulus.plot` and then displays it.
         """
+        import matplotlib.pyplot as plt  # pylint: disable=import-outside-toplevel
+
         self.origin = origin
 
         self.plot(stimulus_id)
@@ -215,6 +219,10 @@ def _draw_image_stimulus(
     fig: plt.figure
     ax: plt.Axes
     """
+    # pylint: disable=import-outside-toplevel
+    import matplotlib.pyplot as plt
+    import PIL.Image
+
     try:
         img = PIL.Image.open(image_stimulus)
     except PIL.UnidentifiedImageError as exception:

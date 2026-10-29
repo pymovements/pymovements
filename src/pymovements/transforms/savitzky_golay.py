@@ -24,7 +24,6 @@ from functools import partial
 from typing import Any
 
 import polars as pl
-import scipy
 
 from pymovements._utils import _checks
 from pymovements.transforms._utils import _check_padding
@@ -123,6 +122,8 @@ def savitzky_golay(
     if output_column is None:
         output_column = input_column
 
+    from scipy.signal import savgol_filter  # pylint: disable=import-outside-toplevel
+
     delta = 1 / sampling_rate
 
     constant_value = 0.0
@@ -133,7 +134,7 @@ def savitzky_golay(
         padding = 'interp'
 
     func = partial(
-        scipy.signal.savgol_filter,
+        savgol_filter,
         window_length=window_length,
         polyorder=degree,
         deriv=derivative,

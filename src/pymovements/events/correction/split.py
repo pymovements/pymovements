@@ -25,7 +25,6 @@ from functools import partial
 from statistics import fmean
 
 import polars as pl
-from sklearn.cluster import KMeans
 
 from pymovements.events.correction._utils import is_right_to_left
 from pymovements.events.correction._utils import locations_to_lists
@@ -85,6 +84,8 @@ def _split_core(
     right_to_left: bool,
 ) -> pl.Series:
     """Split the fixation sequence of a single trial at KMeans-identified return sweeps."""
+    from sklearn.cluster import KMeans  # pylint: disable=import-outside-toplevel
+
     x_values, y_values = locations_to_lists(locations)
     x_diffs = [next_x - x for x, next_x in zip(x_values, x_values[1:])]
 

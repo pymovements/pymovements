@@ -32,6 +32,7 @@ from warnings import warn
 import yaml
 
 from pymovements._utils._html import repr_html
+from pymovements.dataset._utils._yaml import FastSafeLoader
 from pymovements.dataset._utils._yaml import reverse_substitute_types
 from pymovements.dataset._utils._yaml import substitute_types
 from pymovements.dataset._utils._yaml import type_constructor
@@ -42,6 +43,7 @@ from pymovements.gaze.experiment import Experiment
 
 
 yaml.add_multi_constructor('!', type_constructor, Loader=yaml.SafeLoader)
+yaml.add_multi_constructor('!', type_constructor, Loader=FastSafeLoader)
 
 
 @repr_html(['name', 'long_name', 'description', 'experiment', 'sources', 'resources'])
@@ -667,7 +669,7 @@ class DatasetDefinition:
             Initialized dataset definition
         """
         with open(path, encoding='utf-8') as f:
-            data = yaml.safe_load(f)
+            data = yaml.load(f, Loader=FastSafeLoader)
 
         # Convert experiment dict to Experiment object if present
         if 'experiment' in data:
