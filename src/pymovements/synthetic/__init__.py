@@ -19,7 +19,7 @@
 # SOFTWARE.
 """Provides functionality for generating synthetic eye gaze data."""
 from pymovements.synthetic.generate import generate_events
-from pymovements.synthetic.generate import generate_gaze
+from pymovements.synthetic.generate import generate_samples
 from pymovements.synthetic.generator import EventGenerator
 from pymovements.synthetic.generator import SampleGenerator
 from pymovements.synthetic.library import EventGeneratorLibrary
@@ -34,7 +34,7 @@ __all__ = [
     'SampleGenerator',
     'SampleGeneratorLibrary',
     'generate_events',
-    'generate_gaze',
+    'generate_samples',
     'register_generator',
     'step_function',
 ]

@@ -62,7 +62,7 @@ def generate_events(name: str, *, seed: int | None = None, **kwargs: Any) -> Eve
     return generator_class(**hyperparameters).generate(seed=seed, **run)
 
 
-def generate_gaze(
+def generate_samples(
         name: str,
         *,
         sampling_rate: float,
