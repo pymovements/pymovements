@@ -17,21 +17,18 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test the private helpers that only the sample generators use.
+"""Test the private helper that only the statistical generator uses.
 
-They have no public consumer until the first generator lands, so they are tested directly here.
-The other helpers in ``_utils`` are tested through ``bridge_gaps``, ``Range`` and ``generate()``.
+``check_contiguous`` has no public consumer until the statistical generator lands, so it is
+tested directly here. The other helpers in ``_utils`` are tested through ``bridge_gaps``,
+``Range``, ``generate()`` and the geometrical generator.
 """
-import numpy as np
 import polars as pl
 import pytest
-from polars.testing import assert_frame_equal
 
 from pymovements import Events
 from pymovements.synthetic import bridge_gaps
 from pymovements.synthetic._utils import check_contiguous
-from pymovements.synthetic._utils import per_trial
-from pymovements.synthetic._utils import sample_times
 
 
 @pytest.mark.parametrize(
@@ -96,99 +93,11 @@ def test_check_contiguous_raises_value_error(events, msg_substrings):
         assert msg_substring in msg
 
 
-def _event_count(frame):
-    return pl.DataFrame({'n_events': [frame.height], 'first': [frame['name'][0]]})
+def test_check_contiguous_names_the_generator():
+    events = Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560])
 
-
-def test_per_trial_without_trials_synthesizes_once():
-    events = Events(name=['saccade', 'fixation'], onsets=[300, 0], offsets=[400, 250])
-
-    samples = per_trial(events, _event_count)
-
-    assert_frame_equal(samples, pl.DataFrame({'n_events': [2], 'first': ['fixation']}))
-
-
-def test_per_trial_prefixes_the_trial_columns():
-    events = Events(
-        name=['fixation', 'saccade', 'fixation'],
-        onsets=[0, 0, 250],
-        offsets=[200, 250, 500],
-        trials=[2, 1, 1],
-    )
-
-    samples = per_trial(events, _event_count)
-
-    assert_frame_equal(
-        samples,
-        pl.DataFrame({'trial': [1, 2], 'n_events': [2, 1], 'first': ['saccade', 'fixation']}),
-    )
-
-
-def test_per_trial_passes_each_trial_ordered():
-    events = Events(
-        name=['fixation'] * 3, onsets=[300, 0, 0], offsets=[560, 250, 100], trials=[1, 1, 2],
-    )
-    seen = []
-
-    def synthesize(frame):
-        seen.append(frame['onset'].dt.total_milliseconds(fractional=True).to_list())
-        return pl.DataFrame({'time': [0.0]})
-
-    per_trial(events, synthesize)
-
-    assert seen == [[0.0, 300.0], [0.0]]
-
-
-@pytest.mark.parametrize(
-    ('events', 'msg_substring'),
-    [
-        pytest.param(Events(name=[], onsets=[], offsets=[]), 'empty', id='empty_events'),
-        pytest.param(
-            Events(name=['fixation'] * 2, onsets=[0, 200], offsets=[250, 560]),
-            'overlap',
-            id='overlapping_events',
-        ),
-    ],
-)
-def test_per_trial_raises_value_error(events, msg_substring):
     with pytest.raises(ValueError) as excinfo:
-        per_trial(events, _event_count)
-
-    msg, = excinfo.value.args
-    assert msg_substring in msg
-
-
-@pytest.mark.parametrize(
-    ('onset', 'offset', 'sampling_rate', 'expected'),
-    [
-        pytest.param(0.0, 5.0, 1000.0, [0.0, 1.0, 2.0, 3.0, 4.0], id='1000_hz'),
-        pytest.param(100.0, 120.0, 250.0, [100.0, 104.0, 108.0, 112.0, 116.0], id='onset_kept'),
-        pytest.param(0.0, 0.25, 1000.0, [0.0], id='shorter_than_one_sample'),
-        pytest.param(0.0, 0.0, 1000.0, [0.0], id='zero_duration'),
-    ],
-)
-def test_sample_times_returns(onset, offset, sampling_rate, expected):
-    np.testing.assert_allclose(sample_times(onset, offset, sampling_rate), expected)
-
-
-@pytest.mark.parametrize(
-    ('check', 'events'),
-    [
-        pytest.param(
-            check_contiguous,
-            Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560]),
-            id='check_contiguous',
-        ),
-        pytest.param(
-            lambda events, generator: per_trial(events, _event_count, generator=generator),
-            Events(name=[], onsets=[], offsets=[]),
-            id='per_trial',
-        ),
-    ],
-)
-def test_errors_name_the_generator(check, events):
-    with pytest.raises(ValueError) as excinfo:
-        check(events, generator='statistical')
+        check_contiguous(events, generator='statistical')
 
     msg, = excinfo.value.args
     assert msg.startswith("generator 'statistical': ")
