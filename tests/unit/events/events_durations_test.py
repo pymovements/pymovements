@@ -463,6 +463,12 @@ def test_check_nominal_timestamps_at_600_hz_pass(kwargs):
             [],
             id='exclusive_distinct_residuals',
         ),
+        pytest.param(
+            list(range(1, 13)), [0] * 12, {'offsets_inclusive': False},
+            [r'takes the values \[1ms, 2ms, .*, 10ms, \.\.\. \(2 more\)\]'],
+            ['11ms'],
+            id='exclusive_distinct_residuals_shortened',
+        ),
     ],
 )
 def test_check_every_row_contradicting_raises_with_recipes(
