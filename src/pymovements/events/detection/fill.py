@@ -23,7 +23,7 @@ from __future__ import annotations
 import numpy
 import polars
 
-from pymovements._utils._time import duration_to_ms
+from pymovements._utils._time import present_duration_columns_to_ms
 from pymovements._utils._time import timesteps_to_numpy
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
@@ -70,11 +70,8 @@ def fill(
     # Convert Duration columns to millisecond values matching the timesteps unit.
     # An empty events frame may come without an offset column.
     events_frame = events.frame
-    time_columns = [column for column in ('onset', 'offset') if column in events_frame.columns]
     if isinstance(events_frame.schema['onset'], polars.Duration):
-        events_frame = events_frame.with_columns(
-            duration_to_ms(polars.col(time_columns)),
-        )
+        events_frame = present_duration_columns_to_ms(events_frame)
 
     for row in events_frame.iter_rows(named=True):
         onset = row['onset']

@@ -31,6 +31,7 @@ import polars as pl
 from pymovements._utils._column_nesting import get_nested_columns
 from pymovements._utils._column_nesting import unnest_list_columns
 from pymovements._utils._time import duration_to_ms
+from pymovements._utils._time import present_duration_columns_to_ms
 from pymovements.plotting._matplotlib import prepare_figure
 
 if TYPE_CHECKING:
@@ -237,10 +238,7 @@ def tsplot(
         # onset and offset are Duration columns; express them in milliseconds
         # so the shaded spans line up with the millisecond time axis. An empty
         # events frame may have no offset column.
-        time_columns = [
-            column for column in ('onset', 'offset') if column in gaze.events.frame.columns
-        ]
-        events = gaze.events.frame.with_columns(duration_to_ms(pl.col(time_columns)))
+        events = present_duration_columns_to_ms(gaze.events.frame)
         palette = plt.colormaps['tab10'].colors
         event_colors = {
             name: palette[i % len(palette)]

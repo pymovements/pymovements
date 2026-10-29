@@ -94,21 +94,44 @@ def test_init_supplied_offset_column_stays_stored_as_supplied(kwargs):
 
 
 @pytest.mark.parametrize(
+    ('kwargs', 'expected_name'),
+    [
+        pytest.param({'onsets': [0, 10]}, ['', ''], id='keywords'),
+        pytest.param(
+            {'data': pl.DataFrame({'onset': [0, 10]})},
+            pl.Series([None, None], dtype=pl.Utf8),
+            id='frame',
+        ),
+    ],
+)
+def test_init_onsets_only_has_null_durations(kwargs, expected_name):
+    events = Events(**kwargs)
+
+    expected = pl.DataFrame({
+        'onset': _ms([0, 10]),
+        'duration': _ms([None, None]),
+        'name': expected_name,
+    })
+    assert_frame_equal(events.frame, expected)
+
+
+@pytest.mark.parametrize('offsets_inclusive', [True, False])
+@pytest.mark.parametrize(
     'kwargs',
     [
         pytest.param({'onsets': [0, 10]}, id='keywords'),
         pytest.param({'data': pl.DataFrame({'onset': [0, 10]})}, id='frame'),
     ],
 )
-def test_init_onsets_only_has_null_durations(kwargs):
-    events = Events(**kwargs)
+def test_init_onsets_only_with_declared_convention_warns_and_has_null_durations(
+        kwargs, offsets_inclusive,
+):
+    with pytest.warns(UserWarning, match="no 'offset' column") as record:
+        events = Events(**kwargs, offsets_inclusive=offsets_inclusive, sampling_rate=1000)
 
-    expected = pl.DataFrame({
-        'onset': _ms([0, 10]),
-        'duration': _ms([None, None]),
-        'name': pl.Series([None, None], dtype=pl.Utf8) if 'data' in kwargs else ['', ''],
-    })
-    assert_frame_equal(events.frame, expected)
+    assert len(record) == 1
+    assert events.frame['duration'].to_list() == [None, None]
+    assert 'offset' not in events.columns
 
 
 def test_init_empty_has_minimal_schema_only():
@@ -133,21 +156,33 @@ def test_init_durations_or_offsets_without_onsets_raises(kwargs):
 
 
 @pytest.mark.parametrize(
-    'kwargs',
+    ('kwargs', 'message'),
     [
-        pytest.param({'onsets': [0, 1], 'durations': [1]}, id='durations'),
-        pytest.param({'onsets': [0, 1], 'offsets': [1]}, id='offsets'),
-        pytest.param({'onsets': [0, 1], 'durations': [1, 1], 'offsets': [1]}, id='offsets_both'),
+        pytest.param(
+            {'onsets': [0, 1], 'durations': [1]},
+            'The sequences "onsets" and "durations" must be of equal length',
+            id='durations',
+        ),
+        pytest.param(
+            {'onsets': [0, 1], 'offsets': [1]},
+            'The sequences "onsets" and "offsets" must be of equal length',
+            id='offsets',
+        ),
+        pytest.param(
+            {'onsets': [0, 1], 'durations': [1, 1], 'offsets': [1]},
+            'The sequences "onsets" and "offsets" must be of equal length',
+            id='offsets_both',
+        ),
     ],
 )
-def test_init_length_not_matching_onsets_raises(kwargs):
-    with pytest.raises(ValueError, match='onsets'):
+def test_init_length_not_matching_onsets_raises(kwargs, message):
+    with pytest.raises(ValueError, match=message):
         Events(**kwargs)
 
 
 @pytest.mark.parametrize('column', ['durations', 'offsets'])
 def test_init_data_and_keyword_mutually_exclusive(column):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=f'"data" and "{column}" are mutually exclusive'):
         Events(pl.DataFrame({'onset': [0]}), **{column: [1]})
 
 
@@ -206,15 +241,16 @@ def test_init_undeclared_offsets_keep_supplied_durations_unchecked(kwargs):
         pytest.param(False, 1000, [5, 10], id='exclusive_rate_unused'),
     ],
 )
-@pytest.mark.parametrize('frame_input', [False, True], ids=['keywords', 'frame'])
+@pytest.mark.parametrize(
+    'kwargs',
+    [
+        pytest.param({'onsets': [0, 10], 'offsets': [5, 20]}, id='keywords'),
+        pytest.param({'data': pl.DataFrame({'onset': [0, 10], 'offset': [5, 20]})}, id='frame'),
+    ],
+)
 def test_init_declared_offsets_without_durations_derive(
-        offsets_inclusive, sampling_rate, expected_ms, frame_input,
+        offsets_inclusive, sampling_rate, expected_ms, kwargs,
 ):
-    if frame_input:
-        kwargs = {'data': pl.DataFrame({'onset': [0, 10], 'offset': [5, 20]})}
-    else:
-        kwargs = {'onsets': [0, 10], 'offsets': [5, 20]}
-
     events = Events(**kwargs, offsets_inclusive=offsets_inclusive, sampling_rate=sampling_rate)
 
     assert events.frame['duration'].to_list() == [timedelta(milliseconds=v) for v in expected_ms]
@@ -226,13 +262,18 @@ def test_init_inclusive_derivation_rounds_sampling_interval_to_microseconds():
     assert events.frame['duration'].to_list() == [timedelta(microseconds=333333)]
 
 
-@pytest.mark.parametrize('durations_from_offsets', [False, True])
-def test_init_inclusive_derivation_without_sampling_rate_raises(durations_from_offsets):
-    with pytest.raises(ValueError, match='sampling_rate'):
-        Events(
-            onsets=[0], offsets=[5], durations=[1] if durations_from_offsets else None,
-            offsets_inclusive=True, durations_from_offsets=durations_from_offsets,
-        )
+@pytest.mark.parametrize(
+    'kwargs',
+    [
+        pytest.param({}, id='no_durations'),
+        pytest.param({'durations': [1], 'durations_from_offsets': True}, id='durations_replaced'),
+    ],
+)
+def test_init_inclusive_derivation_without_sampling_rate_raises(kwargs):
+    with pytest.raises(
+        ValueError, match='deriving durations from inclusive offsets requires a sampling_rate',
+    ):
+        Events(onsets=[0], offsets=[5], offsets_inclusive=True, **kwargs)
 
 
 @pytest.mark.parametrize(
@@ -296,9 +337,15 @@ def test_init_offset_keywords_without_offset_column_warn_once_and_are_ignored(
 
 
 @pytest.mark.parametrize('validate', [True, False])
-@pytest.mark.parametrize('durations', [None, [99]], ids=['no_durations', 'durations'])
+@pytest.mark.parametrize(
+    ('durations', 'expected_ms'),
+    [
+        pytest.param(None, 5, id='no_durations'),
+        pytest.param([99], 99, id='durations'),
+    ],
+)
 def test_init_durations_from_offsets_on_undeclared_offsets_warns_once_and_is_ignored(
-        validate, durations,
+        validate, durations, expected_ms,
 ):
     with pytest.warns(UserWarning, match="'offset' column is undeclared") as record:
         events = Events(
@@ -307,8 +354,7 @@ def test_init_durations_from_offsets_on_undeclared_offsets_warns_once_and_is_ign
         )
 
     assert len(record) == 1
-    expected = 99 if durations else 5
-    assert events.frame['duration'].to_list() == [timedelta(milliseconds=expected)]
+    assert events.frame['duration'].to_list() == [timedelta(milliseconds=expected_ms)]
 
 
 @pytest.mark.parametrize('sampling_rate', [0, -1])
@@ -589,31 +635,23 @@ def test_merge_subsequent_close_events_duration_ends_with_last_event():
 
 
 @pytest.mark.parametrize(
-    'events',
+    ('events', 'expected_ms'),
     [
-        pytest.param(Events(), id='empty'),
+        pytest.param(Events(), [], id='empty'),
         pytest.param(
-            Events(
-                name='fixation', onsets=[
-                    0, 20, 100,
-                ], durations=[
-                    12, 40, 5,
-                ],
-            ), id='rows',
+            Events(name='fixation', onsets=[0, 20, 100], durations=[12, 40, 5]),
+            [60, 5],
+            id='rows',
         ),
     ],
 )
-def test_merge_subsequent_close_events_without_offset_gaps_from_durations(events):
-    expected_rows = 2 if len(events) else 0
-
+def test_merge_subsequent_close_events_without_offset_gaps_from_durations(
+        events, expected_ms,
+):
     events.merge_subsequent_close_events(max_gap=15)
 
     assert 'offset' not in events.columns
-    assert len(events) == expected_rows
-    if expected_rows:
-        assert events.frame['duration'].to_list() == [
-            timedelta(milliseconds=60), timedelta(milliseconds=5),
-        ]
+    assert events.frame['duration'].to_list() == [timedelta(milliseconds=v) for v in expected_ms]
 
 
 def _rebuild_entry_events():
@@ -666,36 +704,50 @@ def _rebuild_gaze(events):
     return gaze
 
 
+_REBUILD_ENTRY_COLUMNS = ['trial', 'onset', 'duration', 'name', 'offset', 'location']
+
+
 @pytest.mark.parametrize(
-    ('prepare', 'rebuild'),
+    ('prepare', 'rebuild', 'expected_columns'),
     [
-        pytest.param(_rebuild_entry_events, lambda events: events.clone(), id='clone'),
-        pytest.param(_rebuild_entry_events, lambda events: events.split(), id='split'),
         pytest.param(
-            _rebuild_entry_events, lambda events: events.split(as_dict=True), id='split_dict',
+            _rebuild_entry_events, lambda events: events.clone(), _REBUILD_ENTRY_COLUMNS,
+            id='clone',
+        ),
+        pytest.param(
+            _rebuild_entry_events, lambda events: events.split(), _REBUILD_ENTRY_COLUMNS,
+            id='split',
+        ),
+        pytest.param(
+            _rebuild_entry_events, lambda events: events.split(as_dict=True),
+            _REBUILD_ENTRY_COLUMNS, id='split_dict',
         ),
         pytest.param(
             _rebuild_entry_events,
             lambda events: events.correct_fixations(
                 _rebuild_stimulus(), algorithm='attach', inplace=False,
             ),
+            [*_REBUILD_ENTRY_COLUMNS, 'location_original', 'correction_algorithm'],
             id='correct_fixations',
         ),
         pytest.param(
             lambda: _rebuild_gaze(None),
             lambda gaze: gaze.detect('fill'),
+            ['trial', 'onset', 'duration', 'name'],
             id='gaze_detect_shared_empty',
         ),
         pytest.param(
             lambda: _rebuild_gaze(_rebuild_entry_events()),
             lambda gaze: gaze.detect('fill'),
+            _REBUILD_ENTRY_COLUMNS,
             id='gaze_detect_per_group',
         ),
     ],
 )
-def test_rebuild_sites_pass_validate_false_and_carry_metadata(monkeypatch, prepare, rebuild):
+def test_rebuild_sites_pass_validate_false_and_carry_metadata(
+        monkeypatch, prepare, rebuild, expected_columns,
+):
     entry = prepare()
-    entry_metadata = entry.metadata if isinstance(entry, Events) else entry.events.metadata
 
     calls = []
     original_init = Events.__init__
@@ -716,7 +768,8 @@ def test_rebuild_sites_pass_validate_false_and_carry_metadata(monkeypatch, prepa
         assert kwargs['validate'] is False
         assert set(kwargs) <= {'trial_columns', 'metadata', 'validate'}
         assert_frame_equal(rebuilt.frame, data)
-        assert rebuilt.metadata.items() >= entry_metadata.items()
+        assert rebuilt.columns == expected_columns
+        assert rebuilt.metadata.items() >= {'key': 'value'}.items()
 
 
 def test_compute_event_properties_on_empty_events_without_offset_warns():

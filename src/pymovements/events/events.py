@@ -513,7 +513,7 @@ class Events:
             return
 
         if offsets_inclusive is None:
-            # Undeclared offsets keep the pre-v0.29.0 behaviour until the contract step.
+            # Undeclared offsets keep the pre-v0.29.0 behavior until an undeclared offset raises.
             if durations_from_offsets:
                 warn(
                     "durations_from_offsets=True ignored: the 'offset' column is undeclared. "
