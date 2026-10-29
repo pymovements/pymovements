@@ -31,12 +31,13 @@ from polars.testing import assert_frame_equal
 from pymovements import Events
 
 
-EXPECTED_SCHEMA_AFTER_INIT = {
-    'name': pl.Utf8,
+EXPECTED_MINIMAL_SCHEMA = {
     'onset': pl.Duration('us'),
-    'offset': pl.Duration('us'),
     'duration': pl.Duration('us'),
+    'name': pl.Utf8,
 }
+
+EXPECTED_SCHEMA_AFTER_INIT = {**EXPECTED_MINIMAL_SCHEMA, 'offset': pl.Duration('us')}
 
 
 @pytest.fixture(name='make_events', scope='function')
@@ -70,13 +71,8 @@ def fixture_make_events():
     [
         pytest.param(
             {'onsets': None, 'offsets': []},
-            ValueError, ('onsets', 'offsets', 'both None', 'or', 'both not None'),
+            ValueError, ('offsets', 'only', 'together with onsets'),
             id='onsets_none_offsets_list',
-        ),
-        pytest.param(
-            {'onsets': [], 'offsets': None},
-            ValueError, ('onsets', 'offsets', 'both None', 'or', 'both not None'),
-            id='onsets_list_offsets_none',
         ),
         pytest.param(
             {'onsets': [], 'offsets': [0]},
@@ -115,17 +111,26 @@ def test_init_exceptions(kwargs, exception, msg_substrings):
 
 
 @pytest.mark.parametrize(
-    ('args', 'kwargs'),
+    ('args', 'kwargs', 'expected_schema'),
     [
-        pytest.param([], {}, id='no_args_no_kwargs'),
-        pytest.param([], {'onsets': [], 'offsets': []}, id='dict_with_empty_lists_kwarg'),
-        pytest.param([], {'onsets': [0], 'offsets': [1]}, id='dict_with_single_event_kwarg'),
-        pytest.param([], {'onsets': [0, 2], 'offsets': [1, 3]}, id='dict_with_two_events_kwarg'),
+        pytest.param([], {}, EXPECTED_MINIMAL_SCHEMA, id='no_args_no_kwargs'),
+        pytest.param(
+            [], {'onsets': [], 'offsets': []}, EXPECTED_SCHEMA_AFTER_INIT,
+            id='dict_with_empty_lists_kwarg',
+        ),
+        pytest.param(
+            [], {'onsets': [0], 'offsets': [1]}, EXPECTED_SCHEMA_AFTER_INIT,
+            id='dict_with_single_event_kwarg',
+        ),
+        pytest.param(
+            [], {'onsets': [0, 2], 'offsets': [1, 3]}, EXPECTED_SCHEMA_AFTER_INIT,
+            id='dict_with_two_events_kwarg',
+        ),
     ],
 )
-def test_init_expected_schema(args, kwargs):
+def test_init_expected_schema(args, kwargs, expected_schema):
     events = Events(*args, **kwargs)
-    assert events.schema == EXPECTED_SCHEMA_AFTER_INIT
+    assert events.schema == expected_schema
 
 
 @pytest.mark.parametrize(
@@ -183,32 +188,27 @@ def test_init_has_correct_names(args, kwargs, expected_names):
     [
         pytest.param(
             [], {'onsets': [0], 'offsets': [1]},
-            {'name': [''], 'onset': [0], 'offset': [1000], 'duration': [1000]},
+            {'onset': [0], 'duration': [1000], 'name': [''], 'offset': [1000]},
             id='no_arg_dict_with_single_event_kwarg',
         ),
         pytest.param(
-            [pl.DataFrame()], {},
-            {},
-            id='dataframe_arg_no_kwargs',
-        ),
-        pytest.param(
             [], {'name': 'bar', 'onsets': [0], 'offsets': [1]},
-            {'name': ['bar'], 'onset': [0], 'offset': [1000], 'duration': [1000]},
+            {'onset': [0], 'duration': [1000], 'name': ['bar'], 'offset': [1000]},
             id='dict_with_single_named_event',
         ),
         pytest.param(
             [], {'name': 'bar', 'onsets': [0, 2], 'offsets': [1, 3]},
             {
-                'name': ['bar', 'bar'], 'onset': [0, 2000],
-                'offset': [1000, 3000], 'duration': [1000, 1000],
+                'onset': [0, 2000], 'duration': [1000, 1000],
+                'name': ['bar', 'bar'], 'offset': [1000, 3000],
             },
             id='dict_with_two_events_same_name',
         ),
         pytest.param(
             [], {'name': ['foo', 'bar'], 'onsets': [0, 2], 'offsets': [1, 4]},
             {
-                'name': ['foo', 'bar'], 'onset': [0, 2000],
-                'offset': [1000, 4000], 'duration': [1000, 2000],
+                'onset': [0, 2000], 'duration': [1000, 2000],
+                'name': ['foo', 'bar'], 'offset': [1000, 4000],
             },
             id='dict_with_two_differently_named_events',
         ),
@@ -227,20 +227,20 @@ def test_init_expected(args, kwargs, expected_df_data):
         pytest.param(
             [], {'onsets': [0], 'offsets': [1]},
             pl.DataFrame(
-                {'name': [''], 'onset': [0], 'offset': [1000], 'duration': [1000]},
+                {'onset': [0], 'duration': [1000], 'name': [''], 'offset': [1000]},
                 schema_overrides=EXPECTED_SCHEMA_AFTER_INIT,
             ),
             id='no_arg_lists_with_single_event_kwarg',
         ),
         pytest.param(
             [pl.DataFrame()], {},
-            pl.DataFrame({}, schema=EXPECTED_SCHEMA_AFTER_INIT),
+            pl.DataFrame({}, schema=EXPECTED_MINIMAL_SCHEMA),
             id='dataframe_arg_no_kwargs',
         ),
         pytest.param(
             [], {'name': 'bar', 'onsets': [0], 'offsets': [1]},
             pl.DataFrame(
-                {'name': ['bar'], 'onset': [0], 'offset': [1000], 'duration': [1000]},
+                {'onset': [0], 'duration': [1000], 'name': ['bar'], 'offset': [1000]},
                 schema_overrides=EXPECTED_SCHEMA_AFTER_INIT,
             ),
             id='lists_with_single_named_event',
@@ -249,8 +249,8 @@ def test_init_expected(args, kwargs, expected_df_data):
             [], {'name': 'bar', 'onsets': [0, 2], 'offsets': [1, 3]},
             pl.DataFrame(
                 {
-                    'name': ['bar', 'bar'], 'onset': [0, 2000],
-                    'offset': [1000, 3000], 'duration': [1000, 1000],
+                    'onset': [0, 2000], 'duration': [1000, 1000],
+                    'name': ['bar', 'bar'], 'offset': [1000, 3000],
                 },
                 schema_overrides=EXPECTED_SCHEMA_AFTER_INIT,
             ),
@@ -260,8 +260,8 @@ def test_init_expected(args, kwargs, expected_df_data):
             [], {'name': ['foo', 'bar'], 'onsets': [0, 2], 'offsets': [1, 4]},
             pl.DataFrame(
                 {
-                    'name': ['foo', 'bar'], 'onset': [0, 2000],
-                    'offset': [1000, 4000], 'duration': [1000, 2000],
+                    'onset': [0, 2000], 'duration': [1000, 2000],
+                    'name': ['foo', 'bar'], 'offset': [1000, 4000],
                 },
                 schema_overrides=EXPECTED_SCHEMA_AFTER_INIT,
             ),
@@ -271,8 +271,8 @@ def test_init_expected(args, kwargs, expected_df_data):
             [], {'name': ['foo'], 'onsets': [0], 'offsets': [1], 'trials': [1]},
             pl.DataFrame(
                 {
-                    'trial': [1], 'name': ['foo'], 'onset': [0],
-                    'offset': [1000], 'duration': [1000],
+                    'trial': [1], 'onset': [0], 'duration': [1000],
+                    'name': ['foo'], 'offset': [1000],
                 },
                 schema_overrides=EXPECTED_SCHEMA_AFTER_INIT,
             ),
@@ -289,8 +289,8 @@ def test_init_expected(args, kwargs, expected_df_data):
             },
             pl.DataFrame(
                 {
-                    'trial': [1], 'name': ['foo'], 'onset': [0],
-                    'offset': [1000], 'duration': [1000],
+                    'trial': [1], 'onset': [0], 'duration': [1000],
+                    'name': ['foo'], 'offset': [1000],
                 },
                 schema_overrides=EXPECTED_SCHEMA_AFTER_INIT,
             ),
@@ -307,8 +307,8 @@ def test_init_expected(args, kwargs, expected_df_data):
             },
             pl.DataFrame(
                 {
-                    'trial': [1], 'name': ['foo'], 'onset': [0],
-                    'offset': [1000], 'duration': [1000],
+                    'trial': [1], 'onset': [0], 'duration': [1000],
+                    'name': ['foo'], 'offset': [1000],
                 },
                 schema_overrides=EXPECTED_SCHEMA_AFTER_INIT,
             ),
@@ -328,11 +328,11 @@ def test_init_expected(args, kwargs, expected_df_data):
             pl.DataFrame(
                 {
                     'trial_id': [1, 1, 2],
-                    'name': ['fixation', 'saccade', 'fixation'],
                     'onset': [100000, 200000, 300000],
+                    'duration': [50000, 50000, 50000],
+                    'name': ['fixation', 'saccade', 'fixation'],
                     'offset': [150000, 250000, 350000],
                     'custom_property': [1.5, 2.5, 1.5],
-                    'duration': [50000, 50000, 50000],
                 },
                 schema_overrides=EXPECTED_SCHEMA_AFTER_INIT,
             ),
@@ -352,11 +352,11 @@ def test_init_expected(args, kwargs, expected_df_data):
             pl.DataFrame(
                 {
                     'trial_id': [1, 1, 2],
-                    'name': ['fixation', 'saccade', 'fixation'],
                     'onset': [100000, 200000, 300000],
+                    'duration': [50000, 50000, 50000],
+                    'name': ['fixation', 'saccade', 'fixation'],
                     'offset': [150000, 250000, 350000],
                     'custom_property': [1.5, 2.5, 1.5],
-                    'duration': [50000, 50000, 50000],
                 },
                 schema_overrides=EXPECTED_SCHEMA_AFTER_INIT,
             ),
@@ -422,12 +422,7 @@ def test_init_normalizes_time_columns_to_duration_us(data, expected_data):
 
     expected_df = pl.DataFrame(
         expected_data,
-        schema={
-            'name': pl.Utf8,
-            'onset': pl.Duration('us'),
-            'offset': pl.Duration('us'),
-            'duration': pl.Duration('us'),
-        },
+        schema=EXPECTED_SCHEMA_AFTER_INIT,
     )
     assert_frame_equal(events.frame, expected_df)
 
@@ -490,7 +485,7 @@ def test_init_onsets_offsets_respect_time_unit(time_unit, expected_onset_us, exp
 
 def test_init_data_frame_respects_time_unit():
     events = Events(
-        pl.DataFrame({'name': ['fixation'], 'onset': [5], 'offset': [10], 'duration': [5]}),
+        pl.DataFrame({'onset': [5], 'duration': [5], 'name': ['fixation'], 'offset': [10]}),
         time_unit='s',
     )
 
@@ -844,6 +839,7 @@ def test_clones_trial_columns():
                 pl.DataFrame(
                     {'trial': [1], 'name': 'a', 'onset': [0], 'offset': [1]},
                 ),
+                trial_columns='trial',
             ),
             id='single_row_trial_str',
         ),
@@ -854,6 +850,7 @@ def test_clones_trial_columns():
                 pl.DataFrame(
                     {'trial': [1], 'name': 'a', 'onset': [0], 'offset': [1]},
                 ),
+                trial_columns='trial',
             ),
             id='single_row_trial_list_data_int',
         ),
@@ -864,6 +861,7 @@ def test_clones_trial_columns():
                 pl.DataFrame(
                     {'trial': [1], 'name': 'a', 'onset': [0], 'offset': [1]},
                 ),
+                trial_columns='trial',
             ),
             id='single_row_trial_list_single_identifier',
         ),
@@ -874,6 +872,7 @@ def test_clones_trial_columns():
                 pl.DataFrame(
                     {'group': 'A', 'trial': [1], 'name': 'a', 'onset': [0], 'offset': [1]},
                 ),
+                trial_columns=['group', 'trial'],
             ),
             id='single_row_trial_list_single_identifier',
         ),
@@ -884,6 +883,7 @@ def test_clones_trial_columns():
                 pl.DataFrame(
                     {'trial': [1, 1], 'name': ['a', 'a'], 'onset': [0, 8], 'offset': [1, 9]},
                 ),
+                trial_columns='trial',
             ),
             id='two_rows_trial_list_single_identifier',
         ),
@@ -1238,25 +1238,25 @@ def test_microsaccades_filter(make_events):
         pytest.param(
             [], ['test1'],
             'test1',
-            ['duration'],
+            [],
             id='empty',
         ),
         pytest.param(
             ['fixation'], ['test1'],
             'test1',
-            ['duration'],
+            [],
             id='one',
         ),
         pytest.param(
             ['fixation'], ['test1', 'test2'],
             'test1',
-            ['duration', 'test2'],
+            ['test2'],
             id='one_out_of_two',
         ),
         pytest.param(
             ['fixation'], ['test1', 'test2'],
             ['test1', 'test2'],
-            ['duration'],
+            [],
             id='two_out_of_two',
         ),
     ],
