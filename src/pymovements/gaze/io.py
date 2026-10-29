@@ -538,16 +538,22 @@ def from_asc(
     binocular recording. Per-recording metadata that tells the two cases apart is planned in
     `issue 1663 <https://github.com/pymovements/pymovements/issues/1663>`_.
 
-    EyeLink message lines have the format ``MSG <timestamp> [offset] <text>``. The optional offset
-    is a signed integer in milliseconds, and the message refers to an event at
-    ``timestamp - offset``. For example, ``MSG 456119 -10 TRIAL 1`` refers to time 456129. The
-    parsed message time is this corrected time, and messages are sorted by it. The offset is
-    removed from the message content, and ``patterns`` and ``metadata_patterns`` match the message
-    text without the offset. A leading integer is read as an offset only if more text follows, so
-    ``MSG 1000 12`` keeps the content ``12``. Message text that starts with an integer followed by
-    more text, such as ``MSG 1000 3 trials left``, is read as offset 3 with the content
-    ``trials left``. Columns added by ``patterns`` change at the line of the message in the file,
-    not at its corrected time.
+    Message lines can carry a timestamp offset, ``MSG <timestamp> [offset] <text>``. The offset is
+    a signed integer in milliseconds, and the message refers to an event at ``timestamp - offset``.
+    The parsed message time is this corrected time, and messages are sorted by it. The offset is
+    removed from the content, so ``patterns`` and ``metadata_patterns`` match the text without it.
+
+    ==============================  ==========  ===============
+    Line                            Time        Content
+    ==============================  ==========  ===============
+    ``MSG 456119 -10 TRIAL 1``      456129      ``TRIAL 1``
+    ``MSG 1000 12``                 1000        ``12``
+    ``MSG 1000 3 trials left``      997         ``trials left``
+    ==============================  ==========  ===============
+
+    A leading integer counts as an offset only if more text follows. Message text that starts with
+    an integer is therefore misread, as in the last row. Columns added by ``patterns`` change at the
+    message's line in the file, not at its corrected time.
 
     Examples
     --------
