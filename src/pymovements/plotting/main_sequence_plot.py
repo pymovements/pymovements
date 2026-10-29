@@ -20,6 +20,7 @@
 """Provides the main sequence plotting function."""
 from __future__ import annotations
 
+import importlib
 from typing import Literal
 from typing import TYPE_CHECKING
 
@@ -168,9 +169,9 @@ def main_sequence_plot(
             residuals = np.array(peak_velocities) - y_pred
 
             if fit_measure is True or fit_measure == 'r2':
-                from sklearn.metrics import r2_score  # pylint: disable=import-outside-toplevel
+                sklearn_metrics = importlib.import_module('sklearn.metrics')
 
-                val = np.round(r2_score(peak_velocities, y_pred), 3)
+                val = np.round(sklearn_metrics.r2_score(peak_velocities, y_pred), 3)
                 fit_label = f'R² = {val}'
 
             elif fit_measure == 's':

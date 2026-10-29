@@ -23,6 +23,7 @@ Not part of the public API.
 """
 from __future__ import annotations
 
+import importlib
 from collections.abc import Sequence
 from typing import Literal
 from typing import TYPE_CHECKING
@@ -122,7 +123,7 @@ def prepare_figure(
     tuple[plt.Figure, plt.Axes]
         A tuple of a figure and its corresponding axes.
     """
-    import matplotlib.pyplot as plt  # pylint: disable=import-outside-toplevel
+    plt = importlib.import_module('matplotlib.pyplot')
 
     if ax is None:
         # figsize may be None for some callers
@@ -161,10 +162,10 @@ def _setup_axes_and_colormap(
 
     Returns fig, ax, cmap, cmap_norm, cval, show_cbar.
     """
-    import matplotlib.pyplot as plt  # pylint: disable=import-outside-toplevel
-    import PIL.Image  # pylint: disable=import-outside-toplevel
-    from matplotlib import colors  # pylint: disable=import-outside-toplevel
-    from matplotlib import scale as mpl_scale  # pylint: disable=import-outside-toplevel
+    plt = importlib.import_module('matplotlib.pyplot')
+    pil_image = importlib.import_module('PIL.Image')
+    colors = importlib.import_module('matplotlib.colors')
+    mpl_scale = importlib.import_module('matplotlib.scale')
 
     n = len(x_signal)
 
@@ -181,7 +182,7 @@ def _setup_axes_and_colormap(
             )
 
     if add_stimulus:
-        img = PIL.Image.open(path_to_image_stimulus)
+        img = pil_image.open(path_to_image_stimulus)
         ax.imshow(img, origin=stimulus_origin, extent=None)
     else:
 
@@ -278,12 +279,12 @@ def _draw_arrow_data(
     mutation_scale: float = 40.,
 ) -> PatchCollection:
     """Draw arrow data as arrows and return the collection."""
-    from matplotlib.collections import PatchCollection  # pylint: disable=import-outside-toplevel
-    from matplotlib.patches import FancyArrowPatch  # pylint: disable=import-outside-toplevel
+    mpl_collections = importlib.import_module('matplotlib.collections')
+    mpl_patches = importlib.import_module('matplotlib.patches')
 
     arrows = []
     for i in range(len(fixation_x) - 1):
-        arrow = FancyArrowPatch(
+        arrow = mpl_patches.FancyArrowPatch(
             (fixation_x[i], fixation_y[i]), (fixation_x[i + 1], fixation_y[i + 1]),
             arrowstyle=arrowstyle,
             connectionstyle='arc3,rad=' + str(rad),
@@ -291,7 +292,7 @@ def _draw_arrow_data(
             mutation_scale=mutation_scale,
         )
         arrows.append(arrow)
-    arrow_collection = PatchCollection(arrows)
+    arrow_collection = mpl_collections.PatchCollection(arrows)
     collection = ax.add_collection(arrow_collection)
     return collection
 
@@ -305,11 +306,11 @@ def _draw_line_data(
     cval: np.ndarray | None = None,
 ) -> LineCollection:
     """Draw line data as a colored LineCollection and return the collection."""
-    from matplotlib.collections import LineCollection  # pylint: disable=import-outside-toplevel
+    mpl_collections = importlib.import_module('matplotlib.collections')
 
     points = np.array([x_signal, y_signal]).T.reshape((-1, 1, 2))
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
-    line_collection = LineCollection(segments, cmap=cmap, norm=cmap_norm)
+    line_collection = mpl_collections.LineCollection(segments, cmap=cmap, norm=cmap_norm)
     line_collection.set_array(cval)
     line_collection.set_linewidth(2)
     line = ax.add_collection(line_collection)

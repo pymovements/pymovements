@@ -20,6 +20,7 @@
 """Provides the cluster drift correction algorithm."""
 from __future__ import annotations
 
+import importlib
 from collections.abc import Sequence
 from functools import partial
 
@@ -64,10 +65,10 @@ def cluster(
 
 def _cluster_core(locations: pl.Series, *, line_values: list[float]) -> pl.Series:
     """Cluster the y-values of a single trial into one KMeans cluster per text line."""
-    from sklearn.cluster import KMeans  # pylint: disable=import-outside-toplevel
+    sklearn_cluster = importlib.import_module('sklearn.cluster')
 
     _, y_values = locations_to_lists(locations)
-    cluster_labels = KMeans(len(line_values), n_init=100, max_iter=300).fit_predict(
+    cluster_labels = sklearn_cluster.KMeans(len(line_values), n_init=100, max_iter=300).fit_predict(
         [[y] for y in y_values],
     )
     # Clusters ordered by their mean y-coordinate map to the text lines top to bottom.

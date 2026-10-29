@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import datetime
+import importlib
 import math
 from typing import TYPE_CHECKING
 from warnings import warn
@@ -145,7 +146,7 @@ def scanpathplot(
         If length of x and y coordinates do not match or if ``cmap_norm`` is unknown.
 
     """
-    from matplotlib.patches import Circle  # pylint: disable=import-outside-toplevel
+    mpl_patches = importlib.import_module('matplotlib.patches')
 
     if add_stimulus:
         warn(
@@ -206,7 +207,7 @@ def scanpathplot(
         duration = row['duration']
         if isinstance(duration, datetime.timedelta):
             duration = duration / datetime.timedelta(milliseconds=1)
-        fixation = Circle(
+        fixation = mpl_patches.Circle(
             row[position_column],
             math.sqrt(duration),
             color=color,

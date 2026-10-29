@@ -20,6 +20,7 @@
 """Module for numpy transformation functions."""
 from __future__ import annotations
 
+import importlib
 from typing import Any
 
 import numpy as np
@@ -213,7 +214,7 @@ def pos2acc(
            [2000., 2000.],
            [2000., 2000.]])
     """
-    from scipy.signal import savgol_filter  # pylint: disable=import-outside-toplevel
+    scipy_signal = importlib.import_module('scipy.signal')
 
     if sampling_rate <= 0:
         raise ValueError('sampling_rate needs to be above zero')
@@ -230,7 +231,7 @@ def pos2acc(
 
     # transform to velocities
     if arr.ndim == 1:
-        acc = savgol_filter(
+        acc = scipy_signal.savgol_filter(
             x=arr,
             deriv=2,
             window_length=window_length,
@@ -241,7 +242,7 @@ def pos2acc(
     else:  # we already checked for error cases
 
         for channel_id in range(arr.shape[1]):
-            acc[:, channel_id] = savgol_filter(
+            acc[:, channel_id] = scipy_signal.savgol_filter(
                 x=arr[:, channel_id],
                 deriv=2,
                 window_length=window_length,
@@ -366,15 +367,15 @@ def pos2vel(
         v[1:N] = (arr[1:N] - arr[0:N - 1]) * sampling_rate
 
     elif method == 'savitzky_golay':
-        from scipy.signal import savgol_filter  # pylint: disable=import-outside-toplevel
+        scipy_signal = importlib.import_module('scipy.signal')
 
         # transform to velocities
         if arr.ndim == 1:
-            v = savgol_filter(x=arr, deriv=1, **kwargs)
+            v = scipy_signal.savgol_filter(x=arr, deriv=1, **kwargs)
         else:  # we already checked for error cases
 
             for channel_id in range(arr.shape[1]):
-                v[:, channel_id] = savgol_filter(
+                v[:, channel_id] = scipy_signal.savgol_filter(
                     x=arr[:, channel_id], deriv=1, **kwargs,
                 )
         v *= sampling_rate

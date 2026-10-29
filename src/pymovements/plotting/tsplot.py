@@ -20,6 +20,7 @@
 """Provides the time series plotting function."""
 from __future__ import annotations
 
+import importlib
 import math
 from typing import TYPE_CHECKING
 from warnings import warn
@@ -133,7 +134,7 @@ def tsplot(
         If there are no channels to plot, e.g. if ``channels`` is an empty list or if ``time`` is
         the only numeric column of the gaze samples.
     """
-    import matplotlib.pyplot as plt  # pylint: disable=import-outside-toplevel
+    plt = importlib.import_module('matplotlib.pyplot')
 
     if gap_factor is not None and gap_factor < 1:
         raise ValueError(f'gap_factor must be at least 1 or None, got {gap_factor}')

@@ -36,6 +36,7 @@ def fixture_imported_modules():
 @pytest.mark.parametrize(
     'module',
     [
+        pytest.param('fastexcel', id='fastexcel'),
         pytest.param('matplotlib', id='matplotlib'),
         pytest.param('pandas', id='pandas'),
         pytest.param('PIL', id='PIL'),

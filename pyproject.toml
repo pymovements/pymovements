@@ -32,7 +32,6 @@ classifiers = [
 ]
 dependencies = [
   "deprecated>=1.2.18",
-  "fastexcel>=0.13.0",
   "matplotlib>=3.8.0",
   "numpy>=1.22.4",
   "pandas>=2.1.4",
@@ -40,7 +39,6 @@ dependencies = [
   "pyarrow>=14.0.0",
   "pyopenssl>=22.0.0",
   "pyparsing>=3.1.2",
-  "pyreadr>=0.5.2",
   "pyyaml>=6.0.2",
   "scikit-learn>=1.2",
   "scipy>=1.8.0",
@@ -50,6 +48,13 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
+all = [
+  "pymovements[datasets]"
+]
+datasets = [
+  "fastexcel>=0.13.0",
+  "pyreadr>=0.5.2"
+]
 docs = [
   "ipykernel>=6.13.0",
   "ipywidgets>=8.1.7",

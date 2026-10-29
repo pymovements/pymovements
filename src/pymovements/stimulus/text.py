@@ -20,6 +20,7 @@
 """Module for the TextDataFrame."""
 from __future__ import annotations
 
+import importlib
 import math
 import warnings
 from collections.abc import Sequence
@@ -696,8 +697,8 @@ class TextStimulus:
             If the configured writing system is not horizontal
             left-to-right.
         """
-        import matplotlib.pyplot as plt  # pylint: disable=import-outside-toplevel
-        from matplotlib import patches  # pylint: disable=import-outside-toplevel
+        plt = importlib.import_module('matplotlib.pyplot')
+        patches = importlib.import_module('matplotlib.patches')
 
         if (
             self.writing_system.directionality != 'left-to-right'

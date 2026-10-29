@@ -20,6 +20,7 @@
 """Provides the data_loss_histogram plotting function."""
 from __future__ import annotations
 
+import importlib
 from collections.abc import Sequence
 from typing import Literal
 from typing import TYPE_CHECKING
@@ -114,7 +115,7 @@ def data_loss_histogram(
     ValueError
         If unit is not 'count' or 'time'.
     """
-    import matplotlib.pyplot as plt  # pylint: disable=import-outside-toplevel
+    plt = importlib.import_module('matplotlib.pyplot')
 
     if unit not in {'count', 'time'}:
         raise ValueError(f"unit must be 'count' or 'time', got {unit!r}")

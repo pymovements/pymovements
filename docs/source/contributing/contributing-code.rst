@@ -108,11 +108,11 @@ We use `flake8 <https://pypi.org/project/flake8/>`_ for quick style checks,
 You can check your code style by using `pre-commit <https://www.pre-commit.com>`_.
 You can install ``pre-commit`` and ``pylint`` via pip.
 
-**Note**: Quoting '.[dev]' ensures the command works in both bash and zsh.
+**Note**: Quoting '.[all,dev]' ensures the command works in both bash and zsh.
 
 .. code:: bash
 
-    pip install -e '.[dev]'
+    pip install -e '.[all,dev]'
 
 To always run style checks when pushing commits upstream,
 you can register a pre-push hook by
@@ -166,7 +166,7 @@ If you have not yet installed ``tox`` and the testing dependencies you can do so
 
 .. code:: bash
 
-    pip install -e '.[dev]'
+    pip install -e '.[all,dev]'
 
 You can run all tests on all supported python versions run by simply calling ``tox`` in the
 repository root.

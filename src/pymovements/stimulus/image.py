@@ -20,6 +20,7 @@
 """Module for the ImageDataFrame."""
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
 from typing import Any
 from typing import TYPE_CHECKING
@@ -86,7 +87,7 @@ class ImageStimulus:
         This is a convenience wrapper that draws the stimulus via
         :py:meth:`~pymovements.stimulus.ImageStimulus.plot` and then displays it.
         """
-        import matplotlib.pyplot as plt  # pylint: disable=import-outside-toplevel
+        plt = importlib.import_module('matplotlib.pyplot')
 
         self.origin = origin
 
@@ -219,12 +220,12 @@ def _draw_image_stimulus(
     fig: plt.figure
     ax: plt.Axes
     """
-    import matplotlib.pyplot as plt  # pylint: disable=import-outside-toplevel
-    import PIL.Image  # pylint: disable=import-outside-toplevel
+    plt = importlib.import_module('matplotlib.pyplot')
+    pil_image = importlib.import_module('PIL.Image')
 
     try:
-        img = PIL.Image.open(image_stimulus)
-    except PIL.UnidentifiedImageError as exception:
+        img = pil_image.open(image_stimulus)
+    except pil_image.UnidentifiedImageError as exception:
         raise ValueError(
             f"Unsupported image file '{image_stimulus}'. "
             "Use 'PIL.features.pilinfo()' to get an overview of supported types.",

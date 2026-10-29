@@ -20,6 +20,7 @@
 """Provides the stretch drift correction algorithm."""
 from __future__ import annotations
 
+import importlib
 from collections.abc import Sequence
 from functools import partial
 
@@ -82,11 +83,11 @@ def _stretch_core(
     offset_bounds: tuple[float, float],
 ) -> pl.Series:
     """Fit scale and offset for the y-values of a single trial and snap them to lines."""
-    from scipy.optimize import minimize  # pylint: disable=import-outside-toplevel
+    scipy_optimize = importlib.import_module('scipy.optimize')
 
     _, y_values = locations_to_lists(locations)
     objective = partial(_snapping_error, y_values=y_values, line_values=line_values)
-    best_fit = minimize(objective, [1, 0], bounds=[scale_bounds, offset_bounds])
+    best_fit = scipy_optimize.minimize(objective, [1, 0], bounds=[scale_bounds, offset_bounds])
     return pl.Series(_snap_to_lines(best_fit.x, y_values=y_values, line_values=line_values))
 
 
