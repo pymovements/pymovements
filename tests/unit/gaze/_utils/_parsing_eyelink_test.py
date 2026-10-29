@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests pymovements asc to csv processing - eyelink."""
-# pylint: disable=too-many-lines
 import datetime
 import importlib
 import re
@@ -1968,97 +1967,3 @@ def test_check_patterns(line, expected):
         {'pattern': re.compile(r'FIX (?P<val>\d+)'), 'column': 'fix_col', 'value': 'fixed'},
     ]
     assert _check_patterns(line, compiled_patterns) == expected
-
-
-@pytest.mark.parametrize(
-    ('line', 'expected_time', 'expected_content'),
-    [
-        pytest.param('MSG 456119 -10 TRIAL 0', 456129.0, 'TRIAL 0', id='negative_offset'),
-        pytest.param(
-            'MSG 3977219 0 is_practice_block', 3977219.0, 'is_practice_block',
-            id='zero_offset',
-        ),
-        pytest.param(
-            'MSG 14108943 173 RECORDING_STARTED', 14108770.0, 'RECORDING_STARTED',
-            id='positive_offset',
-        ),
-        pytest.param('MSG 1000 +5 FLIP', 995.0, 'FLIP', id='plus_signed_offset'),
-        pytest.param('MSG 1000.5 -2 FLIP', 1002.5, 'FLIP', id='float_timestamp'),
-        pytest.param('MSG 1000 12', 1000.0, '12', id='bare_integer_is_content'),
-        pytest.param('MSG 1000 -12', 1000.0, '-12', id='bare_negative_integer_is_content'),
-        pytest.param('MSG 1000 0.5 contrast', 1000.0, '0.5 contrast', id='float_is_content'),
-        pytest.param('MSG 1000 TRIAL 1', 1000.0, 'TRIAL 1', id='no_offset'),
-    ],
-)
-@pytest.mark.filterwarnings('ignore:No metadata found.')
-@pytest.mark.filterwarnings('ignore:No samples configuration found.')
-@pytest.mark.filterwarnings('ignore:No recording configuration found.')
-def test_parse_eyelink_message_offset(make_text_file, line, expected_time, expected_content):
-    filepath = make_text_file(filename='sub.asc', body=line + '\n')
-
-    _, _, _, messages_df = _parsing_eyelink.parse_eyelink(filepath, messages=True)
-
-    expected = pl.DataFrame(
-        {'time': [expected_time], 'content': [expected_content]},
-        schema={'time': pl.Float64, 'content': pl.String},
-    )
-    assert_frame_equal(messages_df, expected)
-
-
-@pytest.mark.filterwarnings('ignore:No samples configuration found.')
-@pytest.mark.filterwarnings('ignore:No recording configuration found.')
-def test_parse_eyelink_patterns_match_behind_message_offset(make_text_file):
-    asc_text = (
-        'MSG 999 -3 DISPLAY_COORDS 0 0 1279 1023\n'
-        'MSG 1000 -14 TRIALID 7\n'
-        '1001\t 850.7\t 717.5\t 714.0\t...\n'
-        'MSG 1002 0 !V TRIAL_VAR SUBJECT_ID 42\n'
-    )
-    filepath = make_text_file(filename='sub.asc', body=asc_text)
-
-    gaze_df, _, metadata, _ = _parsing_eyelink.parse_eyelink(
-        filepath,
-        patterns=[r'TRIALID (?P<trial_id>\d+)'],
-        metadata_patterns=[r'!V TRIAL_VAR SUBJECT_ID (?P<subject_id>\d+)'],
-    )
-
-    assert gaze_df['trial_id'].to_list() == ['7']
-    assert metadata['subject_id'] == '42'
-    assert metadata['DISPLAY_COORDS'] == (0.0, 0.0, 1279.0, 1023.0)
-
-
-@pytest.mark.filterwarnings('ignore:No samples configuration found.')
-@pytest.mark.filterwarnings('ignore:No recording configuration found.')
-@pytest.mark.filterwarnings('ignore:No metadata found.')
-def test_parse_eyelink_pattern_does_not_match_message_offset(make_text_file):
-    filepath = make_text_file(
-        filename='sub.asc',
-        body='MSG 1000 -14 SYNCTIME\n1001\t 1.0\t 1.0\t 1.0\t...\n',
-    )
-
-    gaze_df, _, _, _ = _parsing_eyelink.parse_eyelink(
-        filepath,
-        patterns=[{'pattern': r'-14 SYNCTIME', 'column': 'synced', 'value': True}],
-    )
-
-    assert gaze_df['synced'].to_list() == [None]
-
-
-@pytest.mark.filterwarnings('ignore:No metadata found.')
-@pytest.mark.filterwarnings('ignore:No samples configuration found.')
-@pytest.mark.filterwarnings('ignore:No recording configuration found.')
-def test_parse_eyelink_messages_sorted_by_corrected_time(make_text_file):
-    asc_text = (
-        'MSG 1000 A\n'
-        'MSG 1001 B\n'
-        'MSG 1001 -2 C\n'
-        'MSG 1002 D\n'
-        'MSG 1003 E\n'
-        'MSG 1005 3 F\n'
-    )
-    filepath = make_text_file(filename='sub.asc', body=asc_text)
-
-    _, _, _, messages_df = _parsing_eyelink.parse_eyelink(filepath, messages=True)
-
-    assert messages_df['time'].to_list() == [1000.0, 1001.0, 1002.0, 1002.0, 1003.0, 1003.0]
-    assert messages_df['content'].to_list() == ['A', 'B', 'D', 'F', 'C', 'E']

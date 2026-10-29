@@ -1154,3 +1154,84 @@ def test_from_asc_calibration_timestamp_followed_by_sample_line():
     assert gaze.calibrations['num_points'].to_list() == [None]
     assert gaze.calibrations['eye'].to_list() == [None]
     assert gaze.samples['time'].to_list() == [timedelta(seconds=1)]
+
+
+@pytest.mark.parametrize(
+    ('line', 'expected_time', 'expected_content'),
+    [
+        pytest.param('MSG 456119 -10 TRIAL 0', 456_129, 'TRIAL 0', id='negative_offset'),
+        pytest.param(
+            'MSG 3977219 0 is_practice_block', 3_977_219, 'is_practice_block',
+            id='zero_offset',
+        ),
+        pytest.param(
+            'MSG 14108943 173 RECORDING_STARTED', 14_108_770, 'RECORDING_STARTED',
+            id='positive_offset',
+        ),
+        pytest.param('MSG 1000 +5 FLIP', 995, 'FLIP', id='plus_signed_offset'),
+        pytest.param('MSG 1000.5 -2 FLIP', 1002.5, 'FLIP', id='float_timestamp'),
+        pytest.param('MSG 1000 12', 1000, '12', id='bare_integer_is_content'),
+        pytest.param('MSG 1000 -12', 1000, '-12', id='bare_negative_integer_is_content'),
+        pytest.param('MSG 1000 0.5 contrast', 1000, '0.5 contrast', id='float_is_content'),
+        pytest.param('MSG 1000 TRIAL 1', 1000, 'TRIAL 1', id='no_offset'),
+    ],
+)
+def test_from_asc_message_offset(line, expected_time, expected_content):
+    gaze = from_asc(io.StringIO(_MONOCULAR_HEADER + line + '\n'), messages=True)
+
+    assert gaze.messages.row(-1) == (timedelta(milliseconds=expected_time), expected_content)
+
+
+def test_from_asc_patterns_match_behind_message_offset():
+    content = (
+        _MONOCULAR_HEADER
+        + 'MSG 999 -3 DISPLAY_COORDS 0 0 1279 1023\n'
+        + 'MSG 1000 -14 TRIALID 7\n'
+        + '1001\t10.0\t20.0\t3.0\t0.0\t.....\n'
+        + 'MSG 1002 0 !V TRIAL_VAR SUBJECT_ID 42\n'
+    )
+
+    gaze = from_asc(
+        io.StringIO(content),
+        patterns=[r'TRIALID (?P<trial_id>\d+)'],
+        metadata_patterns=[r'!V TRIAL_VAR SUBJECT_ID (?P<subject_id>\d+)'],
+    )
+
+    assert gaze.samples['trial_id'].to_list() == ['7']
+    assert gaze._metadata['subject_id'] == '42'
+    assert gaze._metadata['DISPLAY_COORDS'] == (0.0, 0.0, 1279.0, 1023.0)
+
+
+def test_from_asc_pattern_does_not_match_message_offset():
+    content = (
+        _MONOCULAR_HEADER
+        + 'MSG 1000 -14 SYNCTIME\n'
+        + '1001\t10.0\t20.0\t3.0\t0.0\t.....\n'
+    )
+
+    gaze = from_asc(
+        io.StringIO(content),
+        patterns=[{'pattern': r'-14 SYNCTIME', 'column': 'synced', 'value': True}],
+    )
+
+    assert gaze.samples['synced'].to_list() == [None]
+
+
+def test_from_asc_messages_sorted_by_corrected_time():
+    content = (
+        _MONOCULAR_HEADER
+        + 'MSG 1000 A\n'
+        + 'MSG 1001 B\n'
+        + 'MSG 1001 -2 C\n'
+        + 'MSG 1002 D\n'
+        + 'MSG 1003 E\n'
+        + 'MSG 1005 3 F\n'
+    )
+
+    gaze = from_asc(io.StringIO(content), messages=True)
+
+    messages = gaze.messages.tail(6)
+    assert messages['time'].to_list() == [
+        timedelta(milliseconds=ms) for ms in (1000, 1001, 1002, 1002, 1003, 1003)
+    ]
+    assert messages['content'].to_list() == ['A', 'B', 'D', 'F', 'C', 'E']
