@@ -73,7 +73,10 @@ def _saccade_peak(duration, *, seed=42, **hyperparameters):
     generator = StatisticalSampleGenerator(
         profile_sampling_rate=1000.0, **WITHOUT_JITTER, **hyperparameters,
     )
-    gaze = generator.generate(_events(('saccade', duration)), sampling_rate=1000.0, seed=seed)
+    gaze = generator.generate(
+        events=_events(('saccade', duration)),
+        sampling_rate=1000.0, seed=seed,
+    )
     return _magnitudes(gaze).max()
 
 
@@ -83,7 +86,7 @@ def _pursuit(*, duration=500.0, **hyperparameters):
         profile_sampling_rate=1000.0, **WITHOUT_JITTER, **hyperparameters,
     )
     return generator.generate(
-        _events(('smooth_pursuit', duration)), sampling_rate=1000.0, seed=42,
+        events=_events(('smooth_pursuit', duration)), sampling_rate=1000.0, seed=42,
     )
 
 
@@ -113,7 +116,7 @@ def _pursuit(*, duration=500.0, **hyperparameters):
 )
 def test_statistical_returns(contiguous_events, hyperparameters):
     gaze = StatisticalSampleGenerator(**hyperparameters).generate(
-        contiguous_events, sampling_rate=1000.0, seed=42,
+        events=contiguous_events, sampling_rate=1000.0, seed=42,
     )
 
     assert gaze.samples.columns == ['time', 'velocity_magnitude']
@@ -136,21 +139,27 @@ def test_arbitrary_sampling_rate(sampling_rate):
     """The output has as many samples as the requested rate gives over the events' span."""
     events = _events(('fixation', 1200.0), ('saccade', 50.0), ('fixation', 750.0))
 
-    gaze = StatisticalSampleGenerator().generate(events, sampling_rate=sampling_rate, seed=42)
+    gaze = StatisticalSampleGenerator().generate(
+        events=events, sampling_rate=sampling_rate, seed=42,
+    )
 
     assert gaze.samples.height == round(sampling_rate * 2.0)
 
 
 def test_output_is_a_velocity_magnitude(contiguous_events):
     """A magnitude has no x and y, so none of the Gaze component columns is filled."""
-    gaze = StatisticalSampleGenerator().generate(contiguous_events, sampling_rate=1000.0, seed=42)
+    gaze = StatisticalSampleGenerator().generate(
+        events=contiguous_events, sampling_rate=1000.0, seed=42,
+    )
 
     for component_column in ('position', 'pixel', 'velocity', 'acceleration'):
         assert component_column not in gaze.samples.columns
 
 
-def test_attaches_the_events_unchanged(contiguous_events):
-    gaze = StatisticalSampleGenerator().generate(contiguous_events, sampling_rate=1000.0, seed=42)
+def test_attaches_a_copy_of_the_events(contiguous_events):
+    gaze = StatisticalSampleGenerator().generate(
+        events=contiguous_events, sampling_rate=1000.0, seed=42,
+    )
 
     assert_frame_equal(gaze.events.frame, contiguous_events.frame)
 
@@ -160,7 +169,7 @@ def test_samples_start_at_the_first_onset():
         name=['fixation', 'saccade'], onsets=[500, 700], offsets=[700, 740], time_unit='ms',
     )
 
-    gaze = StatisticalSampleGenerator().generate(events, sampling_rate=1000.0, seed=42)
+    gaze = StatisticalSampleGenerator().generate(events=events, sampling_rate=1000.0, seed=42)
 
     assert gaze.samples['time'].dt.total_milliseconds().to_list()[0] == 500
     assert gaze.samples.height == 240
@@ -173,7 +182,7 @@ def test_keeps_sub_millisecond_times():
         time_unit='ms',
     )
 
-    gaze = StatisticalSampleGenerator().generate(events, sampling_rate=2000.0, seed=42)
+    gaze = StatisticalSampleGenerator().generate(events=events, sampling_rate=2000.0, seed=42)
 
     assert gaze.samples['time'].dt.total_microseconds().to_list()[:2] == [500, 1000]
     assert gaze.samples.height == round(300.25 * 2.0)
@@ -183,8 +192,8 @@ def test_orders_unsorted_events(contiguous_events):
     shuffled = Events(contiguous_events.frame.reverse())
     generator = StatisticalSampleGenerator()
 
-    unsorted = generator.generate(shuffled, sampling_rate=1000.0, seed=42)
-    ordered = generator.generate(contiguous_events, sampling_rate=1000.0, seed=42)
+    unsorted = generator.generate(events=shuffled, sampling_rate=1000.0, seed=42)
+    ordered = generator.generate(events=contiguous_events, sampling_rate=1000.0, seed=42)
 
     assert_frame_equal(unsorted.samples, ordered.samples)
 
@@ -198,7 +207,7 @@ def test_sample_at_an_onset_belongs_to_that_event():
     events = _events(('saccade', 50.0), ('fixation', 50.0))
 
     gaze = StatisticalSampleGenerator(**WITHOUT_JITTER).generate(
-        events, sampling_rate=1000.0, seed=42,
+        events=events, sampling_rate=1000.0, seed=42,
     )
 
     assert (_magnitudes(gaze, start=50.0) == 0.0).all()
@@ -211,10 +220,10 @@ def test_sample_averages_the_profile_until_the_next_sample():
     hyperparameters = {**WITHOUT_JITTER, 'saccade_peak_velocity': 400.0}
 
     exact = StatisticalSampleGenerator(profile_sampling_rate=1000.0, **hyperparameters).generate(
-        events, sampling_rate=1000.0, seed=42,
+        events=events, sampling_rate=1000.0, seed=42,
     )
     averaged = StatisticalSampleGenerator(**hyperparameters).generate(
-        events, sampling_rate=1000.0, seed=42,
+        events=events, sampling_rate=1000.0, seed=42,
     )
 
     assert _magnitudes(exact).max() == pytest.approx(400.0)
@@ -345,7 +354,7 @@ def test_smooth_pursuit_onset_duration_takes_its_distribution():
 
 def test_fixation_without_jitter_is_still():
     gaze = StatisticalSampleGenerator(fixation_consistency=0.0).generate(
-        _events(('fixation', 1000.0)), sampling_rate=1000.0, seed=42,
+        events=_events(('fixation', 1000.0)), sampling_rate=1000.0, seed=42,
     )
 
     assert (_magnitudes(gaze) == 0.0).all()
@@ -353,7 +362,7 @@ def test_fixation_without_jitter_is_still():
 
 def test_fixation_consistency_adds_jitter():
     gaze = StatisticalSampleGenerator(fixation_consistency=(1.0, 1.0)).generate(
-        _events(('fixation', 1000.0)), sampling_rate=1000.0, seed=42,
+        events=_events(('fixation', 1000.0)), sampling_rate=1000.0, seed=42,
     )
 
     assert (_magnitudes(gaze) > 0.0).any()
@@ -362,7 +371,7 @@ def test_fixation_consistency_adds_jitter():
 def _still_fixation(**noise):
     """Generate a still fixation, so every sample that is not zero is noise."""
     generator = StatisticalSampleGenerator(fixation_consistency=0.0, **noise)
-    gaze = generator.generate(_events(('fixation', 1000.0)), sampling_rate=1000.0, seed=42)
+    gaze = generator.generate(events=_events(('fixation', 1000.0)), sampling_rate=1000.0, seed=42)
     return _magnitudes(gaze)
 
 
@@ -390,9 +399,9 @@ def test_noise_changes_the_requested_share_of_samples_within_its_range(noise_vel
 def test_reproducible_under_seed(contiguous_events):
     generator = StatisticalSampleGenerator()
 
-    first = generator.generate(contiguous_events, sampling_rate=1000.0, seed=42)
-    second = generator.generate(contiguous_events, sampling_rate=1000.0, seed=42)
-    other = generator.generate(contiguous_events, sampling_rate=1000.0, seed=43)
+    first = generator.generate(events=contiguous_events, sampling_rate=1000.0, seed=42)
+    second = generator.generate(events=contiguous_events, sampling_rate=1000.0, seed=42)
+    other = generator.generate(events=contiguous_events, sampling_rate=1000.0, seed=43)
 
     assert_frame_equal(first.samples, second.samples)
     assert not first.samples.equals(other.samples)
@@ -421,7 +430,7 @@ def test_generates_each_trial_separately(trials, trial_columns):
         trial_columns=trial_columns,
     )
 
-    gaze = StatisticalSampleGenerator().generate(events, sampling_rate=1000.0, seed=42)
+    gaze = StatisticalSampleGenerator().generate(events=events, sampling_rate=1000.0, seed=42)
 
     assert gaze.trial_columns == trial_columns
     first, second = gaze.samples.partition_by(trial_columns, maintain_order=True)
@@ -436,7 +445,7 @@ def test_does_not_fill_the_time_between_trials():
         time_unit='ms',
     )
 
-    gaze = StatisticalSampleGenerator().generate(events, sampling_rate=1000.0, seed=42)
+    gaze = StatisticalSampleGenerator().generate(events=events, sampling_rate=1000.0, seed=42)
 
     assert gaze.samples.height == 550
 
@@ -445,7 +454,7 @@ def test_generates_from_bridged_fixations(fixations):
     """A detected fixation sequence has gaps; bridging them first makes it renderable."""
     bridged = pm.synthetic.bridge_gaps(fixations)
 
-    gaze = StatisticalSampleGenerator().generate(bridged, sampling_rate=1000.0, seed=42)
+    gaze = StatisticalSampleGenerator().generate(events=bridged, sampling_rate=1000.0, seed=42)
 
     assert gaze.samples.height == 560
     assert gaze.events.frame['name'].to_list() == ['fixation', 'saccade', 'fixation']
@@ -454,12 +463,12 @@ def test_generates_from_bridged_fixations(fixations):
 def test_is_registered_by_name(contiguous_events):
     assert SampleGeneratorLibrary.get('statistical') is StatisticalSampleGenerator
 
-    gaze = pm.synthetic.generate_gaze(
-        'statistical', contiguous_events, sampling_rate=1000.0, seed=42,
+    gaze = pm.synthetic.generate_samples(
+        'statistical', events=contiguous_events, sampling_rate=1000.0, seed=42,
         saccade_peak_velocity=(300.0, 450.0),
     )
     explicit = StatisticalSampleGenerator(saccade_peak_velocity=(300.0, 450.0)).generate(
-        contiguous_events, sampling_rate=1000.0, seed=42,
+        events=contiguous_events, sampling_rate=1000.0, seed=42,
     )
 
     assert_frame_equal(gaze.samples, explicit.samples)
@@ -483,7 +492,7 @@ def test_reads_a_range_from_each_accepted_form(value, expected):
 
 def test_records_its_hyperparameters(contiguous_events):
     gaze = StatisticalSampleGenerator(saccade_peak_velocity=(300.0, 450.0)).generate(
-        contiguous_events, sampling_rate=1000.0, seed=42,
+        events=contiguous_events, sampling_rate=1000.0, seed=42,
     )
 
     provenance = gaze.metadata['synthetic']
@@ -594,12 +603,6 @@ def test_statistical_raises_error(hyperparameters, exception, msg_substrings):
     ('events', 'hyperparameters', 'msg_substrings'),
     [
         pytest.param(
-            None,
-            {},
-            ('statistical', 'events'),
-            id='without_events',
-        ),
-        pytest.param(
             Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560], time_unit='ms'),
             {},
             ('statistical', 'gap', '250.0', '300.0', 'bridge_gaps'),
@@ -635,21 +638,40 @@ def test_statistical_raises_error_on_generate(events, hyperparameters, msg_subst
     generator = StatisticalSampleGenerator(**hyperparameters)
 
     with pytest.raises(ValueError) as excinfo:
-        generator.generate(events, sampling_rate=1000.0, seed=42)
+        generator.generate(events=events, sampling_rate=1000.0, seed=42)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
         assert msg_substring in msg
 
 
-def test_rejects_gaze_to_condition_on(contiguous_events):
-    gaze = StatisticalSampleGenerator().generate(contiguous_events, sampling_rate=1000.0, seed=42)
+@pytest.mark.parametrize(
+    ('run_fixtures', 'msg_substrings'),
+    [
+        pytest.param({}, ('missing', "'events'"), id='without_events'),
+        pytest.param(
+            {'events': 'contiguous_events', 'gaze': 'contiguous_events'},
+            ('unknown', "'gaze'", "'events'"),
+            id='gaze_is_no_run_parameter',
+        ),
+    ],
+)
+def test_statistical_raises_type_error_on_run_parameters(request, run_fixtures, msg_substrings):
+    """The generator declares ``events`` as its only run parameter."""
+    run = {key: request.getfixturevalue(fixture) for key, fixture in run_fixtures.items()}
 
-    with pytest.raises(ValueError) as excinfo:
-        StatisticalSampleGenerator().generate(
-            contiguous_events, gaze=gaze, sampling_rate=1000.0, seed=42,
-        )
+    with pytest.raises(TypeError) as excinfo:
+        StatisticalSampleGenerator().generate(sampling_rate=1000.0, seed=42, **run)
 
     msg, = excinfo.value.args
-    for msg_substring in ('statistical', 'gaze', 'events'):
+    for msg_substring in msg_substrings:
+        assert msg_substring in msg
+
+
+def test_statistical_raises_type_error_on_events_of_wrong_type():
+    with pytest.raises(TypeError) as excinfo:
+        StatisticalSampleGenerator().generate(events=None, sampling_rate=1000.0, seed=42)
+
+    msg, = excinfo.value.args
+    for msg_substring in ('statistical', 'events', 'Events', 'NoneType'):
         assert msg_substring in msg

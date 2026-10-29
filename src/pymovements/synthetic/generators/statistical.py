@@ -183,29 +183,27 @@ class StatisticalSampleGenerator(SampleGenerator):
             self.profile_sampling_rate, 'profile_sampling_rate',
         )
 
-    def _generate(
+    def _generate(  # pylint: disable=arguments-differ
             self,
             *,
-            events: Events | None,
-            gaze: Gaze | None,
             sampling_rate: float,
             experiment: Experiment,
             rng: np.random.Generator,
+            events: Events,
     ) -> Gaze:
         """Synthesize the velocity magnitudes of the events.
 
         Parameters
         ----------
-        events: Events | None
-            The gap-free event sequence to condition on.
-        gaze: Gaze | None
-            Must be ``None``; the generator conditions on events only.
         sampling_rate: float
             The sampling rate of the generated samples in Hz.
         experiment: Experiment
             The experiment the output belongs to.
         rng: np.random.Generator
             The run's random generator.
+        events: Events
+            The gap-free event sequence to condition on. It decides the type and timing of every
+            velocity profile.
 
         Returns
         -------
@@ -214,19 +212,16 @@ class StatisticalSampleGenerator(SampleGenerator):
 
         Raises
         ------
+        TypeError
+            If ``events`` is not an ``Events`` object.
         ValueError
-            If no events or a gaze were given, if the events have gaps, overlap, are empty or
-            contain an event type without a profile, or if ``profile_sampling_rate`` is below
-            the sampling rate.
+            If the events have gaps, overlap, are empty or contain an event type without a
+            profile, or if ``profile_sampling_rate`` is below the sampling rate.
         """
-        if gaze is not None:
-            raise ValueError(
-                f"generator '{self.name}' conditions on events only, a gaze cannot be given",
-            )
-        if events is None:
-            raise ValueError(
-                f"generator '{self.name}' needs events to condition on, which determine the type "
-                'and timing of every velocity profile',
+        if not isinstance(events, Events):
+            raise TypeError(
+                f"generator '{self.name}' needs events of type Events to condition on, but got "
+                f'{type(events).__name__}',
             )
         if self.profile_sampling_rate < sampling_rate:
             raise ValueError(
