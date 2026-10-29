@@ -56,6 +56,34 @@ def generate_events(name: str, *, seed: int | None = None, **kwargs: Any) -> Eve
     ------
     KeyError
         If no event generator is registered under that name.
+
+    Examples
+    --------
+    .. testsetup::
+
+        >>> getfixture('doctest_synthetic')
+
+    ``fixation_duration`` is a field of the generator below, so it goes to the constructor;
+    ``duration`` is not, so it goes to ``generate()``:
+
+    >>> import dataclasses
+    >>> import pymovements as pm
+    >>> @pm.synthetic.register_generator
+    ... @dataclasses.dataclass
+    ... class EvenFixations(pm.synthetic.EventGenerator):
+    ...     name = 'even_fixations'
+    ...     fixation_duration: float = 250.0
+    ...
+    ...     def _generate(self, *, rng, duration):
+    ...         count = int(duration * 1000 // self.fixation_duration)
+    ...         onsets = [index * self.fixation_duration for index in range(count)]
+    ...         offsets = [onset + self.fixation_duration for onset in onsets]
+    ...         return pm.Events(name=['fixation'] * count, onsets=onsets, offsets=offsets)
+    >>> events = pm.synthetic.generate_events(
+    ...     'even_fixations', duration=1.0, seed=42, fixation_duration=500.0,
+    ... )
+    >>> events.frame['name'].to_list()
+    ['fixation', 'fixation']
     """
     generator_class = EventGeneratorLibrary.get(name)
     hyperparameters, run = _split_kwargs(generator_class, kwargs)
@@ -100,6 +128,45 @@ def generate_samples(
     ------
     KeyError
         If no sample generator is registered under that name.
+
+    Examples
+    --------
+    .. testsetup::
+
+        >>> getfixture('doctest_synthetic')
+
+    ``noise`` is a field of the generator below, so it goes to the constructor; ``events``
+    is not, so it goes to ``generate()``:
+
+    >>> import dataclasses
+    >>> import numpy as np
+    >>> import polars as pl
+    >>> import pymovements as pm
+    >>> @pm.synthetic.register_generator
+    ... @dataclasses.dataclass
+    ... class StillGaze(pm.synthetic.SampleGenerator):
+    ...     name = 'still_gaze'
+    ...     noise: float = 0.1
+    ...
+    ...     def _generate(self, *, sampling_rate, experiment, rng, events):
+    ...         end = events.frame['offset'].dt.total_microseconds().max() / 1000
+    ...         time = np.arange(0, end, 1000 / sampling_rate)
+    ...         return pm.Gaze(
+    ...             samples=pl.DataFrame({
+    ...                 'time': time,
+    ...                 'x': rng.normal(0, self.noise, time.size),
+    ...                 'y': rng.normal(0, self.noise, time.size),
+    ...             }),
+    ...             time_column='time',
+    ...             time_unit='ms',
+    ...             position_columns=['x', 'y'],
+    ...         )
+    >>> events = pm.Events(name=['fixation'], onsets=[0], offsets=[500])
+    >>> gaze = pm.synthetic.generate_samples(
+    ...     'still_gaze', events=events, sampling_rate=500, seed=42, noise=0.5,
+    ... )
+    >>> gaze.metadata['synthetic']['hyperparameters']
+    {'noise': 0.5}
     """
     generator_class = SampleGeneratorLibrary.get(name)
     hyperparameters, run = _split_kwargs(generator_class, kwargs)
