@@ -464,12 +464,12 @@ def from_asc(
     messages: bool | list[str]
         Flag indicating if any additional messages should be parsed from the asc file
         and stored in :py:class:`pymovements.gaze.experiment.Experiment`.
-        The message format is 'MSG <timestamp> <content>'.
+        The message format is 'MSG <timestamp> [offset] <content>', see Notes.
         If True, all available messages will be parsed from the asc,
         alternatively, a list of regular expressions can be passed, and only the
         messages that match any of the regular expressions will be kept.
         Regular expressions are only applied to the message content,
-        implicitly parsing the `MSG <timestamp>` prefix.
+        implicitly parsing the `MSG <timestamp> [offset]` prefix.
         (default: False)
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. When ``file`` is a path, a ``Sources``
@@ -537,6 +537,17 @@ def from_asc(
     experiment's eye tracker then reports both eyes as tracked, the same as for a simultaneous
     binocular recording. Per-recording metadata that tells the two cases apart is planned in
     `issue 1663 <https://github.com/pymovements/pymovements/issues/1663>`_.
+
+    EyeLink message lines have the format ``MSG <timestamp> [offset] <text>``. The optional offset
+    is a signed integer in milliseconds, and the message refers to an event at
+    ``timestamp - offset``. For example, ``MSG 456119 -10 TRIAL 1`` refers to time 456129. The
+    parsed message time is this corrected time, and messages are sorted by it. The offset is
+    removed from the message content, and ``patterns`` and ``metadata_patterns`` match the message
+    text without the offset. A leading integer is read as an offset only if more text follows, so
+    ``MSG 1000 12`` keeps the content ``12``. Message text that starts with an integer followed by
+    more text, such as ``MSG 1000 3 trials left``, is read as offset 3 with the content
+    ``trials left``. Columns added by ``patterns`` change at the line of the message in the file,
+    not at its corrected time.
 
     Examples
     --------

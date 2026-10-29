@@ -929,6 +929,12 @@ def test_from_asc_corrupted_file_warning_contains_full_path(make_text_file):
             id='multiple_messages',
         ),
         pytest.param(
+            'MSG 123 -2 message here\nMSG 124 TEST 1',
+            True,
+            [(124_000, 125_000), ('TEST 1', 'message here')],
+            id='message_offset',
+        ),
+        pytest.param(
             'MSG 123 message here\nMSG 152 TEST 1',
             [r'^.*TEST.*$'],
             [(152_000,), ('TEST 1',)],

@@ -152,9 +152,13 @@ STOP_RECORDING_REGEX = (
     r'(?P<xres>[\d\.]*)\s+(?P<yres>[\d\.]*)\s*'
 )
 
-# General message format
+# General message format: MSG <timestamp> [offset] <content>
+# The offset is a signed integer in ms, followed by at least one more token. The message refers to
+# an event at timestamp - offset.
 MSG_REGEX = (
-    r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+(?P<content>.*)'
+    r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+'
+    r'(?:(?P<offset>[-+]?\d+)\s+(?=\S))?'
+    r'(?P<content>.*)'
 )
 
 
@@ -575,12 +579,12 @@ def parse_eyelink(
     messages: bool | Sequence[str]
         Flag indicating if any additional messages should be parsed from the asc file
         and returned as a DataFrame with 'time' (f64) and 'content' (str) columns.
-        The message format is 'MSG <timestamp> <content>'.
+        The message format is 'MSG <timestamp> [offset] <content>', see Notes.
         If True, all available messages will be parsed from the asc,
         alternatively, a list of regular expressions can be passed and only the
         messages that match any of the regular expressions will be kept.
         Regular expressions are only applied to the message content,
-        implicitly parsing the `MSG <timestamp>` prefix.
+        implicitly parsing the `MSG <timestamp> [offset]` prefix.
         (default: False)
     extend_resolution: bool | None
         Flag indicating if the screen resolution should be extended by 1 pixel.
@@ -614,6 +618,17 @@ def parse_eyelink(
     emitted and the event is still recorded. In this case, the parser seeds additional columns from
     the current context (values derived from the provided ``patterns`` at that line), so trial/task
     information is preserved when available.
+
+    EyeLink message lines have the format ``MSG <timestamp> [offset] <text>``. The optional offset
+    is a signed integer in milliseconds, and the message refers to an event at
+    ``timestamp - offset``. For example, ``MSG 456119 -10 TRIAL 1`` refers to time 456129. The
+    parsed message time is this corrected time, and messages are sorted by it. The offset is
+    removed from the message content, and ``patterns`` and ``metadata_patterns`` match the message
+    text without the offset. A leading integer is read as an offset only if more text follows, so
+    ``MSG 1000 12`` keeps the content ``12``. Message text that starts with an integer followed by
+    more text, such as ``MSG 1000 3 trials left``, is read as offset 3 with the content
+    ``trials left``. Columns added by ``patterns`` change at the line of the message in the file,
+    not at its corrected time.
     """
     # pylint: disable=too-many-branches, too-many-statements, too-many-nested-blocks
     msg_prefix = r'MSG\s+\d+[.]?\d*\s+'
@@ -691,7 +706,7 @@ def parse_eyelink(
             f'as strings. Received {messages}.',
         )
 
-    messages_list: list[list[str]] = []
+    messages_list: list[tuple[float, str]] = []
 
     cal_timestamp = ''
 
@@ -792,6 +807,11 @@ def parse_eyelink(
             event_ends.append((event_name, eye, onset, offset))
             context_timeline[offset] = {**current_additional}
 
+        msg_match = _match_regex(MSG_REGEX, line) if line.startswith('MSG') else None
+        if msg_match and msg_match.group('offset') is not None:
+            # Strip the offset, so that all message patterns match the message text.
+            line = line[:msg_match.start('offset')] + line[msg_match.start('content'):]
+
         # Then process patterns and update context for subsequent lines
         matched_ctx = _check_patterns(line, compiled_patterns)
         if matched_ctx:
@@ -875,8 +895,9 @@ def parse_eyelink(
                     float(match.groupdict()['timestamp']) - float(start_recording_timestamp)
                 )
             start_recording_timestamp = None
-        if messages and (match := _match_regex(MSG_REGEX, line)):
-            messages_list.append([match.groupdict()['timestamp'], match.groupdict()['content']])
+        if messages and msg_match:
+            msg_time = float(msg_match.group('timestamp')) - float(msg_match.group('offset') or 0)
+            messages_list.append((msg_time, msg_match.group('content')))
 
         if match := _match_regex(CALIBRATION_TIMESTAMP_REGEX, line):
             cal_timestamp = match.groupdict()['timestamp']
@@ -1000,6 +1021,8 @@ def parse_eyelink(
             },
             orient='row',
         )
+        # Offsets can move a message before earlier lines. Equal times keep the file order.
+        messages_df = messages_df.sort('time', maintain_order=True)
         # Filter messages with regexp if given
         if isinstance(messages, Sequence):
             # keep rows where content matches any of the regex patterns
