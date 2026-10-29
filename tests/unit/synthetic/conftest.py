@@ -31,6 +31,7 @@ from pymovements import Events
 from pymovements import Gaze
 from pymovements.synthetic import EventGenerator
 from pymovements.synthetic import EventGeneratorLibrary
+from pymovements.synthetic import Range
 from pymovements.synthetic import SampleGenerator
 from pymovements.synthetic import SampleGeneratorLibrary
 
@@ -57,6 +58,30 @@ class NoiseSampleGenerator(SampleGenerator):
             time_unit='ms',
             position_columns=['x', 'y'],
         )
+
+
+@dataclasses.dataclass
+class RangedNoiseSampleGenerator(NoiseSampleGenerator):
+    """The noise generator with an offset that is drawn from a range, in degrees."""
+
+    name = 'test_ranged_noise'
+
+    offset: Range | tuple[float, float] | float = Range(0.0, 1.0, 'normal', std=0.5)
+
+    def __post_init__(self):
+        """Read the offset from any form ``Range.from_value`` accepts."""
+        self.offset = Range.from_value(self.offset)
+
+    def _generate(  # pylint: disable=arguments-differ
+            self, *, sampling_rate, experiment, rng, events=None,
+    ):
+        gaze = super()._generate(
+            sampling_rate=sampling_rate, experiment=experiment, rng=rng, events=events,
+        )
+        gaze.samples = gaze.samples.with_columns(
+            pl.col('position') + self.offset.draw(rng),
+        )
+        return gaze
 
 
 @dataclasses.dataclass
@@ -87,6 +112,12 @@ class UniformEventGenerator(EventGenerator):
 def fixture_noise_sample_generator():
     """Return the toy sample generator class."""
     return NoiseSampleGenerator
+
+
+@pytest.fixture(name='ranged_noise_sample_generator')
+def fixture_ranged_noise_sample_generator():
+    """Return the toy sample generator with a range hyperparameter."""
+    return RangedNoiseSampleGenerator
 
 
 @pytest.fixture(name='uniform_event_generator')

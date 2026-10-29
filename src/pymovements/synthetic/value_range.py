@@ -22,6 +22,8 @@ from __future__ import annotations
 
 import dataclasses
 import numbers
+from collections.abc import Mapping
+from typing import Any
 
 import numpy as np
 
@@ -97,14 +99,19 @@ class Range:
                 )
 
     @classmethod
-    def from_value(cls, value: Range | tuple[float, float] | list[float] | float) -> Range:
-        """Return a range from a range, a ``(minimum, maximum)`` pair, or a single value.
+    def from_value(
+            cls,
+            value: Range | tuple[float, float] | list[float] | Mapping[str, Any] | float,
+    ) -> Range:
+        """Return a range from a range, a ``(minimum, maximum)`` pair, a mapping or a value.
 
-        A pair becomes a uniform range, and a single value a range holding only that value.
+        A pair becomes a uniform range, and a single value a range holding only that value. A
+        mapping of the attributes is how the provenance records a range, so a run can be
+        replayed from its record.
 
         Parameters
         ----------
-        value: Range | tuple[float, float] | list[float] | float
+        value: Range | tuple[float, float] | list[float] | Mapping[str, Any] | float
             The value to read a range from.
 
         Returns
@@ -115,10 +122,13 @@ class Range:
         Raises
         ------
         TypeError
-            If the value is none of the accepted forms.
+            If the value is none of the accepted forms, or a mapping has unknown keys.
         """
         if isinstance(value, Range):
             return value
+
+        if isinstance(value, Mapping):
+            return cls(**value)
 
         if isinstance(value, (tuple, list)) and len(value) == 2:
             return cls(value[0], value[1])
@@ -127,7 +137,8 @@ class Range:
             return cls(value, value)
 
         raise TypeError(
-            'a range must be a Range, a (minimum, maximum) pair or a single number, but is of '
+            'a range must be a Range, a (minimum, maximum) pair, a mapping of its attributes or '
+            'a single number, but is of '
             f'type {type(value).__name__}: {value}',
         )
 

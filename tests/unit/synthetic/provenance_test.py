@@ -18,9 +18,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test the provenance record written into generated data, through the public API."""
-import pytest
+import json
 
+import pytest
+from polars.testing import assert_frame_equal
+
+import pymovements as pm
 from pymovements import __version__
+from pymovements.synthetic import register_generator
 
 pytestmark = pytest.mark.filterwarnings(
     'ignore:Synthetic gaze generation is experimental:pymovements.ExperimentalWarning',
@@ -85,3 +90,32 @@ def test_drawn_seed_is_recorded(noise_sample_generator):
     seed = gaze.metadata['synthetic']['seed']
     assert isinstance(seed, int)
     assert 0 <= seed < 2 ** 53
+
+
+def test_provenance_records_a_range_as_plain_values(ranged_noise_sample_generator, tmp_path):
+    """A record of plain values can be written to JSON and saved with the gaze."""
+    gaze = ranged_noise_sample_generator().generate(sampling_rate=500.0, seed=42)
+
+    hyperparameters = gaze.metadata['synthetic']['hyperparameters']
+    assert hyperparameters['offset'] == {
+        'minimum': 0.0, 'maximum': 1.0, 'distribution': 'normal', 'std': 0.5,
+    }
+    json.dumps(gaze.metadata)
+    gaze.save(tmp_path, verbose=0)
+
+
+@pytest.mark.usefixtures('isolated_registry')
+def test_run_is_replayed_from_a_record_with_a_range(ranged_noise_sample_generator):
+    generator_class = register_generator(ranged_noise_sample_generator)
+    gaze = generator_class(offset=(2.0, 3.0)).generate(sampling_rate=500.0, seed=42)
+    record = gaze.metadata['synthetic']
+
+    replayed = pm.synthetic.generate_samples(
+        record['generator'],
+        sampling_rate=record['run']['sampling_rate'],
+        seed=record['seed'],
+        **record['hyperparameters'],
+    )
+
+    assert_frame_equal(replayed.samples, gaze.samples)
+    assert replayed.metadata == gaze.metadata

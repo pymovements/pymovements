@@ -190,12 +190,12 @@ class _Generator(abc.ABC):
         }
 
     def _provenance(self, run: dict[str, Any], seed: int) -> dict[str, Any]:
-        """Return the provenance record of a run of this generator."""
+        """Return the provenance record of a run, with dataclass values such as a range as dicts."""
         return generation_provenance(
             generator=self.name,
             level=self.level,
-            hyperparameters=self.hyperparameters(),
-            run=run,
+            hyperparameters={key: _plain(value) for key, value in self.hyperparameters().items()},
+            run={key: _plain(value) for key, value in run.items()},
             seed=seed,
         )
 
@@ -442,6 +442,13 @@ class SampleGenerator(_Generator):
         Gaze
             The generated samples.
         """
+
+
+def _plain(value: Any) -> Any:
+    """Return a dataclass instance as a dict, so the record can be written outside Python."""
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        return dataclasses.asdict(value)
+    return value
 
 
 def _warn_experimental() -> None:
