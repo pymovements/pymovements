@@ -93,6 +93,12 @@ def test_range_returns(kwargs, expected):
             id='string_minimum_raises_type_error',
         ),
         pytest.param(
+            {'minimum': None, 'maximum': 1.0},
+            TypeError,
+            ('minimum', 'number', 'NoneType'),
+            id='none_minimum_raises_type_error',
+        ),
+        pytest.param(
             {'minimum': 0.0, 'maximum': True},
             TypeError,
             ('maximum', 'number', 'bool'),
