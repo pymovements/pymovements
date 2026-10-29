@@ -559,6 +559,7 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
             'OFFSET 0.19 deg. 4.2,6.3 pix.\n',
             [{
                 'error': 'POOR ERROR',
+                'grade': 'POOR',
                 'tracked_eye': 'RIGHT',
                 'num_points': '9',
                 'timestamp': '1076158',
@@ -572,6 +573,54 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
                 'type': 'P-CR',
             }],
             id='cal_timestamp_with_space',
+        ),
+        pytest.param(
+            'MSG	7045618 !CAL VALIDATION HV9 R RIGHT GOOD ERROR 0.5 avg. 0.9 max  '
+            'OFFSET 0.19 deg. 4.2,6.3 pix.\n',
+            [{
+                'error': 'GOOD ERROR',
+                'grade': 'GOOD',
+                'tracked_eye': 'RIGHT',
+                'num_points': '9',
+                'timestamp': '7045618',
+                'validation_score_avg': '0.5',
+                'validation_score_max': '0.9',
+            }],
+            [],
+            id='validation_single_decimal_scores',
+        ),
+        pytest.param(
+            'MSG	1076158 !CAL VALIDATION HV9 R RIGHT POOR ERROR 12.37 avg. 25.25 max  '
+            'OFFSET 0.19 deg. 4.2,6.3 pix.\n',
+            [{
+                'error': 'POOR ERROR',
+                'grade': 'POOR',
+                'tracked_eye': 'RIGHT',
+                'num_points': '9',
+                'timestamp': '1076158',
+                'validation_score_avg': '12.37',
+                'validation_score_max': '25.25',
+            }],
+            [],
+            id='validation_multi_digit_scores',
+        ),
+        pytest.param(
+            'MSG	1076158 !CAL VALIDATION L ABORTED\n'
+            'MSG	1076160 !CAL VALIDATION R ABORTED\n',
+            [
+                {
+                    'timestamp': '1076158',
+                    'tracked_eye': 'LEFT',
+                    'grade': 'ABORTED',
+                },
+                {
+                    'timestamp': '1076160',
+                    'tracked_eye': 'RIGHT',
+                    'grade': 'ABORTED',
+                },
+            ],
+            [],
+            id='validation_aborted',
         ),
         pytest.param(
             'MSG	7045618 !CAL\n'
@@ -603,6 +652,83 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
                 'type': 'P-CR',
             }],
             id='cal_with_msg',
+        ),
+        pytest.param(
+            'MSG	7045618 !CAL\n'
+            '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+            'MSG	7045621 !CAL CALIBRATION HV9 L LEFT    GOOD\n',
+            [],
+            [{
+                'num_points': '9',
+                'timestamp': '7045618',
+                'tracked_eye': 'LEFT',
+                'type': 'P-CR',
+                'grade': 'GOOD',
+            }],
+            id='cal_grade_good',
+        ),
+        pytest.param(
+            'MSG	7045618 !CAL\n'
+            '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+            'MSG	7045621 !CAL CALIBRATION HV9 L LEFT    FAILED\n',
+            [],
+            [{
+                'num_points': '9',
+                'timestamp': '7045618',
+                'tracked_eye': 'LEFT',
+                'type': 'P-CR',
+                'grade': 'FAILED',
+            }],
+            id='cal_grade_failed',
+        ),
+        pytest.param(
+            'MSG	7045618 !CAL\n'
+            '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+            'MSG	7045618 !CAL\n'
+            '>>>>>>> CALIBRATION (HV9,P-CR) FOR RIGHT: <<<<<<<<<\n'
+            'MSG	7045621 !CAL CALIBRATION HV9 LR LEFT    GOOD\n'
+            'MSG	7045621 !CAL CALIBRATION HV9 LR RIGHT   FAILED\n',
+            [],
+            [
+                {
+                    'num_points': '9',
+                    'timestamp': '7045618',
+                    'tracked_eye': 'LEFT',
+                    'type': 'P-CR',
+                    'grade': 'GOOD',
+                },
+                {
+                    'num_points': '9',
+                    'timestamp': '7045618',
+                    'tracked_eye': 'RIGHT',
+                    'type': 'P-CR',
+                    'grade': 'FAILED',
+                },
+            ],
+            id='cal_grade_binocular',
+        ),
+        pytest.param(
+            'MSG	7045618 !CAL\n'
+            '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+            'MSG	7045621 !CAL CALIBRATION HV9 LR RIGHT   FAILED\n',
+            [],
+            [{
+                'num_points': '9',
+                'timestamp': '7045618',
+                'tracked_eye': 'LEFT',
+                'type': 'P-CR',
+            }],
+            id='cal_grade_eye_mismatch',
+        ),
+        pytest.param(
+            'MSG	7045618 !CAL\n'
+            'MSG	7045621 !CAL CALIBRATION HV9 R RIGHT   FAILED\n',
+            [],
+            [{
+                'timestamp': '7045618',
+                'grade': 'FAILED',
+            }],
+            id='cal_grade_without_header',
         ),
     ],
 )
@@ -666,6 +792,7 @@ def test_check_samples_config_key_warnings_and_casting(make_example_file):
 
     expected_validation = [{
         'error': 'GOOD ERROR',
+        'grade': 'GOOD',
         'tracked_eye': 'LEFT',
         'num_points': '9',
         'timestamp': '2148587',
@@ -674,6 +801,7 @@ def test_check_samples_config_key_warnings_and_casting(make_example_file):
     }]
     expected_calibration = [{
         'num_points': '9', 'type': 'P-CR', 'tracked_eye': 'LEFT', 'timestamp': '2135819',
+        'grade': 'GOOD',
     }]
 
     assert metadata['calibrations'] == expected_calibration
