@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import abc
 import dataclasses
+import numbers
 import secrets
 from collections.abc import Callable
 from typing import Any
@@ -345,8 +346,8 @@ def _warn_experimental() -> None:
 
 
 def _check_positive_number(value: Any, name: str) -> float:
-    """Return the value as a float, rejecting non-numbers and values of zero or less."""
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
+    """Return the value as a float, rejecting non-numbers, including booleans, and values <= 0."""
+    if isinstance(value, bool) or not isinstance(value, numbers.Real):
         raise TypeError(
             f'{name} must be a number but is of type {type(value).__name__}: {value}',
         )
@@ -358,17 +359,17 @@ def _check_positive_number(value: Any, name: str) -> float:
 
 
 def _resolve_seed(seed: Any) -> int:
-    """Return the seed, or one drawn from the operating system's entropy if it is ``None``."""
+    """Return the seed as an int, or draw one fitting a signed 64-bit integer if it is ``None``."""
     if seed is None:
-        return secrets.randbits(128)
+        return secrets.randbits(63)
 
-    if isinstance(seed, bool) or not isinstance(seed, int):
+    if isinstance(seed, bool) or not isinstance(seed, numbers.Integral):
         raise TypeError(f'seed must be an integer but is of type {type(seed).__name__}: {seed}')
 
     if seed < 0:
         raise ValueError(f'seed must not be negative but is: {seed}')
 
-    return seed
+    return int(seed)
 
 
 def _resolve_experiment(experiment: Experiment | None, sampling_rate: float) -> Experiment:

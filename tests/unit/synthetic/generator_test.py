@@ -20,6 +20,7 @@
 """Test the event and sample generator base classes."""
 import dataclasses
 
+import numpy as np
 import pytest
 from polars.testing import assert_frame_equal
 
@@ -132,6 +133,26 @@ def test_sample_generator_conditions_on_the_attached_copy(noise_sample_generator
     assert fixations.frame.height == 2
     assert gaze.events.frame.height == 1
     assert gaze.samples.height == 10
+
+
+@pytest.mark.parametrize(
+    ('sampling_rate', 'seed'),
+    [
+        pytest.param(np.int64(500), 42, id='numpy_integer_sampling_rate'),
+        pytest.param(np.float64(500.0), 42, id='numpy_float_sampling_rate'),
+        pytest.param(500.0, np.int64(42), id='numpy_integer_seed'),
+        pytest.param(500.0, np.uint32(42), id='numpy_unsigned_seed'),
+    ],
+)
+def test_sample_generator_accepts_numpy_numbers(noise_sample_generator, sampling_rate, seed):
+    """The checks accept numpy numbers and record them as plain Python numbers."""
+    gaze = noise_sample_generator().generate(sampling_rate=sampling_rate, seed=seed)
+
+    record = gaze.metadata['synthetic']
+    assert gaze.experiment.sampling_rate == 500.0
+    assert not isinstance(record['run']['sampling_rate'], np.generic)
+    assert not isinstance(record['seed'], np.generic)
+    assert record['seed'] == 42
 
 
 def test_sample_generator_attaches_an_experiment_with_the_sampling_rate(noise_sample_generator):

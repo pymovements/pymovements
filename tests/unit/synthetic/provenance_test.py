@@ -113,8 +113,9 @@ def test_event_generator_records_provenance(uniform_event_generator):
 
 
 def test_drawn_seed_is_recorded(noise_sample_generator):
+    """The drawn seed fits a signed 64-bit integer, so sidecars and Int64 columns can hold it."""
     gaze = noise_sample_generator().generate(sampling_rate=500.0)
 
     seed = gaze.metadata[PROVENANCE_KEY]['seed']
     assert isinstance(seed, int)
-    assert seed >= 0
+    assert 0 <= seed < 2 ** 63
