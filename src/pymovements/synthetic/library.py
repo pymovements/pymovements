@@ -95,6 +95,22 @@ class _GeneratorLibrary(Generic[GeneratorT]):
         """
         return sorted(cls.generators.keys())
 
+    @classmethod
+    def __contains__(cls, name: str) -> bool:
+        """Check if a generator is registered under a name.
+
+        Parameters
+        ----------
+        name: str
+            Name of the generator.
+
+        Returns
+        -------
+        bool
+            True if a generator is registered under that name, else False.
+        """
+        return name in cls.generators
+
 
 class EventGeneratorLibrary(_GeneratorLibrary[EventGenerator]):
     """Provides access by name to event generators.
