@@ -588,6 +588,42 @@ def test_records_its_hyperparameters(contiguous_events):
             ('profile_sampling_rate', 'number', 'bool'),
             id='profile_sampling_rate_of_wrong_type',
         ),
+        pytest.param(
+            {'saccade_duration': Range(20.0, 80.0, 'normal')},
+            ValueError,
+            ('saccade_duration', 'bounds', "'normal'", 'no effect'),
+            id='saccade_duration_with_a_distribution',
+        ),
+        pytest.param(
+            {
+                'smooth_pursuit_profile': 'growing',
+                'smooth_pursuit_velocity': Range(10.0, 30.0, 'normal', std=2.0),
+            },
+            ValueError,
+            ('smooth_pursuit_velocity', "'growing'", "'normal'", 'no effect'),
+            id='distribution_of_a_growing_pursuit',
+        ),
+        pytest.param(
+            {
+                'smooth_pursuit_profile': 'decreasing',
+                'smooth_pursuit_velocity': Range(10.0, 30.0, 'normal'),
+            },
+            ValueError,
+            ('smooth_pursuit_velocity', "'decreasing'", "'normal'", 'no effect'),
+            id='distribution_of_a_decreasing_pursuit',
+        ),
+        pytest.param(
+            {'noise_velocity': (5.0, 20.0)},
+            ValueError,
+            ('noise_velocity', 'noise_percentage', 'no effect'),
+            id='noise_velocity_without_noise_percentage',
+        ),
+        pytest.param(
+            {'noise_percentage': 10.0},
+            ValueError,
+            ('noise_percentage', 'noise_velocity', 'no effect'),
+            id='noise_percentage_without_noise_velocity',
+        ),
     ],
 )
 def test_statistical_raises_error(hyperparameters, exception, msg_substrings):
