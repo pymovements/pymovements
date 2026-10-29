@@ -17,7 +17,11 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test the helpers shared by the synthetic generators and event operations."""
+"""Test the private helpers that only the sample generators use.
+
+They have no public consumer until the first generator lands, so they are tested directly here.
+The other helpers in ``_utils`` are tested through ``bridge_gaps``, ``Range`` and ``generate()``.
+"""
 import numpy as np
 import polars as pl
 import pytest
@@ -25,31 +29,9 @@ from polars.testing import assert_frame_equal
 
 from pymovements import Events
 from pymovements.synthetic._utils import check_contiguous
-from pymovements.synthetic._utils import check_name
-from pymovements.synthetic._utils import check_not_negative
-from pymovements.synthetic._utils import check_number
-from pymovements.synthetic._utils import check_positive
 from pymovements.synthetic._utils import milliseconds
-from pymovements.synthetic._utils import ordered_frame
 from pymovements.synthetic._utils import per_trial
 from pymovements.synthetic._utils import sample_times
-
-
-def test_milliseconds_keeps_the_fraction():
-    events = Events(name=['fixation'], onsets=[0.25], offsets=[1.5])
-
-    assert milliseconds(events.frame['onset']).to_list() == [0.25]
-
-
-def test_ordered_frame_sorts_by_trial_and_onset():
-    events = Events(
-        name=['fixation'] * 3, onsets=[300, 0, 0], offsets=[560, 250, 200], trials=[1, 2, 1],
-    )
-
-    frame = ordered_frame(events)
-
-    assert frame['trial'].to_list() == [1, 1, 2]
-    assert milliseconds(frame['onset']).to_list() == [0.0, 300.0, 0.0]
 
 
 @pytest.mark.parametrize(
@@ -182,11 +164,6 @@ def test_sample_times_returns(onset, offset, sampling_rate, expected):
     ('check', 'events'),
     [
         pytest.param(
-            ordered_frame,
-            Events(name=['fixation'] * 2, onsets=[0, 200], offsets=[250, 560]),
-            id='ordered_frame',
-        ),
-        pytest.param(
             check_contiguous,
             Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560]),
             id='check_contiguous',
@@ -204,68 +181,3 @@ def test_errors_name_the_generator(check, events):
 
     msg, = excinfo.value.args
     assert msg.startswith("generator 'statistical': ")
-
-
-@pytest.mark.parametrize(
-    ('check', 'value', 'expected'),
-    [
-        pytest.param(check_number, -2, -2.0, id='check_number_int'),
-        pytest.param(check_number, np.int64(3), 3.0, id='check_number_numpy_int'),
-        pytest.param(check_not_negative, 0, 0.0, id='check_not_negative_zero'),
-        pytest.param(check_positive, np.float64(0.5), 0.5, id='check_positive_numpy_float'),
-    ],
-)
-def test_number_checks_return_a_float(check, value, expected):
-    number = check(value, 'value')
-
-    assert number == expected
-    assert isinstance(number, float)
-
-
-@pytest.mark.parametrize(
-    ('check', 'value', 'exception', 'msg_substrings'),
-    [
-        pytest.param(
-            check_number, '1', TypeError, ('value', 'number', 'str'), id='check_number_string',
-        ),
-        pytest.param(
-            check_number, False, TypeError, ('value', 'number', 'bool'), id='check_number_bool',
-        ),
-        pytest.param(
-            check_not_negative, -1, ValueError, ('value', 'negative', '-1.0'),
-            id='check_not_negative_negative',
-        ),
-        pytest.param(
-            check_not_negative, None, TypeError, ('value', 'number', 'NoneType'),
-            id='check_not_negative_none',
-        ),
-        pytest.param(
-            check_positive, 0, ValueError, ('value', 'greater than zero', '0.0'),
-            id='check_positive_zero',
-        ),
-        pytest.param(
-            check_positive, 'fast', TypeError, ('value', 'number', 'str'),
-            id='check_positive_string',
-        ),
-    ],
-)
-def test_number_checks_raise_error(check, value, exception, msg_substrings):
-    with pytest.raises(exception) as excinfo:
-        check(value, 'value')
-
-    msg, = excinfo.value.args
-    for msg_substring in msg_substrings:
-        assert msg_substring in msg
-
-
-def test_check_name_accepts_an_allowed_name():
-    check_name('linear', 'interpolation', ('cubic_spline', 'linear'))
-
-
-def test_check_name_raises_value_error():
-    with pytest.raises(ValueError) as excinfo:
-        check_name('quadratic', 'interpolation', ('cubic_spline', 'linear'))
-
-    msg, = excinfo.value.args
-    for msg_substring in ('interpolation', "['cubic_spline', 'linear']", "'quadratic'"):
-        assert msg_substring in msg

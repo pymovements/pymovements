@@ -109,6 +109,22 @@ from pymovements.synthetic import bridge_gaps
             id='trials_are_bridged_separately',
         ),
         pytest.param(
+            Events(
+                name=['fixation'] * 3,
+                onsets=[0, 0, 300],
+                offsets=[200, 250, 560],
+                trials=[2, 1, 1],
+            ),
+            None,
+            Events(
+                name=['fixation', 'saccade', 'fixation', 'fixation'],
+                onsets=[0, 250, 300, 0],
+                offsets=[250, 300, 560, 200],
+                trials=[1, 1, 1, 2],
+            ),
+            id='trials_are_sorted',
+        ),
+        pytest.param(
             Events(name=[], onsets=[], offsets=[]),
             None,
             Events(name=[], onsets=[], offsets=[]),
@@ -175,6 +191,13 @@ def test_bridge_gaps_accepts_real_numbers(max_gap):
             ValueError,
             ('overlap', 'fixation', '200.0 ms', '250.0 ms'),
             id='overlapping_events_raise_value_error',
+        ),
+        pytest.param(
+            Events(name=['fixation'] * 2, onsets=[0.0, 200.25], offsets=[250.5, 560.0]),
+            None,
+            ValueError,
+            ('overlap', '200.25 ms', '250.5 ms'),
+            id='overlap_message_keeps_sub_millisecond_times',
         ),
         pytest.param(
             Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560]),
