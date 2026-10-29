@@ -139,6 +139,12 @@ def test_range_is_immutable():
         pytest.param([300, 500], Range(300.0, 500.0), id='list'),
         pytest.param(5, Range(5.0, 5.0), id='int'),
         pytest.param(2.5, Range(2.5, 2.5), id='float'),
+        pytest.param(
+            {'minimum': 300.0, 'maximum': 500.0, 'distribution': 'normal', 'std': 40.0},
+            Range(300.0, 500.0, 'normal', std=40.0),
+            id='mapping_as_recorded_in_the_provenance',
+        ),
+        pytest.param({'minimum': 1, 'maximum': 2}, Range(1.0, 2.0), id='mapping_with_bounds_only'),
     ],
 )
 def test_from_value_returns(value, expected):
@@ -159,8 +165,16 @@ def test_from_value_raises_type_error(value):
         Range.from_value(value)
 
     msg, = excinfo.value.args
-    for msg_substring in ('Range', '(minimum, maximum)', 'single number'):
+    for msg_substring in ('Range', '(minimum, maximum)', 'mapping', 'single number'):
         assert msg_substring in msg
+
+
+def test_from_value_rejects_a_mapping_with_unknown_keys():
+    with pytest.raises(TypeError) as excinfo:
+        Range.from_value({'minimum': 0.0, 'maximum': 1.0, 'spread': 2.0})
+
+    msg, = excinfo.value.args
+    assert "'spread'" in msg
 
 
 @pytest.mark.parametrize(

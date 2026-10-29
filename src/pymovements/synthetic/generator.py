@@ -209,6 +209,8 @@ class _Generator(abc.ABC, Generic[OutputT]):
     def _provenance(self, run: dict[str, Any], seed: int) -> dict[str, Any]:
         """Return the provenance record of a run, so the output is not mistaken for a recording.
 
+        Dataclass values, such as a range, are recorded as dicts.
+
         Parameters
         ----------
         run: dict[str, Any]
@@ -225,8 +227,10 @@ class _Generator(abc.ABC, Generic[OutputT]):
             PROVENANCE_KEY: {
                 'generator': self.name,
                 'level': self.level,
-                'hyperparameters': self.hyperparameters(),
-                'run': dict(run),
+                'hyperparameters': {
+                    key: _plain(value) for key, value in self.hyperparameters().items()
+                },
+                'run': {key: _plain(value) for key, value in run.items()},
                 'seed': seed,
                 'pymovements_version': __version__,
             },
@@ -403,6 +407,13 @@ class SampleGenerator(_Generator[Gaze]):
         Gaze
             The generated samples.
         """
+
+
+def _plain(value: Any) -> Any:
+    """Return a dataclass instance as a dict, so the record can be written outside Python."""
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        return dataclasses.asdict(value)
+    return value
 
 
 def _warn_experimental() -> None:

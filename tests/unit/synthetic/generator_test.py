@@ -311,6 +311,11 @@ def test_hyperparameters_leave_out_fields_without_init(noise_sample_generator):
             'noise_sample_generator', {'sampling_rate': 500.0, 'scale': 2.0}, id='samples',
         ),
         pytest.param('uniform_event_generator', {'max_duration': 200.0}, id='events'),
+        pytest.param(
+            'ranged_noise_sample_generator',
+            {'sampling_rate': 500.0, 'offset': (2.0, 3.0)},
+            id='normalised_range',
+        ),
     ],
 )
 def test_hyperparameters_rebuild_an_equal_generator(request, generator, init):
