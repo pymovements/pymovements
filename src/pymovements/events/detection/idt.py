@@ -24,7 +24,7 @@ import numpy
 import polars
 
 from pymovements._utils import _checks
-from pymovements._utils._time import timesteps_to_numpy
+from pymovements._utils._time import normalize_timesteps
 from pymovements.events._utils._filters import events_split_nans
 from pymovements.events._utils._filters import filter_candidates_remove_nans
 from pymovements.events.detection.library import register_event_detection
@@ -53,8 +53,8 @@ def dispersion(positions: list[list[float]] | numpy.ndarray) -> float:
 @register_event_detection
 def idt(
         positions: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series,
-        timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
-        minimum_duration: int = 100,
+        timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None = None,
+        minimum_duration: float = 100,
         dispersion_threshold: float = 1.0,
         include_nan: bool = False,
         name: str = 'fixation',
@@ -66,6 +66,8 @@ def idt(
     The algorithm uses a moving window to check the dispersion of the points in the window.
     If the dispersion is below the threshold, the window represents a fixation,
     and the window is expanded until the dispersion is above threshold.
+    The window grows by elapsed time, so the interval between timesteps may be fractional
+    and need not be constant.
 
     The implementation and its default parameter values are based on the description and pseudocode
     from Salvucci and Goldberg :cite:p:`SalvucciGoldberg2000`.
@@ -75,15 +77,17 @@ def idt(
     positions: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series
         shape (N, 2)
         Continuous 2D position time series
-    timesteps: list[int] | numpy.ndarray | polars.Series | None
+    timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None
         shape (N, )
-        Corresponding continuous 1D timestep time series. If None, sample based timesteps are
-        assumed. (default: None)
-    minimum_duration: int
-        Minimum fixation duration. The duration is specified in the units used in ``timesteps``;
-        for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
-        None, then ``minimum_duration`` is specified in numbers of samples.
-        (default: 100)
+        Corresponding continuous 1D timestep time series. Fractional (float) timesteps are
+        accepted. If None, sample based timesteps are assumed. (default: None)
+    minimum_duration: float
+        Minimum fixation duration. Each sample covers the interval to its successor, so a
+        fixation is measured from its first sample to the sample after its last one. The last
+        sample's interval is taken as the last observed one. The duration is specified in the
+        units used in ``timesteps``; for a ``polars.Duration`` timesteps series the unit is
+        milliseconds. If ``timesteps`` is None, then ``minimum_duration`` is specified in
+        numbers of samples. (default: 100)
     dispersion_threshold: float
         Threshold for dispersion for a group of consecutive samples to be identified as fixation.
         (default: 1.0)
@@ -101,12 +105,14 @@ def idt(
     Raises
     ------
     TypeError
-        If pixels is a polars Series and dtype not List
-        If minimum_duration is not of type ``int`` or timesteps
+        If positions is a polars Series and dtype not List
+        If timesteps is neither a Duration series nor of a numeric dtype
     ValueError
         If positions is not shaped (N, 2)
+        If positions and timesteps differ in length
+        If timesteps are not in ascending order
         If dispersion_threshold is not greater than 0
-        If duration_threshold is not greater than 0
+        If minimum_duration is not greater than 0
 
     Examples
     --------
@@ -246,59 +252,40 @@ def idt(
     positions = numpy.array(positions)
     _checks.check_shapes(positions=positions)
 
-    if isinstance(timesteps, polars.Series):
-        timesteps = timesteps_to_numpy(timesteps)
-    elif timesteps is not None:
-        timesteps = numpy.array(timesteps)
-    else:
-        timesteps = numpy.arange(len(positions), dtype=numpy.int64)
-    timesteps = numpy.array(timesteps).flatten()
+    timesteps = normalize_timesteps(timesteps, length=len(positions))
     _checks.check_is_length_matching(positions=positions, timesteps=timesteps)
-
-    # Check that timesteps are integers or are floats without a fractional part.
-    timesteps_int = timesteps.astype(int)
-    if numpy.any((timesteps - timesteps_int) != 0):
-        raise TypeError('timesteps must be of type int')
-    timesteps = timesteps_int
 
     if dispersion_threshold <= 0:
         raise ValueError('dispersion_threshold must be greater than 0')
     if minimum_duration <= 0:
         raise ValueError('minimum_duration must be greater than 0')
-    if not isinstance(minimum_duration, int):
-        raise TypeError(
-            'minimum_duration must be of type int'
-            f' but is of type {type(minimum_duration)}',
-        )
+
+    # Each sample covers the interval to its successor, so a window [win_start, win_end) covers
+    # end_times[win_end] - timesteps[win_start]. The last sample has no successor, its interval
+    # is taken as the last observed one (PMEP 1 replaces it with the nominal interval from the
+    # sampling rate). A window must hold at least two samples, so a single sample never forms
+    # a fixation.
+    if len(timesteps) < 2:
+        return Events(name=name, onsets=[], offsets=[])
+    end_times = numpy.append(timesteps, 2 * timesteps[-1] - timesteps[-2])
 
     onsets = []
     offsets = []
 
-    # Infer minimum duration in number of samples.
-    # This implementation is currently very restrictive.
-    # It requires that the interval between timesteps is constant.
-    # It requires that the minimum duration is divisible by the constant interval between timesteps.
-    timesteps_diff = numpy.diff(timesteps)
-    if not numpy.all(timesteps_diff == timesteps_diff[0]):
-        raise ValueError('interval between timesteps must be constant')
-    if not minimum_duration % timesteps_diff[0] == 0:
-        raise ValueError(
-            'minimum_duration must be divisible by the constant interval between timesteps',
-        )
-    if (minimum_sample_duration := int(minimum_duration // timesteps_diff[0])) < 2:
-        raise ValueError('minimum_duration must be longer than the equivalent of 2 samples')
-
-    # Initialize window over first points to cover the duration threshold
     win_start = 0
-    win_end = minimum_sample_duration
+    win_end = 0
 
-    while win_start < len(timesteps) and win_end <= len(timesteps):
+    while win_start < len(timesteps) - 1:
 
-        # Initialize window over first points to cover the duration threshold.
-        # This automatically extends the window to the specified minimum event duration.
-        win_end = max(win_start + minimum_sample_duration, win_end)
-        win_end = min(win_end, len(timesteps))
-        if win_end - win_start < minimum_sample_duration:
+        # Extend the window from its start until it covers the minimum duration.
+        win_end = max(win_end, win_start + 2)
+        while (
+                win_end < len(timesteps)
+                and end_times[win_end] - timesteps[win_start] < minimum_duration
+        ):
+            win_end += 1
+        if end_times[win_end] - timesteps[win_start] < minimum_duration:
+            # The remaining samples are too short for a fixation.
             break
 
         if dispersion(positions[win_start:win_end]) <= dispersion_threshold:
@@ -327,7 +314,8 @@ def idt(
                 # Filter all candidates by minimum duration.
                 tmp_candidates = [
                     candidate for candidate in tmp_candidates
-                    if len(candidate) >= minimum_sample_duration
+                    if len(candidate) >= 2
+                    and end_times[candidate[-1] + 1] - timesteps[candidate[0]] >= minimum_duration
                 ]
                 for candidate in tmp_candidates:
                     onsets.append(timesteps[candidate[0]])
