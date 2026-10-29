@@ -68,10 +68,12 @@ def fill(
     events_mask = numpy.zeros(len(timesteps), dtype=bool)
 
     # Convert Duration columns to millisecond values matching the timesteps unit.
+    # An empty events frame may come without an offset column.
     events_frame = events.frame
+    time_columns = [column for column in ('onset', 'offset') if column in events_frame.columns]
     if isinstance(events_frame.schema['onset'], polars.Duration):
         events_frame = events_frame.with_columns(
-            duration_to_ms(polars.col('onset', 'offset')),
+            duration_to_ms(polars.col(time_columns)),
         )
 
     for row in events_frame.iter_rows(named=True):

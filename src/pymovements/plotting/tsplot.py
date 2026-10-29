@@ -235,10 +235,12 @@ def tsplot(
 
     if show_events:
         # onset and offset are Duration columns; express them in milliseconds
-        # so the shaded spans line up with the millisecond time axis
-        events = gaze.events.frame.with_columns(
-            duration_to_ms(pl.col('onset', 'offset')),
-        )
+        # so the shaded spans line up with the millisecond time axis. An empty
+        # events frame may have no offset column.
+        time_columns = [
+            column for column in ('onset', 'offset') if column in gaze.events.frame.columns
+        ]
+        events = gaze.events.frame.with_columns(duration_to_ms(pl.col(time_columns)))
         palette = plt.colormaps['tab10'].colors
         event_colors = {
             name: palette[i % len(palette)]

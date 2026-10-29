@@ -172,7 +172,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 'dispersion_threshold': 1,
                 'minimum_duration': 10,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='constant_velocity_no_fixation',
         ),
         pytest.param(
@@ -181,7 +181,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 'dispersion_threshold': 1,
                 'minimum_duration': 10,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='constant_velocity_no_fixation_numpy',
         ),
         pytest.param(
@@ -592,7 +592,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 'dispersion_threshold': 1,
                 'minimum_duration': 100,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='constant_position_no_fixation_with_timesteps_shorter_than_duration',
         ),
         pytest.param(
@@ -601,7 +601,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 'dispersion_threshold': 1,
                 'minimum_duration': 1,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='constant_position_no_fixation_with_single_sample',
         ),
         pytest.param(

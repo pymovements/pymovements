@@ -745,16 +745,14 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
             {'events': False},
             pl.from_dict(
                 data={
-                    'name': [],
                     'onset': [],
-                    'offset': [],
                     'duration': [],
+                    'name': [],
                 },
                 schema={
-                    'name': pl.Utf8,
                     'onset': pl.Duration('ms'),
-                    'offset': pl.Duration('ms'),
                     'duration': pl.Duration('ms'),
+                    'name': pl.Utf8,
                 },
             ),
             id='eyelink_asc_mono_without_events',
@@ -852,7 +850,7 @@ def test_from_asc_example_file_has_expected_events(
     gaze = from_asc(filepath, **kwargs)
 
     expected_event_frame = expected_event_frame.with_columns(
-        pl.col('onset', 'offset', 'duration').cast(pl.Duration('us')),
+        pl.col(pl.Duration('ms')).cast(pl.Duration('us')),
     )
     assert_frame_equal(gaze.events.frame, expected_event_frame, check_column_order=False)
 

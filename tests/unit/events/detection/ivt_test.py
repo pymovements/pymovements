@@ -173,7 +173,7 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
                 'velocity_threshold': 1,
                 'minimum_duration': 10,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='constant_velocity_no_fixation',
         ),
         pytest.param(
@@ -330,7 +330,7 @@ def test_ivt_detects_fixations_numpy(kwargs, expected):
                 'velocity_threshold': 1,
                 'minimum_duration': 10,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='constant_velocity_no_fixation',
         ),
         pytest.param(
