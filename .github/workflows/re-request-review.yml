@@ -1,0 +1,60 @@
+name: Re-request review
+
+# When an author marks a draft pull request ready for review, GitHub requests only the code
+# owners who have not reviewed yet. A reviewer who requested changes gets no new request, so
+# this workflow re-requests them.
+on:
+  # pull_request_target is required to get a write token for pull requests from forks.
+  # It is safe here because the job never checks out or runs code from the pull request,
+  # it only calls the GitHub API.
+  pull_request_target:
+    types: [ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  re-request-review:
+    runs-on: ubuntu-latest
+    permissions:
+      # write permission is required to request reviewers
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            // Ask GitHub for the latest review of each reviewer with write access.
+            // "Opinionated" means plain comments are skipped: only approve, request changes
+            // and dismissed count, which matches GitHub's own review decision.
+            const { repository } = await github.graphql(`
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    latestOpinionatedReviews(first: 100, writersOnly: true) {
+                      nodes { state author { __typename login } }
+                    }
+                  }
+                }
+              }`, { ...context.repo, number: context.issue.number });
+
+            const reviewers = repository.pullRequest.latestOpinionatedReviews.nodes
+              // keep reviewers whose latest verdict is "request changes"
+              .filter((review) => review.state === 'CHANGES_REQUESTED')
+              // keep users only, bots and apps cannot be requested as reviewers
+              .filter((review) => review.author?.__typename === 'User')
+              // turn each review into the reviewer's username
+              .map((review) => review.author.login);
+
+            // Nobody requested changes, so there is nothing to do.
+            if (reviewers.length === 0) {
+              core.info('No reviewer with requested changes, nothing to re-request.');
+              return;
+            }
+
+            // Same as clicking "Re-request review" in the pull request sidebar.
+            core.info(`Re-requesting review from: ${reviewers.join(', ')}`);
+            await github.rest.pulls.requestReviewers({
+              ...context.repo,
+              pull_number: context.issue.number,
+              reviewers,
+            });
