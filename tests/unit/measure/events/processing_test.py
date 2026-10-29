@@ -784,6 +784,89 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             ),
             id='two_identifiers_four_events_peak_velocity',
         ),
+
+        pytest.param(
+            pl.from_dict(
+                {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'offset': [10, 100]},
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
+            ),
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(100),
+                    'time': np.arange(100),
+                    'position': np.column_stack([np.arange(100), np.arange(100)]),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'position': pl.List(pl.Float64),
+                },
+            ),
+            {'measures': 'disposition'},
+            {'identifiers': 'subject_id'},
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1],
+                    'name': ['A', 'B'],
+                    'onset': [0, 80],
+                    'offset': [10, 100],
+                    'disposition': [sqrt(200), sqrt(722)],
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'name': pl.Utf8,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'disposition': pl.Float64,
+                },
+            ),
+            id='one_identifier_two_events_disposition',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1], 'name': ['A', 'B'],
+                    'onset': [0, 1000], 'offset': [10, 1004],
+                },
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
+            ),
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(20),
+                    'time': np.arange(20),
+                    'position': np.column_stack([np.ones(20), np.ones(20)]),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'position': pl.List(pl.Float64),
+                },
+            ),
+            {'measures': 'dispersion'},
+            {'identifiers': 'subject_id'},
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1],
+                    'name': ['A', 'B'],
+                    'onset': [0, 1000],
+                    'offset': [10, 1004],
+                    'dispersion': [0.0, None],
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'name': pl.Utf8,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'dispersion': pl.Float64,
+                },
+            ),
+            id='one_identifier_second_event_without_samples_dispersion',
+        ),
     ],
 )
 def test_event_samples_processor_process_correct_result(
