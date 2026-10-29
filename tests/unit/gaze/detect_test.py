@@ -1572,6 +1572,68 @@ def test_detect_selects_group_events_for_multiple_trial_columns():
     assert group_sizes == [1, 1, 1, 1]
 
 
+def test_detect_selects_group_events_for_null_trial_value():
+    """Samples with a null trial value receive the events with a null trial value."""
+    gaze = pm.Gaze(
+        pl.DataFrame({
+            'trial': [1] * 50 + [None] * 50,
+            'position': [[0.0, 0.0]] * 100,
+        }),
+        trial_columns=['trial'],
+    )
+    gaze.events = pm.Events(
+        pl.DataFrame({
+            'trial': [1, 1, None],
+            'name': ['fixation', 'saccade', 'fixation'],
+            'onset': [0, 25, 50],
+            'offset': [24, 49, 99],
+        }),
+    )
+
+    group_sizes: list[int] = []
+
+    def detect_counting_events(events, **_kwargs):
+        group_sizes.append(events.frame.height)
+        return pm.Events(name='fixation', onsets=[0], offsets=[1])
+
+    gaze.detect(detect_counting_events)
+
+    assert group_sizes == [2, 1]
+
+
+def test_detect_selects_group_events_for_differing_trial_dtypes():
+    """Integer trial keys match across samples and events with different integer dtypes."""
+    gaze = pm.Gaze(
+        pl.DataFrame(
+            {
+                'trial': [1] * 50 + [2] * 50,
+                'position': [[0.0, 0.0]] * 100,
+            }, schema_overrides={'trial': pl.Int32},
+        ),
+        trial_columns=['trial'],
+    )
+    gaze.events = pm.Events(
+        pl.DataFrame(
+            {
+                'trial': [1, 1, 2],
+                'name': ['fixation', 'saccade', 'fixation'],
+                'onset': [0, 25, 50],
+                'offset': [24, 49, 99],
+            }, schema_overrides={'trial': pl.Int64},
+        ),
+    )
+
+    group_sizes: list[int] = []
+
+    def detect_counting_events(events, **_kwargs):
+        group_sizes.append(events.frame.height)
+        return pm.Events(name='fixation', onsets=[0], offsets=[1])
+
+    gaze.detect(detect_counting_events)
+
+    assert group_sizes == [2, 1]
+
+
 def test_gaze_detect_with_numeric_time_column_passes_timesteps_unconverted():
     # A numeric time column (possible via direct samples mutation) must be passed
     # to the detection method as is, without any Duration conversion.
