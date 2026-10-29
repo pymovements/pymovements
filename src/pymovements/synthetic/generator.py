@@ -25,6 +25,7 @@ import dataclasses
 import numbers
 import secrets
 from collections.abc import Callable
+from copy import deepcopy
 from typing import Any
 from typing import ClassVar
 from typing import Literal
@@ -263,7 +264,8 @@ class SampleGenerator(_Generator):
             metadata, so the run can be reproduced either way. (default: None)
         experiment: Experiment | None
             The experiment the output belongs to. Without one, an experiment with only the
-            sampling rate is attached. (default: None)
+            sampling rate is attached; one without a sampling rate is copied and given the
+            requested one. (default: None)
         **run: Any
             The run parameters the generator declares in its ``_generate``, such as ``events``.
 
@@ -376,6 +378,11 @@ def _resolve_experiment(experiment: Experiment | None, sampling_rate: float) -> 
     """Return the experiment to attach, rejecting one recorded at another sampling rate."""
     if experiment is None:
         return Experiment(sampling_rate=sampling_rate)
+
+    if experiment.sampling_rate is None:
+        filled = deepcopy(experiment)
+        filled.sampling_rate = sampling_rate
+        return filled
 
     if experiment.sampling_rate != sampling_rate:
         raise ValueError(
