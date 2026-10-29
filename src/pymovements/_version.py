@@ -28,11 +28,10 @@ from importlib.metadata import version
 try:
     __version__ = version('pymovements')
 except PackageNotFoundError as exception:  # pragma: no cover
-    exception.add_note(
-        'Inferring pymovements version failed. '
+    warning = RuntimeWarning(
+        f'Inferring pymovements version failed: {exception}. '
         'Please install pymovements with your package manager.',
     )
-    warning = RuntimeWarning(*exception.args)
     warning.with_traceback(exception.__traceback__)
     warnings.warn(warning)
     __version__ = 'unknown'
