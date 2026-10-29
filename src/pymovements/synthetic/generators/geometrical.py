@@ -1,0 +1,323 @@
+# Copyright (c) 2026 The pymovements Project Authors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+"""Provides a geometrical sample generator.
+
+The generator holds each fixation at its location and interpolates the gaze between fixations,
+linearly or with a cubic spline, the two methods recommended for filling gaps in recorded gaze
+positions by:
+
+    Grootjen, J. W., Weingärtner, H., & Mayer, S. (2024). Uncovering and Addressing Blink-Related
+    Challenges in Using Eye Tracking for Interactive Systems. CHI '24.
+
+Using the fixation centres as the positions the gaze moves between follows the mapping step in
+section 3.7 of:
+
+    Fuhl, W., & Kasneci, E. (2018). Eye movement velocity and gaze data generator for evaluation,
+    robustness testing and assess of eye tracking software and visualization tools.
+    arXiv:1808.09296.
+"""
+from __future__ import annotations
+
+import dataclasses
+from typing import ClassVar
+
+import numpy as np
+import polars as pl
+from scipy.interpolate import CubicSpline
+
+from pymovements.events.events import Events
+from pymovements.gaze.experiment import Experiment
+from pymovements.gaze.gaze import Gaze
+from pymovements.synthetic._utils import check_name
+from pymovements.synthetic._utils import milliseconds
+from pymovements.synthetic._utils import per_trial
+from pymovements.synthetic._utils import sample_times
+from pymovements.synthetic.generator import SampleGenerator
+from pymovements.synthetic.library import register_generator
+from pymovements.synthetic.value_range import Range
+
+#: The event types the generator can render. Everything that is not a fixation is interpolated.
+EVENT_TYPES = ('fixation', 'saccade')
+
+#: The ways the gaze between two fixations can be interpolated.
+INTERPOLATIONS = ('linear', 'cubic_spline')
+
+#: The column groups the positions can be written to.
+LOCATION_COLUMN_GROUPS = ('position', 'pixel')
+
+#: The event column the fixation locations are read from, as the ``location`` event property
+#: computes it.
+LOCATION_COLUMN = 'location'
+
+RangeLike = Range | tuple[float, float] | float
+
+
+@register_generator
+@dataclasses.dataclass
+class GeometricalSampleGenerator(SampleGenerator):
+    """Generates gaze positions that hold each fixation's location and move between them.
+
+    Conditioned on fixations with a ``location``, every sample inside a fixation takes its
+    location, and every other sample is interpolated between the locations around it, per axis.
+    These are the gaps between fixations and the saccades ``bridge_gaps`` fills them with; a
+    saccade's own location is not used. Before the first and after the last fixation of a trial,
+    the nearest location is held. Events with trial columns are generated trial by trial.
+
+    A small scatter of the fixation samples can be added with ``fixation_deviation``, in the unit
+    of the locations: per fixation, a deviation is drawn from the range and used as the standard
+    deviation of a normal scatter per sample and axis. It is added after the interpolation, so
+    the gaps follow the locations themselves. The default of zero gives noise-free output.
+
+    The movement between fixations is interpolated, not modelled: a cubic spline gives a
+    symmetric velocity profile peaking mid-gap, linear interpolation a constant one, and the
+    duration of a movement is the gap the events leave. Not implemented from Fuhl & Kasneci
+    (2018) §3.7: the mapping of velocity profiles onto the path, the deviation of saccades from
+    the straight line, and saliency maps for choosing fixation targets.
+
+    Attributes
+    ----------
+    name: ClassVar[str]
+        ``'geometrical'``, the name the generator is registered under.
+    interpolation: str
+        How the gaze between two fixations is interpolated, one of ``INTERPOLATIONS``.
+        (default: 'cubic_spline')
+    location_column_group: str
+        The column group the positions are written to, one of ``LOCATION_COLUMN_GROUPS``. It
+        must match the unit of the locations. (default: 'position')
+    fixation_deviation: RangeLike
+        The scatter of a fixation's samples around its location. (default: Range(0.0, 0.0))
+
+    Raises
+    ------
+    TypeError
+        If a parameter has the wrong type.
+    ValueError
+        If a name is unknown or the deviation is negative.
+
+    Examples
+    --------
+    .. testsetup::
+
+        >>> getfixture('doctest_synthetic')
+
+    Move between two fixations at 1000 Hz:
+
+    >>> import polars as pl
+    >>> import pymovements as pm
+    >>> events = pm.Events(pl.DataFrame({
+    ...     'name': ['fixation', 'fixation'],
+    ...     'onset': [0, 300],
+    ...     'offset': [250, 560],
+    ...     'location': [[0.0, 0.0], [10.0, 0.0]],
+    ... }))
+    >>> gaze = GeometricalSampleGenerator().generate(events=events, sampling_rate=1000, seed=42)
+    >>> gaze.samples.columns
+    ['time', 'position']
+    >>> gaze.samples.height
+    560
+
+    The fixations hold their locations, and the gap between them is interpolated:
+
+    >>> gaze.samples['position'][[249, 300]].to_list()
+    [[0.0, 0.0], [10.0, 0.0]]
+    >>> 0.0 < gaze.samples['position'][275][0] < 10.0
+    True
+    """
+
+    name: ClassVar[str] = 'geometrical'
+
+    interpolation: str = 'cubic_spline'
+    location_column_group: str = 'position'
+    fixation_deviation: RangeLike = Range(0.0, 0.0)
+
+    def __post_init__(self) -> None:
+        """Validate the names and read the deviation from its accepted forms."""
+        check_name(self.interpolation, 'interpolation', INTERPOLATIONS)
+        check_name(
+            self.location_column_group, 'location_column_group', LOCATION_COLUMN_GROUPS,
+        )
+
+        self.fixation_deviation = Range.from_value(self.fixation_deviation)
+        if self.fixation_deviation.minimum < 0:
+            raise ValueError(
+                'fixation_deviation must not be negative but has a minimum of: '
+                f'{self.fixation_deviation.minimum}',
+            )
+
+    def _generate(  # pylint: disable=arguments-differ
+            self,
+            *,
+            sampling_rate: float,
+            experiment: Experiment,
+            rng: np.random.Generator,
+            events: Events,
+    ) -> Gaze:
+        """Synthesize the gaze positions that follow the fixations.
+
+        Parameters
+        ----------
+        sampling_rate: float
+            The sampling rate of the generated samples in Hz.
+        experiment: Experiment
+            The experiment the output belongs to.
+        rng: np.random.Generator
+            The run's random generator.
+        events: Events
+            The fixations to follow, with a ``location`` of two components each, and optionally
+            the saccades between them.
+
+        Returns
+        -------
+        Gaze
+            Samples with a time column in milliseconds and the positions.
+
+        Raises
+        ------
+        TypeError
+            If ``events`` is not an ``Events`` object.
+        ValueError
+            If the events are empty, overlap, contain an event type other than fixations and
+            saccades, or a fixation without a usable location, or if no sample of a trial
+            falls inside a fixation.
+        """
+        if not isinstance(events, Events):
+            raise TypeError(
+                f"generator '{self.name}' needs events of type Events to condition on, but got "
+                f'{type(events).__name__}',
+            )
+
+        unknown = sorted(set(events.frame['name'].to_list()) - set(EVENT_TYPES))
+        if unknown:
+            raise ValueError(
+                f"generator '{self.name}' cannot render the event types {unknown}. "
+                f'Supported event types are: {list(EVENT_TYPES)}',
+            )
+
+        def synthesize(trial: pl.DataFrame) -> pl.DataFrame:
+            return self._synthesize_trial(trial, sampling_rate, rng)
+
+        samples = per_trial(events, synthesize, generator=self.name)
+
+        in_pixels = self.location_column_group == 'pixel'
+        return Gaze(
+            samples=samples,
+            trial_columns=events.trial_columns,
+            time_column='time',
+            time_unit='ms',
+            pixel_columns=['x', 'y'] if in_pixels else None,
+            position_columns=None if in_pixels else ['x', 'y'],
+        )
+
+    def _locations(self, fixations: pl.DataFrame) -> np.ndarray:
+        """Return the locations of the fixations, rejecting any that is not two numbers."""
+        if LOCATION_COLUMN not in fixations.columns:
+            raise ValueError(
+                f"generator '{self.name}' needs a '{LOCATION_COLUMN}' column holding the position "
+                f'of each fixation, for example from the location event property, but the '
+                f'columns are: {fixations.columns}',
+            )
+
+        for location in fixations[LOCATION_COLUMN].to_list():
+            if not isinstance(location, list) or len(location) != 2:
+                raise ValueError(
+                    f"generator '{self.name}' needs a '{LOCATION_COLUMN}' of two components for "
+                    f'every fixation, but one has: {location}',
+                )
+            if None in location:
+                raise ValueError(
+                    f"generator '{self.name}' needs a number for both components of a "
+                    f"'{LOCATION_COLUMN}', but one fixation has: {location}",
+                )
+
+        return np.array(fixations[LOCATION_COLUMN].to_list(), dtype=float).reshape(-1, 2)
+
+    def _synthesize_trial(
+            self,
+            trial: pl.DataFrame,
+            sampling_rate: float,
+            rng: np.random.Generator,
+    ) -> pl.DataFrame:
+        """Return the samples of one trial's ordered events."""
+        onsets = milliseconds(trial['onset']).to_numpy()
+        offsets = milliseconds(trial['offset']).to_numpy()
+        times = sample_times(onsets[0], offsets[-1], sampling_rate)
+
+        is_fixation = (trial['name'] == 'fixation').to_numpy()
+        locations = self._locations(trial.filter(is_fixation))
+
+        # The fixation each sample falls into, if any: the last one starting at or before it.
+        # A sample before the first fixation gets -1, which picks the appended offset of -inf.
+        fixation = np.searchsorted(onsets[is_fixation], times, side='right') - 1
+        held = times < np.append(offsets[is_fixation], -np.inf)[fixation]
+        if not held.any():
+            raise ValueError(
+                f"generator '{self.name}': no sample of a trial falls inside a fixation at "
+                f'{sampling_rate} Hz, so there is no location to start from',
+            )
+
+        positions = self._interpolate(times, locations[fixation], held)
+        positions = self._scatter(positions, fixation, held, len(locations), rng)
+
+        return pl.DataFrame({'time': times, 'x': positions[:, 0], 'y': positions[:, 1]})
+
+    def _interpolate(
+            self,
+            times: np.ndarray,
+            locations: np.ndarray,
+            held: np.ndarray,
+    ) -> np.ndarray:
+        """Return the positions, interpolating the samples outside fixations per axis.
+
+        Outside the held samples, the nearest location is held. The cubic spline is fitted on all
+        held samples of the trial and used only between them.
+        """
+        known_times = times[held]
+        known = locations[held]
+
+        positions = np.column_stack([
+            np.interp(times, known_times, known[:, axis]) for axis in range(2)
+        ])
+
+        if self.interpolation == 'cubic_spline' and known_times.size > 1:
+            between = ~held & (times > known_times[0]) & (times < known_times[-1])
+            positions[between] = CubicSpline(known_times, known)(times[between])
+
+        return positions
+
+    def _scatter(
+            self,
+            positions: np.ndarray,
+            fixation: np.ndarray,
+            held: np.ndarray,
+            n_fixations: int,
+            rng: np.random.Generator,
+    ) -> np.ndarray:
+        """Return the positions with each fixation's samples scattered by a drawn deviation."""
+        deviations = Range.from_value(self.fixation_deviation)
+        scattered = positions.copy()
+
+        for index in range(n_fixations):
+            deviation = deviations.draw(rng)
+            samples = held & (fixation == index)
+
+            if deviation and samples.any():
+                scattered[samples] += rng.normal(0.0, deviation, (samples.sum(), 2))
+
+        return scattered

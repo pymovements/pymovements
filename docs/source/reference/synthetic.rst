@@ -23,6 +23,7 @@ Synthetic
     :nosignatures:
     :template: class.rst
 
+    GeometricalSampleGenerator
     StatisticalSampleGenerator
 
 .. rubric:: Functions
