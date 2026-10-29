@@ -81,6 +81,12 @@ def test_range_returns(kwargs, expected):
             id='negative_std_raises_value_error',
         ),
         pytest.param(
+            {'minimum': 0.0, 'maximum': 1.0, 'std': 0.2},
+            ValueError,
+            ('std', 'normal', "'uniform'", '0.2'),
+            id='std_of_a_uniform_range_raises_value_error',
+        ),
+        pytest.param(
             {'minimum': '0', 'maximum': 1.0},
             TypeError,
             ('minimum', 'number', 'str'),
@@ -112,8 +118,11 @@ def test_range_raises_error(kwargs, exception, msg_substrings):
 def test_range_is_immutable():
     value_range = Range(0.0, 1.0)
 
-    with pytest.raises(dataclasses.FrozenInstanceError):
+    with pytest.raises(dataclasses.FrozenInstanceError) as excinfo:
         value_range.minimum = 0.5
+
+    msg, = excinfo.value.args
+    assert "'minimum'" in msg
 
 
 @pytest.mark.parametrize(
