@@ -610,7 +610,10 @@ class Events:
             trial_columns: list[str] | str | None = None,
             metadata: dict[str, Any] | None = None,
             time_unit: str | None = None,
+            _silent: bool = False,
     ):
+        # _silent is private: pymovements' own rebuilds of an existing frame pass it, so a
+        # construction warning is emitted once, when the frame enters pymovements.
         self.trial_columns: list[str] | None  # otherwise mypy gets confused.
         # A shallow copy: the entries written below never reach the caller's dict.
         self.metadata = dict(metadata) if metadata is not None else {}
@@ -800,6 +803,7 @@ class Events:
                 else 'the metadata entry'
             ),
             validate=validate,
+            silent=_silent,
         )
 
         # Entries are written only for what the frame has.
@@ -817,7 +821,7 @@ class Events:
             column for column, entry in self.metadata.items()
             if _entry_convention(entry) is not None and column not in self.frame.columns
         ]
-        if validate and missing_columns:
+        if validate and not _silent and missing_columns:
             if len(missing_columns) == 1:
                 described = f"entry for the column '{missing_columns[0]}'"
             else:
@@ -841,6 +845,7 @@ class Events:
             sampling_rate: float | None,
             sampling_rate_source: str,
             validate: bool,
+            silent: bool,
     ) -> None:
         """Fill or check the ``duration`` column against the ``offset`` column.
 
@@ -852,7 +857,7 @@ class Events:
                 ignored.append(f'offsets_inclusive={offsets_inclusive}')
             if durations_from_offsets:
                 ignored.append('durations_from_offsets=True')
-            if ignored:
+            if ignored and not silent:
                 warn(
                     f"{' and '.join(ignored)} ignored: the events frame has no 'offset' column.",
                     UserWarning,
@@ -862,7 +867,7 @@ class Events:
 
         if offsets_inclusive is None:
             # Undeclared offsets keep the pre-v0.29.0 behavior until an undeclared offset raises.
-            if durations_from_offsets:
+            if durations_from_offsets and not silent:
                 warn(
                     "durations_from_offsets=True ignored: the 'offset' column is undeclared. "
                     'Pass offsets_inclusive to declare its convention.',
@@ -896,7 +901,7 @@ class Events:
         null_durations = self.frame.select(
             (polars.col('duration').is_null() & polars.col('offset').is_not_null()).sum(),
         ).item()
-        if null_durations:
+        if null_durations and not silent:
             row_s = 'row has' if null_durations == 1 else 'rows have'
             warn(
                 f"{null_durations} {row_s} a null duration beside a non-null offset. "
@@ -911,6 +916,7 @@ class Events:
                 sampling_rate=sampling_rate,
                 sampling_interval=sampling_interval,
                 sampling_rate_source=sampling_rate_source,
+                silent=silent,
             )
 
     def _check_durations_against_offsets(
@@ -920,6 +926,7 @@ class Events:
             sampling_rate: float | None,
             sampling_interval: int | None,
             sampling_rate_source: str,
+            silent: bool,
     ) -> None:
         """Check the stored durations against the declared offsets.
 
@@ -1011,7 +1018,8 @@ class Events:
                 f' {legacy_rows} {row_s} like pre-v0.29.0 durations. Pass '
                 'durations_from_offsets=True to derive the durations from the offsets.'
             )
-        warn(message, UserWarning, stacklevel=4)
+        if not silent:
+            warn(message, UserWarning, stacklevel=4)
 
     @property
     def schema(self) -> polars.type_aliases.SchemaDict:
@@ -1349,6 +1357,7 @@ class Events:
             trial_columns=self.trial_columns,
             metadata=deepcopy(self.metadata),
             validate=False,
+            _silent=True,
         )
 
     @overload
@@ -1404,6 +1413,7 @@ class Events:
                     trial_columns=self.trial_columns,
                     metadata=deepcopy(self.metadata),
                     validate=False,
+                    _silent=True,
                 )
                 for key, frame in event_dfs.items()
             }
@@ -1414,6 +1424,7 @@ class Events:
                 trial_columns=self.trial_columns,
                 metadata=deepcopy(self.metadata),
                 validate=False,
+                _silent=True,
             )
             for frame in event_dfs
         ]
@@ -1878,6 +1889,7 @@ class Events:
             trial_columns=self.trial_columns,
             metadata=merge_sources(deepcopy(self.metadata), aois.metadata),
             validate=False,
+            _silent=True,
         )
 
     def measure_reading(
@@ -2014,6 +2026,7 @@ class Events:
                 trial_columns=self.trial_columns,
                 metadata=deepcopy(self.metadata),
                 validate=False,
+                _silent=True,
             )
             mapped.map_to_aois(stimulus)
             fixations, aois = mapped.frame, stimulus.aois
@@ -2099,6 +2112,7 @@ class Events:
                 trial_columns=self.trial_columns,
                 metadata=deepcopy(self.metadata),
                 validate=False,
+                _silent=True,
             )
             if subset.frame.is_empty():
                 continue
