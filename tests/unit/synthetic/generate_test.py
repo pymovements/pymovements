@@ -96,18 +96,20 @@ def test_generate_events_matches_the_explicit_call(registered_event_generator):
 
 
 @pytest.mark.parametrize(
-    ('entry_point', 'kwargs'),
+    ('entry_point', 'name', 'kwargs'),
     [
         pytest.param(
-            pm.synthetic.generate_samples, {'sampling_rate': 1000.0}, id='generate_samples',
+            pm.synthetic.generate_samples, 'test_noise', {'sampling_rate': 1000.0},
+            id='generate_samples',
         ),
-        pytest.param(pm.synthetic.generate_events, {'duration': 1.0}, id='generate_events'),
+        pytest.param(
+            pm.synthetic.generate_events, 'test_uniform', {'duration': 1.0},
+            id='generate_events',
+        ),
     ],
 )
 @pytest.mark.usefixtures('registered_sample_generator', 'registered_event_generator')
-def test_misspelled_hyperparameter_raises_type_error(entry_point, kwargs):
-    name = 'test_noise' if entry_point is pm.synthetic.generate_samples else 'test_uniform'
-
+def test_misspelled_hyperparameter_raises_type_error(entry_point, name, kwargs):
     with pytest.raises(TypeError) as excinfo:
         entry_point(name, scael=2.0, **kwargs)
 
@@ -116,28 +118,30 @@ def test_misspelled_hyperparameter_raises_type_error(entry_point, kwargs):
 
 
 @pytest.mark.parametrize(
-    ('entry_point', 'kwargs', 'library_name'),
+    ('entry_point', 'name', 'kwargs', 'library_name'),
     [
         pytest.param(
-            pm.synthetic.generate_samples, {'sampling_rate': 1000.0}, 'SampleGeneratorLibrary',
+            pm.synthetic.generate_samples, 'does_not_exist', {'sampling_rate': 1000.0},
+            'SampleGeneratorLibrary',
             id='generate_samples',
         ),
         pytest.param(
-            pm.synthetic.generate_events, {'duration': 1.0}, 'EventGeneratorLibrary',
+            pm.synthetic.generate_events, 'does_not_exist', {'duration': 1.0},
+            'EventGeneratorLibrary',
             id='generate_events',
+        ),
+        pytest.param(
+            pm.synthetic.generate_events, 'test_noise', {'duration': 1.0},
+            'EventGeneratorLibrary',
+            id='sample_generator_is_not_an_event_generator',
         ),
     ],
 )
-def test_unknown_name_raises_key_error(entry_point, kwargs, library_name):
+@pytest.mark.usefixtures('registered_sample_generator')
+def test_unknown_name_raises_key_error(entry_point, name, kwargs, library_name):
     with pytest.raises(KeyError) as excinfo:
-        entry_point('does_not_exist', **kwargs)
+        entry_point(name, **kwargs)
 
     msg, = excinfo.value.args
-    for msg_substring in ('does_not_exist', library_name):
+    for msg_substring in (name, 'not found', library_name):
         assert msg_substring in msg
-
-
-@pytest.mark.usefixtures('registered_sample_generator')
-def test_sample_generator_is_not_found_among_event_generators():
-    with pytest.raises(KeyError):
-        pm.synthetic.generate_events('test_noise', duration=1.0)

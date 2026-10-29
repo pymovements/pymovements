@@ -17,48 +17,14 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test the provenance record written into generated data."""
+"""Test the provenance record written into generated data, through the public API."""
 import pytest
 
 from pymovements import __version__
-from pymovements.synthetic.provenance import generation_provenance
-from pymovements.synthetic.provenance import PROVENANCE_KEY
 
 pytestmark = pytest.mark.filterwarnings(
     'ignore:Synthetic gaze generation is experimental:pymovements.ExperimentalWarning',
 )
-
-
-def test_generation_provenance_returns():
-    provenance = generation_provenance(
-        generator='example',
-        level='samples',
-        hyperparameters={'scale': 2.0},
-        run={'sampling_rate': 1000.0},
-        seed=42,
-    )
-
-    assert provenance == {
-        PROVENANCE_KEY: {
-            'generator': 'example',
-            'level': 'samples',
-            'hyperparameters': {'scale': 2.0},
-            'run': {'sampling_rate': 1000.0},
-            'seed': 42,
-            'pymovements_version': __version__,
-        },
-    }
-
-
-def test_generation_provenance_copies_its_inputs():
-    hyperparameters = {'scale': 2.0}
-
-    provenance = generation_provenance(
-        generator='example', level='samples', hyperparameters=hyperparameters, run={}, seed=42,
-    )
-    hyperparameters['scale'] = 3.0
-
-    assert provenance[PROVENANCE_KEY]['hyperparameters'] == {'scale': 2.0}
 
 
 @pytest.mark.parametrize(
@@ -77,7 +43,7 @@ def test_sample_generator_records_provenance(request, noise_sample_generator, ru
 
     gaze = noise_sample_generator(scale=2.0).generate(sampling_rate=500.0, seed=42, **run)
 
-    assert gaze.metadata[PROVENANCE_KEY] == {
+    assert gaze.metadata['synthetic'] == {
         'generator': 'test_noise',
         'level': 'samples',
         'hyperparameters': {'scale': 2.0},
@@ -94,7 +60,7 @@ def test_generator_can_override_how_its_run_is_recorded(noise_sample_generator, 
 
     gaze = SummarisingGenerator().generate(events=fixations, sampling_rate=500.0, seed=42)
 
-    assert gaze.metadata[PROVENANCE_KEY]['run'] == {
+    assert gaze.metadata['synthetic']['run'] == {
         'sampling_rate': 500.0, 'event_names': ['fixation'],
     }
 
@@ -102,7 +68,7 @@ def test_generator_can_override_how_its_run_is_recorded(noise_sample_generator, 
 def test_event_generator_records_provenance(uniform_event_generator):
     events = uniform_event_generator(max_duration=200.0).generate(duration=1.5, seed=42)
 
-    assert events.metadata[PROVENANCE_KEY] == {
+    assert events.metadata['synthetic'] == {
         'generator': 'test_uniform',
         'level': 'events',
         'hyperparameters': {'min_duration': 100.0, 'max_duration': 200.0},
@@ -116,6 +82,6 @@ def test_drawn_seed_is_recorded(noise_sample_generator):
     """The drawn seed fits a signed 64-bit integer, so sidecars and Int64 columns can hold it."""
     gaze = noise_sample_generator().generate(sampling_rate=500.0)
 
-    seed = gaze.metadata[PROVENANCE_KEY]['seed']
+    seed = gaze.metadata['synthetic']['seed']
     assert isinstance(seed, int)
     assert 0 <= seed < 2 ** 63

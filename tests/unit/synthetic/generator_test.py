@@ -67,6 +67,20 @@ def test_event_generator_returns_events(uniform_event_generator):
     assert events.frame['offset'].dt.total_milliseconds().max() == 1000
 
 
+#: Each level's toy generator fixture and the run parameters it needs.
+LEVELS = [
+    pytest.param('noise_sample_generator', {'sampling_rate': 1000.0}, id='samples'),
+    pytest.param('uniform_event_generator', {'duration': 2.0}, id='events'),
+]
+
+
+@pytest.mark.parametrize(
+    ('generator', 'run', 'frame'),
+    [
+        pytest.param('noise_sample_generator', {'sampling_rate': 1000.0}, 'samples', id='samples'),
+        pytest.param('uniform_event_generator', {'duration': 2.0}, 'frame', id='events'),
+    ],
+)
 @pytest.mark.parametrize(
     ('first_seed', 'second_seed', 'expected_equal'),
     [
@@ -74,33 +88,15 @@ def test_event_generator_returns_events(uniform_event_generator):
         pytest.param(42, 7, False, id='different_seed_generates_differently'),
     ],
 )
-def test_sample_generator_is_seeded(
-        noise_sample_generator, first_seed, second_seed, expected_equal,
+def test_generator_is_seeded(
+        request, generator, run, frame, first_seed, second_seed, expected_equal,
 ):
-    generator = noise_sample_generator()
+    generator = request.getfixturevalue(generator)()
 
-    first = generator.generate(sampling_rate=1000.0, seed=first_seed)
-    second = generator.generate(sampling_rate=1000.0, seed=second_seed)
+    first = getattr(generator.generate(seed=first_seed, **run), frame)
+    second = getattr(generator.generate(seed=second_seed, **run), frame)
 
-    assert first.samples.equals(second.samples) == expected_equal
-
-
-@pytest.mark.parametrize(
-    ('first_seed', 'second_seed', 'expected_equal'),
-    [
-        pytest.param(42, 42, True, id='same_seed_generates_identically'),
-        pytest.param(42, 7, False, id='different_seed_generates_differently'),
-    ],
-)
-def test_event_generator_is_seeded(
-        uniform_event_generator, first_seed, second_seed, expected_equal,
-):
-    generator = uniform_event_generator()
-
-    first = generator.generate(duration=2.0, seed=first_seed)
-    second = generator.generate(duration=2.0, seed=second_seed)
-
-    assert first.frame.equals(second.frame) == expected_equal
+    assert first.equals(second) == expected_equal
 
 
 def test_drawn_seed_reproduces_the_run(noise_sample_generator):
@@ -221,18 +217,6 @@ def test_sample_generator_keeps_metadata_of_its_own(noise_sample_generator):
             id='bool_sampling_rate_raises_type_error',
         ),
         pytest.param(
-            {'sampling_rate': 1000.0, 'seed': -1},
-            ValueError,
-            ('seed', 'negative'),
-            id='negative_seed_raises_value_error',
-        ),
-        pytest.param(
-            {'sampling_rate': 1000.0, 'seed': 4.2},
-            TypeError,
-            ('seed', 'integer', 'float'),
-            id='float_seed_raises_type_error',
-        ),
-        pytest.param(
             {'sampling_rate': 1000.0, 'experiment': Experiment(sampling_rate=500.0)},
             ValueError,
             ('500.0 Hz', '1000.0 Hz', 'experiment'),
@@ -249,26 +233,21 @@ def test_sample_generator_raises_error(noise_sample_generator, kwargs, exception
         assert msg_substring in msg
 
 
+@pytest.mark.parametrize(('generator', 'run'), LEVELS)
 @pytest.mark.parametrize(
-    ('kwargs', 'exception', 'msg_substrings'),
+    ('seed', 'exception', 'msg_substrings'),
     [
+        pytest.param(-1, ValueError, ('seed', 'negative'), id='negative_seed_raises_value_error'),
         pytest.param(
-            {'duration': 1.0, 'seed': -1},
-            ValueError,
-            ('seed', 'negative'),
-            id='negative_seed_raises_value_error',
-        ),
-        pytest.param(
-            {'duration': 1.0, 'seed': 4.2},
-            TypeError,
-            ('seed', 'integer', 'float'),
-            id='float_seed_raises_type_error',
+            4.2, TypeError, ('seed', 'integer', 'float'), id='float_seed_raises_type_error',
         ),
     ],
 )
-def test_event_generator_raises_error(uniform_event_generator, kwargs, exception, msg_substrings):
+def test_generator_raises_error_on_seed(request, generator, run, seed, exception, msg_substrings):
+    generator = request.getfixturevalue(generator)()
+
     with pytest.raises(exception) as excinfo:
-        uniform_event_generator().generate(**kwargs)
+        generator.generate(seed=seed, **run)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
