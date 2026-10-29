@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import abc
 import dataclasses
+import inspect
 import numbers
 import secrets
 from collections.abc import Callable
@@ -88,6 +89,7 @@ class _Generator(abc.ABC):
         """
         _warn_experimental()
         self._check_class()
+        self._check_run(run, inputs)
         seed = _resolve_seed(seed)
 
         generated = self._generate(rng=np.random.default_rng(seed), **inputs, **run)
@@ -114,6 +116,45 @@ class _Generator(abc.ABC):
                 f"{generator_class} declares 'name' with a type annotation, which makes it a "
                 f"dataclass field and a hyperparameter; write name = '{name}' without annotation",
             )
+
+    def _check_run(self, run: dict[str, Any], inputs: dict[str, Any]) -> None:
+        """Reject run parameters that ``_generate`` does not declare, or that are missing.
+
+        ``_generate`` must name its run parameters, since a ``**kwargs`` there would swallow a
+        misspelled one silently.
+        """
+        method = f'{type(self).__name__}._generate'
+        parameters = inspect.signature(self._generate).parameters.values()
+
+        catch_all = [
+            parameter for parameter in parameters if parameter.kind is parameter.VAR_KEYWORD
+        ]
+        if catch_all:
+            raise TypeError(
+                f'{method} must declare its run parameters as keyword arguments instead of '
+                f'**{catch_all[0].name}, so that a misspelled run parameter raises instead of '
+                'being ignored',
+            )
+
+        declared = {
+            parameter.name: parameter for parameter in parameters
+            if parameter.name != 'rng' and parameter.name not in inputs
+        }
+        generate = f'{type(self).__name__}.generate()'
+
+        unknown = sorted(set(run) - set(declared))
+        if unknown:
+            raise TypeError(
+                f'{generate} got unknown run parameters {unknown}; '
+                f'it accepts: {sorted(declared)}',
+            )
+
+        missing = sorted(
+            name for name, parameter in declared.items()
+            if parameter.default is parameter.empty and name not in run
+        )
+        if missing:
+            raise TypeError(f'{generate} is missing the run parameters {missing}')
 
     def _fields(self) -> tuple[dataclasses.Field[Any], ...]:
         """Return the dataclass fields, rejecting a generator whose hyperparameters are unknown."""
