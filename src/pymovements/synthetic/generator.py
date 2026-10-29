@@ -26,6 +26,7 @@ import secrets
 from collections.abc import Callable
 from typing import Any
 from typing import ClassVar
+from typing import Literal
 from warnings import warn
 
 import numpy as np
@@ -43,7 +44,7 @@ class _Generator(abc.ABC):
 
     name: ClassVar[str]
 
-    level: ClassVar[str]
+    level: ClassVar[Literal['events', 'samples']]
 
     # Each level declares the abstract method; concrete generators narrow its run parameters.
     _generate: Callable[..., Any]
@@ -51,20 +52,22 @@ class _Generator(abc.ABC):
     def hyperparameters(self) -> dict[str, Any]:
         """Return the parameters the generator was constructed with.
 
-        For a dataclass generator these are its fields, except those declared with
-        ``repr=False``, such as trained weights. Other generators record none.
+        These are the generator's dataclass fields, except those declared with ``repr=False``,
+        such as trained weights.
 
         Returns
         -------
         dict[str, Any]
             The hyperparameters, keyed by name.
-        """
-        if not dataclasses.is_dataclass(self):
-            return {}
 
+        Raises
+        ------
+        TypeError
+            If the generator is not a dataclass.
+        """
         return {
             field.name: getattr(self, field.name)
-            for field in dataclasses.fields(self)
+            for field in self._fields()
             if field.repr
         }
 
@@ -82,6 +85,7 @@ class _Generator(abc.ABC):
         defines, and ``record`` the part of them written into the provenance.
         """
         _warn_experimental()
+        self._check_class()
         seed = _resolve_seed(seed)
 
         generated = self._generate(rng=np.random.default_rng(seed), **inputs, **run)
@@ -89,6 +93,35 @@ class _Generator(abc.ABC):
         run_record = {**record, **self._record_run(run)}
         generated.metadata = {**(generated.metadata or {}), **self._provenance(run_record, seed)}
         return generated
+
+    def _check_class(self) -> None:
+        """Reject a generator whose run could not be recorded, before it generates anything."""
+        fields = self._fields()
+        generator_class = type(self).__name__
+
+        name = getattr(self, 'name', None)
+        if not isinstance(name, str) or not name:
+            raise TypeError(
+                f"{generator_class} must define the class attribute 'name' as a non-empty string, "
+                "for example name = 'my_generator', so that its output records which generator "
+                'made it',
+            )
+
+        if 'name' in {field.name for field in fields}:
+            raise TypeError(
+                f"{generator_class} declares 'name' with a type annotation, which makes it a "
+                f"dataclass field and a hyperparameter; write name = '{name}' without annotation",
+            )
+
+    def _fields(self) -> tuple[dataclasses.Field[Any], ...]:
+        """Return the dataclass fields, rejecting a generator whose hyperparameters are unknown."""
+        if not dataclasses.is_dataclass(self):
+            raise TypeError(
+                f'{type(self).__name__} must be a dataclass, so that its hyperparameters are '
+                'recorded and the run can be reproduced; decorate it with @dataclasses.dataclass',
+            )
+
+        return dataclasses.fields(self)
 
     def _record_run(self, run: dict[str, Any]) -> dict[str, Any]:
         """Return the declared run parameters as recorded; events are recorded by their count.
@@ -127,17 +160,19 @@ class EventGenerator(_Generator):
     """Base class for generators that produce an event sequence.
 
     An event generator decides which events occur and how long they last, for example a sequence
-    of fixations and saccades. Subclasses take their hyperparameters in the constructor, set
-    ``name``, and put their logic in ``_generate``, whose keyword arguments besides ``rng`` are
-    the generator's run parameters, such as a duration or an event sequence to complete.
+    of fixations and saccades. Subclasses are dataclasses whose fields are their hyperparameters.
+    They set ``name`` and put their logic in ``_generate``, whose keyword arguments besides
+    ``rng`` are the generator's run parameters, such as a duration or an event sequence to
+    complete. ``name`` is written without a type annotation, since an annotated ``name`` becomes a
+    dataclass field and a hyperparameter.
 
     Attributes
     ----------
-    level: ClassVar[str]
+    level: ClassVar[Literal['events', 'samples']]
         ``'events'``, the kind of data the generator produces.
     """
 
-    level: ClassVar[str] = 'events'
+    level: ClassVar[Literal['events', 'samples']] = 'events'
 
     def generate(self, *, seed: int | None = None, **run: Any) -> Events:
         """Generate a synthetic event sequence.
@@ -159,8 +194,8 @@ class EventGenerator(_Generator):
         Raises
         ------
         TypeError
-            If the seed is not an integer, or a run parameter is unknown to the generator or
-            missing.
+            If the generator is not a dataclass or has no ``name``, the seed is not an integer,
+            or a run parameter is unknown to the generator or missing.
         ValueError
             If the seed is negative.
 
@@ -193,19 +228,20 @@ class EventGenerator(_Generator):
 class SampleGenerator(_Generator):
     """Base class for generators that produce gaze samples.
 
-    A sample generator turns its conditioning input into gaze samples. Subclasses take their
-    hyperparameters in the constructor, set ``name``, and put their logic in ``_generate``, whose
-    keyword arguments besides ``sampling_rate``, ``experiment`` and ``rng`` are the generator's
-    run parameters. A run parameter named ``events`` is copied before ``_generate`` receives it,
-    and that copy is attached to the output, so the output carries its ground truth.
+    A sample generator turns its conditioning input into gaze samples. Subclasses are dataclasses
+    whose fields are their hyperparameters. They set ``name``, without a type annotation as for
+    event generators, and put their logic in ``_generate``, whose keyword arguments besides
+    ``sampling_rate``, ``experiment`` and ``rng`` are the generator's run parameters. A run
+    parameter named ``events`` is copied before ``_generate`` receives it, and that copy is
+    attached to the output, so the output carries its ground truth.
 
     Attributes
     ----------
-    level: ClassVar[str]
+    level: ClassVar[Literal['events', 'samples']]
         ``'samples'``, the kind of data the generator produces.
     """
 
-    level: ClassVar[str] = 'samples'
+    level: ClassVar[Literal['events', 'samples']] = 'samples'
 
     def generate(
             self,
@@ -239,8 +275,9 @@ class SampleGenerator(_Generator):
         Raises
         ------
         TypeError
-            If the sampling rate is not a number, the seed is not an integer, or a run parameter
-            is unknown to the generator or missing.
+            If the generator is not a dataclass or has no ``name``, the sampling rate is not a
+            number, the seed is not an integer, or a run parameter is unknown to the generator or
+            missing.
         ValueError
             If the sampling rate is not greater than zero, the seed is negative, or the
             experiment has another sampling rate.

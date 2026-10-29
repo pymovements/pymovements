@@ -20,7 +20,6 @@
 """Test the event and sample generator base classes."""
 import dataclasses
 
-import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
@@ -303,13 +302,72 @@ def test_hyperparameters_leave_out_fields_without_repr(noise_sample_generator):
     assert WeightedGenerator().hyperparameters() == {'scale': 1.0}
 
 
-def test_hyperparameters_are_empty_for_a_generator_that_is_no_dataclass():
-    class PlainGenerator(SampleGenerator):
-        name = 'plain'
+class _NeverGenerates(SampleGenerator):
+    """Fails if it gets to synthesize, so a rejection is shown to happen before ``_generate``."""
 
-        def _generate(  # pylint: disable=arguments-differ
-                self, *, sampling_rate, experiment, rng,
-        ):
-            return Gaze(samples=pl.DataFrame({'x': [0.0], 'y': [0.0]}), position_columns=['x', 'y'])
+    def _generate(self, **run):
+        raise AssertionError('_generate must not run for a generator that is rejected')
 
-    assert PlainGenerator().hyperparameters() == {}
+
+class _PlainGenerator(_NeverGenerates):
+    name = 'plain'
+
+
+@dataclasses.dataclass
+class _UnnamedGenerator(_NeverGenerates):
+    pass
+
+
+@dataclasses.dataclass
+class _EmptyNameGenerator(_NeverGenerates):
+    name = ''
+
+
+@dataclasses.dataclass
+class _AnnotatedNameGenerator(_NeverGenerates):
+    name: str = 'annotated'  # type: ignore[misc]
+
+
+@pytest.mark.parametrize(
+    ('generator_class', 'msg_substrings'),
+    [
+        pytest.param(
+            _PlainGenerator,
+            ('_PlainGenerator', 'dataclass', 'reproduced'),
+            id='not_a_dataclass',
+        ),
+        pytest.param(
+            _UnnamedGenerator,
+            ('_UnnamedGenerator', "'name'", 'class attribute'),
+            id='name_missing',
+        ),
+        pytest.param(
+            _EmptyNameGenerator,
+            ('_EmptyNameGenerator', "'name'", 'non-empty'),
+            id='name_empty',
+        ),
+        pytest.param(
+            _AnnotatedNameGenerator,
+            ('_AnnotatedNameGenerator', "'name'", 'annotation', 'hyperparameter'),
+            id='name_declared_as_a_field',
+        ),
+    ],
+)
+def test_generate_rejects_a_generator_class_that_cannot_be_recorded(
+        generator_class, msg_substrings,
+):
+    with pytest.raises(TypeError) as excinfo:
+        generator_class().generate(sampling_rate=1000.0, seed=42)
+
+    msg, = excinfo.value.args
+    for msg_substring in msg_substrings:
+        assert msg_substring in msg
+
+
+def test_hyperparameters_reject_a_generator_that_is_no_dataclass():
+    with pytest.raises(TypeError) as excinfo:
+        _PlainGenerator().hyperparameters()
+
+    msg, = excinfo.value.args
+    for msg_substring in ('_PlainGenerator', 'dataclass'):
+        assert msg_substring in msg
