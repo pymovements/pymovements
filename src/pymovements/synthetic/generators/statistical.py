@@ -128,7 +128,27 @@ class StatisticalSampleGenerator(SampleGenerator):
 
     Examples
     --------
+    .. testsetup::
+
+        >>> getfixture('doctest_synthetic')
+
+    Render a fixation, a saccade and a fixation at 1000 Hz:
+
+    >>> import pymovements as pm
+    >>> events = pm.Events(
+    ...     name=['fixation', 'saccade', 'fixation'],
+    ...     onsets=[0, 200, 240],
+    ...     offsets=[200, 240, 500],
+    ... )
     >>> generator = StatisticalSampleGenerator(saccade_peak_velocity=(300, 450))
+    >>> gaze = generator.generate(events=events, sampling_rate=1000, seed=42)
+    >>> gaze.samples.columns
+    ['time', 'velocity_magnitude']
+    >>> gaze.samples.height
+    500
+
+    A pair is read as a uniform range:
+
     >>> generator.saccade_peak_velocity
     Range(minimum=300.0, maximum=450.0, distribution='uniform', std=None)
     """
