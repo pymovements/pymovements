@@ -145,3 +145,19 @@ Severity
 - **Should-fix**: missing edge-case tests, missing documentation, error messages that are not
   asserted, avoidable row-wise polars operations.
 - **Nit**: what a linter enforces is not worth a comment.
+
+After the Review
+----------------
+
+A pull request that is ready for review waits for a reviewer, and a draft waits for its author.
+This keeps the list of pull requests that need a review accurate.
+
+- A review with at least one Blocker or Should-fix finding that the author has to address is
+  submitted as "Request changes". A review with only nits or questions is submitted as "Comment"
+  or "Approve", whichever saves a review round.
+- After a "Request changes" review, the reviewing maintainer converts the pull request to a draft.
+  This applies to every pull request, including those opened by maintainers.
+- The review ends with one sentence telling the author that the pull request is now a draft and
+  that they mark it ready for review once the findings are addressed.
+- The author marks the pull request ready for review when it needs another review. Mentioning the
+  reviewer in a comment is optional.

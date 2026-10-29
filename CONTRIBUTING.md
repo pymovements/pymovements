@@ -285,6 +285,9 @@ Reviewers check pull requests against our
 [Review Guidelines](https://pymovements.readthedocs.io/en/latest/contributing/review-guidelines.html)
 (`docs/source/contributing/review-guidelines.rst` in the repository).
 
+When a review requests changes, a maintainer converts your pull request to a draft. Once you
+have addressed the findings, mark it ready for review again so that it shows up for the reviewers.
+
 ### Continuous Integration
 
 Tests, code style, and documentation are all additionally checked using a GitHub Actions

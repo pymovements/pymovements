@@ -272,3 +272,6 @@ Do not squash your commits after you have submitted a pull request, as this
 erases context during review. We will squash commits when the pull request is ready to be merged.
 
 Reviewers check pull requests against our :doc:`Review Guidelines <review-guidelines>`.
+
+When a review requests changes, a maintainer converts your pull request to a draft. Once you
+have addressed the findings, mark it ready for review again so that it shows up for the reviewers.
