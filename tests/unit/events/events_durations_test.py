@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import re
 import warnings
+from copy import deepcopy
 from datetime import timedelta
 
 import polars as pl
@@ -660,18 +661,27 @@ def test_merge_subsequent_close_events_without_offset_gaps_from_durations(
     assert events.frame['duration'].to_list() == [timedelta(milliseconds=v) for v in expected_ms]
 
 
+_REBUILD_METADATA = {'key': 'value', 'offset': {'inclusive': False}}
+
+
 def _rebuild_entry_events():
-    return Events(
-        pl.DataFrame({
-            'trial': [1, 1, 2],
-            'name': ['fixation', 'fixation', 'fixation'],
-            'onset': [0, 200, 400],
-            'offset': [100, 300, 500],
-            'location': [[100.0, 105.0], [110.0, 195.0], [120.0, 302.0]],
-        }),
-        trial_columns='trial',
-        metadata={'key': 'value'},
-    )
+    # A null duration beside a declared offset warns once, at entry, and never on a rebuild.
+    with pytest.warns(UserWarning, match='1 row has a null duration') as record:
+        events = Events(
+            pl.DataFrame({
+                'trial': [1, 1, 2],
+                'name': ['fixation', 'fixation', 'fixation'],
+                'onset': [0, 200, 400],
+                'duration': [100, None, 100],
+                'offset': [100, 300, 500],
+                'location': [[100.0, 105.0], [110.0, 195.0], [120.0, 302.0]],
+            }),
+            trial_columns='trial',
+            offsets_inclusive=False,
+            metadata={'key': 'value'},
+        )
+    assert len(record) == 1
+    return events
 
 
 def _rebuild_stimulus():
@@ -707,7 +717,8 @@ def _rebuild_gaze(events):
     if events is not None:
         gaze.events = events
     else:
-        gaze.events.metadata = {'key': 'value'}
+        # A convention entry without its column, kept quietly on every rebuild.
+        gaze.events.metadata = deepcopy(_REBUILD_METADATA)
     return gaze
 
 
@@ -771,7 +782,7 @@ _REBUILD_ENTRY_COLUMNS = ['trial', 'onset', 'duration', 'name', 'offset', 'locat
         ),
     ],
 )
-def test_rebuild_sites_pass_validate_false_and_carry_metadata(
+def test_rebuild_sites_carry_metadata_and_do_not_warn(
         monkeypatch, prepare, rebuild, expected_columns,
 ):
     entry = prepare()
@@ -786,6 +797,7 @@ def test_rebuild_sites_pass_validate_false_and_carry_metadata(
 
     monkeypatch.setattr(Events, '__init__', spy_init)
     with warnings.catch_warnings():
+        warnings.simplefilter('error')
         # The detector itself may report that it detected nothing.
         warnings.filterwarnings('ignore', message='.*No events were detected')
         rebuild(entry)
@@ -794,10 +806,11 @@ def test_rebuild_sites_pass_validate_false_and_carry_metadata(
     assert rebuilds
     for rebuilt, frame, data, kwargs in rebuilds:
         assert kwargs['validate'] is False
-        assert set(kwargs) <= {'trial_columns', 'metadata', 'validate'}
+        assert kwargs['_silent'] is True
+        assert set(kwargs) <= {'trial_columns', 'metadata', 'validate', '_silent'}
         assert_frame_equal(frame, data)
         assert frame.columns == expected_columns
-        assert rebuilt.metadata.items() >= {'key': 'value'}.items()
+        assert rebuilt.metadata.items() >= _REBUILD_METADATA.items()
 
 
 def test_compute_event_properties_on_empty_events_without_offset_warns():
@@ -1000,3 +1013,25 @@ def test_drop_offset_column_removes_its_convention_entry(column):
 
     assert column not in events.columns
     assert events.metadata == expected_metadata
+
+
+@pytest.mark.parametrize(
+    'rebuild',
+    [
+        pytest.param(lambda events: [events.clone()], id='clone'),
+        pytest.param(lambda events: events.split(), id='split'),
+        pytest.param(lambda events: list(events.split(as_dict=True).values()), id='split_dict'),
+    ],
+)
+def test_metadata_entries_carried_by_clone_and_split(rebuild):
+    events = Events(
+        onsets=[0, 200], offsets=[120, 320], trials=[1, 2],
+        offsets_inclusive=True, sampling_rate=1000,
+    )
+
+    rebuilt = rebuild(events)
+
+    assert len(rebuilt) in {1, 2}
+    for part in rebuilt:
+        assert part.metadata == {'offset': {'inclusive': True}, 'sampling_rate': 1000.0}
+        assert part.metadata['offset'] is not events.metadata['offset']

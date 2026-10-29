@@ -99,4 +99,5 @@ def bridge_gaps(events: Events, *, max_gap: float | None = None) -> Events:
         trial_columns=events.trial_columns,
         metadata=deepcopy(events.metadata),
         validate=False,
+        _silent=True,
     )

@@ -1440,6 +1440,7 @@ class Gaze:
                     trial_columns=self.events.trial_columns,
                     metadata=deepcopy(self.events.metadata),
                     validate=False,
+                    _silent=True,
                 )
                 if needs_events and self.events.frame.height == 0
                 else None
@@ -1468,6 +1469,7 @@ class Gaze:
                         trial_columns=self.events.trial_columns,
                         metadata=deepcopy(self.events.metadata),
                         validate=False,
+                        _silent=True,
                     )
 
                 method_kwargs = self._fill_event_detection_kwargs(
