@@ -852,3 +852,21 @@ def test_metadata_convention_entry_without_column_does_not_warn_with_validate_fa
         events = Events(onsets=[0], durations=[5], metadata=metadata, validate=False)
 
     assert events.metadata == metadata
+
+
+@pytest.mark.parametrize('column', ['offset', 'offset_vendor'])
+def test_drop_offset_column_removes_its_convention_entry(column):
+    data = pl.DataFrame({'onset': [0], 'offset': [5], 'offset_vendor': [4]})
+    events = Events(
+        data, offsets_inclusive=False, sampling_rate=1000,
+        metadata={'offset_vendor': {'inclusive': True}, 'key': 'value'},
+    )
+    expected_metadata = dict(events.metadata)
+    del expected_metadata[column]
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        events.drop(column)
+
+    assert column not in events.columns
+    assert events.metadata == expected_metadata
