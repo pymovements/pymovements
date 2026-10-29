@@ -213,6 +213,8 @@ def pos2acc(
            [2000., 2000.],
            [2000., 2000.]])
     """
+    from scipy.signal import savgol_filter  # pylint: disable=import-outside-toplevel
+
     if sampling_rate <= 0:
         raise ValueError('sampling_rate needs to be above zero')
 
@@ -225,8 +227,6 @@ def pos2acc(
         )
 
     acc = np.zeros(arr.shape)
-
-    from scipy.signal import savgol_filter  # pylint: disable=import-outside-toplevel
 
     # transform to velocities
     if arr.ndim == 1:

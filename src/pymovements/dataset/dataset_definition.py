@@ -42,6 +42,8 @@ from pymovements.dataset.websource import WebSource
 from pymovements.gaze.experiment import Experiment
 
 
+# SafeLoader keeps the tags for callers of yaml.safe_load, such as tests and
+# _scripts/write_datasets_yaml.py. Without libyaml, FastSafeLoader is SafeLoader.
 yaml.add_multi_constructor('!', type_constructor, Loader=yaml.SafeLoader)
 yaml.add_multi_constructor('!', type_constructor, Loader=FastSafeLoader)
 

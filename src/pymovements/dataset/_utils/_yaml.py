@@ -33,7 +33,7 @@ FastSafeLoader = getattr(yaml, 'CSafeLoader', yaml.SafeLoader)
 
 # generalized constructor for !* tags
 def type_constructor(
-        loader: yaml.SafeLoader,
+        loader: yaml.SafeLoader | yaml.CSafeLoader,
         prefix: str,
         node: yaml.Node,
 ) -> type:
@@ -46,7 +46,7 @@ def type_constructor(
 
     Parameters
     ----------
-    loader: yaml.SafeLoader
+    loader: yaml.SafeLoader | yaml.CSafeLoader
         The YAML loader being used to parse the YAML document.
     prefix: str
         A string prefix for the custom tag (e.g., '!').

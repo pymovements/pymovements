@@ -114,6 +114,8 @@ def savitzky_golay(
     | ``wrap``    | ``6  7  8`` | ``1  2  3  4  5  6  7  8`` | ``1  2  3`` |
     +-------------+-------------+----------------------------+-------------+
     """
+    from scipy.signal import savgol_filter  # pylint: disable=import-outside-toplevel
+
     _check_window_length(window_length=window_length)
     _check_degree(degree=degree, window_length=window_length)
     _check_derivative(derivative=derivative)
@@ -121,8 +123,6 @@ def savitzky_golay(
 
     if output_column is None:
         output_column = input_column
-
-    from scipy.signal import savgol_filter  # pylint: disable=import-outside-toplevel
 
     delta = 1 / sampling_rate
 

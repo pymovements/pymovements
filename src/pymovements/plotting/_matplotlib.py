@@ -161,11 +161,10 @@ def _setup_axes_and_colormap(
 
     Returns fig, ax, cmap, cmap_norm, cval, show_cbar.
     """
-    # pylint: disable=import-outside-toplevel
-    import matplotlib.pyplot as plt
-    import PIL.Image
-    from matplotlib import colors
-    from matplotlib import scale as mpl_scale
+    import matplotlib.pyplot as plt  # pylint: disable=import-outside-toplevel
+    import PIL.Image  # pylint: disable=import-outside-toplevel
+    from matplotlib import colors  # pylint: disable=import-outside-toplevel
+    from matplotlib import scale as mpl_scale  # pylint: disable=import-outside-toplevel
 
     n = len(x_signal)
 
@@ -279,9 +278,8 @@ def _draw_arrow_data(
     mutation_scale: float = 40.,
 ) -> PatchCollection:
     """Draw arrow data as arrows and return the collection."""
-    # pylint: disable=import-outside-toplevel
-    from matplotlib.collections import PatchCollection
-    from matplotlib.patches import FancyArrowPatch
+    from matplotlib.collections import PatchCollection  # pylint: disable=import-outside-toplevel
+    from matplotlib.patches import FancyArrowPatch  # pylint: disable=import-outside-toplevel
 
     arrows = []
     for i in range(len(fixation_x) - 1):

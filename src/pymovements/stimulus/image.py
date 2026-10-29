@@ -219,9 +219,8 @@ def _draw_image_stimulus(
     fig: plt.figure
     ax: plt.Axes
     """
-    # pylint: disable=import-outside-toplevel
-    import matplotlib.pyplot as plt
-    import PIL.Image
+    import matplotlib.pyplot as plt  # pylint: disable=import-outside-toplevel
+    import PIL.Image  # pylint: disable=import-outside-toplevel
 
     try:
         img = PIL.Image.open(image_stimulus)

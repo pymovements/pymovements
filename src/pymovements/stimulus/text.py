@@ -696,9 +696,8 @@ class TextStimulus:
             If the configured writing system is not horizontal
             left-to-right.
         """
-        # pylint: disable=import-outside-toplevel
-        import matplotlib.pyplot as plt
-        from matplotlib import patches
+        import matplotlib.pyplot as plt  # pylint: disable=import-outside-toplevel
+        from matplotlib import patches  # pylint: disable=import-outside-toplevel
 
         if (
             self.writing_system.directionality != 'left-to-right'
