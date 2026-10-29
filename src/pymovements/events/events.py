@@ -812,6 +812,25 @@ class Events:
         if sampling_rate is not None:
             self.metadata[_SAMPLING_RATE_KEY] = float(sampling_rate)
 
+        # A convention entry without its column is kept, never removed on construction.
+        missing_columns = [
+            column for column, entry in self.metadata.items()
+            if _entry_convention(entry) is not None and column not in self.frame.columns
+        ]
+        if validate and missing_columns:
+            if len(missing_columns) == 1:
+                described = f"entry for the column '{missing_columns[0]}'"
+            else:
+                described = 'entries for the columns ' + ', '.join(
+                    f"'{column}'" for column in missing_columns
+                )
+            warn(
+                f'metadata holds offset convention {described}, '
+                'which the events frame does not have. The metadata is kept.',
+                UserWarning,
+                stacklevel=2,
+            )
+
     def _resolve_durations(
             self,
             *,
