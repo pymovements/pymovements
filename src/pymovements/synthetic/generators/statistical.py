@@ -122,7 +122,9 @@ class StatisticalSampleGenerator(SampleGenerator):
     TypeError
         If a parameter has the wrong type.
     ValueError
-        If a name is unknown or a value is outside its valid interval.
+        If a name is unknown, a value is outside its valid interval, or a value would have no
+        effect, such as a distribution for ``saccade_duration`` or a ``noise_velocity`` without
+        a ``noise_percentage``.
 
     Examples
     --------
@@ -182,6 +184,39 @@ class StatisticalSampleGenerator(SampleGenerator):
         self.profile_sampling_rate = check_positive(
             self.profile_sampling_rate, 'profile_sampling_rate',
         )
+
+        self._check_effective()
+
+    def _check_effective(self) -> None:
+        """Reject a hyperparameter whose value would have no effect, as it hides a mistake."""
+        durations = _range(self.saccade_duration)
+        if durations.distribution != 'uniform':
+            raise ValueError(
+                'saccade_duration only gives the bounds a saccade length is read against, so its '
+                f'distribution {durations.distribution!r} would have no effect; give it as '
+                '(minimum, maximum)',
+            )
+
+        velocities = _range(self.smooth_pursuit_velocity)
+        if self.smooth_pursuit_profile != 'constant' and velocities.distribution != 'uniform':
+            raise ValueError(
+                f'a {self.smooth_pursuit_profile!r} pursuit spans smooth_pursuit_velocity from '
+                f'end to end, so its distribution {velocities.distribution!r} would have no '
+                'effect; give it as (minimum, maximum)',
+            )
+
+        noise = _range(self.noise_velocity)
+        has_noise_velocity = noise.minimum != 0.0 or noise.maximum != 0.0
+        if has_noise_velocity and not self.noise_percentage:
+            raise ValueError(
+                'noise_velocity would have no effect while noise_percentage is 0; set '
+                'noise_percentage to the share of samples that receive noise',
+            )
+        if self.noise_percentage and not has_noise_velocity:
+            raise ValueError(
+                f'noise_percentage ({self.noise_percentage}) would have no effect while '
+                'noise_velocity is 0; set noise_velocity to the velocity change of a noisy sample',
+            )
 
     def _generate(  # pylint: disable=arguments-differ
             self,
