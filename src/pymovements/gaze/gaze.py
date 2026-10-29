@@ -46,6 +46,7 @@ from pymovements._utils._time import durations_to_ms
 from pymovements._utils._time import time_column_to_duration_us
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
+from pymovements.events.events import _rebuild_events
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.quality import DataQualityReport
 from pymovements.gaze.quality import run_report
@@ -1435,12 +1436,10 @@ class Gaze:
             # events frame can be shared across trials instead of being filtered once per trial.
             needs_events = 'events' in method_args
             shared_empty_events = (
-                Events(
+                _rebuild_events(
                     self.events.frame,
                     trial_columns=self.events.trial_columns,
                     metadata=deepcopy(self.events.metadata),
-                    validate=False,
-                    _silent=True,
                 )
                 if needs_events and self.events.frame.height == 0
                 else None
@@ -1464,12 +1463,10 @@ class Gaze:
                         )
 
                     # Select group events.
-                    group_events = Events(
+                    group_events = _rebuild_events(
                         self.events.frame.filter(group_filter_expression),
                         trial_columns=self.events.trial_columns,
                         metadata=deepcopy(self.events.metadata),
-                        validate=False,
-                        _silent=True,
                     )
 
                 method_kwargs = self._fill_event_detection_kwargs(

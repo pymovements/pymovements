@@ -806,8 +806,7 @@ def test_rebuild_sites_carry_metadata_and_do_not_warn(
     assert rebuilds
     for rebuilt, frame, data, kwargs in rebuilds:
         assert kwargs['validate'] is False
-        assert kwargs['_silent'] is True
-        assert set(kwargs) <= {'trial_columns', 'metadata', 'validate', '_silent'}
+        assert set(kwargs) <= {'trial_columns', 'metadata', 'validate'}
         assert_frame_equal(frame, data)
         assert frame.columns == expected_columns
         assert rebuilt.metadata.items() >= _REBUILD_METADATA.items()
@@ -869,7 +868,7 @@ def test_metadata_entries_rebuild_checks_durations_against_entries():
 )
 def test_metadata_offsets_inclusive_differing_from_entry_raises(input_kwargs):
     message = (
-        r"offsets_inclusive=False differs from the metadata entry "
+        r'offsets_inclusive=False differs from the metadata entry '
         r"metadata\['offset'\] = \{'inclusive': True\}"
     )
     if 'offset' not in input_kwargs['data'].columns:
@@ -897,7 +896,7 @@ def test_metadata_sampling_rate_differing_from_entry_raises(input_kwargs):
     with pytest.raises(
             ValueError,
             match=(
-                r"sampling_rate=500 differs from the metadata entry "
+                r'sampling_rate=500 differs from the metadata entry '
                 r"metadata\['sampling_rate'\] = 1000\. Correct the entry or drop the keyword\."
             ),
     ):
