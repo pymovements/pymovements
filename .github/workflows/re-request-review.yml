@@ -23,8 +23,9 @@ jobs:
       - uses: actions/github-script@v8
         with:
           script: |
-            // Latest non-comment review per reviewer with write access, which matches
-            // GitHub's own review decision. Only users can be requested as reviewers.
+            // Ask GitHub for the latest review of each reviewer with write access.
+            // "Opinionated" means plain comments are skipped: only approve, request changes
+            // and dismissed count, which matches GitHub's own review decision.
             const { repository } = await github.graphql(`
               query($owner: String!, $repo: String!, $number: Int!) {
                 repository(owner: $owner, name: $repo) {
@@ -35,16 +36,22 @@ jobs:
                   }
                 }
               }`, { ...context.repo, number: context.issue.number });
+
             const reviewers = repository.pullRequest.latestOpinionatedReviews.nodes
+              // keep reviewers whose latest verdict is "request changes"
               .filter((review) => review.state === 'CHANGES_REQUESTED')
+              // keep users only, bots and apps cannot be requested as reviewers
               .filter((review) => review.author?.__typename === 'User')
+              // turn each review into the reviewer's username
               .map((review) => review.author.login);
 
+            // Nobody requested changes, so there is nothing to do.
             if (reviewers.length === 0) {
               core.info('No reviewer with requested changes, nothing to re-request.');
               return;
             }
 
+            // Same as clicking "Re-request review" in the pull request sidebar.
             core.info(`Re-requesting review from: ${reviewers.join(', ')}`);
             await github.rest.pulls.requestReviewers({
               ...context.repo,
