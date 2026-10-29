@@ -12,6 +12,7 @@ Synthetic
 
     EventGenerator
     EventGeneratorLibrary
+    Range
     SampleGenerator
     SampleGeneratorLibrary
 
@@ -22,6 +23,7 @@ Synthetic
     :nosignatures:
     :template: function.rst
 
+    bridge_gaps
     generate_events
     generate_samples
     register_generator
