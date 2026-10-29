@@ -44,8 +44,8 @@ def fixture_registered_event_generator(uniform_event_generator):
     return register_generator(uniform_event_generator)
 
 
-def test_generate_gaze_matches_the_explicit_call(registered_sample_generator, fixations):
-    gaze = pm.synthetic.generate_gaze(
+def test_generate_samples_matches_the_explicit_call(registered_sample_generator, fixations):
+    gaze = pm.synthetic.generate_samples(
         'test_noise', events=fixations, sampling_rate=1000.0, seed=42, scale=2.0,
     )
     explicit = registered_sample_generator(scale=2.0).generate(
@@ -57,17 +57,17 @@ def test_generate_gaze_matches_the_explicit_call(registered_sample_generator, fi
 
 
 @pytest.mark.usefixtures('registered_sample_generator')
-def test_generate_gaze_passes_hyperparameters_to_the_constructor():
-    gaze = pm.synthetic.generate_gaze('test_noise', sampling_rate=1000.0, seed=42, scale=3.0)
+def test_generate_samples_passes_hyperparameters_to_the_constructor():
+    gaze = pm.synthetic.generate_samples('test_noise', sampling_rate=1000.0, seed=42, scale=3.0)
 
     assert gaze.metadata['synthetic']['hyperparameters'] == {'scale': 3.0}
 
 
 @pytest.mark.usefixtures('registered_sample_generator')
-def test_generate_gaze_passes_the_experiment():
+def test_generate_samples_passes_the_experiment():
     experiment = pm.Experiment(sampling_rate=250.0)
 
-    gaze = pm.synthetic.generate_gaze(
+    gaze = pm.synthetic.generate_samples(
         'test_noise', sampling_rate=250.0, seed=42, experiment=experiment,
     )
 
@@ -75,9 +75,9 @@ def test_generate_gaze_passes_the_experiment():
 
 
 @pytest.mark.usefixtures('registered_sample_generator')
-def test_generate_gaze_passes_the_other_keywords_to_generate(fixations):
+def test_generate_samples_passes_the_other_keywords_to_generate(fixations):
     """Keywords that are not a field of the generator are run parameters."""
-    gaze = pm.synthetic.generate_gaze(
+    gaze = pm.synthetic.generate_samples(
         'test_noise', events=fixations, sampling_rate=500.0, seed=42, scale=2.0,
     )
 
@@ -99,14 +99,14 @@ def test_generate_events_matches_the_explicit_call(registered_event_generator):
     ('entry_point', 'kwargs'),
     [
         pytest.param(
-            pm.synthetic.generate_gaze, {'sampling_rate': 1000.0}, id='generate_gaze',
+            pm.synthetic.generate_samples, {'sampling_rate': 1000.0}, id='generate_samples',
         ),
         pytest.param(pm.synthetic.generate_events, {'duration': 1.0}, id='generate_events'),
     ],
 )
 @pytest.mark.usefixtures('registered_sample_generator', 'registered_event_generator')
 def test_misspelled_hyperparameter_raises_type_error(entry_point, kwargs):
-    name = 'test_noise' if entry_point is pm.synthetic.generate_gaze else 'test_uniform'
+    name = 'test_noise' if entry_point is pm.synthetic.generate_samples else 'test_uniform'
 
     with pytest.raises(TypeError) as excinfo:
         entry_point(name, scael=2.0, **kwargs)
@@ -119,8 +119,8 @@ def test_misspelled_hyperparameter_raises_type_error(entry_point, kwargs):
     ('entry_point', 'kwargs', 'library_name'),
     [
         pytest.param(
-            pm.synthetic.generate_gaze, {'sampling_rate': 1000.0}, 'SampleGeneratorLibrary',
-            id='generate_gaze',
+            pm.synthetic.generate_samples, {'sampling_rate': 1000.0}, 'SampleGeneratorLibrary',
+            id='generate_samples',
         ),
         pytest.param(
             pm.synthetic.generate_events, {'duration': 1.0}, 'EventGeneratorLibrary',

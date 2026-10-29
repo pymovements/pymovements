@@ -23,6 +23,6 @@ Synthetic
     :template: function.rst
 
     generate_events
-    generate_gaze
+    generate_samples
     register_generator
     step_function
