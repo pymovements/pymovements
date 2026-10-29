@@ -808,3 +808,40 @@ def test_compute_event_properties_on_empty_events_without_offset_warns():
         gaze.compute_event_properties(('location', {'position_column': 'pixel'}))
 
     assert gaze.events.frame.is_empty()
+
+
+def test_metadata_entries_written_by_keywords():
+    events = Events(onsets=[0], offsets=[120], offsets_inclusive=True, sampling_rate=1000)
+
+    assert events.metadata == {'offset': {'inclusive': True}, 'sampling_rate': 1000.0}
+
+
+@pytest.mark.parametrize(
+    ('offsets_inclusive', 'expected_ms'),
+    [
+        pytest.param(True, [121, 38], id='inclusive'),
+        pytest.param(False, [120, 37], id='exclusive'),
+    ],
+)
+def test_metadata_entries_declare_and_rate_rebuild_without_keywords(
+        offsets_inclusive, expected_ms,
+):
+    events = Events(
+        onsets=[0, 121], offsets=[120, 158],
+        offsets_inclusive=offsets_inclusive, sampling_rate=1000,
+    )
+
+    rebuilt = Events(events.frame.drop('duration'), metadata=events.metadata)
+
+    assert rebuilt.frame['duration'].to_list() == [timedelta(milliseconds=v) for v in expected_ms]
+    assert rebuilt.metadata == {
+        'offset': {'inclusive': offsets_inclusive}, 'sampling_rate': 1000.0,
+    }
+
+
+def test_metadata_entries_rebuild_checks_durations_against_entries():
+    events = Events(onsets=[0], offsets=[120], offsets_inclusive=True, sampling_rate=1000)
+    frame = events.frame.with_columns(pl.col('duration') - pl.duration(milliseconds=1))
+
+    with pytest.raises(ValueError, match=r'every row contradicts offsets_inclusive=True'):
+        Events(frame, metadata=events.metadata)
