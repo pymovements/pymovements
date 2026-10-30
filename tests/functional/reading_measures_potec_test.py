@@ -51,15 +51,15 @@ from pymovements.measure.reading import compute_reading_measures
 # The OSF files are pinned to a version: a new upload of the published files changes the
 # unversioned download and its checksum.
 SCANPATHS_SOURCE = WebSource(
-    url='https://osf.io/download/7fkze/?version=6',
+    url='https://osf.io/download/7fkze/?version=7',
     filename='scanpaths_merged.zip',
-    md5='a27f74d94cb00946c5f40b3bb54e3705',
+    md5='4f9eddc4c9952dae62b4474c7ec834e4',
 )
 
 READING_MEASURES_SOURCE = WebSource(
-    url='https://osf.io/download/3ywhz/?version=6',
+    url='https://osf.io/download/3ywhz/?version=7',
     filename='reading_measures_merged.zip',
-    md5='b7ada7ca91f3a807d873598b821de88d',
+    md5='fdf7a71509970f4b9d95ce1e84a22779',
 )
 
 WORD_LIMITS_SOURCE = WebSource(
@@ -128,8 +128,6 @@ def test_reading_measures_match_published_potec_measures(potec_directory):
             # The reference computes LP from the aoi column, not char_index_in_text.
             pl.col('aoi').alias('char_idx'),
         )
-        # The reference implementation never processed the trial's final fixation.
-        fixations = fixations.head(fixations.height - 1)
 
         # The i-th zero-based entry of word_starts is the start character of word i + 1.
         text_id = stem.split('_')[1]
