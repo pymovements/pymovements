@@ -89,18 +89,74 @@ _AOI_ROW_ID = '__pymovements_aoi_row_id'
 _AOI_MATCH_ORDER = '__pymovements_aoi_match_order'
 _AOI_X = '__pymovements_aoi_x'
 _AOI_Y = '__pymovements_aoi_y'
+_AOI_NAME = '__pymovements_aoi_name'
+_AOI_JOIN_KEY_PREFIX = '__pymovements_aoi_join_key_'
 
 
-def _event_coordinate_expr(frame: polars.DataFrame, component: Literal['x', 'y']) -> polars.Expr:
-    """Resolve one fixation coordinate from component columns or the ``location`` list column."""
+def _aoi_join_key_name(column: str) -> str:
+    """Return the reserved name of the cast join-key column for ``column``."""
+    return f'{_AOI_JOIN_KEY_PREFIX}{column}'
+
+
+def _is_numeric_like(dtype: polars.PolarsDataType) -> bool:
+    """Return whether ``dtype`` holds numeric values (booleans compare like integers)."""
+    return dtype.is_numeric() or dtype == polars.Boolean
+
+
+def _is_string_like(dtype: polars.PolarsDataType) -> bool:
+    """Return whether ``dtype`` holds string-like values."""
+    return (
+        dtype == polars.String
+        or dtype == polars.Categorical
+        or isinstance(dtype, polars.Enum)
+    )
+
+
+def _key_cast_is_valid(
+        original: polars.Expr,
+        source_dtype: polars.PolarsDataType,
+        target_dtype: polars.PolarsDataType,
+) -> polars.Expr:
+    """Return whether a key value survives casting to the AOI key dtype unchanged.
+
+    Nulls are wildcards and stay valid. A numeric value is valid only if casting to the AOI
+    dtype and back reproduces it, so failed casts and precision loss (for example ``1.5``
+    against an integer column) match no AOI, as in the per-row lookup. Values of different
+    kinds (for example a string against an integer column) never match either.
+    """
+    if source_dtype == target_dtype:
+        return polars.lit(True)
+    cast = original.cast(target_dtype, strict=False)
+    if _is_numeric_like(source_dtype) and _is_numeric_like(target_dtype):
+        round_trip = cast.cast(source_dtype, strict=False)
+        return original.is_null() | (cast.is_not_null() & (round_trip == original))
+    if _is_string_like(source_dtype) and _is_string_like(target_dtype):
+        return polars.lit(True)
+    return original.is_null()
+
+
+def _event_coordinate_expr(
+        frame: polars.DataFrame,
+        component: Literal['x', 'y'],
+) -> tuple[polars.Expr, bool]:
+    """Resolve one fixation coordinate and report whether its source is numeric.
+
+    Only numeric component columns or numeric ``location`` list entries count as coordinates.
+    Anything else resolves to null so it receives no match, as in the per-row lookup.
+    """
     index = 0 if component == 'x' else 1
-    # The leading null keeps the expression valid for frames without any coordinate column.
-    expressions: list[polars.Expr] = [polars.lit(None, dtype=polars.Float64)]
-    if f'location_{component}' in frame.columns:
-        expressions.append(polars.col(f'location_{component}'))
+    component_column = f'location_{component}'
+    if component_column in frame.columns:
+        source_dtype = frame.schema[component_column]
+        if _is_numeric_like(source_dtype):
+            return polars.col(component_column).cast(polars.Float64), True
+        return polars.lit(None, dtype=polars.Float64), False
     if 'location' in frame.columns:
-        expressions.append(polars.col('location').list.get(index))
-    return polars.coalesce(expressions).cast(polars.Float64, strict=False)
+        source_dtype = frame.schema['location']
+        if isinstance(source_dtype, polars.List) and _is_numeric_like(source_dtype.inner):
+            return polars.col('location').list.get(index).cast(polars.Float64), True
+        return polars.lit(None, dtype=polars.Float64), False
+    return polars.lit(None, dtype=polars.Float64), False
 
 
 def _map_fixations_to_aois(
@@ -122,20 +178,27 @@ def _map_fixations_to_aois(
         if column is not None and column in frame.columns
     ]
 
+    x_expr, x_is_numeric = _event_coordinate_expr(frame, 'x')
+    y_expr, y_is_numeric = _event_coordinate_expr(frame, 'y')
+
     candidates = frame.select(
         polars.int_range(polars.len()).alias(_AOI_ROW_ID),
-        polars.col('name').alias('__aoi_name'),
-        _event_coordinate_expr(frame, 'x').alias(_AOI_X),
-        _event_coordinate_expr(frame, 'y').alias(_AOI_Y),
+        polars.col('name').alias(_AOI_NAME),
+        x_expr.alias(_AOI_X),
+        y_expr.alias(_AOI_Y),
+        # Keep the original key values for the null-wildcard lookup below.
+        *[polars.col(column) for column in key_columns],
         # Cast to the AOI key dtypes so the join keys always share a common dtype.
         *[
-            polars.col(column).cast(aoi_dataframe.aois.schema[column], strict=False)
+            polars.col(column)
+            .cast(aoi_dataframe.aois.schema[column], strict=False)
+            .alias(_aoi_join_key_name(column))
             for column in key_columns
         ],
     )
     is_fixation = (
-        polars.col('__aoi_name').is_not_null()
-        & polars.col('__aoi_name').str.starts_with('fixation')
+        polars.col(_AOI_NAME).is_not_null()
+        & polars.col(_AOI_NAME).str.starts_with('fixation')
     )
     has_valid_xy = (
         polars.col(_AOI_X).is_not_null()
@@ -143,15 +206,39 @@ def _map_fixations_to_aois(
         & polars.col(_AOI_X).is_not_nan()
         & polars.col(_AOI_Y).is_not_nan()
     )
+
+    n_fixations = candidates.filter(is_fixation).height
+    if x_is_numeric and y_is_numeric:
+        n_invalid = candidates.filter(is_fixation & ~has_valid_xy).height
+    else:
+        n_invalid = n_fixations
+    if n_invalid:
+        warnings.warn(
+            f'Invalid eye coordinates in {n_invalid} of {n_fixations} fixations for AOI '
+            'lookup. Returning no match for these fixations.',
+            UserWarning,
+        )
+
     candidates = candidates.filter(is_fixation & has_valid_xy)
 
     # Rows whose configured key columns contain null are matched against all AOIs of the
     # respective other key (legacy behavior); handle them via the per-row lookup below.
+    # Non-null keys that do not survive the cast match no AOI, as in the per-row lookup.
     if key_columns:
         keys_present = polars.all_horizontal(
             [polars.col(column).is_not_null() for column in key_columns],
         )
-        constrained = candidates.filter(keys_present)
+        keys_valid = polars.all_horizontal(
+            [
+                _key_cast_is_valid(
+                    polars.col(column),
+                    frame.schema[column],
+                    aoi_dataframe.aois.schema[column],
+                )
+                for column in key_columns
+            ],
+        )
+        constrained = candidates.filter(keys_present & keys_valid)
         wildcard = candidates.filter(~keys_present)
     else:
         constrained = candidates
@@ -161,7 +248,13 @@ def _map_fixations_to_aois(
         polars.int_range(polars.len()).alias(_AOI_MATCH_ORDER),
     )
     if key_columns:
-        matches = constrained.join(aois, on=key_columns, how='inner', suffix='_aoi')
+        matches = constrained.join(
+            aois,
+            left_on=[_aoi_join_key_name(column) for column in key_columns],
+            right_on=key_columns,
+            how='inner',
+            suffix='_aoi',
+        )
     else:
         matches = constrained.join(aois, how='cross', suffix='_aoi')
 
@@ -222,8 +315,6 @@ def _map_fixations_to_aois(
                 schema={_AOI_ROW_ID: candidates.schema[_AOI_ROW_ID], **aoi_schema},
             )
             matched = polars.concat([matched, fallback])
-
-    matched = matched.unique(subset=[_AOI_ROW_ID], keep='first')
 
     result = frame.with_row_index(_AOI_ROW_ID)
     if matched.height:
@@ -1055,9 +1146,33 @@ class Events:
         """Map events to AOIs, ignoring non-fixations.
 
         This function computes AOI membership only for rows whose ``name`` starts with
-        ``"fixation"`` (e.g., ``"fixation"``, ``"fixation_ivt"``). Rows that are not fixations
-        are left unchanged and receive ``None`` values for all AOI columns. The original order
-        and number of rows are preserved.
+        ``"fixation"`` (e.g., ``"fixation"``, ``"fixation_ivt"``). Non-fixation rows,
+        fixations with invalid coordinates and fixations without a matching AOI receive
+        ``None`` values for all appended AOI columns. The original order and number of rows
+        are preserved.
+
+        Fixations are matched against the AOI rectangles with a vectorised join and
+        half-open rectangle test (``start <= coordinate < end``) instead of one lookup per
+        row. Coordinates are taken from numeric ``location_x``/``location_y`` columns, or
+        from a numeric ``location`` list column when the component columns are absent.
+        Fixations whose coordinates are missing, ``NaN`` or non-numeric receive no match,
+        and one ``UserWarning`` reports the number of such fixations per call.
+
+        Trial and page keys:
+
+        - If the stimulus defines ``trial_column``/``page_column`` and the events frame has
+          the same columns, matching is restricted to AOIs with equal key values.
+        - A null value in a configured key column is a wildcard: that fixation is matched
+          against all AOIs for the other key(s), using the per-row
+          :meth:`TextStimulus.get_aoi` lookup.
+        - A non-null key that cannot be cast to the AOI key dtype without changing its value
+          (for example a string against an integer column, or ``1.5`` against an integer
+          column) matches no AOI.
+
+        Overlapping AOIs:
+
+        - If multiple AOIs contain a fixation, the first AOI in stimulus order is selected
+          and a ``UserWarning`` is emitted.
 
         Schema handling:
 
@@ -1065,12 +1180,11 @@ class Events:
           ``location`` column exists: derive ``location_x``/``location_y`` and drop ``location``.
           This keeps downstream expectations about flat component columns.
         - If ``preserve_structure=False``, no unnesting/derivation occurs and the original
-          ``location`` list column is preserved. Coordinates are extracted per-row without
-          altering the frame.
+          ``location`` list column is preserved. Matching reads coordinates without altering
+          the frame.
 
-        AOI columns used for trial/page keys in the stimulus (``trial_column``/``page_column``)
-        are not appended to the events, as they are dropped by ``TextStimulus.get_aoi`` to avoid
-        duplicate columns during concatenation.
+        AOI columns used as trial/page keys are only appended when the events frame does not
+        already contain a column with that name; existing event columns are never overwritten.
 
         Parameters
         ----------
@@ -1087,12 +1201,25 @@ class Events:
         ValueError
             If ``aoi_dataframe`` does not have either ``width_column`` or ``end_x_column`` defined.
         ValueError
+            If ``width_column`` and ``height_column`` or ``end_x_column`` and ``end_y_column``
+            are not both defined or both ``None``.
+        ValueError
             If the events frame is empty.
         """
         # Validate AOI configuration early
         if aoi_dataframe.width_column is None and aoi_dataframe.end_x_column is None:
             raise ValueError(
                 'either TextStimulus.width or TextStimulus.end_x_column must be defined',
+            )
+        if aoi_dataframe.width_column is not None:
+            _checks.check_is_none_is_mutual(
+                height_column=aoi_dataframe.width_column,
+                width_column=aoi_dataframe.height_column,
+            )
+        elif aoi_dataframe.end_x_column is not None:
+            _checks.check_is_none_is_mutual(
+                end_x_column=aoi_dataframe.end_x_column,
+                end_y_column=aoi_dataframe.end_y_column,
             )
         # Raise when no rows to concat
         if self.frame.height == 0:
