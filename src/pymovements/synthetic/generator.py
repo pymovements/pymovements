@@ -93,9 +93,9 @@ class _Generator(abc.ABC, Generic[OutputT]):
         -------
         OutputT
             The generated events or gaze samples, with the run recorded under the
-            ``'synthetic'`` key of their metadata. A sample generator attaches an
-            :py:class:`~pymovements.Experiment` carrying its sampling rate, and a copy of a run
-            parameter named ``events`` as the ground truth.
+            ``'synthetic'`` key of their metadata, defaults of ``_generate`` filled in. A sample
+            generator attaches an :py:class:`~pymovements.Experiment` carrying its sampling rate,
+            and a copy of a run parameter named ``events`` as the ground truth.
 
         Raises
         ------
@@ -112,7 +112,7 @@ class _Generator(abc.ABC, Generic[OutputT]):
         """
         _warn_experimental()
         self._check_class()
-        self._check_run(run)
+        run = self._resolve_run(run)
         seed = _resolve_seed(seed)
 
         generated = self._run(np.random.default_rng(seed), run)
@@ -145,17 +145,27 @@ class _Generator(abc.ABC, Generic[OutputT]):
                 f"dataclass field and a hyperparameter; write name = '{name}' without annotation",
             )
 
-    def _check_run(self, run: dict[str, Any]) -> None:
-        """Reject run parameters that ``_generate`` does not declare, naming the accepted ones."""
+    def _resolve_run(self, run: dict[str, Any]) -> dict[str, Any]:
+        """Return the run parameters with the defaults of ``_generate`` filled in.
+
+        A run that relies on a default is recorded with it, so it stays reproducible. A run
+        parameter that ``_generate`` does not declare raises, naming the accepted ones.
+        """
         parameters = inspect.signature(self._generate).parameters
-        declared = sorted(name for name in parameters if name != 'rng')
+        declared = {name: parameter for name, parameter in parameters.items() if name != 'rng'}
 
         unknown = sorted(set(run) - set(declared))
         if unknown:
             raise TypeError(
                 f'{type(self).__name__}.generate() got unknown run parameters {unknown}; '
-                f'it accepts: {declared}',
+                f'it accepts: {sorted(declared)}',
             )
+
+        defaults = {
+            name: parameter.default for name, parameter in declared.items()
+            if parameter.default is not parameter.empty
+        }
+        return {**defaults, **run}
 
     def _fields(self) -> tuple[dataclasses.Field[Any], ...]:
         """Return the dataclass fields, rejecting a generator whose hyperparameters are unknown."""
@@ -175,7 +185,8 @@ class _Generator(abc.ABC, Generic[OutputT]):
         Parameters
         ----------
         run: dict[str, Any]
-            The run parameters the generator declares, as passed to ``generate()``.
+            The run parameters the generator declares, as passed to ``generate()`` with the
+            defaults of ``_generate`` filled in.
 
         Returns
         -------

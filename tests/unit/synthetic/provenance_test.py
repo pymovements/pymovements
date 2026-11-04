@@ -30,7 +30,7 @@ pytestmark = pytest.mark.filterwarnings(
 @pytest.mark.parametrize(
     ('run', 'expected_run'),
     [
-        pytest.param({}, {}, id='unconditioned'),
+        pytest.param({}, {'events': None}, id='unconditioned'),
         pytest.param({'events': 'fixations'}, {'n_events': 2}, id='event_conditioned'),
     ],
 )
@@ -57,6 +57,19 @@ def test_generator_can_override_how_its_run_is_recorded(noise_sample_generator, 
     gaze = SummarisingGenerator(sampling_rate=500.0).generate(events=fixations, seed=42)
 
     assert gaze.metadata['synthetic']['run'] == {'event_names': ['fixation']}
+
+
+def test_run_defaults_are_recorded(uniform_event_generator):
+    """A run that relies on a default of ``_generate`` is reproducible from its record."""
+    class DefaultDurationGenerator(uniform_event_generator):
+        # The delegation gives the run parameter a default, which is what the test is about.
+        def _generate(self, *, rng, duration=1.5):  # pylint: disable=useless-parent-delegation
+            return super()._generate(rng=rng, duration=duration)
+
+    events = DefaultDurationGenerator().generate(seed=42)
+
+    assert events.metadata['synthetic']['run'] == {'duration': 1.5}
+    assert events.frame['offset'].dt.total_milliseconds().max() == 1500
 
 
 def test_event_generator_records_provenance(uniform_event_generator):
