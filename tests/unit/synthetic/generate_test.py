@@ -108,6 +108,28 @@ def test_misspelled_hyperparameter_raises_type_error(entry_point, name, kwargs):
     assert 'scael' in msg
 
 
+@pytest.mark.parametrize(
+    ('entry_point', 'name', 'kwargs'),
+    [
+        pytest.param(
+            pm.synthetic.generate_samples, 'test_noise', {'sampling_rate': 1000.0},
+            id='generate_samples',
+        ),
+        pytest.param(
+            pm.synthetic.generate_events, 'test_uniform', {'duration': 1.0},
+            id='generate_events',
+        ),
+    ],
+)
+@pytest.mark.usefixtures('registered_sample_generator', 'registered_event_generator')
+@pytest.mark.filterwarnings('default::pymovements.ExperimentalWarning')
+def test_entry_point_warns_at_its_caller(entry_point, name, kwargs):
+    with pytest.warns(pm.ExperimentalWarning) as record:
+        entry_point(name, seed=42, **kwargs)
+
+    assert record[0].filename == __file__
+
+
 def test_generate_events_rejects_a_generator_that_is_no_dataclass():
     """The entry point routes every keyword to the run, and generate() names the problem."""
     class PlainGenerator(pm.synthetic.EventGenerator):

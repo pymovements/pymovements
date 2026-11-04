@@ -19,12 +19,15 @@
 # SOFTWARE.
 """Test the event and sample generator base classes."""
 import dataclasses
+import inspect
 
 import numpy as np
 import pytest
 from polars.testing import assert_frame_equal
 
+from pymovements import __version__
 from pymovements import Events
+from pymovements import Experiment
 from pymovements import ExperimentalWarning
 from pymovements import Gaze
 from pymovements.synthetic import EventGenerator
@@ -156,6 +159,48 @@ def test_sample_generator_attaches_an_experiment_with_the_sampling_rate(noise_sa
     assert gaze.experiment.sampling_rate == 500.0
 
 
+@pytest.mark.parametrize(
+    'experiment',
+    [
+        pytest.param(Experiment(screen_width_px=1280, screen_height_px=1024), id='without_rate'),
+        pytest.param(
+            Experiment(screen_width_px=1280, screen_height_px=1024, sampling_rate=500.0),
+            id='with_same_rate',
+        ),
+    ],
+)
+def test_sample_generator_keeps_the_experiment_of_its_own_samples(
+        noise_sample_generator, experiment,
+):
+    """A generator that knows its screen attaches it; the base fills in the sampling rate."""
+    class ScreenGenerator(noise_sample_generator):
+        def _generate(self, *, rng, events=None):
+            gaze = super()._generate(rng=rng, events=events)
+            gaze.experiment = experiment
+            return gaze
+
+    gaze = ScreenGenerator(sampling_rate=500.0).generate(seed=42)
+
+    assert gaze.experiment is experiment
+    assert gaze.experiment.screen.width_px == 1280
+    assert gaze.experiment.sampling_rate == 500.0
+
+
+def test_sample_generator_rejects_samples_with_another_sampling_rate(noise_sample_generator):
+    class OtherRateGenerator(noise_sample_generator):
+        def _generate(self, *, rng, events=None):
+            gaze = super()._generate(rng=rng, events=events)
+            gaze.experiment = Experiment(sampling_rate=250.0)
+            return gaze
+
+    with pytest.raises(ValueError) as excinfo:
+        OtherRateGenerator(sampling_rate=500.0).generate(seed=42)
+
+    msg, = excinfo.value.args
+    for msg_substring in ('OtherRateGenerator', '250.0', '500.0'):
+        assert msg_substring in msg
+
+
 def test_sample_generator_keeps_metadata_of_its_own(noise_sample_generator):
     class MetadataGenerator(noise_sample_generator):
         def _generate(self, *, rng, events=None):
@@ -169,15 +214,39 @@ def test_sample_generator_keeps_metadata_of_its_own(noise_sample_generator):
     assert 'synthetic' in gaze.metadata
 
 
-def test_sample_generator_bound_to_one_sampling_rate_redefines_the_field(noise_sample_generator):
-    @dataclasses.dataclass
+@pytest.fixture(name='fixed_rate_generator')
+def fixture_fixed_rate_generator(noise_sample_generator):
+    """Return a toy generator bound to 250 Hz, the shape the SampleGenerator docstring gives."""
+    @dataclasses.dataclass(kw_only=True)
     class FixedRateGenerator(noise_sample_generator):
         sampling_rate: float = 250.0
 
-    gaze = FixedRateGenerator().generate(seed=42)
+        def __post_init__(self):
+            super().__post_init__()
+            if self.sampling_rate != 250.0:
+                raise ValueError('FixedRateGenerator generates at 250 Hz only')
+
+    return FixedRateGenerator
+
+
+def test_sample_generator_bound_to_one_sampling_rate_redefines_the_field(fixed_rate_generator):
+    gaze = fixed_rate_generator().generate(seed=42)
 
     assert gaze.experiment.sampling_rate == 250.0
     assert gaze.metadata['synthetic']['hyperparameters'] == {'sampling_rate': 250.0, 'scale': 1.0}
+
+
+def test_sample_generator_bound_to_one_sampling_rate_rejects_another(fixed_rate_generator):
+    with pytest.raises(ValueError, match='250 Hz only'):
+        fixed_rate_generator(sampling_rate=500.0)
+
+
+def test_sample_generator_bound_to_one_sampling_rate_keeps_the_field_keyword_only(
+        fixed_rate_generator,
+):
+    parameter = inspect.signature(fixed_rate_generator).parameters['sampling_rate']
+
+    assert parameter.kind is inspect.Parameter.KEYWORD_ONLY
 
 
 def test_sample_generator_requires_a_sampling_rate(noise_sample_generator):
@@ -264,6 +333,17 @@ def test_generator_rejects_unknown_run_parameters(request, generator, init, run,
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
         assert msg_substring in msg
+
+
+def test_generator_with_var_keyword_accepts_any_run_parameter(uniform_event_generator):
+    """A ``_generate`` with ``**kwargs`` declares no run parameters, so every key passes."""
+    class OpenGenerator(uniform_event_generator):
+        def _generate(self, *, rng, duration=1.0, **options):  # pylint: disable=unused-argument
+            return super()._generate(rng=rng, duration=duration)
+
+    events = OpenGenerator().generate(seed=42, flavour='plain')
+
+    assert events.metadata['synthetic']['run'] == {'duration': 1.0, 'flavour': 'plain'}
 
 
 @pytest.mark.parametrize(('generator', 'init', 'run'), LEVELS)
@@ -391,3 +471,70 @@ def test_hyperparameters_reject_a_generator_that_is_no_dataclass():
     msg, = excinfo.value.args
     for msg_substring in ('_PlainGenerator', 'dataclass'):
         assert msg_substring in msg
+
+
+@pytest.mark.parametrize(
+    ('run', 'expected_run'),
+    [
+        pytest.param({}, {'events': None}, id='unconditioned'),
+        pytest.param({'events': 'fixations'}, {'n_events': 2}, id='event_conditioned'),
+    ],
+)
+def test_sample_generator_records_provenance(request, noise_sample_generator, run, expected_run):
+    run = {key: request.getfixturevalue(value) for key, value in run.items()}
+
+    gaze = noise_sample_generator(sampling_rate=500.0, scale=2.0).generate(seed=42, **run)
+
+    assert gaze.metadata['synthetic'] == {
+        'generator': 'test_noise',
+        'level': 'samples',
+        'hyperparameters': {'sampling_rate': 500.0, 'scale': 2.0},
+        'run': expected_run,
+        'seed': 42,
+        'pymovements_version': __version__,
+    }
+
+
+def test_generator_can_override_how_its_run_is_recorded(noise_sample_generator, fixations):
+    class SummarisingGenerator(noise_sample_generator):
+        def _record_run(self, run):
+            return {'event_names': sorted(set(run['events'].frame['name']))}
+
+    gaze = SummarisingGenerator(sampling_rate=500.0).generate(events=fixations, seed=42)
+
+    assert gaze.metadata['synthetic']['run'] == {'event_names': ['fixation']}
+
+
+def test_run_defaults_are_recorded(uniform_event_generator):
+    """A run that relies on a default of ``_generate`` is reproducible from its record."""
+    class DefaultDurationGenerator(uniform_event_generator):
+        # The delegation gives the run parameter a default, which is what the test is about.
+        def _generate(self, *, rng, duration=1.5):  # pylint: disable=useless-parent-delegation
+            return super()._generate(rng=rng, duration=duration)
+
+    events = DefaultDurationGenerator().generate(seed=42)
+
+    assert events.metadata['synthetic']['run'] == {'duration': 1.5}
+    assert events.frame['offset'].dt.total_milliseconds().max() == 1500
+
+
+def test_event_generator_records_provenance(uniform_event_generator):
+    events = uniform_event_generator(max_duration=200.0).generate(duration=1.5, seed=42)
+
+    assert events.metadata['synthetic'] == {
+        'generator': 'test_uniform',
+        'level': 'events',
+        'hyperparameters': {'min_duration': 100.0, 'max_duration': 200.0},
+        'run': {'duration': 1.5},
+        'seed': 42,
+        'pymovements_version': __version__,
+    }
+
+
+def test_drawn_seed_is_recorded(noise_sample_generator):
+    """The drawn seed is exact as a float too, so JSON readers and Int64 columns keep it."""
+    gaze = noise_sample_generator(sampling_rate=500.0).generate()
+
+    seed = gaze.metadata['synthetic']['seed']
+    assert isinstance(seed, int)
+    assert 0 <= seed < 2 ** 53

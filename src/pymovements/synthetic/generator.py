@@ -62,7 +62,7 @@ class _Generator(abc.ABC, Generic[OutputT]):
 
         These are the dataclass fields that ``__init__`` takes, so that
         ``type(generator)(**generator.hyperparameters())`` is an equal generator. A value derived
-        in ``__post_init__`` is declared with ``init=False`` and left out; a neural generator
+        in ``__post_init__`` is declared with ``init=False`` and left out. A neural generator
         loads its weights from a path, and the path is the hyperparameter.
 
         Returns
@@ -98,8 +98,9 @@ class _Generator(abc.ABC, Generic[OutputT]):
         OutputT
             The generated events or gaze samples, with the run recorded under the
             ``'synthetic'`` key of their metadata, defaults of ``_generate`` filled in. A sample
-            generator attaches an :py:class:`~pymovements.Experiment` carrying its sampling rate,
-            and a copy of a run parameter named ``events`` as the ground truth.
+            generator attaches a copy of a run parameter named ``events`` as the ground truth,
+            and an :py:class:`~pymovements.Experiment` carrying its sampling rate unless the
+            samples carry one already.
 
         Raises
         ------
@@ -107,14 +108,35 @@ class _Generator(abc.ABC, Generic[OutputT]):
             If the generator is not a dataclass or has no ``name``, the seed is not an integer,
             or a run parameter is unknown to the generator or missing.
         ValueError
-            If the seed is negative.
+            If the seed is negative, or the samples a sample generator made carry an experiment
+            with another sampling rate.
 
         Warns
         -----
         ExperimentalWarning
             Always. Synthetic data generation is experimental.
         """
-        _warn_experimental()
+        return self._generate_at(seed, run, depth=2)
+
+    def _generate_at(self, seed: int | None, run: dict[str, Any], *, depth: int) -> OutputT:
+        """Do the work of ``generate()``, warning at the line ``depth`` calls above this method.
+
+        Parameters
+        ----------
+        seed: int | None
+            The random seed, or ``None`` to draw one.
+        run: dict[str, Any]
+            The run parameters as passed to ``generate()``.
+        depth: int
+            The number of calls above this method that the warning points at. ``generate()`` and
+            the entry points, which call this method in its place, pass 2: the line of the user.
+
+        Returns
+        -------
+        OutputT
+            The generated data, as ``generate()`` returns it.
+        """
+        _warn_experimental(depth)
         self._check_class()
         run = self._resolve_run(run)
         seed = _resolve_seed(seed)
@@ -127,7 +149,7 @@ class _Generator(abc.ABC, Generic[OutputT]):
         return generated
 
     def _run(self, rng: np.random.Generator, run: dict[str, Any]) -> OutputT:
-        """Call ``_generate``; a level overrides this to prepare its inputs and its output."""
+        """Call ``_generate``. A level overrides this to prepare its inputs and its output."""
         return self._generate(rng=rng, **run)
 
     def _check_class(self) -> None:
@@ -153,13 +175,22 @@ class _Generator(abc.ABC, Generic[OutputT]):
         """Return the run parameters with the defaults of ``_generate`` filled in.
 
         A run that relies on a default is recorded with it, so it stays reproducible. A run
-        parameter that ``_generate`` does not declare raises, naming the accepted ones.
+        parameter that ``_generate`` does not declare raises, naming the accepted ones, unless
+        ``_generate`` takes ``**kwargs``.
         """
         parameters = inspect.signature(self._generate).parameters
-        declared = {name: parameter for name, parameter in parameters.items() if name != 'rng'}
+        declared = {
+            name: parameter for name, parameter in parameters.items()
+            if name != 'rng' and parameter.kind in (
+                parameter.POSITIONAL_OR_KEYWORD, parameter.KEYWORD_ONLY,
+            )
+        }
+        accepts_any = any(
+            parameter.kind is parameter.VAR_KEYWORD for parameter in parameters.values()
+        )
 
         unknown = sorted(set(run) - set(declared))
-        if unknown:
+        if unknown and not accepts_any:
             raise TypeError(
                 f'{type(self).__name__}.generate() got unknown run parameters {unknown}; '
                 f'it accepts: {sorted(declared)}',
@@ -306,11 +337,13 @@ class SampleGenerator(_Generator[Gaze]):
     ``_generate``, whose keyword arguments besides ``rng`` are the generator's run parameters. A
     run parameter named ``events`` is copied before ``_generate`` receives it, and that copy is
     attached to the output, so the output carries its ground truth. The output also gets an
-    :py:class:`~pymovements.Experiment` carrying the sampling rate, as a recording would.
+    :py:class:`~pymovements.Experiment` carrying the sampling rate, as a recording would, unless
+    ``_generate`` attached one, which then carries the same rate or none.
 
-    A generator built for one sampling rate redefines the field with that rate as its default. A
-    subclass that defines ``__post_init__`` calls ``super().__post_init__()`` first, so the
-    sampling rate is checked.
+    A generator built for one sampling rate redefines the field with that rate as its default,
+    under ``@dataclasses.dataclass(kw_only=True)`` so that the field stays keyword-only, and
+    rejects other values in its ``__post_init__``. A subclass that defines ``__post_init__`` calls
+    ``super().__post_init__()`` first, so the sampling rate is checked.
 
     Attributes
     ----------
@@ -376,15 +409,29 @@ class SampleGenerator(_Generator[Gaze]):
 
     def _run(self, rng: np.random.Generator, run: dict[str, Any]) -> Gaze:
         """Generate from a copy of the events, and attach that copy and the experiment."""
-        if isinstance(run.get('events'), Events):
-            run['events'] = run['events'].clone()
+        events = run.get('events')
+        if isinstance(events, Events):
+            run['events'] = events = events.clone()
 
         generated = self._generate(rng=rng, **run)
 
-        generated.experiment = Experiment(sampling_rate=self.sampling_rate)
-        if isinstance(run.get('events'), Events):
-            generated.events = run['events']
+        self._attach_experiment(generated)
+        if isinstance(events, Events):
+            generated.events = events
         return generated
+
+    def _attach_experiment(self, generated: Gaze) -> None:
+        """Attach an experiment with the sampling rate, or check the one ``_generate`` attached."""
+        experiment = generated.experiment
+        if experiment is None:
+            generated.experiment = Experiment(sampling_rate=self.sampling_rate)
+        elif experiment.sampling_rate is None:
+            experiment.sampling_rate = self.sampling_rate
+        elif experiment.sampling_rate != self.sampling_rate:
+            raise ValueError(
+                f'{type(self).__name__} generated samples whose experiment has a sampling rate '
+                f'of {experiment.sampling_rate} Hz, but its own is {self.sampling_rate} Hz',
+            )
 
     @abc.abstractmethod
     def _generate(self, *, rng: np.random.Generator, **run: Any) -> Gaze:
@@ -404,15 +451,21 @@ class SampleGenerator(_Generator[Gaze]):
         """
 
 
-def _warn_experimental() -> None:
-    """Warn that synthetic data generation is experimental, pointing at the caller of generate()."""
+def _warn_experimental(depth: int) -> None:
+    """Warn that synthetic data generation is experimental.
+
+    Parameters
+    ----------
+    depth: int
+        The number of calls above the caller of this function that the warning points at.
+    """
     warn(
         'Synthetic gaze generation is experimental. '
         'Names and behavior may change without being considered a breaking change. '
         'Please set the used pymovements version explicitly to prevent unexpected changes. '
         f'The used pymovements version is v{__version__}.',
         ExperimentalWarning,
-        stacklevel=3,
+        stacklevel=depth + 2,
     )
 
 
