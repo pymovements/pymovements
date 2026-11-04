@@ -28,12 +28,12 @@ from pymovements import synthetic
     'name',
     [
         pytest.param('EventGenerator', id='EventGenerator'),
-        pytest.param('EventGeneratorLibrary', id='EventGeneratorLibrary'),
         pytest.param('SampleGenerator', id='SampleGenerator'),
+        pytest.param('EventGeneratorLibrary', id='EventGeneratorLibrary'),
         pytest.param('SampleGeneratorLibrary', id='SampleGeneratorLibrary'),
+        pytest.param('register_generator', id='register_generator'),
         pytest.param('generate_events', id='generate_events'),
         pytest.param('generate_samples', id='generate_samples'),
-        pytest.param('register_generator', id='register_generator'),
         pytest.param('step_function', id='step_function'),
     ],
 )

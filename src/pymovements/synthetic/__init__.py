@@ -30,11 +30,11 @@ from pymovements.synthetic.step_function import step_function
 
 __all__ = [
     'EventGenerator',
-    'EventGeneratorLibrary',
     'SampleGenerator',
+    'EventGeneratorLibrary',
     'SampleGeneratorLibrary',
+    'register_generator',
     'generate_events',
     'generate_samples',
-    'register_generator',
     'step_function',
 ]

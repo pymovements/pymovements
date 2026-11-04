@@ -11,8 +11,8 @@ Synthetic
     :template: class.rst
 
     EventGenerator
-    EventGeneratorLibrary
     SampleGenerator
+    EventGeneratorLibrary
     SampleGeneratorLibrary
 
 .. rubric:: Functions
@@ -22,7 +22,7 @@ Synthetic
     :nosignatures:
     :template: function.rst
 
+    register_generator
     generate_events
     generate_samples
-    register_generator
     step_function
