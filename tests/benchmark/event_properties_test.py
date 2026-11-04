@@ -41,29 +41,41 @@ def _synthetic_events_and_samples(
         events_per_trial: int,
 ) -> tuple[pl.DataFrame, pl.DataFrame]:
     """Generate non-overlapping fixation events with matching 1 kHz samples."""
-    samples = []
-    events = []
-    for trial in range(n_trials):
-        time = 0
-        for _ in range(events_per_trial):
-            onset = time
-            for _ in range(_EVENT_SAMPLES):
-                samples.append(
-                    (trial, time, [float(_RNG.normal()), float(_RNG.normal())]),
-                )
-                time += 1
-            events.append((trial, 'fixation', onset, time - 1))
-            time += _GAP_SAMPLES
+    block = _EVENT_SAMPLES + _GAP_SAMPLES
+    event_starts = np.arange(events_per_trial) * block
+    sample_times = (event_starts[:, None] + np.arange(_EVENT_SAMPLES)).ravel()
+
+    n_events = n_trials * events_per_trial
+    n_samples = n_trials * events_per_trial * _EVENT_SAMPLES
+    positions = _RNG.normal(size=(n_samples, 2))
 
     events_frame = pl.DataFrame(
-        events, schema=['trial', 'name', 'onset', 'offset'], orient='row',
-    ).with_columns(pl.col('trial', 'onset', 'offset').cast(pl.Int64))
-    samples_frame = pl.DataFrame(
-        samples, schema=['trial', 'time', 'position'], orient='row',
-    ).with_columns(
-        pl.col('trial', 'time').cast(pl.Int64),
-        pl.col('position').cast(pl.List(pl.Float64)),
+        {
+            'trial': np.repeat(np.arange(n_trials), events_per_trial),
+            'name': 'fixation',
+            'onset': np.tile(event_starts, n_trials),
+            'offset': np.tile(event_starts + _EVENT_SAMPLES - 1, n_trials),
+        },
+        schema={
+            'trial': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+        },
     )
+    samples_frame = (
+        pl.DataFrame(
+            {
+                'trial': np.repeat(np.arange(n_trials), events_per_trial * _EVENT_SAMPLES),
+                'time': np.tile(sample_times, n_trials),
+                'x': positions[:, 0],
+                'y': positions[:, 1],
+            },
+            schema={'trial': pl.Int64, 'time': pl.Int64, 'x': pl.Float64, 'y': pl.Float64},
+        )
+        .select(
+            'trial', 'time',
+            pl.concat_list(pl.col('x'), pl.col('y')).alias('position'),
+        )
+    )
+    assert len(events_frame) == n_events
     return events_frame, samples_frame
 
 
