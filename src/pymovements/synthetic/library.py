@@ -162,10 +162,6 @@ def register_generator(generator: type[GeneratorT]) -> type[GeneratorT]:
 
     Examples
     --------
-    .. testsetup::
-
-        >>> getfixture('doctest_synthetic')
-
     The decorator sorts the class into the library of its level:
 
     >>> import dataclasses

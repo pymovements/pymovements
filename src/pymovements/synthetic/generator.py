@@ -248,10 +248,6 @@ class EventGenerator(_Generator[Events]):
 
     Examples
     --------
-    .. testsetup::
-
-        >>> getfixture('doctest_synthetic')
-
     A generator that fills the requested duration with fixations of equal length:
 
     >>> import dataclasses
@@ -267,7 +263,7 @@ class EventGenerator(_Generator[Events]):
     ...         onsets = [index * self.fixation_duration for index in range(count)]
     ...         offsets = [onset + self.fixation_duration for onset in onsets]
     ...         return pm.Events(name=['fixation'] * count, onsets=onsets, offsets=offsets)
-    >>> events = EvenFixations().generate(duration=1.0, seed=42)
+    >>> events = EvenFixations().generate(duration=1.0, seed=42)  # doctest: +IGNORE_WARNINGS
     >>> events.frame['name'].to_list()
     ['fixation', 'fixation', 'fixation', 'fixation']
 
@@ -332,10 +328,6 @@ class SampleGenerator(_Generator[Gaze]):
 
     Examples
     --------
-    .. testsetup::
-
-        >>> getfixture('doctest_synthetic')
-
     A generator that renders each event as gaze resting at the origin, with noise. It declares
     ``events`` as its run parameter:
 
@@ -363,7 +355,8 @@ class SampleGenerator(_Generator[Gaze]):
     ...             position_columns=['x', 'y'],
     ...         )
     >>> events = pm.Events(name=['fixation'], onsets=[0], offsets=[500])
-    >>> gaze = StillGaze(sampling_rate=1000).generate(events=events, seed=42)
+    >>> generator = StillGaze(sampling_rate=1000)
+    >>> gaze = generator.generate(events=events, seed=42)  # doctest: +IGNORE_WARNINGS
     >>> gaze.samples.height
     500
     >>> gaze.experiment.sampling_rate

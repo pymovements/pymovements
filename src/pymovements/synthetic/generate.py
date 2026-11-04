@@ -58,10 +58,6 @@ def generate_events(name: str, *, seed: int | None = None, **kwargs: Any) -> Eve
 
     Examples
     --------
-    .. testsetup::
-
-        >>> getfixture('doctest_synthetic')
-
     ``fixation_duration`` is a field of the generator below, so it goes to the constructor;
     ``duration`` is not, so it goes to ``generate()``:
 
@@ -80,7 +76,7 @@ def generate_events(name: str, *, seed: int | None = None, **kwargs: Any) -> Eve
     ...         return pm.Events(name=['fixation'] * count, onsets=onsets, offsets=offsets)
     >>> events = pm.synthetic.generate_events(
     ...     'even_fixations', duration=1.0, seed=42, fixation_duration=500.0,
-    ... )
+    ... )  # doctest: +IGNORE_WARNINGS
     >>> events.frame['name'].to_list()
     ['fixation', 'fixation']
     """
@@ -120,10 +116,6 @@ def generate_samples(name: str, *, seed: int | None = None, **kwargs: Any) -> Ga
 
     Examples
     --------
-    .. testsetup::
-
-        >>> getfixture('doctest_synthetic')
-
     ``sampling_rate`` and ``noise`` are fields of the generator below, so they go to the
     constructor; ``events`` is not, so it goes to ``generate()``:
 
@@ -153,7 +145,7 @@ def generate_samples(name: str, *, seed: int | None = None, **kwargs: Any) -> Ga
     >>> events = pm.Events(name=['fixation'], onsets=[0], offsets=[500])
     >>> gaze = pm.synthetic.generate_samples(
     ...     'still_gaze', events=events, sampling_rate=500, seed=42, noise=0.5,
-    ... )
+    ... )  # doctest: +IGNORE_WARNINGS
     >>> gaze.metadata['synthetic']['hyperparameters']
     {'sampling_rate': 500.0, 'noise': 0.5}
     """
