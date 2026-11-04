@@ -249,22 +249,13 @@ def test_generator_raises_error_on_seed(
         pytest.param(
             'uniform_event_generator',
             {},
-            {},
-            ('UniformEventGenerator.generate()', 'missing', "'duration'"),
-            id='missing_declared_run_parameter',
-        ),
-        pytest.param(
-            'uniform_event_generator',
-            {},
             {'duration': 1.0, 'duraton': 2.0},
             ('UniformEventGenerator.generate()', 'unknown', "'duraton'", "'duration'"),
             id='misspelled_event_run_parameter',
         ),
     ],
 )
-def test_generator_rejects_unknown_or_missing_run_parameters(
-        request, generator, init, run, msg_substrings,
-):
+def test_generator_rejects_unknown_run_parameters(request, generator, init, run, msg_substrings):
     generator = request.getfixturevalue(generator)(**init)
 
     with pytest.raises(TypeError) as excinfo:
@@ -371,22 +362,4 @@ def test_hyperparameters_reject_a_generator_that_is_no_dataclass():
 
     msg, = excinfo.value.args
     for msg_substring in ('_PlainGenerator', 'dataclass'):
-        assert msg_substring in msg
-
-
-@dataclasses.dataclass
-class _CatchAllGenerator(_NeverGenerates):
-    name = 'catch_all'
-
-    def _generate(self, *, rng, **options):  # pylint: disable=arguments-differ
-        raise AssertionError('_generate must not run for a generator that is rejected')
-
-
-def test_generate_rejects_a_generate_method_that_takes_any_keyword():
-    """A ``**kwargs`` in ``_generate`` would swallow a misspelled run parameter silently."""
-    with pytest.raises(TypeError) as excinfo:
-        _CatchAllGenerator().generate(seed=42, swallowed=1)
-
-    msg, = excinfo.value.args
-    for msg_substring in ('_CatchAllGenerator._generate', '**options', 'keyword', 'misspelled'):
         assert msg_substring in msg

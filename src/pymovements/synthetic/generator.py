@@ -146,42 +146,16 @@ class _Generator(abc.ABC, Generic[OutputT]):
             )
 
     def _check_run(self, run: dict[str, Any]) -> None:
-        """Reject run parameters that ``_generate`` does not declare, or that are missing.
-
-        ``_generate`` must name its run parameters, since a ``**kwargs`` there would swallow a
-        misspelled one silently.
-        """
-        method = f'{type(self).__name__}._generate'
-        parameters = inspect.signature(self._generate).parameters.values()
-
-        catch_all = [
-            parameter for parameter in parameters if parameter.kind is parameter.VAR_KEYWORD
-        ]
-        if catch_all:
-            raise TypeError(
-                f'{method} must declare its run parameters as keyword arguments instead of '
-                f'**{catch_all[0].name}, so that a misspelled run parameter raises instead of '
-                'being ignored',
-            )
-
-        declared = {
-            parameter.name: parameter for parameter in parameters if parameter.name != 'rng'
-        }
-        generate = f'{type(self).__name__}.generate()'
+        """Reject run parameters that ``_generate`` does not declare, naming the accepted ones."""
+        parameters = inspect.signature(self._generate).parameters
+        declared = sorted(name for name in parameters if name != 'rng')
 
         unknown = sorted(set(run) - set(declared))
         if unknown:
             raise TypeError(
-                f'{generate} got unknown run parameters {unknown}; '
-                f'it accepts: {sorted(declared)}',
+                f'{type(self).__name__}.generate() got unknown run parameters {unknown}; '
+                f'it accepts: {declared}',
             )
-
-        missing = sorted(
-            name for name, parameter in declared.items()
-            if parameter.default is parameter.empty and name not in run
-        )
-        if missing:
-            raise TypeError(f'{generate} is missing the run parameters {missing}')
 
     def _fields(self) -> tuple[dataclasses.Field[Any], ...]:
         """Return the dataclass fields, rejecting a generator whose hyperparameters are unknown."""
