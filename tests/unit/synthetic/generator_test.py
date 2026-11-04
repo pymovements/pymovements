@@ -290,15 +290,33 @@ def test_hyperparameters_are_the_dataclass_fields(uniform_event_generator):
     assert generator.hyperparameters() == {'min_duration': 50.0, 'max_duration': 300.0}
 
 
-def test_hyperparameters_leave_out_fields_without_repr(noise_sample_generator):
+def test_hyperparameters_leave_out_fields_without_init(noise_sample_generator):
     @dataclasses.dataclass
     class WeightedGenerator(noise_sample_generator):
-        weights: list = dataclasses.field(default_factory=lambda: [0.1, 0.2], repr=False)
+        weights_path: str = 'weights.npz'
+        weights: list = dataclasses.field(init=False, default_factory=lambda: [0.1, 0.2])
 
     # pylint cannot see the base's fields through the fixture, so it rejects the keyword.
     generator = WeightedGenerator(sampling_rate=1000.0)  # pylint: disable=unexpected-keyword-arg
 
-    assert generator.hyperparameters() == {'sampling_rate': 1000.0, 'scale': 1.0}
+    assert generator.hyperparameters() == {
+        'sampling_rate': 1000.0, 'scale': 1.0, 'weights_path': 'weights.npz',
+    }
+
+
+@pytest.mark.parametrize(
+    ('generator', 'init'),
+    [
+        pytest.param(
+            'noise_sample_generator', {'sampling_rate': 500.0, 'scale': 2.0}, id='samples',
+        ),
+        pytest.param('uniform_event_generator', {'max_duration': 200.0}, id='events'),
+    ],
+)
+def test_hyperparameters_rebuild_an_equal_generator(request, generator, init):
+    generator = request.getfixturevalue(generator)(**init)
+
+    assert type(generator)(**generator.hyperparameters()) == generator
 
 
 class _NeverGenerates(EventGenerator):

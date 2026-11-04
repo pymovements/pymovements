@@ -58,8 +58,10 @@ class _Generator(abc.ABC, Generic[OutputT]):
     def hyperparameters(self) -> dict[str, Any]:
         """Return the parameters the generator was constructed with.
 
-        These are the generator's dataclass fields, except those declared with ``repr=False``,
-        such as trained weights.
+        These are the dataclass fields that ``__init__`` takes, so that
+        ``type(generator)(**generator.hyperparameters())`` is an equal generator. A value derived
+        in ``__post_init__`` is declared with ``init=False`` and left out; a neural generator
+        loads its weights from a path, and the path is the hyperparameter.
 
         Returns
         -------
@@ -74,7 +76,7 @@ class _Generator(abc.ABC, Generic[OutputT]):
         return {
             field.name: getattr(self, field.name)
             for field in self._fields()
-            if field.repr
+            if field.init
         }
 
     def generate(self, *, seed: int | None = None, **run: Any) -> OutputT:
