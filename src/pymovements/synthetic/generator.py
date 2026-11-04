@@ -386,13 +386,14 @@ class SampleGenerator(_Generator[Gaze]):
 
 
 def _warn_experimental() -> None:
-    """Warn that synthetic data generation is experimental."""
+    """Warn that synthetic data generation is experimental, pointing at the caller of generate()."""
     warn(
         'Synthetic gaze generation is experimental. '
         'Names and behavior may change without being considered a breaking change. '
         'Please set the used pymovements version explicitly to prevent unexpected changes. '
         f'The used pymovements version is v{__version__}.',
         ExperimentalWarning,
+        stacklevel=3,
     )
 
 

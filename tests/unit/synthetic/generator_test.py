@@ -274,6 +274,16 @@ def test_generate_warns_that_it_is_experimental(request, generator, init, run):
         generator.generate(**run)
 
 
+@pytest.mark.parametrize(('generator', 'init', 'run'), LEVELS)
+def test_generate_warns_at_its_caller(request, generator, init, run):
+    generator = request.getfixturevalue(generator)(**init)
+
+    with pytest.warns(ExperimentalWarning) as record:
+        generator.generate(**run)
+
+    assert record[0].filename == __file__
+
+
 def test_hyperparameters_are_the_dataclass_fields(uniform_event_generator):
     generator = uniform_event_generator(min_duration=50.0)
 
