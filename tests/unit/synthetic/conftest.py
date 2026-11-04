@@ -43,13 +43,11 @@ class NoiseSampleGenerator(SampleGenerator):
 
     scale: float = 1.0
 
-    def _generate(  # pylint: disable=arguments-differ
-            self, *, sampling_rate, experiment, rng, events=None,
-    ):
+    def _generate(self, *, rng, events=None):  # pylint: disable=arguments-differ
         n_samples = 10 if events is None else 10 * events.frame.height
         return Gaze(
             samples=pl.DataFrame({
-                'time': np.arange(n_samples) * 1000.0 / sampling_rate,
+                'time': np.arange(n_samples) * 1000.0 / self.sampling_rate,
                 'x': rng.normal(0.0, self.scale, n_samples),
                 'y': rng.normal(0.0, self.scale, n_samples),
             }),

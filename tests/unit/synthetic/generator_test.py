@@ -25,7 +25,6 @@ import pytest
 from polars.testing import assert_frame_equal
 
 from pymovements import Events
-from pymovements import Experiment
 from pymovements import ExperimentalWarning
 from pymovements import Gaze
 from pymovements.synthetic import EventGenerator
@@ -53,7 +52,7 @@ def test_base_class_is_abstract(base_class):
 
 
 def test_sample_generator_returns_gaze(noise_sample_generator):
-    gaze = noise_sample_generator().generate(sampling_rate=1000.0, seed=42)
+    gaze = noise_sample_generator(sampling_rate=1000.0).generate(seed=42)
 
     assert isinstance(gaze, Gaze)
     assert gaze.samples.height == 10
@@ -67,18 +66,20 @@ def test_event_generator_returns_events(uniform_event_generator):
     assert events.frame['offset'].dt.total_milliseconds().max() == 1000
 
 
-#: Each level's toy generator fixture and the run parameters it needs.
+#: Each level's toy generator fixture, the hyperparameters and the run parameters it needs.
 LEVELS = [
-    pytest.param('noise_sample_generator', {'sampling_rate': 1000.0}, id='samples'),
-    pytest.param('uniform_event_generator', {'duration': 2.0}, id='events'),
+    pytest.param('noise_sample_generator', {'sampling_rate': 1000.0}, {}, id='samples'),
+    pytest.param('uniform_event_generator', {}, {'duration': 2.0}, id='events'),
 ]
 
 
 @pytest.mark.parametrize(
-    ('generator', 'run', 'frame'),
+    ('generator', 'init', 'run', 'frame'),
     [
-        pytest.param('noise_sample_generator', {'sampling_rate': 1000.0}, 'samples', id='samples'),
-        pytest.param('uniform_event_generator', {'duration': 2.0}, 'frame', id='events'),
+        pytest.param(
+            'noise_sample_generator', {'sampling_rate': 1000.0}, {}, 'samples', id='samples',
+        ),
+        pytest.param('uniform_event_generator', {}, {'duration': 2.0}, 'frame', id='events'),
     ],
 )
 @pytest.mark.parametrize(
@@ -89,9 +90,9 @@ LEVELS = [
     ],
 )
 def test_generator_is_seeded(
-        request, generator, run, frame, first_seed, second_seed, expected_equal,
+        request, generator, init, run, frame, first_seed, second_seed, expected_equal,
 ):
-    generator = request.getfixturevalue(generator)()
+    generator = request.getfixturevalue(generator)(**init)
 
     first = getattr(generator.generate(seed=first_seed, **run), frame)
     second = getattr(generator.generate(seed=second_seed, **run), frame)
@@ -100,18 +101,16 @@ def test_generator_is_seeded(
 
 
 def test_drawn_seed_reproduces_the_run(noise_sample_generator):
-    generator = noise_sample_generator()
+    generator = noise_sample_generator(sampling_rate=1000.0)
 
-    unseeded = generator.generate(sampling_rate=1000.0)
-    replayed = generator.generate(
-        sampling_rate=1000.0, seed=unseeded.metadata['synthetic']['seed'],
-    )
+    unseeded = generator.generate()
+    replayed = generator.generate(seed=unseeded.metadata['synthetic']['seed'])
 
     assert_frame_equal(unseeded.samples, replayed.samples)
 
 
 def test_sample_generator_attaches_a_copy_of_the_events(noise_sample_generator, fixations):
-    gaze = noise_sample_generator().generate(events=fixations, sampling_rate=1000.0, seed=42)
+    gaze = noise_sample_generator(sampling_rate=1000.0).generate(events=fixations, seed=42)
 
     assert_frame_equal(gaze.events.frame, fixations.frame)
     assert gaze.events is not fixations
@@ -120,13 +119,11 @@ def test_sample_generator_attaches_a_copy_of_the_events(noise_sample_generator, 
 def test_sample_generator_conditions_on_the_attached_copy(noise_sample_generator, fixations):
     """A generator that changes its input changes neither the caller's events nor the match."""
     class MutatingGenerator(noise_sample_generator):
-        def _generate(self, *, sampling_rate, experiment, rng, events=None):
+        def _generate(self, *, rng, events=None):
             events.frame = events.frame.head(1)
-            return super()._generate(
-                sampling_rate=sampling_rate, experiment=experiment, rng=rng, events=events,
-            )
+            return super()._generate(rng=rng, events=events)
 
-    gaze = MutatingGenerator().generate(events=fixations, sampling_rate=1000.0, seed=42)
+    gaze = MutatingGenerator(sampling_rate=1000.0).generate(events=fixations, seed=42)
 
     assert fixations.frame.height == 2
     assert gaze.events.frame.height == 1
@@ -144,100 +141,79 @@ def test_sample_generator_conditions_on_the_attached_copy(noise_sample_generator
 )
 def test_sample_generator_accepts_numpy_numbers(noise_sample_generator, sampling_rate, seed):
     """The checks accept numpy numbers and record them as plain Python numbers."""
-    gaze = noise_sample_generator().generate(sampling_rate=sampling_rate, seed=seed)
+    gaze = noise_sample_generator(sampling_rate=sampling_rate).generate(seed=seed)
 
     record = gaze.metadata['synthetic']
     assert gaze.experiment.sampling_rate == 500.0
-    assert not isinstance(record['run']['sampling_rate'], np.generic)
+    assert not isinstance(record['hyperparameters']['sampling_rate'], np.generic)
     assert not isinstance(record['seed'], np.generic)
     assert record['seed'] == 42
 
 
 def test_sample_generator_attaches_an_experiment_with_the_sampling_rate(noise_sample_generator):
-    gaze = noise_sample_generator().generate(sampling_rate=500.0, seed=42)
+    gaze = noise_sample_generator(sampling_rate=500.0).generate(seed=42)
 
     assert gaze.experiment.sampling_rate == 500.0
 
 
-def test_sample_generator_attaches_the_supplied_experiment(noise_sample_generator):
-    experiment = Experiment(1280, 1024, 38, 30, 68, 'upper left', 1000.0)
-
-    gaze = noise_sample_generator().generate(
-        sampling_rate=1000.0, seed=42, experiment=experiment,
-    )
-
-    assert gaze.experiment is experiment
-
-
-def test_sample_generator_fills_the_sampling_rate_into_an_experiment_without_one(
-        noise_sample_generator,
-):
-    """An experiment built for the screen geometry only gets the requested rate, as a copy."""
-    experiment = Experiment(1280, 1024, 38, 30, 68, 'upper left', None)
-
-    gaze = noise_sample_generator().generate(
-        sampling_rate=1000.0, seed=42, experiment=experiment,
-    )
-
-    assert gaze.experiment.sampling_rate == 1000.0
-    assert gaze.experiment.screen == experiment.screen
-    assert experiment.sampling_rate is None
-
-
 def test_sample_generator_keeps_metadata_of_its_own(noise_sample_generator):
     class MetadataGenerator(noise_sample_generator):
-        def _generate(self, *, sampling_rate, experiment, rng, events=None):
-            gaze = super()._generate(
-                sampling_rate=sampling_rate, experiment=experiment, rng=rng, events=events,
-            )
+        def _generate(self, *, rng, events=None):
+            gaze = super()._generate(rng=rng, events=events)
             gaze.metadata = {'note': 'kept'}
             return gaze
 
-    gaze = MetadataGenerator().generate(sampling_rate=1000.0, seed=42)
+    gaze = MetadataGenerator(sampling_rate=1000.0).generate(seed=42)
 
     assert gaze.metadata['note'] == 'kept'
     assert 'synthetic' in gaze.metadata
 
 
+def test_sample_generator_bound_to_one_sampling_rate_redefines_the_field(noise_sample_generator):
+    @dataclasses.dataclass
+    class FixedRateGenerator(noise_sample_generator):
+        sampling_rate: float = 250.0
+
+    gaze = FixedRateGenerator().generate(seed=42)
+
+    assert gaze.experiment.sampling_rate == 250.0
+    assert gaze.metadata['synthetic']['hyperparameters'] == {'sampling_rate': 250.0, 'scale': 1.0}
+
+
+def test_sample_generator_requires_a_sampling_rate(noise_sample_generator):
+    with pytest.raises(TypeError, match='sampling_rate'):
+        noise_sample_generator()
+
+
 @pytest.mark.parametrize(
-    ('kwargs', 'exception', 'msg_substrings'),
+    ('sampling_rate', 'exception', 'msg_substrings'),
     [
         pytest.param(
-            {'sampling_rate': 0.0},
-            ValueError,
-            ('sampling_rate', 'greater than zero'),
+            0.0, ValueError, ('sampling_rate', 'greater than zero'),
             id='zero_sampling_rate_raises_value_error',
         ),
         pytest.param(
-            {'sampling_rate': '1000'},
-            TypeError,
-            ('sampling_rate', 'number', 'str'),
+            '1000', TypeError, ('sampling_rate', 'number', 'str'),
             id='string_sampling_rate_raises_type_error',
         ),
         pytest.param(
-            {'sampling_rate': True},
-            TypeError,
-            ('sampling_rate', 'number', 'bool'),
+            True, TypeError, ('sampling_rate', 'number', 'bool'),
             id='bool_sampling_rate_raises_type_error',
-        ),
-        pytest.param(
-            {'sampling_rate': 1000.0, 'experiment': Experiment(sampling_rate=500.0)},
-            ValueError,
-            ('500.0 Hz', '1000.0 Hz', 'experiment'),
-            id='experiment_with_other_sampling_rate_raises_value_error',
         ),
     ],
 )
-def test_sample_generator_raises_error(noise_sample_generator, kwargs, exception, msg_substrings):
+def test_sample_generator_rejects_sampling_rate(
+        noise_sample_generator, sampling_rate, exception, msg_substrings,
+):
     with pytest.raises(exception) as excinfo:
-        noise_sample_generator().generate(**kwargs)
+        noise_sample_generator(sampling_rate=sampling_rate)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
         assert msg_substring in msg
 
 
-@pytest.mark.parametrize(('generator', 'run'), LEVELS)
+@pytest.mark.parametrize(('generator', 'init', 'run'), LEVELS)
 @pytest.mark.parametrize(
     ('seed', 'exception', 'msg_substrings'),
     [
@@ -247,8 +223,10 @@ def test_sample_generator_raises_error(noise_sample_generator, kwargs, exception
         ),
     ],
 )
-def test_generator_raises_error_on_seed(request, generator, run, seed, exception, msg_substrings):
-    generator = request.getfixturevalue(generator)()
+def test_generator_raises_error_on_seed(
+        request, generator, init, run, seed, exception, msg_substrings,
+):
+    generator = request.getfixturevalue(generator)(**init)
 
     with pytest.raises(exception) as excinfo:
         generator.generate(seed=seed, **run)
@@ -259,25 +237,25 @@ def test_generator_raises_error_on_seed(request, generator, run, seed, exception
 
 
 @pytest.mark.parametrize(
-    ('generator', 'kwargs', 'msg_substrings'),
+    ('generator', 'init', 'run', 'msg_substrings'),
     [
         pytest.param(
-            'noise_sample_generator', {}, ('sampling_rate',), id='missing_sampling_rate',
-        ),
-        pytest.param(
             'noise_sample_generator',
-            {'sampling_rate': 1000.0, 'sampling_rte': 500.0},
-            ('NoiseSampleGenerator.generate()', 'unknown', "'sampling_rte'", "'events'"),
+            {'sampling_rate': 1000.0},
+            {'evnets': None},
+            ('NoiseSampleGenerator.generate()', 'unknown', "'evnets'", "'events'"),
             id='misspelled_sample_run_parameter',
         ),
         pytest.param(
             'uniform_event_generator',
+            {},
             {},
             ('UniformEventGenerator.generate()', 'missing', "'duration'"),
             id='missing_declared_run_parameter',
         ),
         pytest.param(
             'uniform_event_generator',
+            {},
             {'duration': 1.0, 'duraton': 2.0},
             ('UniformEventGenerator.generate()', 'unknown', "'duraton'", "'duration'"),
             id='misspelled_event_run_parameter',
@@ -285,30 +263,24 @@ def test_generator_raises_error_on_seed(request, generator, run, seed, exception
     ],
 )
 def test_generator_rejects_unknown_or_missing_run_parameters(
-        request, generator, kwargs, msg_substrings,
+        request, generator, init, run, msg_substrings,
 ):
-    generator_class = request.getfixturevalue(generator)
+    generator = request.getfixturevalue(generator)(**init)
 
     with pytest.raises(TypeError) as excinfo:
-        generator_class().generate(**kwargs)
+        generator.generate(**run)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
         assert msg_substring in msg
 
 
-@pytest.mark.parametrize(
-    ('generator', 'kwargs'),
-    [
-        pytest.param('noise_sample_generator', {'sampling_rate': 1000.0}, id='sample_generator'),
-        pytest.param('uniform_event_generator', {'duration': 1.0}, id='event_generator'),
-    ],
-)
-def test_generate_warns_that_it_is_experimental(request, generator, kwargs):
-    generator_class = request.getfixturevalue(generator)
+@pytest.mark.parametrize(('generator', 'init', 'run'), LEVELS)
+def test_generate_warns_that_it_is_experimental(request, generator, init, run):
+    generator = request.getfixturevalue(generator)(**init)
 
     with pytest.warns(ExperimentalWarning, match='Synthetic gaze generation is experimental'):
-        generator_class().generate(**kwargs)
+        generator.generate(**run)
 
 
 def test_hyperparameters_are_the_dataclass_fields(uniform_event_generator):
@@ -322,11 +294,17 @@ def test_hyperparameters_leave_out_fields_without_repr(noise_sample_generator):
     class WeightedGenerator(noise_sample_generator):
         weights: list = dataclasses.field(default_factory=lambda: [0.1, 0.2], repr=False)
 
-    assert WeightedGenerator().hyperparameters() == {'scale': 1.0}
+    # pylint cannot see the base's fields through the fixture, so it rejects the keyword.
+    generator = WeightedGenerator(sampling_rate=1000.0)  # pylint: disable=unexpected-keyword-arg
+
+    assert generator.hyperparameters() == {'sampling_rate': 1000.0, 'scale': 1.0}
 
 
-class _NeverGenerates(SampleGenerator):
-    """Fails if it gets to synthesize, so a rejection is shown to happen before ``_generate``."""
+class _NeverGenerates(EventGenerator):
+    """Fails if it gets to synthesize, so a rejection is shown to happen before ``_generate``.
+
+    An event generator, since a sample generator is a dataclass by inheritance.
+    """
 
     def _generate(self, **run):
         raise AssertionError('_generate must not run for a generator that is rejected')
@@ -380,7 +358,7 @@ def test_generate_rejects_a_generator_class_that_cannot_be_recorded(
         generator_class, msg_substrings,
 ):
     with pytest.raises(TypeError) as excinfo:
-        generator_class().generate(sampling_rate=1000.0, seed=42)
+        generator_class().generate(seed=42)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
@@ -400,16 +378,14 @@ def test_hyperparameters_reject_a_generator_that_is_no_dataclass():
 class _CatchAllGenerator(_NeverGenerates):
     name = 'catch_all'
 
-    def _generate(  # pylint: disable=arguments-differ
-            self, *, sampling_rate, experiment, rng, **options,
-    ):
+    def _generate(self, *, rng, **options):  # pylint: disable=arguments-differ
         raise AssertionError('_generate must not run for a generator that is rejected')
 
 
 def test_generate_rejects_a_generate_method_that_takes_any_keyword():
     """A ``**kwargs`` in ``_generate`` would swallow a misspelled run parameter silently."""
     with pytest.raises(TypeError) as excinfo:
-        _CatchAllGenerator().generate(sampling_rate=1000.0, seed=42, swallowed=1)
+        _CatchAllGenerator().generate(seed=42, swallowed=1)
 
     msg, = excinfo.value.args
     for msg_substring in ('_CatchAllGenerator._generate', '**options', 'keyword', 'misspelled'):

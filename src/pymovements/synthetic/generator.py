@@ -26,10 +26,11 @@ import inspect
 import numbers
 import secrets
 from collections.abc import Callable
-from copy import deepcopy
 from typing import Any
 from typing import ClassVar
+from typing import Generic
 from typing import Literal
+from typing import TypeVar
 from warnings import warn
 
 import numpy as np
@@ -41,8 +42,10 @@ from pymovements.gaze.gaze import Gaze
 from pymovements.synthetic.provenance import generation_provenance
 from pymovements.warnings import ExperimentalWarning
 
+OutputT = TypeVar('OutputT', Events, Gaze)
 
-class _Generator(abc.ABC):
+
+class _Generator(abc.ABC, Generic[OutputT]):
     """Shared behaviour of event and sample generators."""
 
     name: ClassVar[str]
@@ -50,7 +53,7 @@ class _Generator(abc.ABC):
     level: ClassVar[Literal['events', 'samples']]
 
     # Each level declares the abstract method; concrete generators narrow its run parameters.
-    _generate: Callable[..., Any]
+    _generate: Callable[..., OutputT]
 
     def hyperparameters(self) -> dict[str, Any]:
         """Return the parameters the generator was constructed with.
@@ -74,29 +77,54 @@ class _Generator(abc.ABC):
             if field.repr
         }
 
-    def _run(
-            self,
-            seed: int | None,
-            run: dict[str, Any],
-            inputs: dict[str, Any],
-            record: dict[str, Any],
-    ) -> Any:
-        """Run ``_generate`` and record the run, the template both levels share.
+    def generate(self, *, seed: int | None = None, **run: Any) -> OutputT:
+        """Generate synthetic data.
 
-        ``run`` holds the run parameters the generator declares in its ``_generate`` signature,
-        where a misspelled one raises a ``TypeError``. ``inputs`` holds those the base class
-        defines, and ``record`` the part of them written into the provenance.
+        Parameters
+        ----------
+        seed: int | None
+            The random seed, or ``None`` to draw one. The seed used is recorded in the output's
+            metadata, so the run can be reproduced either way. (default: None)
+        **run: Any
+            The run parameters the generator declares in its ``_generate``, such as a duration
+            for an event generator or ``events`` for a sample generator.
+
+        Returns
+        -------
+        OutputT
+            The generated events or gaze samples, with the run recorded under the
+            ``'synthetic'`` key of their metadata. A sample generator attaches an
+            :py:class:`~pymovements.Experiment` carrying its sampling rate, and a copy of a run
+            parameter named ``events`` as the ground truth.
+
+        Raises
+        ------
+        TypeError
+            If the generator is not a dataclass or has no ``name``, the seed is not an integer,
+            or a run parameter is unknown to the generator or missing.
+        ValueError
+            If the seed is negative.
+
+        Warns
+        -----
+        ExperimentalWarning
+            Always. Synthetic data generation is experimental.
         """
         _warn_experimental()
         self._check_class()
-        self._check_run(run, inputs)
+        self._check_run(run)
         seed = _resolve_seed(seed)
 
-        generated = self._generate(rng=np.random.default_rng(seed), **inputs, **run)
+        generated = self._run(np.random.default_rng(seed), run)
 
-        run_record = {**record, **self._record_run(run)}
-        generated.metadata = {**(generated.metadata or {}), **self._provenance(run_record, seed)}
+        generated.metadata = {
+            **(generated.metadata or {}), **self._provenance(self._record_run(run), seed),
+        }
         return generated
+
+    def _run(self, rng: np.random.Generator, run: dict[str, Any]) -> OutputT:
+        """Call ``_generate``; a level overrides this to prepare its inputs and its output."""
+        return self._generate(rng=rng, **run)
 
     def _check_class(self) -> None:
         """Reject a generator whose run could not be recorded, before it generates anything."""
@@ -117,7 +145,7 @@ class _Generator(abc.ABC):
                 f"dataclass field and a hyperparameter; write name = '{name}' without annotation",
             )
 
-    def _check_run(self, run: dict[str, Any], inputs: dict[str, Any]) -> None:
+    def _check_run(self, run: dict[str, Any]) -> None:
         """Reject run parameters that ``_generate`` does not declare, or that are missing.
 
         ``_generate`` must name its run parameters, since a ``**kwargs`` there would swallow a
@@ -137,8 +165,7 @@ class _Generator(abc.ABC):
             )
 
         declared = {
-            parameter.name: parameter for parameter in parameters
-            if parameter.name != 'rng' and parameter.name not in inputs
+            parameter.name: parameter for parameter in parameters if parameter.name != 'rng'
         }
         generate = f'{type(self).__name__}.generate()'
 
@@ -199,7 +226,7 @@ class _Generator(abc.ABC):
         )
 
 
-class EventGenerator(_Generator):
+class EventGenerator(_Generator[Events]):
     """Base class for generators that produce an event sequence.
 
     An event generator decides which events occur and how long they last, for example a sequence
@@ -244,39 +271,6 @@ class EventGenerator(_Generator):
 
     level: ClassVar[Literal['events', 'samples']] = 'events'
 
-    def generate(self, *, seed: int | None = None, **run: Any) -> Events:
-        """Generate a synthetic event sequence.
-
-        Parameters
-        ----------
-        seed: int | None
-            The random seed, or ``None`` to draw one. The seed used is recorded in the output's
-            metadata, so the run can be reproduced either way. (default: None)
-        **run: Any
-            The run parameters the generator declares in its ``_generate``.
-
-        Returns
-        -------
-        Events
-            The generated events, with the run recorded under the ``'synthetic'`` key of their
-            metadata.
-
-        Raises
-        ------
-        TypeError
-            If the generator is not a dataclass or has no ``name``, the seed is not an integer,
-            or a run parameter is unknown to the generator or missing.
-        ValueError
-            If the seed is negative.
-
-        Warns
-        -----
-        ExperimentalWarning
-            Always. Synthetic data generation is experimental.
-        """
-        generated: Events = self._run(seed, run, inputs={}, record={})
-        return generated
-
     @abc.abstractmethod
     def _generate(self, *, rng: np.random.Generator, **run: Any) -> Events:
         """Synthesize the events. All randomness must be drawn from ``rng``.
@@ -295,20 +289,36 @@ class EventGenerator(_Generator):
         """
 
 
-class SampleGenerator(_Generator):
+@dataclasses.dataclass(kw_only=True)
+class SampleGenerator(_Generator[Gaze]):
     """Base class for generators that produce gaze samples.
 
-    A sample generator turns its conditioning input into gaze samples. Subclasses are dataclasses
-    whose fields are their hyperparameters. They set ``name``, without a type annotation as for
-    event generators, and put their logic in ``_generate``, whose keyword arguments besides
-    ``sampling_rate``, ``experiment`` and ``rng`` are the generator's run parameters. A run
-    parameter named ``events`` is copied before ``_generate`` receives it, and that copy is
-    attached to the output, so the output carries its ground truth.
+    A sample generator turns its conditioning input into gaze samples at its sampling rate.
+    Subclasses are dataclasses whose fields, with ``sampling_rate``, are their hyperparameters.
+    They set ``name``, without a type annotation as for event generators, and put their logic in
+    ``_generate``, whose keyword arguments besides ``rng`` are the generator's run parameters. A
+    run parameter named ``events`` is copied before ``_generate`` receives it, and that copy is
+    attached to the output, so the output carries its ground truth. The output also gets an
+    :py:class:`~pymovements.Experiment` carrying the sampling rate, as a recording would.
+
+    A generator built for one sampling rate redefines the field with that rate as its default. A
+    subclass that defines ``__post_init__`` calls ``super().__post_init__()`` first, so the
+    sampling rate is checked.
 
     Attributes
     ----------
+    sampling_rate: float
+        The sampling rate of the generated samples in Hz. A keyword-only field, so subclass
+        fields may follow it with or without defaults.
     level: ClassVar[Literal['events', 'samples']]
         ``'samples'``, the kind of data the generator produces.
+
+    Raises
+    ------
+    TypeError
+        If the sampling rate is not a number.
+    ValueError
+        If the sampling rate is not greater than zero.
 
     Examples
     --------
@@ -329,9 +339,9 @@ class SampleGenerator(_Generator):
     ...     name = 'still_gaze'
     ...     noise: float = 0.1
     ...
-    ...     def _generate(self, *, sampling_rate, experiment, rng, events):
+    ...     def _generate(self, *, rng, events):
     ...         end = events.frame['offset'].dt.total_microseconds().max() / 1000
-    ...         time = np.arange(0, end, 1000 / sampling_rate)
+    ...         time = np.arange(0, end, 1000 / self.sampling_rate)
     ...         return pm.Gaze(
     ...             samples=pl.DataFrame({
     ...                 'time': time,
@@ -343,94 +353,41 @@ class SampleGenerator(_Generator):
     ...             position_columns=['x', 'y'],
     ...         )
     >>> events = pm.Events(name=['fixation'], onsets=[0], offsets=[500])
-    >>> gaze = StillGaze().generate(events=events, sampling_rate=1000, seed=42)
+    >>> gaze = StillGaze(sampling_rate=1000).generate(events=events, seed=42)
     >>> gaze.samples.height
     500
+    >>> gaze.experiment.sampling_rate
+    1000.0
     >>> gaze.events.frame.equals(events.frame)
     True
     """
 
+    sampling_rate: float
+
     level: ClassVar[Literal['events', 'samples']] = 'samples'
 
-    def generate(
-            self,
-            *,
-            sampling_rate: float,
-            seed: int | None = None,
-            experiment: Experiment | None = None,
-            **run: Any,
-    ) -> Gaze:
-        """Generate synthetic gaze samples.
+    def __post_init__(self) -> None:
+        """Check the sampling rate and store it as a float."""
+        self.sampling_rate = _check_positive_number(self.sampling_rate, 'sampling_rate')
 
-        Parameters
-        ----------
-        sampling_rate: float
-            The sampling rate of the generated samples in Hz.
-        seed: int | None
-            The random seed, or ``None`` to draw one. The seed used is recorded in the output's
-            metadata, so the run can be reproduced either way. (default: None)
-        experiment: Experiment | None
-            The experiment the output belongs to. Without one, an experiment with only the
-            sampling rate is attached; one without a sampling rate is copied and given the
-            requested one. (default: None)
-        **run: Any
-            The run parameters the generator declares in its ``_generate``, such as ``events``.
-
-        Returns
-        -------
-        Gaze
-            The generated gaze samples, with the run recorded under the ``'synthetic'`` key of
-            their metadata.
-
-        Raises
-        ------
-        TypeError
-            If the generator is not a dataclass or has no ``name``, the sampling rate is not a
-            number, the seed is not an integer, or a run parameter is unknown to the generator or
-            missing.
-        ValueError
-            If the sampling rate is not greater than zero, the seed is negative, or the
-            experiment has another sampling rate.
-
-        Warns
-        -----
-        ExperimentalWarning
-            Always. Synthetic data generation is experimental.
-        """
-        sampling_rate = _check_positive_number(sampling_rate, 'sampling_rate')
-        experiment = _resolve_experiment(experiment, sampling_rate)
+    def _run(self, rng: np.random.Generator, run: dict[str, Any]) -> Gaze:
+        """Generate from a copy of the events, and attach that copy and the experiment."""
         if isinstance(run.get('events'), Events):
             run['events'] = run['events'].clone()
 
-        generated: Gaze = self._run(
-            seed,
-            run,
-            inputs={'sampling_rate': sampling_rate, 'experiment': experiment},
-            record={'sampling_rate': sampling_rate},
-        )
+        generated = self._generate(rng=rng, **run)
 
-        generated.experiment = experiment
+        generated.experiment = Experiment(sampling_rate=self.sampling_rate)
         if isinstance(run.get('events'), Events):
             generated.events = run['events']
         return generated
 
     @abc.abstractmethod
-    def _generate(
-            self,
-            *,
-            sampling_rate: float,
-            experiment: Experiment,
-            rng: np.random.Generator,
-            **run: Any,
-    ) -> Gaze:
+    def _generate(self, *, rng: np.random.Generator, **run: Any) -> Gaze:
         """Synthesize the samples. All randomness must be drawn from ``rng``.
 
         Parameters
         ----------
-        sampling_rate: float
-            The sampling rate of the generated samples in Hz.
-        experiment: Experiment
-            The experiment the output belongs to.
         rng: np.random.Generator
             The run's random generator.
         **run: Any
@@ -479,23 +436,3 @@ def _resolve_seed(seed: Any) -> int:
         raise ValueError(f'seed must not be negative but is: {seed}')
 
     return int(seed)
-
-
-def _resolve_experiment(experiment: Experiment | None, sampling_rate: float) -> Experiment:
-    """Return the experiment to attach, rejecting one recorded at another sampling rate."""
-    if experiment is None:
-        return Experiment(sampling_rate=sampling_rate)
-
-    if experiment.sampling_rate is None:
-        filled = deepcopy(experiment)
-        filled.sampling_rate = sampling_rate
-        return filled
-
-    if experiment.sampling_rate != sampling_rate:
-        raise ValueError(
-            f'experiment has a sampling rate of {experiment.sampling_rate} Hz but '
-            f'{sampling_rate} Hz was requested, velocities computed from the output would be '
-            'wrong',
-        )
-
-    return experiment

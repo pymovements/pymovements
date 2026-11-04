@@ -30,23 +30,19 @@ pytestmark = pytest.mark.filterwarnings(
 @pytest.mark.parametrize(
     ('run', 'expected_run'),
     [
-        pytest.param({}, {'sampling_rate': 500.0}, id='unconditioned'),
-        pytest.param(
-            {'events': 'fixations'},
-            {'sampling_rate': 500.0, 'n_events': 2},
-            id='event_conditioned',
-        ),
+        pytest.param({}, {}, id='unconditioned'),
+        pytest.param({'events': 'fixations'}, {'n_events': 2}, id='event_conditioned'),
     ],
 )
 def test_sample_generator_records_provenance(request, noise_sample_generator, run, expected_run):
     run = {key: request.getfixturevalue(value) for key, value in run.items()}
 
-    gaze = noise_sample_generator(scale=2.0).generate(sampling_rate=500.0, seed=42, **run)
+    gaze = noise_sample_generator(sampling_rate=500.0, scale=2.0).generate(seed=42, **run)
 
     assert gaze.metadata['synthetic'] == {
         'generator': 'test_noise',
         'level': 'samples',
-        'hyperparameters': {'scale': 2.0},
+        'hyperparameters': {'sampling_rate': 500.0, 'scale': 2.0},
         'run': expected_run,
         'seed': 42,
         'pymovements_version': __version__,
@@ -58,11 +54,9 @@ def test_generator_can_override_how_its_run_is_recorded(noise_sample_generator, 
         def _record_run(self, run):
             return {'event_names': sorted(set(run['events'].frame['name']))}
 
-    gaze = SummarisingGenerator().generate(events=fixations, sampling_rate=500.0, seed=42)
+    gaze = SummarisingGenerator(sampling_rate=500.0).generate(events=fixations, seed=42)
 
-    assert gaze.metadata['synthetic']['run'] == {
-        'sampling_rate': 500.0, 'event_names': ['fixation'],
-    }
+    assert gaze.metadata['synthetic']['run'] == {'event_names': ['fixation']}
 
 
 def test_event_generator_records_provenance(uniform_event_generator):
@@ -80,7 +74,7 @@ def test_event_generator_records_provenance(uniform_event_generator):
 
 def test_drawn_seed_is_recorded(noise_sample_generator):
     """The drawn seed is exact as a float too, so JSON readers and Int64 columns keep it."""
-    gaze = noise_sample_generator().generate(sampling_rate=500.0)
+    gaze = noise_sample_generator(sampling_rate=500.0).generate()
 
     seed = gaze.metadata['synthetic']['seed']
     assert isinstance(seed, int)

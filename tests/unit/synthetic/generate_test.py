@@ -48,8 +48,8 @@ def test_generate_samples_matches_the_explicit_call(registered_sample_generator,
     gaze = pm.synthetic.generate_samples(
         'test_noise', events=fixations, sampling_rate=1000.0, seed=42, scale=2.0,
     )
-    explicit = registered_sample_generator(scale=2.0).generate(
-        events=fixations, sampling_rate=1000.0, seed=42,
+    explicit = registered_sample_generator(sampling_rate=1000.0, scale=2.0).generate(
+        events=fixations, seed=42,
     )
 
     assert_frame_equal(gaze.samples, explicit.samples)
@@ -60,18 +60,9 @@ def test_generate_samples_matches_the_explicit_call(registered_sample_generator,
 def test_generate_samples_passes_hyperparameters_to_the_constructor():
     gaze = pm.synthetic.generate_samples('test_noise', sampling_rate=1000.0, seed=42, scale=3.0)
 
-    assert gaze.metadata['synthetic']['hyperparameters'] == {'scale': 3.0}
-
-
-@pytest.mark.usefixtures('registered_sample_generator')
-def test_generate_samples_passes_the_experiment():
-    experiment = pm.Experiment(sampling_rate=250.0)
-
-    gaze = pm.synthetic.generate_samples(
-        'test_noise', sampling_rate=250.0, seed=42, experiment=experiment,
-    )
-
-    assert gaze.experiment is experiment
+    assert gaze.metadata['synthetic']['hyperparameters'] == {
+        'sampling_rate': 1000.0, 'scale': 3.0,
+    }
 
 
 @pytest.mark.usefixtures('registered_sample_generator')
@@ -81,8 +72,8 @@ def test_generate_samples_passes_the_other_keywords_to_generate(fixations):
         'test_noise', events=fixations, sampling_rate=500.0, seed=42, scale=2.0,
     )
 
-    assert gaze.metadata['synthetic']['hyperparameters'] == {'scale': 2.0}
-    assert gaze.metadata['synthetic']['run'] == {'sampling_rate': 500.0, 'n_events': 2}
+    assert gaze.metadata['synthetic']['hyperparameters'] == {'sampling_rate': 500.0, 'scale': 2.0}
+    assert gaze.metadata['synthetic']['run'] == {'n_events': 2}
 
 
 def test_generate_events_matches_the_explicit_call(registered_event_generator):

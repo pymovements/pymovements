@@ -24,7 +24,6 @@ import dataclasses
 from typing import Any
 
 from pymovements.events.events import Events
-from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
 from pymovements.synthetic.library import EventGeneratorLibrary
 from pymovements.synthetic.library import SampleGeneratorLibrary
@@ -90,33 +89,23 @@ def generate_events(name: str, *, seed: int | None = None, **kwargs: Any) -> Eve
     return generator_class(**hyperparameters).generate(seed=seed, **run)
 
 
-def generate_samples(
-        name: str,
-        *,
-        sampling_rate: float,
-        seed: int | None = None,
-        experiment: Experiment | None = None,
-        **kwargs: Any,
-) -> Gaze:
+def generate_samples(name: str, *, seed: int | None = None, **kwargs: Any) -> Gaze:
     """Generate synthetic gaze samples with the sample generator registered under a name.
 
-    Keyword arguments that match a field of the generator are its hyperparameters and go to the
-    constructor, the others are run parameters and go to ``generate()``. A hyperparameter
-    therefore cannot share its name with a run parameter, ``sampling_rate``, ``seed`` or
-    ``experiment``.
+    Keyword arguments that match a field of the generator, ``sampling_rate`` included, are its
+    hyperparameters and go to the constructor, the others are run parameters and go to
+    ``generate()``. A hyperparameter therefore cannot share its name with a run parameter or with
+    ``seed``.
 
     Parameters
     ----------
     name: str
         The registered name of the sample generator.
-    sampling_rate: float
-        The sampling rate of the generated samples in Hz.
     seed: int | None
         The random seed, or ``None`` to draw one. (default: None)
-    experiment: Experiment | None
-        The experiment the output belongs to. (default: None)
     **kwargs: Any
-        The hyperparameters and run parameters of the generator, such as ``events``.
+        The hyperparameters and run parameters of the generator, such as ``sampling_rate`` and
+        ``events``.
 
     Returns
     -------
@@ -135,8 +124,8 @@ def generate_samples(
 
         >>> getfixture('doctest_synthetic')
 
-    ``noise`` is a field of the generator below, so it goes to the constructor; ``events``
-    is not, so it goes to ``generate()``:
+    ``sampling_rate`` and ``noise`` are fields of the generator below, so they go to the
+    constructor; ``events`` is not, so it goes to ``generate()``:
 
     >>> import dataclasses
     >>> import numpy as np
@@ -148,9 +137,9 @@ def generate_samples(
     ...     name = 'still_gaze'
     ...     noise: float = 0.1
     ...
-    ...     def _generate(self, *, sampling_rate, experiment, rng, events):
+    ...     def _generate(self, *, rng, events):
     ...         end = events.frame['offset'].dt.total_microseconds().max() / 1000
-    ...         time = np.arange(0, end, 1000 / sampling_rate)
+    ...         time = np.arange(0, end, 1000 / self.sampling_rate)
     ...         return pm.Gaze(
     ...             samples=pl.DataFrame({
     ...                 'time': time,
@@ -166,13 +155,11 @@ def generate_samples(
     ...     'still_gaze', events=events, sampling_rate=500, seed=42, noise=0.5,
     ... )
     >>> gaze.metadata['synthetic']['hyperparameters']
-    {'noise': 0.5}
+    {'sampling_rate': 500.0, 'noise': 0.5}
     """
     generator_class = SampleGeneratorLibrary.get(name)
     hyperparameters, run = _split_kwargs(generator_class, kwargs)
-    return generator_class(**hyperparameters).generate(
-        sampling_rate=sampling_rate, seed=seed, experiment=experiment, **run,
-    )
+    return generator_class(**hyperparameters).generate(seed=seed, **run)
 
 
 def _split_kwargs(
