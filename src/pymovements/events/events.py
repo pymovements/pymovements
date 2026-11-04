@@ -1164,7 +1164,7 @@ class Events:
           the same columns, matching is restricted to AOIs with equal key values.
         - A null value in a configured key column is a wildcard: that fixation is matched
           against all AOIs for the other key(s), using the per-row
-          :meth:`TextStimulus.get_aoi` lookup.
+          :meth:`~pymovements.stimulus.TextStimulus.get_aoi` lookup.
         - A non-null key that cannot be cast to the AOI key dtype without changing its value
           (for example a string against an integer column, or ``1.5`` against an integer
           column) matches no AOI.
@@ -1216,7 +1216,7 @@ class Events:
                 height_column=aoi_dataframe.width_column,
                 width_column=aoi_dataframe.height_column,
             )
-        elif aoi_dataframe.end_x_column is not None:
+        else:
             _checks.check_is_none_is_mutual(
                 end_x_column=aoi_dataframe.end_x_column,
                 end_y_column=aoi_dataframe.end_y_column,

@@ -728,3 +728,78 @@ def test_map_to_aois_numeric_string_list_coordinates_get_no_match(
         events.map_to_aois(simple_stimulus, verbose=False)
 
     assert events.frame.get_column('label').to_list() == [None]
+
+
+def test_map_to_aois_categorical_key_matches_string_key() -> None:
+    """String-like keys with different dtypes are still castable and match."""
+    stimulus = TextStimulus(
+        pl.DataFrame(
+            {
+                'label': ['A'],
+                'sx': [0],
+                'sy': [0],
+                'ex': [10],
+                'ey': [10],
+                'trial': ['1'],
+            },
+        ),
+        aoi_column='label',
+        start_x_column='sx',
+        start_y_column='sy',
+        end_x_column='ex',
+        end_y_column='ey',
+        trial_column='trial',
+    )
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+            'location': [[5.0, 5.0]],
+            'trial': pl.Series(['1'], dtype=pl.Categorical),
+        },
+    )
+    events = Events(data=df, trial_columns=['trial'])
+
+    events.map_to_aois(stimulus, verbose=False)
+
+    assert events.frame.get_column('label').to_list() == ['A']
+
+
+def test_map_to_aois_non_numeric_list_without_structure_gets_no_match(
+    simple_stimulus: TextStimulus,
+) -> None:
+    """A non-numeric location list is rejected when it is read directly."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+            'location': [['5', '5']],
+        },
+    )
+    events = Events(data=df)
+
+    with pytest.warns(UserWarning, match='Invalid eye coordinates in 1 of 1 fixations'):
+        events.map_to_aois(simple_stimulus, preserve_structure=False, verbose=False)
+
+    assert events.frame.get_column('label').to_list() == [None]
+
+
+def test_map_to_aois_missing_coordinate_columns_get_no_match(
+    simple_stimulus: TextStimulus,
+) -> None:
+    """A fixation frame without any coordinate column gets no match and warns."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+        },
+    )
+    events = Events(data=df)
+
+    with pytest.warns(UserWarning, match='Invalid eye coordinates in 1 of 1 fixations'):
+        events.map_to_aois(simple_stimulus, verbose=False)
+
+    assert events.frame.get_column('label').to_list() == [None]
