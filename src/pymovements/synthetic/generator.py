@@ -39,8 +39,10 @@ from pymovements._version import __version__
 from pymovements.events.events import Events
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
-from pymovements.synthetic.provenance import generation_provenance
 from pymovements.warnings import ExperimentalWarning
+
+#: The key the provenance record is stored under in the metadata of the generated data.
+PROVENANCE_KEY = 'synthetic'
 
 OutputT = TypeVar('OutputT', Events, Gaze)
 
@@ -203,14 +205,30 @@ class _Generator(abc.ABC, Generic[OutputT]):
         }
 
     def _provenance(self, run: dict[str, Any], seed: int) -> dict[str, Any]:
-        """Return the provenance record of a run of this generator."""
-        return generation_provenance(
-            generator=self.name,
-            level=self.level,
-            hyperparameters=self.hyperparameters(),
-            run=run,
-            seed=seed,
-        )
+        """Return the provenance record of a run, so the output is not mistaken for a recording.
+
+        Parameters
+        ----------
+        run: dict[str, Any]
+            The record of the run parameters, apart from the seed.
+        seed: int
+            The seed the run's random generator was created from.
+
+        Returns
+        -------
+        dict[str, Any]
+            The record under :py:data:`PROVENANCE_KEY`, ready to be merged into the metadata.
+        """
+        return {
+            PROVENANCE_KEY: {
+                'generator': self.name,
+                'level': self.level,
+                'hyperparameters': self.hyperparameters(),
+                'run': dict(run),
+                'seed': seed,
+                'pymovements_version': __version__,
+            },
+        }
 
 
 class EventGenerator(_Generator[Events]):
@@ -252,6 +270,11 @@ class EventGenerator(_Generator[Events]):
     >>> events = EvenFixations().generate(duration=1.0, seed=42)
     >>> events.frame['name'].to_list()
     ['fixation', 'fixation', 'fixation', 'fixation']
+
+    The output records how it was made:
+
+    >>> sorted(events.metadata['synthetic'])
+    ['generator', 'hyperparameters', 'level', 'pymovements_version', 'run', 'seed']
     >>> events.metadata['synthetic']['run']
     {'duration': 1.0}
     """
