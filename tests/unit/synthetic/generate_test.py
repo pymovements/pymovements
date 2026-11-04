@@ -108,6 +108,24 @@ def test_misspelled_hyperparameter_raises_type_error(entry_point, name, kwargs):
     assert 'scael' in msg
 
 
+def test_generate_events_rejects_a_generator_that_is_no_dataclass():
+    """The entry point routes every keyword to the run, and generate() names the problem."""
+    class PlainGenerator(pm.synthetic.EventGenerator):
+        name = 'test_plain'
+
+        def _generate(self, *, rng, duration):  # pylint: disable=arguments-differ
+            raise AssertionError('_generate must not run for a generator that is rejected')
+
+    register_generator(PlainGenerator)
+
+    with pytest.raises(TypeError) as excinfo:
+        pm.synthetic.generate_events('test_plain', duration=1.0, seed=42)
+
+    msg, = excinfo.value.args
+    for msg_substring in ('PlainGenerator', 'dataclass'):
+        assert msg_substring in msg
+
+
 @pytest.mark.parametrize(
     ('entry_point', 'name', 'kwargs', 'library_name'),
     [

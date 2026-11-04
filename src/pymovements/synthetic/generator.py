@@ -197,12 +197,13 @@ class _Generator(abc.ABC, Generic[OutputT]):
         dict[str, Any]
             The record of the run parameters.
         """
-        return {
-            (f'n_{key}' if isinstance(value, Events) else key): (
-                value.frame.height if isinstance(value, Events) else value
-            )
-            for key, value in run.items()
-        }
+        record = {}
+        for key, value in run.items():
+            if isinstance(value, Events):
+                record[f'n_{key}'] = value.frame.height
+            else:
+                record[key] = value
+        return record
 
     def _provenance(self, run: dict[str, Any], seed: int) -> dict[str, Any]:
         """Return the provenance record of a run, so the output is not mistaken for a recording.
