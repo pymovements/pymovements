@@ -588,7 +588,7 @@ def test_map_to_aois_numeric_string_key_matches_integer_key(
         pytest.param(pl.Enum(['1', '2']), id='enum'),
     ],
 )
-def test_map_to_aois_categorical_key_matches_integer_key(
+def test_map_to_aois_categorical_or_enum_key_matches_integer_key(
     stimulus_with_trials: TextStimulus,
     key_dtype: pl.DataType,
 ) -> None:
@@ -607,6 +607,90 @@ def test_map_to_aois_categorical_key_matches_integer_key(
     events.map_to_aois(stimulus_with_trials, verbose=False)
 
     assert events.frame.get_column('label').to_list() == ['A', 'B', 'A']
+
+
+def _stimulus_with_key_dtype(key_dtype: pl.DataType) -> TextStimulus:
+    """Return two AOIs, A in trial 1 and B in trial 2, with the trial column of ``key_dtype``."""
+    return TextStimulus(
+        pl.DataFrame(
+            {
+                'label': ['A', 'B'],
+                'sx': [0, 20],
+                'sy': [0, 20],
+                'ex': [10, 30],
+                'ey': [10, 30],
+                'trial': pl.Series(['1', '2'], dtype=key_dtype),
+            },
+        ),
+        aoi_column='label',
+        start_x_column='sx',
+        start_y_column='sy',
+        end_x_column='ex',
+        end_y_column='ey',
+        trial_column='trial',
+    )
+
+
+@pytest.mark.parametrize(
+    'aoi_key_dtype',
+    [
+        pytest.param(pl.Categorical, id='categorical'),
+        pytest.param(pl.Enum(['1', '2']), id='enum'),
+    ],
+)
+@pytest.mark.parametrize(
+    'trial_values',
+    [
+        pytest.param([1, 2, 1], id='integer'),
+        pytest.param(['1', '2', '1'], id='string'),
+    ],
+)
+def test_map_to_aois_key_matches_categorical_or_enum_aoi_key(
+    aoi_key_dtype: pl.DataType,
+    trial_values: list[Any],
+) -> None:
+    """An integer or string key matches a Categorical or Enum AOI key with the same text."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'fixation', 'fixation'],
+            'onset': [0, 1, 2],
+            'offset': [1, 2, 3],
+            'location': [[5.0, 5.0], [25.0, 25.0], [5.0, 5.0]],
+            'trial': trial_values,
+        },
+    )
+    events = Events(data=df, trial_columns=['trial'])
+
+    events.map_to_aois(_stimulus_with_key_dtype(aoi_key_dtype), verbose=False)
+
+    assert events.frame.get_column('label').to_list() == ['A', 'B', 'A']
+
+
+@pytest.mark.parametrize(
+    'aoi_key_dtype',
+    [
+        pytest.param(pl.Categorical, id='categorical'),
+        pytest.param(pl.Enum(['1', '2']), id='enum'),
+    ],
+)
+def test_map_to_aois_key_outside_categorical_or_enum_aoi_key_gets_no_match(
+    aoi_key_dtype: pl.DataType,
+) -> None:
+    """A key with no equal category in the Categorical or Enum AOI key matches no AOI."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+            'location': [[5.0, 5.0]],
+            'trial': [3],
+        },
+    )
+    events = Events(data=df, trial_columns=['trial'])
+
+    events.map_to_aois(_stimulus_with_key_dtype(aoi_key_dtype), verbose=False)
+
+    assert events.frame.get_column('label').to_list() == [None]
 
 
 def test_map_to_aois_integer_key_matches_string_key() -> None:

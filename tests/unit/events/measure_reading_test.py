@@ -308,6 +308,29 @@ def test_events_measure_reading_multiple_stimuli_stimulus_column_dtype_differs(f
     assert result.frame['TFC'].to_list() == [1, 1, 0]
 
 
+@pytest.mark.parametrize(
+    'key_dtype',
+    [
+        pytest.param(pl.Categorical, id='categorical'),
+        pytest.param(pl.Enum(['1']), id='enum'),
+    ],
+)
+def test_events_measure_reading_multiple_stimuli_categorical_stimulus_column(
+    fixation_events, key_dtype,
+):
+    # the stimulus keeps its sequence column as Categorical or Enum while the key and the
+    # events are ints
+    events = Events(fixation_events.frame.with_columns(pl.lit(1).alias('trial')))
+    stimulus = _make_stimulus(['The', 'quick', 'brown'], trial='1')
+    stimulus.aois = stimulus.aois.with_columns(pl.col('trial').cast(key_dtype))
+    stimuli = {1: stimulus}
+
+    result = events.measure_reading(stimuli, group_columns=['trial'])
+
+    assert result.frame['trial'].to_list() == [1, 1, 1]
+    assert result.frame['TFC'].to_list() == [1, 1, 0]
+
+
 def test_events_measure_reading_multiple_stimuli_key_mismatch_raises(fixation_events):
     stimuli = {'trial_1': _make_stimulus(['The', 'quick', 'brown'], trial='trial_2')}
 
