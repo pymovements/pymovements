@@ -35,13 +35,11 @@ import numpy as np
 import polars as pl
 
 from pymovements.events.events import Events
-from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
 from pymovements.synthetic._utils import check_contiguous
 from pymovements.synthetic._utils import check_name
 from pymovements.synthetic._utils import check_number
 from pymovements.synthetic._utils import check_positive
-from pymovements.synthetic._utils import milliseconds
 from pymovements.synthetic._utils import per_trial
 from pymovements.synthetic._utils import sample_times
 from pymovements.synthetic.generator import SampleGenerator
@@ -128,10 +126,6 @@ class StatisticalSampleGenerator(SampleGenerator):
 
     Examples
     --------
-    .. testsetup::
-
-        >>> getfixture('doctest_synthetic')
-
     Render a fixation, a saccade and a fixation at 1000 Hz:
 
     >>> import pymovements as pm
@@ -140,8 +134,10 @@ class StatisticalSampleGenerator(SampleGenerator):
     ...     onsets=[0, 200, 240],
     ...     offsets=[200, 240, 500],
     ... )
-    >>> generator = StatisticalSampleGenerator(saccade_peak_velocity=(300, 450))
-    >>> gaze = generator.generate(events=events, sampling_rate=1000, seed=42)
+    >>> generator = pm.synthetic.StatisticalSampleGenerator(
+    ...     sampling_rate=1000, saccade_peak_velocity=(300, 450),
+    ... )
+    >>> gaze = generator.generate(events=events, seed=42)  # doctest: +IGNORE_WARNINGS
     >>> gaze.samples.columns
     ['time', 'velocity_magnitude']
     >>> gaze.samples.height
@@ -170,6 +166,8 @@ class StatisticalSampleGenerator(SampleGenerator):
 
     def __post_init__(self) -> None:
         """Read each range from its accepted forms and validate the parameters."""
+        super().__post_init__()
+
         for field in dataclasses.fields(self):
             if field.type == 'RangeLike':
                 value = _range(getattr(self, field.name))
@@ -204,6 +202,12 @@ class StatisticalSampleGenerator(SampleGenerator):
         self.profile_sampling_rate = check_positive(
             self.profile_sampling_rate, 'profile_sampling_rate',
         )
+        if self.profile_sampling_rate < self.sampling_rate:
+            raise ValueError(
+                f'profile_sampling_rate ({self.profile_sampling_rate}) must not be below '
+                f'sampling_rate ({self.sampling_rate}), otherwise the profiles are built more '
+                'coarsely than the samples taken from them',
+            )
 
         self._check_effective()
 
@@ -241,8 +245,6 @@ class StatisticalSampleGenerator(SampleGenerator):
     def _generate(  # pylint: disable=arguments-differ
             self,
             *,
-            sampling_rate: float,
-            experiment: Experiment,
             rng: np.random.Generator,
             events: Events,
     ) -> Gaze:
@@ -250,10 +252,6 @@ class StatisticalSampleGenerator(SampleGenerator):
 
         Parameters
         ----------
-        sampling_rate: float
-            The sampling rate of the generated samples in Hz.
-        experiment: Experiment
-            The experiment the output belongs to.
         rng: np.random.Generator
             The run's random generator.
         events: Events
@@ -271,18 +269,12 @@ class StatisticalSampleGenerator(SampleGenerator):
             If ``events`` is not an ``Events`` object.
         ValueError
             If the events have gaps, overlap, are empty or contain an event type without a
-            profile, or if ``profile_sampling_rate`` is below the sampling rate.
+            profile.
         """
         if not isinstance(events, Events):
             raise TypeError(
                 f"generator '{self.name}' needs events of type Events to condition on, but got "
                 f'{type(events).__name__}',
-            )
-        if self.profile_sampling_rate < sampling_rate:
-            raise ValueError(
-                f'profile_sampling_rate ({self.profile_sampling_rate}) must not be below '
-                f'sampling_rate ({sampling_rate}), otherwise the profiles are built more '
-                'coarsely than the samples taken from them',
             )
 
         unknown = sorted(set(events.frame['name'].to_list()) - set(EVENT_TYPES))
@@ -295,7 +287,7 @@ class StatisticalSampleGenerator(SampleGenerator):
         check_contiguous(events, generator=self.name)
 
         def synthesize(trial: pl.DataFrame) -> pl.DataFrame:
-            return self._synthesize_trial(trial, sampling_rate, rng)
+            return self._synthesize_trial(trial, rng)
 
         samples = per_trial(events, synthesize, generator=self.name)
 
@@ -310,24 +302,20 @@ class StatisticalSampleGenerator(SampleGenerator):
                 time_unit='ms',
             )
 
-    def _synthesize_trial(
-            self,
-            trial: pl.DataFrame,
-            sampling_rate: float,
-            rng: np.random.Generator,
-    ) -> pl.DataFrame:
+    def _synthesize_trial(self, trial: pl.DataFrame, rng: np.random.Generator) -> pl.DataFrame:
         """Return the samples of one trial's ordered, gap-free events."""
-        onsets = milliseconds(trial['onset']).to_numpy()
-        offsets = milliseconds(trial['offset']).to_numpy()
+        onsets = trial['onset'].dt.total_milliseconds(fractional=True).to_numpy()
+        durations = trial['duration'].dt.total_milliseconds(fractional=True).to_numpy()
+        ends = onsets + durations
 
         profiles = []
         profile_times = []
-        for event_type, onset, offset in zip(trial['name'], onsets, offsets):
-            profile = self._velocity_profile(event_type, offset - onset, rng)
+        for event_type, onset, duration, end in zip(trial['name'], onsets, durations, ends):
+            profile = self._velocity_profile(event_type, duration, rng)
             profiles.append(profile)
-            profile_times.append(np.linspace(onset, offset, profile.size, endpoint=False))
+            profile_times.append(np.linspace(onset, end, profile.size, endpoint=False))
 
-        times = sample_times(onsets[0], offsets[-1], sampling_rate)
+        times = sample_times(onsets[0], ends[-1], self.sampling_rate)
         magnitudes = _resample(np.concatenate(profiles), np.concatenate(profile_times), times)
 
         return pl.DataFrame({
