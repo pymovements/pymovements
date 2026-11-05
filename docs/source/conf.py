@@ -308,12 +308,12 @@ nitpick_ignore_regex = [
     ),
 
     # Project-internal typing aliases used only in docs
-    (r'py:class', r'^(?:DatasetDefinitionClass|SampleMeasure|GeneratorT)$'),
+    (r'py:class', r'^(?:DatasetDefinitionClass|SampleMeasure|GeneratorT|OutputT)$'),
     # Fully-qualified generic forms that appear in docstrings
     (
         r'py:class', r'^pymovements\.(?:dataset\.dataset_library\.'
         r'DatasetDefinitionClass|measure\.samples\.library\.SampleMeasure|'
-        r'synthetic\.library\.GeneratorT)$',
+        r'synthetic\.library\.GeneratorT|synthetic\.generator\.OutputT)$',
     ),
     # generic types https://github.com/sphinx-doc/sphinx/issues/14159
     (r'py:class', r'.*dict\[str'),
