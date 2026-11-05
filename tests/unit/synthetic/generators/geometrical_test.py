@@ -30,7 +30,7 @@ import pymovements as pm
 from pymovements import Events
 from pymovements.synthetic import GeometricalSampleGenerator
 from pymovements.synthetic import Range
-from pymovements.synthetic import SampleGeneratorLibrary
+from pymovements.synthetic import SampleGeneratorRegistry
 
 pytestmark = pytest.mark.filterwarnings(
     'ignore:Synthetic gaze generation is experimental:pymovements.ExperimentalWarning',
@@ -428,7 +428,7 @@ def test_output_runs_through_the_pipeline(
 
 
 def test_is_registered_by_name():
-    assert SampleGeneratorLibrary.get('geometrical') is GeometricalSampleGenerator
+    assert SampleGeneratorRegistry.get('geometrical') is GeometricalSampleGenerator
 
     gaze = pm.synthetic.generate_samples(
         'geometrical', events=_fixations(), sampling_rate=1000.0, seed=42,
