@@ -25,7 +25,12 @@ from pymovements.synthetic import EventGeneratorRegistry
 from pymovements.synthetic import register_generator
 from pymovements.synthetic import SampleGeneratorRegistry
 
-pytestmark = pytest.mark.usefixtures('isolated_registry')
+pytestmark = [
+    pytest.mark.filterwarnings(
+        'ignore:Synthetic gaze generation is experimental:pymovements.ExperimentalWarning',
+    ),
+    pytest.mark.usefixtures('isolated_registry'),
+]
 
 
 def _named(generator_class, name):
@@ -168,9 +173,6 @@ def test_create_returns_the_generator_the_constructor_returns(
     assert created == generator_class(**parameters)
 
 
-@pytest.mark.filterwarnings(
-    'ignore:Synthetic gaze generation is experimental:pymovements.ExperimentalWarning',
-)
 def test_created_sample_generator_generates_what_the_constructed_one_does(
         noise_sample_generator, fixations,
 ):
@@ -185,9 +187,6 @@ def test_created_sample_generator_generates_what_the_constructed_one_does(
     assert gaze.metadata == expected.metadata
 
 
-@pytest.mark.filterwarnings(
-    'ignore:Synthetic gaze generation is experimental:pymovements.ExperimentalWarning',
-)
 def test_created_event_generator_generates_what_the_constructed_one_does(
         uniform_event_generator,
 ):

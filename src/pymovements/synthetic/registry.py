@@ -106,7 +106,7 @@ class _GeneratorRegistry(Generic[GeneratorT]):
         KeyError
             If no generator is registered under that name.
         TypeError
-            If the generator does not take one of the parameters.
+            If the generator does not take one of the parameters or misses a required one.
         """
         return cls.get(name)(**parameters)
 
