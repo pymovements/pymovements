@@ -27,6 +27,7 @@ from typing import TypeVar
 
 import yaml
 
+from pymovements.dataset._utils._yaml import FastSafeLoader
 from pymovements.dataset.dataset_definition import DatasetDefinition
 
 
@@ -133,7 +134,7 @@ def _add_shipped_datasets() -> None:
     # https://github.com/pymovements/pymovements/pull/952#issuecomment-2690742187
     assert isinstance(datasets_list_yaml, Path)
     with open(datasets_list_yaml, encoding='utf-8') as f:
-        datasets_list = yaml.safe_load(f)
+        datasets_list = yaml.load(f, Loader=FastSafeLoader)
 
     for definition_basename in datasets_list:
         yaml_file_name = dataset_definition_files / f'{definition_basename}.yaml'

@@ -20,11 +20,11 @@
 """Provides the data_loss_histogram plotting function."""
 from __future__ import annotations
 
+import importlib
 from collections.abc import Sequence
 from typing import Literal
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 
@@ -33,6 +33,8 @@ from pymovements.measure.samples.measures import _is_invalid
 from pymovements.plotting._matplotlib import prepare_figure
 
 if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
+
     from pymovements.gaze.gaze import Gaze
 
 
@@ -113,6 +115,8 @@ def data_loss_histogram(
     ValueError
         If unit is not 'count' or 'time'.
     """
+    plt = importlib.import_module('matplotlib.pyplot')
+
     if unit not in {'count', 'time'}:
         raise ValueError(f"unit must be 'count' or 'time', got {unit!r}")
 

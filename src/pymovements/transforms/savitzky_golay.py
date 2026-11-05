@@ -20,11 +20,11 @@
 """Module for py:func:`pymovements.transforms.savitzky_golay`."""
 from __future__ import annotations
 
+import importlib
 from functools import partial
 from typing import Any
 
 import polars as pl
-import scipy
 
 from pymovements._utils import _checks
 from pymovements.transforms._utils import _check_padding
@@ -115,6 +115,8 @@ def savitzky_golay(
     | ``wrap``    | ``6  7  8`` | ``1  2  3  4  5  6  7  8`` | ``1  2  3`` |
     +-------------+-------------+----------------------------+-------------+
     """
+    scipy_signal = importlib.import_module('scipy.signal')
+
     _check_window_length(window_length=window_length)
     _check_degree(degree=degree, window_length=window_length)
     _check_derivative(derivative=derivative)
@@ -133,7 +135,7 @@ def savitzky_golay(
         padding = 'interp'
 
     func = partial(
-        scipy.signal.savgol_filter,
+        scipy_signal.savgol_filter,
         window_length=window_length,
         polyorder=degree,
         deriv=derivative,

@@ -22,15 +22,18 @@ from __future__ import annotations
 
 from typing import Literal
 from typing import overload
+from typing import TYPE_CHECKING
 
 import numpy as np
-import pandas as pd
 import polars as pl
 
 from pymovements._utils import _checks
 from pymovements.events.events import Events
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 @overload

@@ -30,9 +30,9 @@ from typing import Any
 from warnings import warn
 
 import polars as pl
-import pyreadr
 from tqdm.auto import tqdm
 
+from pymovements._utils._optional import import_optional_dependency
 from pymovements._utils._paths import match_filepaths
 from pymovements._utils._sources import add_source
 from pymovements._utils._sources import relativize_sources
@@ -533,6 +533,7 @@ def load_precomputed_reading_measure_file(
         precomputed_reading_measure_df = pl.read_csv(file.path, **read_kwargs)
     elif file_path_suffix in r_extensions:
         if 'r_dataframe_key' in load_kwargs:
+            pyreadr = import_optional_dependency('pyreadr', extra='datasets')
             precomputed_r = pyreadr.read_r(file.path)
             # convert to polars DataFrame because read_r has no .clone().
             precomputed_reading_measure_df = pl.DataFrame(
@@ -541,6 +542,8 @@ def load_precomputed_reading_measure_file(
         else:
             raise ValueError('please specify r_dataframe_key in ResourceDefinition.load_kwargs')
     elif file_path_suffix in excel_extensions:
+        # polars imports fastexcel itself, this call only checks that it is installed.
+        import_optional_dependency('fastexcel', extra='datasets')
         read_kwargs = load_kwargs.pop('read_excel_kwargs', {})
         precomputed_reading_measure_df = pl.read_excel(file.path, **read_kwargs)
     else:
@@ -637,6 +640,7 @@ def load_precomputed_event_file(
         precomputed_event_df = pl.read_csv(file.path, **read_kwargs)
     elif file_path_suffix in r_extensions:
         if 'r_dataframe_key' in load_kwargs:
+            pyreadr = import_optional_dependency('pyreadr', extra='datasets')
             precomputed_r = pyreadr.read_r(file.path)
             # convert to polars DataFrame because read_r has no .clone().
             precomputed_event_df = pl.DataFrame(
