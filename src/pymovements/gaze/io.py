@@ -531,6 +531,13 @@ def from_asc(
     ``-e`` or ``-ns`` to output only events or ``-s`` or ``-ne`` to only output samples will not
     work with this function, as it expects both samples and events to be present in the ASC file.
 
+    A file whose tracked eye changes between recording blocks, for example a monocular left block
+    followed by a monocular right block, is loaded in the binocular four-channel layout. Each
+    sample holds the data of the eye tracked at that time and null for the other eye. The
+    experiment's eye tracker then reports both eyes as tracked, the same as for a simultaneous
+    binocular recording. Per-recording metadata that tells the two cases apart is planned in
+    `issue 1663 <https://github.com/pymovements/pymovements/issues/1663>`_.
+
     Examples
     --------
     We can load an asc file stored at `tests/files/eyelink_monocular_example.asc` into a ``Gaze``:
