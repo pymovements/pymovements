@@ -37,6 +37,18 @@ from pymovements.synthetic import bridge_gaps
             id='touching_events_are_unchanged',
         ),
         pytest.param(
+            Events(name=['fixation'], onsets=[0], offsets=[250]),
+            None,
+            Events(name=['fixation'], onsets=[0], offsets=[250]),
+            id='single_fixation_is_unchanged',
+        ),
+        pytest.param(
+            Events(name=['fixation'], onsets=[0], offsets=[250]),
+            100,
+            Events(name=['fixation'], onsets=[0], offsets=[250]),
+            id='single_fixation_with_max_gap_is_unchanged',
+        ),
+        pytest.param(
             Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560]),
             None,
             Events(

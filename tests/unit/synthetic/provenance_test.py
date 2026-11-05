@@ -21,6 +21,7 @@
 import json
 
 import pytest
+import yaml
 from polars.testing import assert_frame_equal
 
 import pymovements as pm
@@ -100,15 +101,19 @@ def test_drawn_seed_is_recorded(noise_sample_generator):
 
 
 def test_provenance_records_a_range_as_plain_values(ranged_noise_sample_generator, tmp_path):
-    """A record of plain values can be written to JSON and saved with the gaze."""
+    """A record of plain values comes back equal from JSON and from the saved gaze."""
     gaze = ranged_noise_sample_generator(sampling_rate=500.0).generate(seed=42)
 
     hyperparameters = gaze.metadata['synthetic']['hyperparameters']
     assert hyperparameters['offset'] == {
         'minimum': 0.0, 'maximum': 1.0, 'distribution': 'normal', 'std': 0.5,
     }
-    json.dumps(gaze.metadata)
+    assert json.loads(json.dumps(gaze.metadata)) == gaze.metadata
+
     gaze.save(tmp_path, verbose=0)
+
+    with open(tmp_path / 'metadata.yaml', encoding='utf-8') as file:
+        assert yaml.safe_load(file) == gaze.metadata
 
 
 @pytest.mark.usefixtures('isolated_registry')
