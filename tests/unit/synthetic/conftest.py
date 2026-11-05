@@ -71,7 +71,7 @@ class RangedNoiseSampleGenerator(NoiseSampleGenerator):
         super().__post_init__()
         self.offset = Range.from_value(self.offset)
 
-    def _generate(self, *, rng, events=None):  # pylint: disable=arguments-differ
+    def _generate(self, *, rng, events=None):
         gaze = super()._generate(rng=rng, events=events)
         gaze.samples = gaze.samples.with_columns(
             pl.col('position') + self.offset.draw(rng),
