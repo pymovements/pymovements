@@ -234,6 +234,7 @@ from pymovements.synthetic import step_function
                     'onset': [0, 25, 50, 75],
                     'offset': [24, 49, 74, 99],
                 }),
+                trial_columns=['trial', 'screen'],
             ),
             id='idt_constant_position_single_fixation_per_trial_multiple_trial_columns',
         ),
@@ -249,7 +250,7 @@ from pymovements.synthetic import step_function
                 velocity=np.ones((2, 100)) * 20,
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.events.Events(),
+            pm.events.Events(onsets=[], offsets=[]),
             id='ivt_constant_velocity_no_fixation',
         ),
 
@@ -571,7 +572,7 @@ from pymovements.synthetic import step_function
                 velocity=np.ones((2, 100)) * 20,
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.events.Events(),
+            pm.events.Events(onsets=[], offsets=[]),
             id='ihmm_constant_velocity_no_fixation',
         ),
 
@@ -974,6 +975,7 @@ from pymovements.synthetic import step_function
                         'offset': [10, 49, 39, 50],
                     },
                 ),
+                trial_columns='trial',
             ),
             id='fill_10ms_fixation_at_start_and_end_one_fill_per_trial_restarting_timesteps',
         ),
@@ -1054,7 +1056,7 @@ from pymovements.synthetic import step_function
                 orient='row',
                 experiment=pm.Experiment(1920, 1080, 38, 30, 60, 'center', 1000),
             ),
-            pm.Events(),
+            pm.Events(onsets=[], offsets=[]),
             id='out_of_screen_all_within_screen_no_events',
         ),
 
@@ -1166,7 +1168,7 @@ def test_gaze_detect(method, kwargs, gaze, expected):
                 position=np.stack([np.arange(0, 200, 2), np.arange(0, 200, 2)], axis=0),
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 10),
             ),
-            pm.events.Events(),
+            pm.events.Events(onsets=[], offsets=[]),
             id='idt_constant_velocity_no_fixation',
         ),
 
@@ -1181,7 +1183,7 @@ def test_gaze_detect(method, kwargs, gaze, expected):
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.Events(),
+            pm.Events(onsets=[], offsets=[]),
             id='microsaccades_two_steps_one_saccade_high_threshold_no_events',
         ),
 
@@ -1201,7 +1203,7 @@ def test_gaze_detect(method, kwargs, gaze, expected):
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.Events(),
+            pm.Events(onsets=[], offsets=[]),
             id='microsaccades_two_steps_one_saccade_timesteps',
         ),
     ],
@@ -1368,7 +1370,7 @@ def test_gaze_detect_missing_trial_column_events_raises_exception():
     msg, = exc_info.value.args
     assert msg == (
         "trial columns ['trial'] missing from events, "
-        "available columns: ['name', 'onset', 'offset', 'duration']"
+        "available columns: ['onset', 'duration', 'name']"
     )
 
 

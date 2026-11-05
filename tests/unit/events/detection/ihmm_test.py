@@ -817,10 +817,10 @@ def test_ihmm_detects_fixation_event_on_synthetic_data():
 
     assert len(events.frame) >= 1
 
-    first_event = events.frame.row(0)
+    first_event = events.frame.row(0, named=True)
 
-    onset = first_event[1]
-    offset = first_event[2]
+    onset = first_event['onset']
+    offset = first_event['offset']
 
     assert onset <= offset
 

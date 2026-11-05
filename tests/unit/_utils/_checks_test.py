@@ -152,6 +152,11 @@ def test_check_two_kwargs_with_three_kwargs_raises_value_error() -> None:
         _checks.check_two_kwargs(a=1, b=2, c=3)
 
 
+def test_check_is_none_is_mutual_raises_value_error() -> None:
+    with pytest.raises(ValueError, match='"a" and "b" must be either both None or both not None'):
+        _checks.check_is_none_is_mutual(a=1, b=None)
+
+
 def test_check_is_not_none_raises_type_error() -> None:
     with pytest.raises(TypeError):
         _checks.check_is_not_none(a=1, b=None)

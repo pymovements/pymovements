@@ -434,16 +434,16 @@ def mock_toy(
     for _ in range(fileinfo.height):
         events = pl.from_dict(
             {
-                'name': ['saccade', 'fixation'] * 5,
                 'onset': np.arange(0, 100_000, 10_000),
-                'offset': np.arange(5_000, 105_000, 10_000),
                 'duration': np.array([5_000] * 10),
+                'name': ['saccade', 'fixation'] * 5,
+                'offset': np.arange(5_000, 105_000, 10_000),
             },
             schema={
-                'name': pl.String,
                 'onset': pl.Duration('us'),
-                'offset': pl.Duration('us'),
                 'duration': pl.Duration('us'),
+                'name': pl.String,
+                'offset': pl.Duration('us'),
             },
         )
         events_list.append(events)
@@ -1303,10 +1303,10 @@ def test_detect_events_auto_eye(detect_event_kwargs, gaze_dataset_configuration)
     expected_schema = {
         'task': pl.String,
         'trial': pl.Int64,
-        'name': pl.String,
         'onset': pl.Duration('us'),
-        'offset': pl.Duration('us'),
         'duration': pl.Duration('us'),
+        'name': pl.String,
+        'offset': pl.Duration('us'),
     }
     for result_events in dataset.events:
         assert result_events.schema == expected_schema
@@ -1352,10 +1352,10 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
         expected_schema = {
             'task': pl.String,
             'trial': pl.Int64,
-            'name': pl.String,
             'onset': pl.Duration('us'),
-            'offset': pl.Duration('us'),
             'duration': pl.Duration('us'),
+            'name': pl.String,
+            'offset': pl.Duration('us'),
         }
 
         for result_events in dataset.events:
@@ -1384,10 +1384,10 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
             {
                 'task': pl.String,
                 'trial': pl.Int64,
-                'name': pl.String,
                 'onset': pl.Duration('us'),
-                'offset': pl.Duration('us'),
                 'duration': pl.Duration('us'),
+                'name': pl.String,
+                'offset': pl.Duration('us'),
             },
             id='two-saccade-runs',
         ),
@@ -1405,10 +1405,10 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
             {
                 'task': pl.String,
                 'trial': pl.Int64,
-                'name': pl.String,
                 'onset': pl.Duration('us'),
-                'offset': pl.Duration('us'),
                 'duration': pl.Duration('us'),
+                'name': pl.String,
+                'offset': pl.Duration('us'),
             },
             id='one-saccade-one-fixation-run',
         ),
@@ -2128,10 +2128,10 @@ def test_event_dataframe_add_property_has_expected_height(
         pytest.param(
             {'event_properties': 'peak_velocity'},
             {
-                'name': pl.String,
                 'onset': pl.Duration('us'),
-                'offset': pl.Duration('us'),
                 'duration': pl.Duration('us'),
+                'name': pl.String,
+                'offset': pl.Duration('us'),
                 'peak_velocity': pl.Float64,
             },
             id='single_event_peak_velocity',
@@ -2139,10 +2139,10 @@ def test_event_dataframe_add_property_has_expected_height(
         pytest.param(
             {'event_properties': 'location'},
             {
-                'name': pl.String,
                 'onset': pl.Duration('us'),
-                'offset': pl.Duration('us'),
                 'duration': pl.Duration('us'),
+                'name': pl.String,
+                'offset': pl.Duration('us'),
                 'location': pl.List(pl.Float64),
             },
             id='single_event_position',
