@@ -34,6 +34,7 @@ dependencies = [
   "deprecated>=1.2.18",
   "matplotlib>=3.8.0",
   "numpy>=1.22.4",
+  "packaging>=22.0",
   "pandas>=2.1.4",
   "polars>=2.0.0",
   "pyarrow>=14.0.0",

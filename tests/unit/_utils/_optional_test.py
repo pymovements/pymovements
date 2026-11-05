@@ -54,7 +54,7 @@ def test_import_optional_dependency_too_old_raises_upgrade_hint(monkeypatch, ins
     monkeypatch.setattr(importlib.metadata, 'version', lambda name: installed_version)
 
     expected_message = (
-        "pymovements requires version '0.5.2' or newer of 'pyreadr' "
+        "pymovements requires 'pyreadr>=0.5.2' "
         f"(version '{installed_version}' is installed). "
         "Upgrade it with: pip install --upgrade 'pymovements[datasets]'"
     )
@@ -74,3 +74,17 @@ def test_import_optional_dependency_new_enough_returns_module(monkeypatch, insta
     monkeypatch.setattr(importlib.metadata, 'version', lambda name: installed_version)
 
     assert import_optional_dependency('pyreadr', extra='datasets') is sys.modules['pyreadr']
+
+
+@pytest.mark.parametrize(
+    ('name', 'extra'),
+    [
+        pytest.param('numpy', 'datasets', id='core_dependency'),
+        pytest.param('pyreadr', 'docs', id='other_extra'),
+        pytest.param('nonexistent', 'datasets', id='unknown_name'),
+    ],
+)
+def test_import_optional_dependency_not_in_extra_raises_value_error(name, extra):
+    expected_message = f"'{name}' is not a requirement of the pymovements extra '{extra}'"
+    with pytest.raises(ValueError, match=re.escape(expected_message)):
+        import_optional_dependency(name, extra=extra)

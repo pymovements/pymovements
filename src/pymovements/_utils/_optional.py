@@ -21,23 +21,21 @@
 from __future__ import annotations
 
 import importlib.metadata
-import re
 from types import ModuleType
 
-# Keep in sync with the extras in pyproject.toml.
-MINIMUM_VERSIONS = {
-    'fastexcel': '0.13.0',
-    'pyreadr': '0.5.2',
-}
+from packaging.requirements import Requirement
 
 
 def import_optional_dependency(name: str, extra: str) -> ModuleType:
     """Import an optional dependency or raise an ``ImportError`` with an install hint.
 
+    The minimum version is read from the requirement that the pymovements extra declares in
+    ``pyproject.toml``.
+
     Parameters
     ----------
     name: str
-        Name of the module to import.
+        Name of the module to import. Must equal the distribution name in the extra.
     extra: str
         Name of the pymovements extra that installs the module.
 
@@ -49,8 +47,12 @@ def import_optional_dependency(name: str, extra: str) -> ModuleType:
     Raises
     ------
     ImportError
-        If the module is not installed or its version is older than the minimum version.
+        If the module is not installed or its version does not satisfy the extra's requirement.
+    ValueError
+        If the extra does not declare a requirement for ``name``.
     """
+    requirement = _requirement(name, extra)
+
     try:
         module = importlib.import_module(name)
     except ImportError as exception:
@@ -59,22 +61,23 @@ def import_optional_dependency(name: str, extra: str) -> ModuleType:
             f"Install it with: pip install 'pymovements[{extra}]'",
         ) from exception
 
-    minimum_version = MINIMUM_VERSIONS.get(name)
-    if minimum_version is not None:
-        installed_version = importlib.metadata.version(name)
-        if _release(installed_version) < _release(minimum_version):
-            raise ImportError(
-                f"pymovements requires version '{minimum_version}' or newer of '{name}' "
-                f"(version '{installed_version}' is installed). "
-                f"Upgrade it with: pip install --upgrade 'pymovements[{extra}]'",
-            )
+    installed_version = importlib.metadata.version(name)
+    if not requirement.specifier.contains(installed_version, prereleases=True):
+        raise ImportError(
+            f"pymovements requires '{requirement.name}{requirement.specifier}' "
+            f"(version '{installed_version}' is installed). "
+            f"Upgrade it with: pip install --upgrade 'pymovements[{extra}]'",
+        )
 
     return module
 
 
-def _release(version_string: str) -> tuple[int, ...]:
-    """Return the numeric release segment of a version string, e.g. ``(1, 2, 0)``."""
-    match = re.match(r'\d+(\.\d+)*', version_string)
-    if match is None:
-        return ()
-    return tuple(int(part) for part in match.group().split('.'))
+def _requirement(name: str, extra: str) -> Requirement:
+    """Return the requirement for ``name`` that the pymovements ``extra`` declares."""
+    for requirement_string in importlib.metadata.requires('pymovements') or []:
+        requirement = Requirement(requirement_string)
+        if requirement.name != name or requirement.marker is None:
+            continue
+        if requirement.marker.evaluate({'extra': extra}):
+            return requirement
+    raise ValueError(f"'{name}' is not a requirement of the pymovements extra '{extra}'")
