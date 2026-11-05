@@ -1,5 +1,11 @@
 # How to use pymovements in R
 
+.. warning::
+
+   This page gives you a working route from R to pymovements objects through ``reticulate``.
+   It is documented, not supported: the pymovements team does not develop or maintain R bindings.
+   The code on this page is not covered by tests, so a pymovements or reticulate release may break it without notice.
+
 This guide shows how to use `pymovements` from R via the `reticulate` package.
 
 ---
@@ -101,6 +107,26 @@ Now let's load in the dataset into R and display the found files:
 dataset$load()
 dataset$fileinfo
 ```
+
+## Getting gaze samples into an R data.frame
+
+`dataset$gaze` is a list of `Gaze` objects, one per file, and each holds its samples as a polars DataFrame.
+reticulate converts pandas data frames to R data.frames but has no converter for polars, so the samples take one step through pandas.
+The `unnest()` call first splits the nested `pixel` column into `pixel_x` and `pixel_y`, so every column arrives in R as a plain vector:
+
+```r
+gaze <- dataset$gaze[[1]]
+gaze$unnest()
+samples <- gaze$samples$to_pandas()
+```
+
+`samples` is now an ordinary R data.frame of the first file's gaze samples:
+
+```r
+head(samples)
+```
+
+This shows the first rows with the columns `time`, `stimuli_x`, `stimuli_y`, `pixel_x` and `pixel_y`.
 
 ## Related handy functions:
 
