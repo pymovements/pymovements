@@ -1123,6 +1123,7 @@ _MONOCULAR_HEADER = (
     'START\t200 \tLEFT\tSAMPLES\tEVENTS\n'
     'SAMPLES\tGAZE\tLEFT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2\n'
 )
+_MONOCULAR_HEADER_MESSAGE_TIME = timedelta(milliseconds=100)
 
 
 def test_from_asc_skips_malformed_sample_line():
@@ -1179,8 +1180,7 @@ def test_from_asc_calibration_timestamp_followed_by_sample_line():
 def test_from_asc_message_offset(line, expected_time, expected_content):
     gaze = from_asc(io.StringIO(_MONOCULAR_HEADER + line + '\n'), messages=True)
 
-    # The header messages are at 100 ms.
-    messages = gaze.messages.filter(pl.col('time') > timedelta(milliseconds=100))
+    messages = gaze.messages.filter(pl.col('time') > _MONOCULAR_HEADER_MESSAGE_TIME)
     assert messages.rows() == [(timedelta(milliseconds=expected_time), expected_content)]
 
 
@@ -1232,8 +1232,7 @@ def test_from_asc_messages_sorted_by_corrected_time():
 
     gaze = from_asc(io.StringIO(content), messages=True)
 
-    # The header messages are at 100 ms.
-    messages = gaze.messages.filter(pl.col('time') > timedelta(milliseconds=100))
+    messages = gaze.messages.filter(pl.col('time') > _MONOCULAR_HEADER_MESSAGE_TIME)
     assert messages['time'].to_list() == [
         timedelta(milliseconds=ms) for ms in (1000, 1001, 1002, 1002, 1003, 1003)
     ]

@@ -552,8 +552,8 @@ def from_asc(
     ==============================  ==========  ===============
 
     A leading integer counts as an offset only if more text follows. Message text that starts with
-    an integer is therefore misread, as in the last row. Columns added by ``patterns`` change at the
-    message's line in the file, not at its corrected time.
+    an integer followed by more text is therefore misread, as in the last row. Columns added by
+    ``patterns`` change at the message's line in the file, not at its corrected time.
 
     Examples
     --------
