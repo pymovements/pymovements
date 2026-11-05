@@ -248,19 +248,24 @@ class EventSamplesProcessor:
         else:
             by_columns = None
 
+        group_columns = by_columns or []
+        events_sorted = events_work.sort([*group_columns, _ONSET_MS, _OFFSET_MS])
+        samples_sorted = samples_work.sort([*group_columns, _TIME_MS, _ROW_ID])
+
         # The cheap asof assignment gives every sample to exactly one event, which is only correct
         # when events do not overlap. That holds for the standard detectors, but not necessarily
         # for a whole events frame (e.g. nested events, a fixation and a saccade sharing samples,
         # or two events sharing a boundary sample). In that case every event needs to collect the
         # shared samples, so fall back to expanding each event to its sample range.
-        if _events_overlap(events_work, by_columns):
-            aggregated = _aggregate_overlapping_events(
-                events_work, samples_work, by_columns, self.measures,
-            )
+        if _events_overlap(events_sorted, by_columns):
+            assigned = _assign_samples_by_range(events_sorted, samples_sorted, by_columns)
         else:
-            aggregated = _aggregate_asof_events(
-                events_work, samples_work, by_columns, self.measures,
-            )
+            assigned = _assign_samples_asof(events_sorted, samples_sorted, by_columns)
+
+        # Restore the original sample order within each event so order-dependent measures
+        # (e.g. disposition) keep observing the samples in their source order, then aggregate
+        # all measures in a single pass.
+        aggregated = assigned.sort(_ROW_ID).group_by(_EVENT_ID).agg(*self.measures)
 
         # Left-join back onto the events so events without samples get null properties and the
         # original event order is preserved. Only the identifier columns are carried over to
@@ -275,34 +280,31 @@ class EventSamplesProcessor:
 
 
 def _events_overlap(
-        events_work: pl.DataFrame,
+        events_sorted: pl.DataFrame,
         by_columns: list[str] | None,
 ) -> bool:
     """Return whether any two events within the same group overlap.
 
-    Event bounds are inclusive, so events that only share a boundary sample overlap as well.
+    Expects the events sorted by group, onset and offset. Event bounds are inclusive, so events
+    that only share a boundary sample overlap as well.
     """
-    sorted_events = events_work.sort([*(by_columns or []), _ONSET_MS, _OFFSET_MS])
     previous_offset = pl.col(_OFFSET_MS).shift(1)
     if by_columns is not None:
         previous_offset = previous_offset.over(by_columns)
-    return bool(sorted_events.select((previous_offset >= pl.col(_ONSET_MS)).any()).item())
+    return bool(events_sorted.select((previous_offset >= pl.col(_ONSET_MS)).any()).item())
 
 
-def _aggregate_asof_events(
-        events_work: pl.DataFrame,
-        samples_work: pl.DataFrame,
+def _assign_samples_asof(
+        events_sorted: pl.DataFrame,
+        samples_sorted: pl.DataFrame,
         by_columns: list[str] | None,
-        measures: list[pl.Expr],
 ) -> pl.DataFrame:
-    """Aggregate samples per event when events do not overlap.
+    """Assign each sample to its event when events do not overlap.
 
     A backward asof join assigns every sample to the event with the latest onset at or before
-    it. This is the cheap path; it requires non-overlapping events.
+    it. This is the cheap path; it requires non-overlapping events. Expects the events sorted by
+    group and onset, and the samples sorted by group, time and row id.
     """
-    events_sorted = events_work.sort([*(by_columns or []), _ONSET_MS])
-    samples_sorted = samples_work.sort([*(by_columns or []), _TIME_MS, _ROW_ID])
-
     right_columns = [_EVENT_ID, _ONSET_MS, _OFFSET_MS, *(by_columns or [])]
     assigned = samples_sorted.join_asof(
         events_sorted.select(right_columns),
@@ -313,38 +315,31 @@ def _aggregate_asof_events(
         check_sortedness=False,
     )
     # Drop samples before the first event and samples past the event offset.
-    assigned = assigned.filter(
+    return assigned.filter(
         pl.col(_EVENT_ID).is_not_null() & (pl.col(_TIME_MS) <= pl.col(_OFFSET_MS)),
     )
 
-    # Restore the original sample order within each event so order-dependent measures
-    # (e.g. disposition) keep observing the samples in their source order.
-    return assigned.sort(_ROW_ID).group_by(_EVENT_ID).agg(*measures)
 
-
-def _aggregate_overlapping_events(
-        events_work: pl.DataFrame,
-        samples_work: pl.DataFrame,
+def _assign_samples_by_range(
+        events_sorted: pl.DataFrame,
+        samples_sorted: pl.DataFrame,
         by_columns: list[str] | None,
-        measures: list[pl.Expr],
 ) -> pl.DataFrame:
-    """Aggregate samples per event when events may overlap.
+    """Assign each sample to its events when events may overlap.
 
     Within a group, the samples spanning an event form a contiguous range once the samples are
     sorted by time. The first sample at or after the onset and the last sample at or before the
     offset are found with forward and backward asof joins; the ranges are then expanded and
     joined back onto the samples, so every overlapping event gets all of its samples. Events
-    without samples produce no range and therefore keep null properties.
+    without samples produce no range and therefore keep null properties. Expects the events
+    sorted by group and onset, and the samples sorted by group, time and row id.
     """
     group_columns = by_columns or []
-    samples_sorted = (
-        samples_work.sort([*group_columns, _TIME_MS, _ROW_ID])
-        .with_columns(pl.int_range(pl.len()).alias(_SAMPLE_IDX))
-    )
+    samples_sorted = samples_sorted.with_columns(pl.int_range(pl.len()).alias(_SAMPLE_IDX))
     sample_positions = samples_sorted.select([*group_columns, _TIME_MS, _SAMPLE_IDX])
 
     starts = (
-        events_work.sort([*group_columns, _ONSET_MS])
+        events_sorted
         .join_asof(
             sample_positions,
             left_on=_ONSET_MS,
@@ -356,7 +351,7 @@ def _aggregate_overlapping_events(
         .select(_EVENT_ID, pl.col(_SAMPLE_IDX).alias(_START_IDX))
     )
     ends = (
-        events_work.sort([*group_columns, _OFFSET_MS])
+        events_sorted.sort([*group_columns, _OFFSET_MS])
         .join_asof(
             sample_positions,
             left_on=_OFFSET_MS,
@@ -372,7 +367,7 @@ def _aggregate_overlapping_events(
         & (pl.col(_START_IDX) <= pl.col(_END_IDX)),
     )
 
-    assigned = (
+    return (
         bounds
         .select(
             _EVENT_ID,
@@ -381,8 +376,6 @@ def _aggregate_overlapping_events(
         .explode(_SAMPLE_IDX)
         .join(samples_sorted, on=_SAMPLE_IDX, how='left')
     )
-
-    return assigned.sort(_ROW_ID).group_by(_EVENT_ID).agg(*measures)
 
 
 def _check_measures(
