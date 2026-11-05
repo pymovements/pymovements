@@ -308,7 +308,7 @@ nitpick_ignore_regex = [
     ),
 
     # Project-internal typing aliases used only in docs
-    (r'py:class', r'^(?:DatasetDefinitionClass|SampleMeasure|GeneratorT|OutputT)$'),
+    (r'py:class', r'^(?:DatasetDefinitionClass|SampleMeasure|GeneratorT|OutputT|RangeLike)$'),
     # Fully-qualified generic forms that appear in docstrings
     (
         r'py:class', r'^pymovements\.(?:dataset\.dataset_library\.'
