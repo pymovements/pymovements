@@ -20,17 +20,21 @@
 """Test the event and sample generator base classes."""
 import dataclasses
 import inspect
+import json
 
 import numpy as np
 import pytest
+import yaml
 from polars.testing import assert_frame_equal
 
+import pymovements as pm
 from pymovements import __version__
 from pymovements import Events
 from pymovements import Experiment
 from pymovements import ExperimentalWarning
 from pymovements import Gaze
 from pymovements.synthetic import EventGenerator
+from pymovements.synthetic import register_generator
 from pymovements.synthetic import SampleGenerator
 
 pytestmark = pytest.mark.filterwarnings(
@@ -391,6 +395,11 @@ def test_to_dict_leaves_out_fields_without_init(noise_sample_generator):
             'noise_sample_generator', {'sampling_rate': 500.0, 'scale': 2.0}, id='samples',
         ),
         pytest.param('uniform_event_generator', {'max_duration': 200.0}, id='events'),
+        pytest.param(
+            'ranged_noise_sample_generator',
+            {'sampling_rate': 500.0, 'shift': (2.0, 3.0)},
+            id='normalised_range',
+        ),
     ],
 )
 def test_to_dict_rebuilds_an_equal_generator(request, generator, init):
@@ -538,3 +547,34 @@ def test_drawn_seed_is_recorded(noise_sample_generator):
     seed = gaze.metadata['synthetic']['seed']
     assert isinstance(seed, int)
     assert 0 <= seed < 2 ** 53
+
+
+def test_provenance_records_a_range_as_plain_values(ranged_noise_sample_generator, tmp_path):
+    """A record of plain values comes back equal from JSON and from the saved gaze."""
+    gaze = ranged_noise_sample_generator(sampling_rate=500.0).generate(seed=42)
+
+    hyperparameters = gaze.metadata['synthetic']['hyperparameters']
+    assert hyperparameters['shift'] == {
+        'minimum': 0.0, 'maximum': 1.0, 'distribution': 'normal', 'std': 0.5,
+    }
+    assert json.loads(json.dumps(gaze.metadata)) == gaze.metadata
+
+    gaze.save(tmp_path, verbose=0)
+
+    with open(tmp_path / 'metadata.yaml', encoding='utf-8') as file:
+        assert yaml.safe_load(file) == gaze.metadata
+
+
+@pytest.mark.usefixtures('isolated_registry')
+def test_run_is_replayed_from_a_record_with_a_range(ranged_noise_sample_generator):
+    """The recorded dict of a range rebuilds the generator, so the run replays exactly."""
+    generator_class = register_generator(ranged_noise_sample_generator)
+    gaze = generator_class(sampling_rate=500.0, shift=(2.0, 3.0)).generate(seed=42)
+    record = gaze.metadata['synthetic']
+
+    replayed = pm.synthetic.generate_samples(
+        record['generator'], seed=record['seed'], **record['hyperparameters'],
+    )
+
+    assert_frame_equal(replayed.samples, gaze.samples)
+    assert replayed.metadata == gaze.metadata
