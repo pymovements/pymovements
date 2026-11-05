@@ -137,6 +137,20 @@ polars
   the expression.
 - Watch for silent dtype changes, especially in time columns.
 
+Benchmarks
+----------
+
+- The ``pytest-benchmark`` check benchmarks the head of the pull request and its merge-base with
+  ``main`` on the same runner and fails when a benchmark gets more than 1.5 times slower. This
+  comparison is the regression check, and a failed check is a CI finding, not a review finding.
+- The `benchmark history chart <https://pymovements.github.io/pymovements/benchmarks/>`_ is
+  indicative only. Its points come from shared runners of varying speed, so a jump on the chart
+  alone is not a finding. Verify it against the pull request comparison or by running both
+  commits locally with ``tox -e benchmark`` on the same machine.
+- A performance claim in the pull request description is checked like a correctness claim. Ask for
+  the numbers from the comparison, and when no benchmark in ``tests/benchmark`` covers the changed
+  code path, ask for one.
+
 Severity
 --------
 
