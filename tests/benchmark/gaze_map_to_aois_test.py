@@ -90,7 +90,6 @@ def test_gaze_map_to_aois_benchmark(benchmark, preserve_structure, eye):
     def _run() -> None:
         gaze.map_to_aois(
             stimulus, eye=eye, gaze_type='position', preserve_structure=preserve_structure,
-            verbose=False,
         )
 
     benchmark.pedantic(_run, setup=_setup, iterations=1, rounds=5)
