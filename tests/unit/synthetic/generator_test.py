@@ -567,6 +567,7 @@ def test_provenance_records_a_range_as_plain_values(ranged_noise_sample_generato
 
 @pytest.mark.usefixtures('isolated_registry')
 def test_run_is_replayed_from_a_record_with_a_range(ranged_noise_sample_generator):
+    """The recorded dict of a range rebuilds the generator, so the run replays exactly."""
     generator_class = register_generator(ranged_noise_sample_generator)
     gaze = generator_class(sampling_rate=500.0, shift=(2.0, 3.0)).generate(seed=42)
     record = gaze.metadata['synthetic']
