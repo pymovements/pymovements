@@ -17,6 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+# pylint: disable=too-many-lines
 """Tests pymovements asc to csv processing - eyelink."""
 import datetime
 import importlib
@@ -559,6 +560,7 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
             'OFFSET 0.19 deg. 4.2,6.3 pix.\n',
             [{
                 'error': 'POOR ERROR',
+                'grade': 'POOR',
                 'tracked_eye': 'RIGHT',
                 'num_points': '9',
                 'timestamp': '1076158',
@@ -572,6 +574,54 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
                 'type': 'P-CR',
             }],
             id='cal_timestamp_with_space',
+        ),
+        pytest.param(
+            'MSG	7045618 !CAL VALIDATION HV9 R RIGHT GOOD ERROR 0.5 avg. 0.9 max  '
+            'OFFSET 0.19 deg. 4.2,6.3 pix.\n',
+            [{
+                'error': 'GOOD ERROR',
+                'grade': 'GOOD',
+                'tracked_eye': 'RIGHT',
+                'num_points': '9',
+                'timestamp': '7045618',
+                'validation_score_avg': '0.5',
+                'validation_score_max': '0.9',
+            }],
+            [],
+            id='validation_single_decimal_scores',
+        ),
+        pytest.param(
+            'MSG	1076158 !CAL VALIDATION HV9 R RIGHT POOR ERROR 12.37 avg. 25.25 max  '
+            'OFFSET 0.19 deg. 4.2,6.3 pix.\n',
+            [{
+                'error': 'POOR ERROR',
+                'grade': 'POOR',
+                'tracked_eye': 'RIGHT',
+                'num_points': '9',
+                'timestamp': '1076158',
+                'validation_score_avg': '12.37',
+                'validation_score_max': '25.25',
+            }],
+            [],
+            id='validation_multi_digit_scores',
+        ),
+        pytest.param(
+            'MSG	1076158 !CAL VALIDATION L ABORTED\n'
+            'MSG	1076160 !CAL VALIDATION R ABORTED\n',
+            [
+                {
+                    'timestamp': '1076158',
+                    'tracked_eye': 'LEFT',
+                    'grade': 'ABORTED',
+                },
+                {
+                    'timestamp': '1076160',
+                    'tracked_eye': 'RIGHT',
+                    'grade': 'ABORTED',
+                },
+            ],
+            [],
+            id='validation_aborted',
         ),
         pytest.param(
             'MSG	7045618 !CAL\n'
@@ -603,6 +653,83 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
                 'type': 'P-CR',
             }],
             id='cal_with_msg',
+        ),
+        pytest.param(
+            'MSG	7045618 !CAL\n'
+            '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+            'MSG	7045621 !CAL CALIBRATION HV9 L LEFT    GOOD\n',
+            [],
+            [{
+                'num_points': '9',
+                'timestamp': '7045618',
+                'tracked_eye': 'LEFT',
+                'type': 'P-CR',
+                'grade': 'GOOD',
+            }],
+            id='cal_grade_good',
+        ),
+        pytest.param(
+            'MSG	7045618 !CAL\n'
+            '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+            'MSG	7045621 !CAL CALIBRATION HV9 L LEFT    FAILED\n',
+            [],
+            [{
+                'num_points': '9',
+                'timestamp': '7045618',
+                'tracked_eye': 'LEFT',
+                'type': 'P-CR',
+                'grade': 'FAILED',
+            }],
+            id='cal_grade_failed',
+        ),
+        pytest.param(
+            'MSG	7045618 !CAL\n'
+            '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+            'MSG	7045618 !CAL\n'
+            '>>>>>>> CALIBRATION (HV9,P-CR) FOR RIGHT: <<<<<<<<<\n'
+            'MSG	7045621 !CAL CALIBRATION HV9 LR LEFT    GOOD\n'
+            'MSG	7045621 !CAL CALIBRATION HV9 LR RIGHT   FAILED\n',
+            [],
+            [
+                {
+                    'num_points': '9',
+                    'timestamp': '7045618',
+                    'tracked_eye': 'LEFT',
+                    'type': 'P-CR',
+                    'grade': 'GOOD',
+                },
+                {
+                    'num_points': '9',
+                    'timestamp': '7045618',
+                    'tracked_eye': 'RIGHT',
+                    'type': 'P-CR',
+                    'grade': 'FAILED',
+                },
+            ],
+            id='cal_grade_binocular',
+        ),
+        pytest.param(
+            'MSG	7045618 !CAL\n'
+            '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+            'MSG	7045621 !CAL CALIBRATION HV9 LR RIGHT   FAILED\n',
+            [],
+            [{
+                'num_points': '9',
+                'timestamp': '7045618',
+                'tracked_eye': 'LEFT',
+                'type': 'P-CR',
+            }],
+            id='cal_grade_eye_mismatch',
+        ),
+        pytest.param(
+            'MSG	7045618 !CAL\n'
+            'MSG	7045621 !CAL CALIBRATION HV9 R RIGHT   FAILED\n',
+            [],
+            [{
+                'timestamp': '7045618',
+                'grade': 'FAILED',
+            }],
+            id='cal_grade_without_header',
         ),
     ],
 )
@@ -666,6 +793,7 @@ def test_check_samples_config_key_warnings_and_casting(make_example_file):
 
     expected_validation = [{
         'error': 'GOOD ERROR',
+        'grade': 'GOOD',
         'tracked_eye': 'LEFT',
         'num_points': '9',
         'timestamp': '2148587',
@@ -674,6 +802,7 @@ def test_check_samples_config_key_warnings_and_casting(make_example_file):
     }]
     expected_calibration = [{
         'num_points': '9', 'type': 'P-CR', 'tracked_eye': 'LEFT', 'timestamp': '2135819',
+        'grade': 'GOOD',
     }]
 
     assert metadata['calibrations'] == expected_calibration
@@ -1050,6 +1179,157 @@ def test_parse_eyelink_binocular_samples_config_after_calibration(make_text_file
     }
     assert gaze_df['x_left_pix'].to_list() == [964.3, 964.5]
     assert gaze_df['x_right_pix'].to_list() == [960.5, 960.4]
+
+
+# One recording block per tracked-eye configuration. Each entry maps to the SAMPLES/START/
+# RECCFG tokens, the channel values of the sample line, and the expected (left, right) channel
+# values for that block after promotion to a binocular layout (the non-tracked eye is null).
+# Block times follow the block order, see _eye_change_block_time. See issue #1401.
+_EYE_CHANGE_BLOCKS = {
+    'left': {
+        'reccfg_eye': 'L',
+        'samples_eye': 'LEFT',
+        'start_eye': 'LEFT',
+        'sample': '138.1\t131.0\t778.0\t0.0\t.....',
+        'left': (138.1, 131.0, 778.0),
+        'right': (None, None, None),
+    },
+    'right': {
+        'reccfg_eye': 'R',
+        'samples_eye': 'RIGHT',
+        'start_eye': 'RIGHT',
+        'sample': '500.0\t400.0\t600.0\t0.0\t.....',
+        'left': (None, None, None),
+        'right': (500.0, 400.0, 600.0),
+    },
+    'left_again': {
+        'reccfg_eye': 'L',
+        'samples_eye': 'LEFT',
+        'start_eye': 'LEFT',
+        'sample': '150.2\t140.0\t790.0\t0.0\t.....',
+        'left': (150.2, 140.0, 790.0),
+        'right': (None, None, None),
+    },
+    'both': {
+        'reccfg_eye': 'LR',
+        'samples_eye': 'LEFT\tRIGHT',
+        'start_eye': 'LEFT\tRIGHT',
+        'sample': '964.3\t541.5\t288.0\t960.5\t538.8\t305.0\t.....',
+        'left': (964.3, 541.5, 288.0),
+        'right': (960.5, 538.8, 305.0),
+    },
+}
+
+
+def _eye_change_block_time(index):
+    """Return the timestamp of the block at ``index``, increasing with the block order."""
+    return 1000 * (index + 1)
+
+
+def _build_eye_change_asc(block_keys, reccfg_eye=None, with_reccfg=True):
+    """Build an ASC file with one recording block per tracked-eye configuration.
+
+    ``reccfg_eye`` replaces the RECCFG eye token of every block, ``with_reccfg=False`` drops
+    the RECCFG lines altogether.
+    """
+    lines = [
+        '** VERSION: EYELINK II 1',
+        '** DATE: Wed Mar 10 12:00:00 2021',
+        'MSG\t1 ELCLCFG BTABLER',
+    ]
+    for index, key in enumerate(block_keys):
+        block = _EYE_CHANGE_BLOCKS[key]
+        time = _eye_change_block_time(index)
+        if with_reccfg:
+            lines.append(f"MSG\t{time} RECCFG CR 1000 2 1 {reccfg_eye or block['reccfg_eye']}")
+        lines += [
+            f"START\t{time} \t{block['start_eye']}\tSAMPLES\tEVENTS",
+            f"SAMPLES\tGAZE\t{block['samples_eye']}\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2",
+            f"{time}\t{block['sample']}",
+            f'END\t{time} \tSAMPLES\tEVENTS\tRES\t38.54\t31.12',
+        ]
+    return '\n'.join(lines) + '\n'
+
+
+@pytest.mark.parametrize(
+    'block_keys',
+    [
+        pytest.param(['left', 'both'], id='left_to_binocular'),
+        pytest.param(['right', 'both'], id='right_to_binocular'),
+        pytest.param(['left', 'right'], id='left_to_right'),
+        pytest.param(['right', 'left'], id='right_to_left'),
+        pytest.param(['both', 'left'], id='binocular_to_left'),
+        pytest.param(['both', 'right'], id='binocular_to_right'),
+        pytest.param(['left', 'right', 'left_again'], id='left_to_right_to_left'),
+    ],
+)
+def test_parse_eyelink_tracked_eye_change_promotes_to_binocular(make_text_file, block_keys):
+    """A tracked-eye change within a file yields a four-channel binocular layout (#1401).
+
+    Every block is routed to its tracked eye, with the non-tracked eye set to null, and the
+    metadata reports 'LR' without raising an inconsistency warning.
+    """
+    asc_text = _build_eye_change_asc(block_keys)
+    filepath = make_text_file(filename='sub_eye_change.asc', body=asc_text)
+
+    gaze_df, _, metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
+
+    expected = {
+        'time': [float(_eye_change_block_time(index)) for index in range(len(block_keys))],
+        'x_left_pix': [_EYE_CHANGE_BLOCKS[key]['left'][0] for key in block_keys],
+        'y_left_pix': [_EYE_CHANGE_BLOCKS[key]['left'][1] for key in block_keys],
+        'pupil_left': [_EYE_CHANGE_BLOCKS[key]['left'][2] for key in block_keys],
+        'x_right_pix': [_EYE_CHANGE_BLOCKS[key]['right'][0] for key in block_keys],
+        'y_right_pix': [_EYE_CHANGE_BLOCKS[key]['right'][1] for key in block_keys],
+        'pupil_right': [_EYE_CHANGE_BLOCKS[key]['right'][2] for key in block_keys],
+    }
+
+    assert_frame_equal(gaze_df, pl.from_dict(expected), check_column_order=False, rel_tol=0)
+    assert metadata['tracked_eye'] == 'LR'
+    assert metadata['recorded_eye'] == 'LR'
+
+
+def test_parse_eyelink_same_eye_in_two_blocks_stays_monocular(make_text_file):
+    """Two recording blocks tracking the same eye are an ordinary monocular file (#1401)."""
+    asc_text = _build_eye_change_asc(['left', 'left_again'])
+    filepath = make_text_file(filename='sub_left_twice.asc', body=asc_text)
+
+    gaze_df, _, metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
+
+    expected = {
+        'time': [1000.0, 2000.0],
+        'x_pix': [138.1, 150.2],
+        'y_pix': [131.0, 140.0],
+        'pupil': [778.0, 790.0],
+    }
+
+    assert_frame_equal(gaze_df, pl.from_dict(expected), check_column_order=False, rel_tol=0)
+    assert metadata['tracked_eye'] == 'L'
+    assert metadata['recorded_eye'] == 'L'
+
+
+def test_parse_eyelink_tracked_eye_change_with_constant_recorded_eye_warns(make_text_file):
+    """A changing SAMPLES eye next to a constant single RECCFG eye is a mismatch (#1401)."""
+    asc_text = _build_eye_change_asc(['left', 'right'], reccfg_eye='L')
+    filepath = make_text_file(filename='sub_eye_change_reccfg_l.asc', body=asc_text)
+
+    with pytest.warns(Warning, match=r'inconsistent: \[L, LR\]'):
+        _, _, metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
+
+    assert metadata['tracked_eye'] == 'LR'
+    assert metadata['recorded_eye'] == 'L'
+
+
+def test_parse_eyelink_tracked_eye_change_without_reccfg_warns(make_text_file):
+    """A promoted file without any RECCFG line warns like a monocular one (#1401)."""
+    asc_text = _build_eye_change_asc(['left', 'right'], with_reccfg=False)
+    filepath = make_text_file(filename='sub_eye_change_no_reccfg.asc', body=asc_text)
+
+    with pytest.warns(Warning, match='No recording configuration found.'):
+        _, _, metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
+
+    assert metadata['tracked_eye'] == 'LR'
+    assert metadata['recorded_eye'] is None
 
 
 @pytest.mark.filterwarnings('ignore:No metadata found.')
@@ -1504,6 +1784,7 @@ def test_parse_eyelink_event_end_helper(line, expected):
             'Found inconsistent values', id='inconsistent',
         ),
         pytest.param([{'key': '1000'}], 'key', float, 1000.0, None, id='cast'),
+        pytest.param([{'key': '1000'}], 'key', None, '1000', None, id='no_cast'),
     ],
 )
 def test_check_samples_config_key_helper(configs, key, astype, expected_value, expected_warning):
@@ -1542,6 +1823,12 @@ def test_check_reccfg_key_helper(configs, key, astype, expected_value, expected_
             assert _parsing_eyelink._check_reccfg_key(configs, key, astype=astype) == expected_value
     else:
         assert _parsing_eyelink._check_reccfg_key(configs, key, astype=astype) == expected_value
+
+
+def test_parse_tracked_eye_layout_helper_raises_on_unknown_token():
+    """An eye token outside the SAMPLES regex alternatives raises instead of mislabelling."""
+    with pytest.raises(ValueError, match="Unknown tracked-eye token 'BOTH'"):
+        _parsing_eyelink._parse_tracked_eye_layout('BOTH')
 
 
 @pytest.mark.filterwarnings('ignore:No metadata found.')

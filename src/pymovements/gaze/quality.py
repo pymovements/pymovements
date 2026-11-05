@@ -375,7 +375,12 @@ def _compute_file_row(
                 # column would raise here and fall back to the simple estimate below.
                 samples = gaze.samples.with_columns(duration_to_ms('time').alias('time'))
                 result_df = samples.select(
-                    data_loss(coord_col, sampling_rate=sampling_rate, unit='ratio'),
+                    data_loss(
+                        coord_col,
+                        sampling_rate=sampling_rate,
+                        unit='ratio',
+                        column_dtype=samples.schema.get(coord_col),
+                    ),
                 )
                 dl_val = result_df[0, 'data_loss_ratio']
             except (pl.exceptions.PolarsError, ValueError, ArithmeticError):
@@ -449,7 +454,12 @@ def _compute_trial_rows(
                 )
                 if sampling_rate is not None and 'time' in gaze.samples.schema:
                     agg_exprs_t.append(
-                        data_loss(coord_col, sampling_rate=sampling_rate, unit='ratio'),
+                        data_loss(
+                            coord_col,
+                            sampling_rate=sampling_rate,
+                            unit='ratio',
+                            column_dtype=gaze.samples.schema.get(coord_col),
+                        ),
                     )
 
             if not agg_exprs_t:
