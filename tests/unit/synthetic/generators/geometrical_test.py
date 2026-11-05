@@ -23,11 +23,11 @@ import json
 import numpy as np
 import polars as pl
 import pytest
+import yaml
 from polars.testing import assert_frame_equal
 
 import pymovements as pm
 from pymovements import Events
-from pymovements import Experiment
 from pymovements.synthetic import GeometricalSampleGenerator
 from pymovements.synthetic import Range
 from pymovements.synthetic import SampleGeneratorLibrary
@@ -66,14 +66,10 @@ def _fixations(
     )
 
 
-def _generate(events=None, *, sampling_rate=1000.0, seed=42, experiment=None, **hyperparameters):
+def _generate(events=None, *, sampling_rate=1000.0, seed=42, **hyperparameters):
     """Return the output of the generator for the events, by default the three fixations."""
-    return GeometricalSampleGenerator(**hyperparameters).generate(
-        events=_fixations() if events is None else events,
-        sampling_rate=sampling_rate,
-        seed=seed,
-        experiment=experiment,
-    )
+    generator = GeometricalSampleGenerator(sampling_rate=sampling_rate, **hyperparameters)
+    return generator.generate(events=_fixations() if events is None else events, seed=seed)
 
 
 def _positions(gaze, column='position'):
@@ -127,7 +123,7 @@ def test_arbitrary_sampling_rate(sampling_rate):
 
 
 def test_default_interpolation_is_a_cubic_spline():
-    assert GeometricalSampleGenerator().interpolation == 'cubic_spline'
+    assert GeometricalSampleGenerator(sampling_rate=1000.0).interpolation == 'cubic_spline'
 
 
 @pytest.mark.parametrize(
@@ -185,6 +181,23 @@ def test_attaches_a_copy_of_the_events():
 
     assert_frame_equal(gaze.events.frame, events.frame)
     assert gaze.events is not events
+
+
+def test_reads_the_end_of_a_fixation_from_its_duration():
+    """PMEP 1: an event ends at onset + duration, so it needs no offset."""
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation'] * 3,
+                'onset': [0, 300, 620],
+                'duration': [250, 260, 280],
+                'location': [list(location) for location in LOCATIONS],
+            },
+            schema_overrides={'location': pl.List(pl.Float64)},
+        ),
+    )
+
+    assert_frame_equal(_generate(events).samples, _generate().samples)
 
 
 def test_interpolates_the_saccades_of_bridged_fixations():
@@ -369,18 +382,23 @@ def test_reproducible_under_seed():
     ('location_column_group', 'locations', 'experiment', 'transforms'),
     [
         pytest.param(
-            'position', LOCATIONS, None, ['pos2vel'], id='degrees_without_experiment',
+            'position',
+            LOCATIONS,
+            pm.Experiment(sampling_rate=1000.0),
+            ['pos2vel'],
+            id='degrees_without_a_screen',
         ),
         pytest.param(
             'pixel',
             ((200.0, 300.0), (600.0, 300.0), (600.0, 500.0)),
-            Experiment(
+            pm.Experiment(
                 screen_width_px=1280,
                 screen_height_px=1024,
                 screen_width_cm=38,
                 screen_height_cm=30,
                 distance_cm=68,
                 origin='upper left',
+                sampling_rate=1000.0,
             ),
             ['pix2deg', 'pos2vel'],
             id='pixels_with_a_screen',
@@ -393,13 +411,13 @@ def test_output_runs_through_the_pipeline(
     """The positions go through the transforms and event detection without any conversion.
 
     ``detect`` appends to the events the output already carries, so the detected ones are the
-    rows after the input's.
+    rows after the input's. The generator attaches an experiment with the sampling rate only, so
+    a screen is set on the output.
     """
     gaze = _generate(
-        _fixations(locations=locations),
-        experiment=experiment,
-        location_column_group=location_column_group,
+        _fixations(locations=locations), location_column_group=location_column_group,
     )
+    gaze.experiment = experiment
 
     for transform in transforms:
         getattr(gaze, transform)()
@@ -426,21 +444,26 @@ def test_records_its_hyperparameters():
     provenance = gaze.metadata['synthetic']
     assert provenance['generator'] == 'geometrical'
     assert provenance['hyperparameters'] == {
+        'sampling_rate': 1000.0,
         'interpolation': 'cubic_spline',
         'location_column_group': 'position',
         'fixation_deviation': {
             'minimum': 0.1, 'maximum': 0.2, 'distribution': 'uniform', 'std': None,
         },
     }
-    assert provenance['run'] == {'sampling_rate': 1000.0, 'n_events': 3}
+    assert provenance['run'] == {'n_events': 3}
 
 
 def test_output_can_be_saved_and_written_to_json(tmp_path):
-    """The provenance holds the deviation as plain values, so no writer chokes on it."""
+    """The provenance holds the deviation as plain values, so it comes back equal."""
     gaze = _generate(fixation_deviation=Range(0.1, 0.2, 'normal', std=0.05))
 
-    json.dumps(gaze.metadata)
+    assert json.loads(json.dumps(gaze.metadata)) == gaze.metadata
+
     gaze.save(tmp_path, verbose=0)
+
+    with open(tmp_path / 'metadata.yaml', encoding='utf-8') as file:
+        assert yaml.safe_load(file) == gaze.metadata
 
 
 def test_run_is_replayed_from_its_record():
@@ -450,7 +473,6 @@ def test_run_is_replayed_from_its_record():
     replayed = pm.synthetic.generate_samples(
         record['generator'],
         events=_fixations(),
-        sampling_rate=record['run']['sampling_rate'],
         seed=record['seed'],
         **record['hyperparameters'],
     )
@@ -495,7 +517,7 @@ def test_run_is_replayed_from_its_record():
 )
 def test_geometrical_raises_error(hyperparameters, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
-        GeometricalSampleGenerator(**hyperparameters)
+        GeometricalSampleGenerator(sampling_rate=1000.0, **hyperparameters)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
@@ -572,7 +594,7 @@ def test_geometrical_raises_error(hyperparameters, exception, msg_substrings):
 )
 def test_geometrical_raises_error_on_generate(events, sampling_rate, msg_substrings):
     with pytest.raises(ValueError) as excinfo:
-        GeometricalSampleGenerator().generate(events=events, sampling_rate=sampling_rate, seed=42)
+        GeometricalSampleGenerator(sampling_rate=sampling_rate).generate(events=events, seed=42)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
@@ -598,7 +620,7 @@ def test_geometrical_raises_error_on_generate(events, sampling_rate, msg_substri
 def test_geometrical_raises_type_error_on_run_parameters(run, msg_substrings):
     """The generator declares ``events`` as its only run parameter."""
     with pytest.raises(TypeError) as excinfo:
-        GeometricalSampleGenerator().generate(sampling_rate=1000.0, seed=42, **run)
+        GeometricalSampleGenerator(sampling_rate=1000.0).generate(seed=42, **run)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:

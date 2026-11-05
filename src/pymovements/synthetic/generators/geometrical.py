@@ -43,10 +43,8 @@ import polars as pl
 from scipy.interpolate import CubicSpline
 
 from pymovements.events.events import Events
-from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
 from pymovements.synthetic._utils import check_name
-from pymovements.synthetic._utils import milliseconds
 from pymovements.synthetic._utils import per_trial
 from pymovements.synthetic._utils import sample_times
 from pymovements.synthetic.generator import SampleGenerator
@@ -113,10 +111,6 @@ class GeometricalSampleGenerator(SampleGenerator):
 
     Examples
     --------
-    .. testsetup::
-
-        >>> getfixture('doctest_synthetic')
-
     Move between two fixations at 1000 Hz:
 
     >>> import polars as pl
@@ -127,7 +121,8 @@ class GeometricalSampleGenerator(SampleGenerator):
     ...     'offset': [250, 560],
     ...     'location': [[0.0, 0.0], [10.0, 0.0]],
     ... }))
-    >>> gaze = GeometricalSampleGenerator().generate(events=events, sampling_rate=1000, seed=42)
+    >>> generator = pm.synthetic.GeometricalSampleGenerator(sampling_rate=1000)
+    >>> gaze = generator.generate(events=events, seed=42)  # doctest: +IGNORE_WARNINGS
     >>> gaze.samples.columns
     ['time', 'position']
     >>> gaze.samples.height
@@ -149,6 +144,8 @@ class GeometricalSampleGenerator(SampleGenerator):
 
     def __post_init__(self) -> None:
         """Validate the names and read the deviation from its accepted forms."""
+        super().__post_init__()
+
         check_name(self.interpolation, 'interpolation', INTERPOLATIONS)
         check_name(
             self.location_column_group, 'location_column_group', LOCATION_COLUMN_GROUPS,
@@ -164,8 +161,6 @@ class GeometricalSampleGenerator(SampleGenerator):
     def _generate(  # pylint: disable=arguments-differ
             self,
             *,
-            sampling_rate: float,
-            experiment: Experiment,
             rng: np.random.Generator,
             events: Events,
     ) -> Gaze:
@@ -173,10 +168,6 @@ class GeometricalSampleGenerator(SampleGenerator):
 
         Parameters
         ----------
-        sampling_rate: float
-            The sampling rate of the generated samples in Hz.
-        experiment: Experiment
-            The experiment the output belongs to.
         rng: np.random.Generator
             The run's random generator.
         events: Events
@@ -211,7 +202,7 @@ class GeometricalSampleGenerator(SampleGenerator):
             )
 
         def synthesize(trial: pl.DataFrame) -> pl.DataFrame:
-            return self._synthesize_trial(trial, sampling_rate, rng)
+            return self._synthesize_trial(trial, rng)
 
         samples = per_trial(events, synthesize, generator=self.name)
 
@@ -248,28 +239,23 @@ class GeometricalSampleGenerator(SampleGenerator):
 
         return np.array(fixations[LOCATION_COLUMN].to_list(), dtype=float).reshape(-1, 2)
 
-    def _synthesize_trial(
-            self,
-            trial: pl.DataFrame,
-            sampling_rate: float,
-            rng: np.random.Generator,
-    ) -> pl.DataFrame:
+    def _synthesize_trial(self, trial: pl.DataFrame, rng: np.random.Generator) -> pl.DataFrame:
         """Return the samples of one trial's ordered events."""
-        onsets = milliseconds(trial['onset']).to_numpy()
-        offsets = milliseconds(trial['offset']).to_numpy()
-        times = sample_times(onsets[0], offsets[-1], sampling_rate)
+        onsets = trial['onset'].dt.total_milliseconds(fractional=True).to_numpy()
+        ends = onsets + trial['duration'].dt.total_milliseconds(fractional=True).to_numpy()
+        times = sample_times(onsets[0], ends[-1], self.sampling_rate)
 
         is_fixation = (trial['name'] == 'fixation').to_numpy()
         locations = self._locations(trial.filter(is_fixation))
 
         # The fixation each sample falls into, if any: the last one starting at or before it.
-        # A sample before the first fixation gets -1, which picks the appended offset of -inf.
+        # A sample before the first fixation gets -1, which picks the appended end of -inf.
         fixation = np.searchsorted(onsets[is_fixation], times, side='right') - 1
-        held = times < np.append(offsets[is_fixation], -np.inf)[fixation]
+        held = times < np.append(ends[is_fixation], -np.inf)[fixation]
         if not held.any():
             raise ValueError(
                 f"generator '{self.name}': no sample of a trial falls inside a fixation at "
-                f'{sampling_rate} Hz, so there is no location to start from',
+                f'{self.sampling_rate} Hz, so there is no location to start from',
             )
 
         positions = self._interpolate(times, locations[fixation], held)
