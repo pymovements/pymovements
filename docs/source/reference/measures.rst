@@ -79,6 +79,7 @@ Measures
     right_bounded_reading_time
     saccade_length_in
     saccade_length_out
+    skipped
     total_fixation_count
     non_aoi_fixation_count_ratio
     non_aoi_fixation_duration_ratio

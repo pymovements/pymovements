@@ -44,6 +44,9 @@ def regress(
 ) -> pl.Expr:
     """Fit linear regression parameters (slope, offset, std) to align fixations to lines.
 
+    Each fixation is assigned to the text line with the highest likelihood under the
+    fitted regression model.
+
     Reference: :cite:p:`Cohen2013,Carr2022`.
 
     Parameters
@@ -65,6 +68,30 @@ def regress(
     -------
     pl.Expr
         Expression computing the corrected y-coordinates.
+
+    Examples
+    --------
+    Correcting fixations of a single trial that drift away from two lines of text with
+    their centers at y = 100 and 200 assigns each fixation to its likeliest line under
+    the fitted regression model:
+
+    >>> import polars as pl
+    >>> from pymovements.events.correction import regress
+    >>> fixations = pl.DataFrame({
+    ...     'location': [[100.0, 108.0], [150.0, 95.0], [100.0, 210.0], [150.0, 195.0]],
+    ... })
+    >>> fixations.select(regress([100.0, 200.0]))
+    shape: (4, 1)
+    ┌───────────┐
+    │ y_regress │
+    │ ---       │
+    │ f64       │
+    ╞═══════════╡
+    │ 100.0     │
+    │ 100.0     │
+    │ 200.0     │
+    │ 200.0     │
+    └───────────┘
     """
     line_values = to_line_values(line_ys)
     core = partial(

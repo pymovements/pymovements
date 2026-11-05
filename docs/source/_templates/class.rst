@@ -4,6 +4,20 @@
 
 .. autoclass:: {{ objname }}
 
+   {% block attributes %}{% endblock %}
+
+   {% set properties = property_members.get(module ~ '.' ~ objname, []) %}
+   {% if properties %}
+   .. rubric:: {{ _('Properties') }}
+
+   .. autosummary::
+      :toctree:
+      :template: property.rst
+   {% for item in attributes if item in properties %}
+      ~{{ objname }}.{{ item }}
+   {%- endfor %}
+   {% endif %}
+
    {% block methods %}
    {% if methods %}
    .. rubric:: {{ _('Methods') }}
@@ -15,5 +29,3 @@
    {%- endfor %}
    {% endif %}
    {% endblock %}
-
-   {% block attributes %}{% endblock %}

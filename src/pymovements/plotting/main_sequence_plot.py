@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 from typing import Literal
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,8 +29,10 @@ import polars as pl
 from matplotlib.collections import Collection
 from sklearn.metrics import r2_score
 
-from pymovements.events.events import Events
 from pymovements.plotting._matplotlib import prepare_figure
+
+if TYPE_CHECKING:
+    from pymovements.events.events import Events
 
 
 def main_sequence_plot(

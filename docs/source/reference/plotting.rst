@@ -16,6 +16,7 @@ Plotting
     data_loss_histogram
     heatmap
     main_sequence_plot
+    make_screen_axes
     scanpathplot
     traceplot
     tsplot
