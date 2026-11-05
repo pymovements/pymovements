@@ -397,7 +397,7 @@ def test_to_dict_leaves_out_fields_without_init(noise_sample_generator):
         pytest.param('uniform_event_generator', {'max_duration': 200.0}, id='events'),
         pytest.param(
             'ranged_noise_sample_generator',
-            {'sampling_rate': 500.0, 'offset': (2.0, 3.0)},
+            {'sampling_rate': 500.0, 'shift': (2.0, 3.0)},
             id='normalised_range',
         ),
     ],
@@ -554,7 +554,7 @@ def test_provenance_records_a_range_as_plain_values(ranged_noise_sample_generato
     gaze = ranged_noise_sample_generator(sampling_rate=500.0).generate(seed=42)
 
     hyperparameters = gaze.metadata['synthetic']['hyperparameters']
-    assert hyperparameters['offset'] == {
+    assert hyperparameters['shift'] == {
         'minimum': 0.0, 'maximum': 1.0, 'distribution': 'normal', 'std': 0.5,
     }
     assert json.loads(json.dumps(gaze.metadata)) == gaze.metadata
@@ -568,7 +568,7 @@ def test_provenance_records_a_range_as_plain_values(ranged_noise_sample_generato
 @pytest.mark.usefixtures('isolated_registry')
 def test_run_is_replayed_from_a_record_with_a_range(ranged_noise_sample_generator):
     generator_class = register_generator(ranged_noise_sample_generator)
-    gaze = generator_class(sampling_rate=500.0, offset=(2.0, 3.0)).generate(seed=42)
+    gaze = generator_class(sampling_rate=500.0, shift=(2.0, 3.0)).generate(seed=42)
     record = gaze.metadata['synthetic']
 
     replayed = pm.synthetic.generate_samples(

@@ -60,21 +60,21 @@ class NoiseSampleGenerator(SampleGenerator):
 
 @dataclasses.dataclass
 class RangedNoiseSampleGenerator(NoiseSampleGenerator):
-    """The noise generator with an offset that is drawn from a range, in degrees."""
+    """The noise generator with a shift that is drawn from a range, in degrees."""
 
     name = 'test_ranged_noise'
 
-    offset: Range | tuple[float, float] | float = Range(0.0, 1.0, 'normal', std=0.5)
+    shift: Range | tuple[float, float] | float = Range(0.0, 1.0, 'normal', std=0.5)
 
     def __post_init__(self):
-        """Read the offset from any form ``Range.from_value`` accepts."""
+        """Read the shift from any form ``Range.from_value`` accepts."""
         super().__post_init__()
-        self.offset = Range.from_value(self.offset)
+        self.shift = Range.from_value(self.shift)
 
     def _generate(self, *, rng, events=None):
         gaze = super()._generate(rng=rng, events=events)
         gaze.samples = gaze.samples.with_columns(
-            pl.col('position') + self.offset.draw(rng),
+            pl.col('position') + self.shift.draw(rng),
         )
         return gaze
 
