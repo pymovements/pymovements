@@ -19,6 +19,7 @@
 # SOFTWARE.
 """Tests for pymovements.gaze.quality and pymovements.gaze.validation."""
 import json
+import math
 import types
 import warnings
 from pathlib import Path
@@ -633,6 +634,57 @@ class TestCheckGazeRange:
         assert check_gaze_range(gaze, min_fraction=0.95).severity == 'warning'
         # Lowering threshold to 0 → always pass
         assert check_gaze_range(gaze, min_fraction=0.0).severity == 'pass'
+
+    def test_nan_components_count_as_missing(self, make_unvalidated_gaze, make_experiment):
+        # 19 NaN samples and one in range: the NaN samples are missing, not out of range.
+        gaze = make_unvalidated_gaze(
+            pl.DataFrame({
+                'time': list(range(20)),
+                'position': [[math.nan, math.nan]] * 19 + [[0.0, 0.0]],
+            }),
+            experiment=make_experiment(),
+        )
+        result = check_gaze_range(gaze)
+        assert result.severity == 'pass'
+        assert '100.0%' in result.message
+
+    def test_null_component_counts_as_missing(self, make_experiment):
+        gaze = Gaze(
+            pl.DataFrame({
+                'time': list(range(20)),
+                'position': [[None, 0.0]] * 19 + [[0.0, 0.0]],
+            }),
+            experiment=make_experiment(),
+        )
+        result = check_gaze_range(gaze)
+        assert result.severity == 'pass'
+        assert '100.0%' in result.message
+
+    def test_all_nan_samples_skips(self, make_unvalidated_gaze, make_experiment):
+        gaze = make_unvalidated_gaze(
+            pl.DataFrame({'time': [0, 1], 'position': [[math.nan, math.nan]] * 2}),
+            experiment=make_experiment(),
+        )
+        result = check_gaze_range(gaze)
+        assert result.severity == 'pass'
+        assert 'skipped' in result.message
+
+    def test_binocular_all_pairs_in_range_passes(self, make_experiment):
+        exp = make_experiment()
+        gaze = Gaze(
+            pl.DataFrame({'time': list(range(3)), 'position': [[0.0, 0.0, 0.0, 0.0]] * 3}),
+            experiment=exp,
+        )
+        assert check_gaze_range(gaze).severity == 'pass'
+
+    def test_binocular_one_eye_out_of_range_warns(self, make_experiment):
+        exp = make_experiment()
+        # Left eye centred (in range), right eye far off screen: sample is out of range.
+        gaze = Gaze(
+            pl.DataFrame({'time': list(range(10)), 'position': [[0.0, 0.0, 999.0, 999.0]] * 10}),
+            experiment=exp,
+        )
+        assert check_gaze_range(gaze).severity == 'warning'
 
 
 # ---------------------------------------------------------------------------
