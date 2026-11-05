@@ -65,9 +65,11 @@ class Range:
     Examples
     --------
     >>> import numpy as np
-    >>> Range.from_value((300, 500))
+    >>> import pymovements as pm
+    >>> pm.synthetic.Range.from_value((300, 500))
     Range(minimum=300.0, maximum=500.0, distribution='uniform', std=None)
-    >>> 300 <= Range(300, 500, 'normal', std=50).draw(np.random.default_rng(42)) <= 500
+    >>> value_range = pm.synthetic.Range(300, 500, 'normal', std=50)
+    >>> 300 <= value_range.draw(np.random.default_rng(42)) <= 500
     True
     """
 
