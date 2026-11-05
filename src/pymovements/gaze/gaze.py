@@ -59,8 +59,14 @@ from pymovements.gaze.validation import check_trial_columns_dtype
 from pymovements.gaze.validation import check_trial_columns_exist
 from pymovements.gaze.validation import CheckResult
 from pymovements.measure.events.processing import EventSamplesProcessor
+from pymovements.measure.reading import ReadingMeasures
 from pymovements.measure.samples.library import SampleMeasureLibrary
 from pymovements.stimulus import TextStimulus
+
+# Transforms whose output for a sample only depends on that sample's own values. They can be
+# applied to the whole frame at once and do not need the per-trial grouping that windowed
+# transforms (e.g. pos2vel, smooth) require.
+_ELEMENT_WISE_TRANSFORMS = frozenset({'pix2deg', 'deg2pix'})
 
 _AOI_ROW_ID = '__pymovements_aoi_row_id'
 _AOI_MATCH_ORDER = '__pymovements_aoi_match_order'
@@ -906,7 +912,9 @@ class Gaze:
                         f'Available columns in samples dataframe are: {self.samples.columns}',
                     )
 
-            if self.trial_columns is None:
+            if self.trial_columns is None or transform_method.__name__ in _ELEMENT_WISE_TRANSFORMS:
+                # Element-wise transforms produce the same result grouped or ungrouped, so apply
+                # them to the whole frame in a single pass instead of once per trial.
                 self.samples = self.samples.with_columns(transform_method(**kwargs))
             else:
                 # If samples are empty, grouping yields no groups – return without changes.
@@ -1266,12 +1274,7 @@ class Gaze:
         >>> gaze.samples['pixel'].to_list()
         [[1.0, 2.0], [1.0, 2.0], None, None, [1.0, 2.0], [1.0, 2.0]]
         """
-        if self.events is None:
-            raise AttributeError(
-                'Gaze object has no events. Use detect() to detect events first.',
-            )
-
-        events_frame = self.events.frame
+        events_frame = self._require_events().frame
         has_matching = events_frame.filter(polars.col('name') == name).height > 0
 
         if not has_matching:
@@ -1357,7 +1360,8 @@ class Gaze:
         Parameters
         ----------
         method: Callable[..., Events] | str
-            The event detection method to be applied.
+            The event detection method to be applied. A method that accepts an ``events``
+            argument must neither mutate nor return it.
         eye: str
             Select which eye to choose. Valid options are ``auto``, ``left``, ``right`` or ``None``.
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
@@ -1380,6 +1384,9 @@ class Gaze:
         # method name is invalid.
         self.events.metadata = merge_sources(self.events.metadata, self.metadata)
 
+        method_argspec = inspect.getfullargspec(method)
+        method_args = method_argspec.args + method_argspec.kwonlyargs
+
         if self.n_components is not None:
             eye_components = self._infer_eye_components(eye)
         else:
@@ -1388,6 +1395,7 @@ class Gaze:
         if self.trial_columns is None:
             method_kwargs = self._fill_event_detection_kwargs(
                 method,
+                method_args=method_args,
                 samples=self.samples,
                 events=self.events,
                 eye_components=eye_components,
@@ -1422,15 +1430,25 @@ class Gaze:
                     f'available columns: {self.events.frame.columns}',
                 )
 
+            # Only detectors that accept an ``events`` argument look at previously detected
+            # events. For all others the per-trial events selection can be skipped, and an empty
+            # events frame can be shared across trials instead of being filtered once per trial.
+            needs_events = 'events' in method_args
+            shared_empty_events = (
+                Events(self.events.frame)
+                if needs_events and self.events.frame.height == 0
+                else None
+            )
+
             new_events_grouped: list[polars.DataFrame] = []
 
             for group_identifier, group_gaze in grouped_samples.items():
-                # Create filter expression for selecting respective group rows.
-                if len(self.trial_columns) == 1:
-                    group_filter_expression = polars.col(
-                        self.trial_columns[0],
-                    ) == group_identifier[0]
+                if not needs_events:
+                    group_events = self.events
+                elif shared_empty_events is not None:
+                    group_events = shared_empty_events
                 else:
+                    # Create filter expression for selecting respective group rows.
                     group_filter_expression = polars.col(
                         self.trial_columns[0],
                     ) == group_identifier[0]
@@ -1439,11 +1457,12 @@ class Gaze:
                             polars.col(name) == value
                         )
 
-                # Select group events
-                group_events = Events(self.events.frame.filter(group_filter_expression))
+                    # Select group events.
+                    group_events = Events(self.events.frame.filter(group_filter_expression))
 
                 method_kwargs = self._fill_event_detection_kwargs(
                     method,
+                    method_args=method_args,
                     samples=group_gaze,
                     events=group_events,
                     eye_components=eye_components,
@@ -2055,6 +2074,94 @@ class Gaze:
         # The AOI-mapped samples are derived from the stimulus file as well.
         self.metadata = merge_sources(self.metadata, aoi_dataframe.metadata)
 
+    def measure_reading(
+            self,
+            stimulus: TextStimulus | dict[Any, TextStimulus],
+            *,
+            group_columns: list[str] | None = None,
+            word_index_column: str = 'word_idx',
+            word_column: str = 'word',
+            event_name: str = 'fixation',
+    ) -> ReadingMeasures:
+        """Compute word-level reading measures from the detected fixation events.
+
+        This is a convenience wrapper that forwards to
+        :py:meth:`~pymovements.Events.measure_reading` on this gaze's events. Fixation events must
+        have been detected first (see :py:meth:`~pymovements.Gaze.detect`). Reading measures are
+        computed from the events, not from the raw samples.
+
+        Parameters
+        ----------
+        stimulus : TextStimulus | dict[Any, TextStimulus]
+            Text stimulus defining the AOIs. Pass a dict mapping values of the first group column
+            to a separate stimulus per value when the events span several stimuli.
+        group_columns : list[str] | None
+            Column names used to partition the data into independent reading sequences. The first
+            column takes the trial role, the remaining columns take the page role. If ``None`` or
+            empty, the whole input is treated as a single reading sequence. Required if
+            ``stimulus`` is a dict, whose keys are the values of the first group column.
+            (default: None)
+        word_index_column : str
+            Shared column name in the mapped fixations and the stimulus AOIs that corresponds to
+            the word index of the text.
+            (default: ``'word_idx'``)
+        word_column : str
+            Column in the stimulus AOIs with the content within each AOI.
+            (default: ``'word'``)
+        event_name : str
+            Name of the fixation events to compute measures from. Rows with a different ``name``
+            are dropped. The name must start with ``fixation``, because the AOI mapping only maps
+            fixation rows (see :py:meth:`~pymovements.Events.map_to_aois`).
+            (default: ``'fixation'``)
+
+        Returns
+        -------
+        ReadingMeasures
+            Reading measures container with one row per word.
+
+        Raises
+        ------
+        AttributeError
+            If the gaze has no events or no detected events. Use
+            :py:meth:`~pymovements.Gaze.detect` first.
+        """
+        return self._require_events(allow_empty=False).measure_reading(
+            stimulus,
+            word_index_column=word_index_column,
+            word_column=word_column,
+            event_name=event_name,
+            group_columns=group_columns,
+        )
+
+    def _require_events(self, *, allow_empty: bool = True) -> Events:
+        """Return the events of this gaze, raising if there are none to work on.
+
+        Parameters
+        ----------
+        allow_empty : bool
+            Whether an events object without any detected events counts as events.
+            (default: True)
+
+        Returns
+        -------
+        Events
+            The events of this gaze.
+
+        Raises
+        ------
+        AttributeError
+            If the gaze has no events, or no detected events and ``allow_empty`` is ``False``.
+        """
+        if self.events is None:
+            raise AttributeError(
+                'Gaze object has no events. Use detect() to detect events first.',
+            )
+        if not allow_empty and self.events.frame.is_empty():
+            raise AttributeError(
+                'Gaze object has no detected events. Use detect() to detect events first.',
+            )
+        return self.events
+
     def nest(
             self,
             input_columns: list[str],
@@ -2644,6 +2751,7 @@ class Gaze:
     def _fill_event_detection_kwargs(
             self,
             method: Callable[..., Events],
+            method_args: list[str],
             samples: polars.DataFrame,
             events: Events,
             eye_components: tuple[int, int] | None,
@@ -2655,6 +2763,8 @@ class Gaze:
         ----------
         method: Callable[..., Events]
             The method for which the keyword argument dictionary will be filled.
+        method_args: list[str]
+            The positional and keyword-only argument names of ``method``.
         samples: polars.DataFrame
             The samples to be used for filling event detection keyword arguments.
         events: Events
@@ -2670,11 +2780,6 @@ class Gaze:
             The filled keyword argument dictionary.
         """
         # Automatically infer eye to use for event detection.
-        method_args = (
-            inspect.getfullargspec(method).args
-            + inspect.getfullargspec(method).kwonlyargs
-        )
-
         if 'positions' in method_args:
             if 'position' not in samples.columns:
                 raise polars.exceptions.ColumnNotFoundError(
