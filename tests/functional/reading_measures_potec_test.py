@@ -23,18 +23,9 @@ PoTeC :cite:p:`PoTeC` publishes word-level reading measures computed by the refe
 implementation that pymovements' original ``compute_reading_measures`` descends from. This test
 recomputes the measures from the published fixation sequences and compares them cell by cell.
 
-The reference implementation handles the start and end of the fixation sequence differently
-from pymovements, so the comparison replicates or masks four known differences:
-
-* The reference never processes the final fixation of a trial, so it is dropped from the input.
-* ``SL_in`` of the first fixated word equals the word position instead of 0 (the reference
-  starts from a ``-1`` sentinel) and is masked.
-* ``FRT``, ``SL_out``, and ``TRC_out`` of the last fixated words depend on how the sequence end
-  is handled and are masked.
-* ``LP`` at the word of a trial's final fixation is masked: the reference sets it from the
-  fixation dropped from the input.
-
-Everything else must match exactly.
+The reference implementation starts the fixation sequence from word index 0, one before the
+first word, so ``SL_in`` of the first fixated word equals the word position instead of 0. This is
+the only known difference and is masked. Everything else must match exactly.
 """
 from __future__ import annotations
 
@@ -75,9 +66,6 @@ MEASURE_COLUMNS = [
     'FFD', 'SFD', 'FD', 'FPRT', 'FRT', 'TFT', 'RRT', 'RPD_inc', 'RPD_exc',
     'RBRT', 'Fix', 'FPF', 'RR', 'FPReg', 'TRC_out', 'TRC_in', 'SL_in', 'SL_out', 'LP', 'TFC',
 ]
-
-# Measures that are masked at the last fixated words (see module docstring).
-SEQUENCE_END_MEASURES = ('FRT', 'SL_out', 'TRC_out')
 
 # Every n-th of the 900 published reader/text pairs is compared.
 SAMPLE_STRIDE = 60
@@ -140,21 +128,14 @@ def test_reading_measures_match_published_potec_measures(potec_directory):
         result = compute_reading_measures(fixations, aois).sort('word_index')
         assert result.height == expected.height, stem
 
-        word_sequence = scanpaths.sort('fixation_index')['word_index_in_text'].drop_nulls()
-        first_word = word_sequence[0]
-        last_words = set(word_sequence.tail(2))
-        # The reference sets LP of this word from the final fixation dropped from the input.
-        final_fixation_word = word_sequence[-1]
+        first_word = fixations['word_idx'].drop_nulls()[0]
 
         for result_row, expected_row in zip(result.to_dicts(), expected.to_dicts()):
             word = result_row['word_index']
             assert result_row['word'] == expected_row['word'], (stem, word)
             for column in MEASURE_COLUMNS:
+                # The reference starts from word index 0 (see module docstring).
                 if column == 'SL_in' and word == first_word:
-                    continue
-                if column in SEQUENCE_END_MEASURES and word in last_words:
-                    continue
-                if column == 'LP' and word == final_fixation_word:
                     continue
                 if result_row[column] != expected_row[column]:
                     mismatches.append(
