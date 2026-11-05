@@ -236,13 +236,17 @@ class Gaze:
         methods will be applied to each trial separately. (default: None)
     calibrations: polars.DataFrame | None
         The calibrations from the data: time, num_points, eye, tracking_mode, grade.
-        A ``time`` column, if present, is converted to a ``polars.Duration`` column with
-        microsecond precision. Numeric input is interpreted as milliseconds.
+        The ``grade`` column holds the EyeLink flag ``GOOD`` or ``FAILED``, or null when the
+        file carries none. A ``time`` column, if present, is converted to a ``polars.Duration``
+        column with microsecond precision. Numeric input is interpreted as milliseconds.
         None by default, to be populated by I/O helpers (e.g. from_asc). (default: None)
     validations: polars.DataFrame | None
-        The validations from the data: time, num_points, eye, accuracy_avg,
-        accuracy_max, grade. A ``time`` column, if present, is converted to a ``polars.Duration``
-        column with microsecond precision. Numeric input is interpreted as milliseconds.
+        The validations from the data: time, num_points, eye, accuracy_avg, accuracy_max,
+        grade. The ``grade`` column holds the EyeLink flag ``GOOD``, ``FAIR``, ``POOR`` or
+        ``ABORTED``, or null when the file carries none. Rows graded ``ABORTED`` carry null
+        ``num_points``, ``accuracy_avg`` and ``accuracy_max``. A ``time`` column, if present,
+        is converted to a ``polars.Duration`` column with microsecond precision. Numeric input
+        is interpreted as milliseconds.
         None by default, to be populated by I/O helpers (e.g. from_asc).
         (default: None)
     time_column: str | None
@@ -301,13 +305,16 @@ class Gaze:
         The number of components in the pixel, position, velocity and acceleration columns.
     calibrations: polars.DataFrame | None
         The calibrations from the data: time, num_points, eye, tracking_mode, grade.
-        A ``time`` column, if present, is stored as a ``polars.Duration`` column with
-        microsecond precision.
+        The ``grade`` column holds the EyeLink flag ``GOOD`` or ``FAILED``, or null when the
+        file carries none. A ``time`` column, if present, is stored as a ``polars.Duration``
+        column with microsecond precision.
         None by default, to be populated by I/O helpers (e.g. from_asc).
     validations: polars.DataFrame | None
-        The validations from the data: time, num_points, eye, accuracy_avg,
-        accuracy_max, grade. A ``time`` column, if present, is stored as a ``polars.Duration``
-        column with microsecond precision.
+        The validations from the data: time, num_points, eye, accuracy_avg, accuracy_max,
+        grade. The ``grade`` column holds the EyeLink flag ``GOOD``, ``FAIR``, ``POOR`` or
+        ``ABORTED``, or null when the file carries none. Rows graded ``ABORTED`` carry null
+        ``num_points``, ``accuracy_avg`` and ``accuracy_max``. A ``time`` column, if present,
+        is stored as a ``polars.Duration`` column with microsecond precision.
         None by default, to be populated by I/O helpers (e.g. from_asc).
     schema: polars.type_aliases.SchemaDict
         Schema of the samples dataframe.
