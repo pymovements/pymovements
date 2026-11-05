@@ -54,12 +54,6 @@ from pymovements.synthetic.value_range import Range
 #: The event types the generator can render. Everything that is not a fixation is interpolated.
 EVENT_TYPES = ('fixation', 'saccade')
 
-#: The ways the gaze between two fixations can be interpolated.
-INTERPOLATIONS = ('linear', 'cubic_spline')
-
-#: The column groups the positions can be written to.
-LOCATION_COLUMN_GROUPS = ('position', 'pixel')
-
 #: The event column the fixation locations are read from, as the ``location`` event property
 #: computes it.
 LOCATION_COLUMN = 'location'
@@ -94,11 +88,11 @@ class GeometricalSampleGenerator(SampleGenerator):
     name: ClassVar[str]
         ``'geometrical'``, the name the generator is registered under.
     interpolation: str
-        How the gaze between two fixations is interpolated, one of ``INTERPOLATIONS``.
+        How the gaze between two fixations is interpolated, ``'linear'`` or ``'cubic_spline'``.
         (default: 'cubic_spline')
     location_column_group: str
-        The column group the positions are written to, one of ``LOCATION_COLUMN_GROUPS``. It
-        must match the unit of the locations. (default: 'position')
+        The column group the positions are written to, ``'position'`` or ``'pixel'``. It must
+        match the unit of the locations. (default: 'position')
     fixation_deviation: RangeLike
         The scatter of a fixation's samples around its location. (default: Range(0.0, 0.0))
 
@@ -146,9 +140,9 @@ class GeometricalSampleGenerator(SampleGenerator):
         """Validate the names and read the deviation from its accepted forms."""
         super().__post_init__()
 
-        check_name(self.interpolation, 'interpolation', INTERPOLATIONS)
+        check_name(self.interpolation, 'interpolation', ('linear', 'cubic_spline'))
         check_name(
-            self.location_column_group, 'location_column_group', LOCATION_COLUMN_GROUPS,
+            self.location_column_group, 'location_column_group', ('position', 'pixel'),
         )
 
         self.fixation_deviation = Range.from_value(self.fixation_deviation)
