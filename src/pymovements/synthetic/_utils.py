@@ -34,11 +34,6 @@ import polars as pl
 from pymovements.events.events import Events
 
 
-def milliseconds(durations: pl.Series) -> pl.Series:
-    """Return durations in fractional milliseconds; ``total_milliseconds`` drops the fraction."""
-    return durations.dt.total_microseconds() / 1000.0
-
-
 def previous_offset(trial_columns: list[str]) -> pl.Expr:
     """Return the offset of the event before each one in its trial, null for the first."""
     expression = pl.col('offset').shift(1)
@@ -61,11 +56,13 @@ def ordered_frame(events: Events, *, generator: str | None = None) -> pl.DataFra
         pl.col('onset') < pl.col('previous_offset'),
     )
     if overlapping.height:
-        first = overlapping.row(0, named=True)
+        first = overlapping.with_columns(
+            pl.col('onset', 'previous_offset').dt.total_milliseconds(fractional=True),
+        ).row(0, named=True)
         raise ValueError(
             f"{_prefix(generator)}events overlap, a {first['name']} starts at "
-            f"{_milliseconds(first['onset'])} ms before the previous event ends "
-            f"at {_milliseconds(first['previous_offset'])} ms",
+            f"{first['onset']} ms before the previous event ends "
+            f"at {first['previous_offset']} ms",
         )
 
     return frame
@@ -83,10 +80,12 @@ def check_contiguous(events: Events, *, generator: str | None = None) -> None:
     ).filter(pl.col('onset') > pl.col('previous_offset'))
 
     if gaps.height:
-        first = gaps.row(0, named=True)
+        first = gaps.with_columns(
+            pl.col('onset', 'previous_offset').dt.total_milliseconds(fractional=True),
+        ).row(0, named=True)
         raise ValueError(
             f"{_prefix(generator)}events leave a gap from "
-            f"{_milliseconds(first['previous_offset'])} ms to {_milliseconds(first['onset'])} ms "
+            f"{first['previous_offset']} ms to {first['onset']} ms "
             f"before a {first['name']}; fill it first, for example with "
             'pymovements.synthetic.bridge_gaps',
         )
@@ -166,8 +165,3 @@ def check_name(value: Any, name: str, allowed: tuple[str, ...]) -> None:
 def _prefix(generator: str | None) -> str:
     """Return the start of an error message naming the generator, if there is one."""
     return f"generator '{generator}': " if generator else ''
-
-
-def _milliseconds(duration: object) -> float:
-    """Return one duration in fractional milliseconds."""
-    return float(milliseconds(pl.Series([duration]))[0])

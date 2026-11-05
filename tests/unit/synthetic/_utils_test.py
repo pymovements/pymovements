@@ -29,7 +29,6 @@ from polars.testing import assert_frame_equal
 
 from pymovements import Events
 from pymovements.synthetic._utils import check_contiguous
-from pymovements.synthetic._utils import milliseconds
 from pymovements.synthetic._utils import per_trial
 from pymovements.synthetic._utils import sample_times
 
@@ -120,7 +119,7 @@ def test_per_trial_passes_each_trial_ordered():
     seen = []
 
     def synthesize(frame):
-        seen.append(milliseconds(frame['onset']).to_list())
+        seen.append(frame['onset'].dt.total_milliseconds(fractional=True).to_list())
         return pl.DataFrame({'time': [0.0]})
 
     per_trial(events, synthesize)
