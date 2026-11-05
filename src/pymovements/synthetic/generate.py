@@ -25,8 +25,8 @@ from typing import Any
 
 from pymovements.events.events import Events
 from pymovements.gaze.gaze import Gaze
-from pymovements.synthetic.library import EventGeneratorLibrary
-from pymovements.synthetic.library import SampleGeneratorLibrary
+from pymovements.synthetic.registry import EventGeneratorRegistry
+from pymovements.synthetic.registry import SampleGeneratorRegistry
 
 
 def generate_events(name: str, *, seed: int | None = None, **kwargs: Any) -> Events:
@@ -80,7 +80,7 @@ def generate_events(name: str, *, seed: int | None = None, **kwargs: Any) -> Eve
     >>> events.frame['name'].to_list()
     ['fixation', 'fixation']
     """
-    generator_class = EventGeneratorLibrary.get(name)
+    generator_class = EventGeneratorRegistry.get(name)
     hyperparameters, run = _split_kwargs(generator_class, kwargs)
     generator = generator_class(**hyperparameters)
     # In place of generate(), so the experimental warning points at the caller of this function.
@@ -151,7 +151,7 @@ def generate_samples(name: str, *, seed: int | None = None, **kwargs: Any) -> Ga
     >>> gaze.metadata['synthetic']['hyperparameters']
     {'sampling_rate': 500.0, 'noise': 0.5}
     """
-    generator_class = SampleGeneratorLibrary.get(name)
+    generator_class = SampleGeneratorRegistry.get(name)
     hyperparameters, run = _split_kwargs(generator_class, kwargs)
     generator = generator_class(**hyperparameters)
     # In place of generate(), so the experimental warning points at the caller of this function.

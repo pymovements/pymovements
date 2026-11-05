@@ -30,9 +30,9 @@ import pytest
 from pymovements import Events
 from pymovements import Gaze
 from pymovements.synthetic import EventGenerator
-from pymovements.synthetic import EventGeneratorLibrary
+from pymovements.synthetic import EventGeneratorRegistry
 from pymovements.synthetic import SampleGenerator
-from pymovements.synthetic import SampleGeneratorLibrary
+from pymovements.synthetic import SampleGeneratorRegistry
 
 
 @dataclasses.dataclass
@@ -101,10 +101,10 @@ def fixture_fixations():
 
 @pytest.fixture(name='isolated_registry')
 def fixture_isolated_registry():
-    """Restore both generator libraries after the test, so registrations do not leak."""
-    libraries = (EventGeneratorLibrary, SampleGeneratorLibrary)
-    originals = [library.generators.copy() for library in libraries]
+    """Restore both generator registries after the test, so registrations do not leak."""
+    registries = (EventGeneratorRegistry, SampleGeneratorRegistry)
+    originals = [registry.generators.copy() for registry in registries]
     yield
-    for library, original in zip(libraries, originals):
-        library.generators.clear()
-        library.generators.update(original)
+    for registry, original in zip(registries, originals):
+        registry.generators.clear()
+        registry.generators.update(original)

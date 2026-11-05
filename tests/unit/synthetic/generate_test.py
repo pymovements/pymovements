@@ -149,30 +149,30 @@ def test_generate_events_rejects_a_generator_that_is_no_dataclass():
 
 
 @pytest.mark.parametrize(
-    ('entry_point', 'name', 'kwargs', 'library_name'),
+    ('entry_point', 'name', 'kwargs', 'registry_name'),
     [
         pytest.param(
             pm.synthetic.generate_samples, 'does_not_exist', {'sampling_rate': 1000.0},
-            'SampleGeneratorLibrary',
+            'SampleGeneratorRegistry',
             id='generate_samples',
         ),
         pytest.param(
             pm.synthetic.generate_events, 'does_not_exist', {'duration': 1.0},
-            'EventGeneratorLibrary',
+            'EventGeneratorRegistry',
             id='generate_events',
         ),
         pytest.param(
             pm.synthetic.generate_events, 'test_noise', {'duration': 1.0},
-            'EventGeneratorLibrary',
+            'EventGeneratorRegistry',
             id='sample_generator_is_not_an_event_generator',
         ),
     ],
 )
 @pytest.mark.usefixtures('registered_sample_generator')
-def test_unknown_name_raises_key_error(entry_point, name, kwargs, library_name):
+def test_unknown_name_raises_key_error(entry_point, name, kwargs, registry_name):
     with pytest.raises(KeyError) as excinfo:
         entry_point(name, **kwargs)
 
     msg, = excinfo.value.args
-    for msg_substring in (name, 'not found', library_name):
+    for msg_substring in (name, 'not found', registry_name):
         assert msg_substring in msg

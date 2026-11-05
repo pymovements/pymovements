@@ -12,8 +12,8 @@ Synthetic
 
     EventGenerator
     SampleGenerator
-    EventGeneratorLibrary
-    SampleGeneratorLibrary
+    EventGeneratorRegistry
+    SampleGeneratorRegistry
 
 .. rubric:: Functions
 
