@@ -527,8 +527,8 @@ def test_map_to_aois_preserves_saccades_without_structure(
 
 @pytest.mark.parametrize(
     'trial_value',
-    ['1', 'x', 1.5],
-    ids=['numeric-string', 'non-numeric-string', 'non-integral-float'],
+    ['x', 1.5],
+    ids=['non-numeric-string', 'non-integral-float'],
 )
 def test_map_to_aois_key_that_changes_on_cast_gets_no_aoi(
     stimulus_with_trials: TextStimulus,
@@ -549,6 +549,72 @@ def test_map_to_aois_key_that_changes_on_cast_gets_no_aoi(
     events.map_to_aois(stimulus_with_trials, verbose=False)
 
     assert events.frame.get_column('label').to_list() == [None]
+
+
+@pytest.mark.parametrize(
+    ('trial_value', 'location', 'expected_label'),
+    [
+        pytest.param('1', [5.0, 5.0], 'A', id='plain'),
+        pytest.param('02', [25.0, 25.0], 'B', id='leading-zero'),
+    ],
+)
+def test_map_to_aois_numeric_string_key_matches_integer_key(
+    stimulus_with_trials: TextStimulus,
+    trial_value: str,
+    location: list[float],
+    expected_label: str,
+) -> None:
+    """A string key that parses to the integer AOI key matches that trial's AOIs."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+            'location': [location],
+            'trial': [trial_value],
+        },
+    )
+    events = Events(data=df, trial_columns=['trial'])
+
+    events.map_to_aois(stimulus_with_trials, verbose=False)
+
+    assert events.frame.get_column('label').to_list() == [expected_label]
+
+
+def test_map_to_aois_integer_key_matches_string_key() -> None:
+    """An integer key matches a string AOI key with the same textual value."""
+    stimulus = TextStimulus(
+        pl.DataFrame(
+            {
+                'label': ['A', 'B'],
+                'sx': [0, 20],
+                'sy': [0, 20],
+                'ex': [10, 30],
+                'ey': [10, 30],
+                'trial': ['1', '02'],
+            },
+        ),
+        aoi_column='label',
+        start_x_column='sx',
+        start_y_column='sy',
+        end_x_column='ex',
+        end_y_column='ey',
+        trial_column='trial',
+    )
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'fixation'],
+            'onset': [0, 1],
+            'offset': [1, 2],
+            'location': [[5.0, 5.0], [25.0, 25.0]],
+            'trial': [1, 2],
+        },
+    )
+    events = Events(data=df, trial_columns=['trial'])
+
+    events.map_to_aois(stimulus, verbose=False)
+
+    assert events.frame.get_column('label').to_list() == ['A', None]
 
 
 def test_map_to_aois_valid_key_still_matches(stimulus_with_trials: TextStimulus) -> None:

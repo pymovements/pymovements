@@ -116,6 +116,23 @@ def _is_string_like(dtype: polars.PolarsDataType) -> bool:
     )
 
 
+def _cast_key(
+        expr: polars.Expr,
+        source_dtype: polars.PolarsDataType,
+        target_dtype: polars.PolarsDataType,
+) -> polars.Expr:
+    """Cast a key value to another key dtype, turning values that cannot be cast into null.
+
+    Categorical and Enum values are cast via their string form, as polars refuses direct casts
+    between them and other kinds.
+    """
+    if source_dtype == target_dtype:
+        return expr
+    if _is_string_like(source_dtype) or _is_string_like(target_dtype):
+        expr = expr.cast(polars.String, strict=False)
+    return expr.cast(target_dtype, strict=False)
+
+
 def _key_cast_is_valid(
         original: polars.Expr,
         source_dtype: polars.PolarsDataType,
@@ -123,20 +140,21 @@ def _key_cast_is_valid(
 ) -> polars.Expr:
     """Return whether a key value survives casting to the AOI key dtype unchanged.
 
-    Nulls are wildcards and stay valid. A numeric value is valid only if casting to the AOI
-    dtype and back reproduces it, so failed casts and precision loss (for example ``1.5``
-    against an integer column) match no AOI, as in the per-row lookup. Values of different
-    kinds (for example a string against an integer column) never match either.
+    Nulls are wildcards and stay valid. A value that cannot be cast, like the string ``'x'``
+    against an integer column, matches no AOI, as in the per-row lookup. A numeric value must
+    also survive the cast back, so precision loss (for example ``1.5`` against an integer
+    column) matches no AOI either.
     """
     if source_dtype == target_dtype:
         return polars.lit(True)
-    cast = original.cast(target_dtype, strict=False)
-    if _is_numeric_like(source_dtype) and _is_numeric_like(target_dtype):
-        round_trip = cast.cast(source_dtype, strict=False)
-        return original.is_null() | (cast.is_not_null() & (round_trip == original))
     if _is_string_like(source_dtype) and _is_string_like(target_dtype):
         return polars.lit(True)
-    return original.is_null()
+    cast = _cast_key(original, source_dtype, target_dtype)
+    is_valid = cast.is_not_null()
+    if _is_numeric_like(source_dtype):
+        round_trip = _cast_key(cast, target_dtype, source_dtype)
+        is_valid = is_valid & (round_trip == original)
+    return original.is_null() | is_valid
 
 
 def _event_coordinate_expr(
@@ -194,9 +212,9 @@ def _map_fixations_to_aois(
         *[polars.col(column) for column in key_columns],
         # Cast to the AOI key dtypes so the join keys always share a common dtype.
         *[
-            polars.col(column)
-            .cast(aoi_dataframe.aois.schema[column], strict=False)
-            .alias(_aoi_join_key_name(column))
+            _cast_key(
+                polars.col(column), frame.schema[column], aoi_dataframe.aois.schema[column],
+            ).alias(_aoi_join_key_name(column))
             for column in key_columns
         ],
     )
@@ -1182,9 +1200,9 @@ class Events:
         - A null value in a configured key column is a wildcard: that fixation is matched
           against all AOIs for the other key(s), using the per-row
           :meth:`~pymovements.stimulus.TextStimulus.get_aoi` lookup.
-        - A non-null key that cannot be cast to the AOI key dtype without changing its value
-          (for example a string against an integer column, or ``1.5`` against an integer
-          column) matches no AOI.
+        - A non-null key is cast to the AOI key dtype, so the string ``'02'`` matches the
+          integer key ``2``. A key that cannot be cast without changing its value (for
+          example ``'x'`` or ``1.5`` against an integer column) matches no AOI.
 
         Overlapping AOIs:
 
