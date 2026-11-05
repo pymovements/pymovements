@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import math
+from typing import TYPE_CHECKING
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -30,8 +31,10 @@ import polars as pl
 from pymovements._utils._column_nesting import get_nested_columns
 from pymovements._utils._column_nesting import unnest_list_columns
 from pymovements._utils._time import duration_to_ms
-from pymovements.gaze import Gaze
 from pymovements.plotting._matplotlib import prepare_figure
+
+if TYPE_CHECKING:
+    from pymovements.gaze import Gaze
 
 
 def tsplot(

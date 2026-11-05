@@ -35,21 +35,20 @@ description: 'CERVINO dataset :cite:p:`CERVINO-Paper,CERVINO-Zenodo`.
   for details.
 
   '
-resources:
-- content: precomputed_events
-  source:
+sources:
+  dataset:
     url: https://zenodo.org/records/22082820/files/CERVINO.zip?download=1
     filename: CERVINO.zip
     md5: ebb67e52863eb8d5a13483d55548a9d9
+resources:
+- content: precomputed_events
+  source: dataset
   filename_pattern: (?:CERVINO/)?preprocessed_data/{text_id}/lett{subject_id:d}/scanpath.csv
   filename_pattern_schema_overrides:
     text_id: '!str'
     subject_id: '!int'
 - content: precomputed_reading_measures
-  source:
-    url: https://zenodo.org/records/22082820/files/CERVINO.zip?download=1
-    filename: CERVINO.zip
-    md5: ebb67e52863eb8d5a13483d55548a9d9
+  source: dataset
   filename_pattern: (?:CERVINO/)?preprocessed_data/{text_id}/lett{subject_id:d}/reading_measures.csv
   filename_pattern_schema_overrides:
     text_id: '!str'

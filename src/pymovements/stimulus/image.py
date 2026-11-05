@@ -29,6 +29,7 @@ from deprecated.sphinx import deprecated
 
 from pymovements._utils._html import repr_html
 from pymovements._utils._paths import get_filepaths
+from pymovements._utils._sources import add_source
 from pymovements._utils._strings import curly_to_regex
 
 
@@ -126,14 +127,15 @@ class ImageStimulus:
         path:  str | Path
             Path to image file to be read.
         metadata: dict[str, Any] | None
-            Dictionary containing additional metadata. (default: None)
+            Dictionary containing additional metadata. Unless already present, a ``Sources``
+            entry holding ``path`` as given is added. (default: None)
 
         Returns
         -------
         ImageStimulus
             Returns an ImageStimulus initialized with the image stimulus file.
         """
-        return ImageStimulus(images=[Path(path)], metadata=metadata)
+        return ImageStimulus(images=[Path(path)], metadata=add_source(metadata, path))
 
 
 def from_file(image_path: str | Path, metadata: dict[str, Any] | None = None) -> ImageStimulus:
@@ -144,7 +146,8 @@ def from_file(image_path: str | Path, metadata: dict[str, Any] | None = None) ->
     image_path:  str | Path
         Path to file to be read.
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. (default: None)
+        Dictionary containing additional metadata. Unless already present, a ``Sources``
+        entry holding ``image_path`` as given is added. (default: None)
 
     Returns
     -------
@@ -156,6 +159,9 @@ def from_file(image_path: str | Path, metadata: dict[str, Any] | None = None) ->
 
 def from_files(path: str | Path, filename_format: str) -> ImageStimulus:
     """Load image stimulus from file.
+
+    The matched files are recorded in a ``Sources`` metadata entry as found
+    below ``path``, in POSIX form.
 
     Parameters
     ----------
@@ -169,8 +175,11 @@ def from_files(path: str | Path, filename_format: str) -> ImageStimulus:
     ImageStimulus
         Returns the image stimulus file.
     """
-    filenames = get_filepaths(path, regex=curly_to_regex(filename_format))
-    return ImageStimulus(list(filenames))
+    filenames = list(get_filepaths(path, regex=curly_to_regex(filename_format)))
+    metadata = {}
+    if filenames:
+        metadata['Sources'] = [Path(filename).as_posix() for filename in filenames]
+    return ImageStimulus(filenames, metadata=metadata)
 
 
 def _draw_image_stimulus(

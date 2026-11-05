@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests functionality of the IHMM algorithm."""
+# pylint: disable=too-many-lines
 import copy
 
 import numpy as np
@@ -32,6 +33,7 @@ from pymovements.events.detection.ihmm import _baum_welch
 from pymovements.events.detection.ihmm import _collapse_states
 from pymovements.events.detection.ihmm import _compute_hmm
 from pymovements.events.detection.ihmm import _emit_log_prob
+from pymovements.events.detection.ihmm import _emit_log_prob_vec
 from pymovements.events.detection.ihmm import _format_optimal_dict
 from pymovements.events.detection.ihmm import _log_sum_exp
 from pymovements.events.detection.ihmm import _viterbi
@@ -98,6 +100,41 @@ def test_emit_log_prob_raises_on_none_parameters(mu, sigma):
     """Mu and sigma are required; None must raise instead of being silently ignored."""
     with pytest.raises(ValueError, match='mu and sigma must not be None'):
         _emit_log_prob(mu=mu, sigma=sigma, v=0.0, s=0)
+
+
+# -----------------------------------------------------------------------------
+# _emit_log_prob_vec
+# -----------------------------------------------------------------------------
+
+
+def test_emit_log_prob_vec_matches_scalar_emit_log_prob():
+    """The vectorized path should match the scalar path for every sample and state."""
+    mu = np.array([0.0, 10.0])
+    sigma = np.array([0.0, 2.0])
+    velocities = np.array([0.5, 3.0, 12.0])
+
+    result = _emit_log_prob_vec(mu=mu, sigma=sigma, v=velocities)
+
+    expected = np.array([
+        [_emit_log_prob(mu=mu, sigma=sigma, v=v, s=s) for s in range(len(mu))]
+        for v in velocities
+    ])
+    assert result.shape == (len(velocities), len(mu))
+    np.testing.assert_allclose(result, expected, atol=1e-12)
+
+
+@pytest.mark.parametrize(
+    ('mu', 'sigma'),
+    [
+        pytest.param(None, np.array([1.0, 1.0]), id='mu_none'),
+        pytest.param(np.array([0.0, 0.0]), None, id='sigma_none'),
+        pytest.param(None, None, id='both_none'),
+    ],
+)
+def test_emit_log_prob_vec_raises_on_none_parameters(mu, sigma):
+    """Mu and sigma are required; None must raise instead of being silently ignored."""
+    with pytest.raises(ValueError, match='mu and sigma must not be None'):
+        _emit_log_prob_vec(mu=mu, sigma=sigma, v=np.array([0.0]))
 
 
 # -----------------------------------------------------------------------------

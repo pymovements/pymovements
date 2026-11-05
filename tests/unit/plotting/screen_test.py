@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test pymovements.plotting.screen."""
+"""Test pymovements.plotting.make_screen_axes."""
 from __future__ import annotations
 
 import re
@@ -25,7 +25,7 @@ import re
 import matplotlib.pyplot as plt
 import pytest
 
-from pymovements.plotting import screen
+from pymovements.plotting import make_screen_axes
 
 
 @pytest.fixture(autouse=True)
@@ -34,24 +34,24 @@ def close_figures():
     plt.close('all')
 
 
-def test_screen_returns_figure_and_axes():
-    fig, ax = screen(1280, 1024)
+def test_make_screen_axes_returns_figure_and_axes():
+    fig, ax = make_screen_axes(1280, 1024)
 
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
     assert ax.get_figure() is fig
 
 
-def test_screen_upper_left_limits_and_aspect():
-    _, ax = screen(1280, 1024)
+def test_make_screen_axes_upper_left_limits_and_aspect():
+    _, ax = make_screen_axes(1280, 1024)
 
     assert ax.get_xlim() == (0, 1280)
     assert ax.get_ylim() == (1024, 0)
     assert ax.get_aspect() == 1
 
 
-def test_screen_center_limits_and_aspect():
-    _, ax = screen(1280, 1024, origin='center')
+def test_make_screen_axes_center_limits_and_aspect():
+    _, ax = make_screen_axes(1280, 1024, origin='center')
 
     assert ax.get_xlim() == (-640, 640)
     assert ax.get_ylim() == (512, -512)
@@ -59,9 +59,9 @@ def test_screen_center_limits_and_aspect():
 
 
 @pytest.mark.parametrize('origin', ['upper left', 'center'])
-def test_screen_y_increases_downward(origin):
+def test_make_screen_axes_y_increases_downward(origin):
     """Both supported origins keep screen y increasing downward."""
-    _, ax = screen(1280, 1024, origin=origin)
+    _, ax = make_screen_axes(1280, 1024, origin=origin)
 
     bottom, top = ax.get_ylim()
     assert bottom > top
@@ -107,9 +107,9 @@ def test_screen_y_increases_downward(origin):
         ),
     ],
 )
-def test_screen_invalid_resolution_raises(width_px, height_px, expected_message):
+def test_make_screen_axes_invalid_resolution_raises(width_px, height_px, expected_message):
     with pytest.raises(ValueError, match=re.escape(expected_message)):
-        screen(width_px, height_px)
+        make_screen_axes(width_px, height_px)
 
 
 @pytest.mark.parametrize(
@@ -121,23 +121,23 @@ def test_screen_invalid_resolution_raises(width_px, height_px, expected_message)
         pytest.param('', id='empty'),
     ],
 )
-def test_screen_unsupported_origin_raises(origin):
+def test_make_screen_axes_unsupported_origin_raises(origin):
     with pytest.raises(ValueError, match='screen origin must be one of'):
-        screen(1280, 1024, origin=origin)
+        make_screen_axes(1280, 1024, origin=origin)
 
 
-def test_screen_reuses_passed_axes():
+def test_make_screen_axes_reuses_passed_axes():
     fig, ax = plt.subplots()
 
-    returned_fig, returned_ax = screen(1280, 1024, ax=ax)
+    returned_fig, returned_ax = make_screen_axes(1280, 1024, ax=ax)
 
     assert returned_ax is ax
     assert returned_fig is fig
 
 
-def test_screen_draws_no_content():
-    """The axes frame is the only boundary; screen() draws nothing itself."""
-    _, ax = screen(1280, 1024)
+def test_make_screen_axes_draws_no_content():
+    """The axes frame is the only boundary; make_screen_axes() draws nothing itself."""
+    _, ax = make_screen_axes(1280, 1024)
 
     assert len(ax.lines) == 0
     assert len(ax.patches) == 0

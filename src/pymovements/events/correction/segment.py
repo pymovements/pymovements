@@ -38,6 +38,9 @@ def segment(
 ) -> pl.Expr:
     """Segment fixations into m line subsequences using return sweeps.
 
+    The largest return sweep candidates mark the line changes, so the resulting
+    subsequences map to the text lines in order.
+
     Reference: :cite:p:`Abdulin2015,Carr2022`.
 
     Parameters
