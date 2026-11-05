@@ -41,7 +41,8 @@ class Range:
 
     Generators describe each random quantity, such as a duration or a peak velocity, by one
     range. A uniform draw spans the range. A normal draw is centred on the range and clipped to
-    it, with ``std`` as its spread, or the width of the range if ``std`` is ``None``.
+    it, with ``std`` as its spread, or a quarter of the width if ``std`` is ``None``, which keeps
+    about 95 % of the draws inside the range before clipping.
 
     Attributes
     ----------
@@ -52,8 +53,8 @@ class Range:
     distribution: str
         The distribution a value is drawn from, one of ``DISTRIBUTIONS``. (default: 'uniform')
     std: float | None
-        The standard deviation of a normal draw, or ``None`` for the width of the range.
-        Must not be negative, and is only accepted for a normal range. (default: None)
+        The standard deviation of a normal draw, or ``None`` for a quarter of the width. Must not
+        be negative, and is only accepted for a normal range. (default: None)
 
     Raises
     ------
@@ -158,6 +159,6 @@ class Range:
         if self.distribution == 'uniform':
             return float(rng.uniform(self.minimum, self.maximum))
 
-        std = self.maximum - self.minimum if self.std is None else self.std
+        std = (self.maximum - self.minimum) / 4.0 if self.std is None else self.std
         centre = (self.minimum + self.maximum) / 2.0
         return float(np.clip(rng.normal(centre, std), self.minimum, self.maximum))

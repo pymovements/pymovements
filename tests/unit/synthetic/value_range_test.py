@@ -182,7 +182,7 @@ def test_from_value_rejects_a_mapping_with_unknown_keys():
     [
         pytest.param(Range(300.0, 500.0), id='uniform'),
         pytest.param(Range(300.0, 500.0, 'normal', std=50.0), id='normal'),
-        pytest.param(Range(300.0, 500.0, 'normal'), id='normal_with_range_width_as_std'),
+        pytest.param(Range(300.0, 500.0, 'normal'), id='normal_without_std'),
     ],
 )
 def test_draw_stays_within_the_range(value_range):
@@ -208,6 +208,16 @@ def test_draw_is_reproducible_under_seed(value_range):
     second = [value_range.draw(second_rng) for _ in range(3)]
 
     assert first == second
+
+
+def test_normal_draw_without_std_spreads_over_a_quarter_of_the_width():
+    """About 95 % of the draws fall inside the range, so the bounds hold only the tails."""
+    rng = np.random.default_rng(42)
+
+    values = np.array([Range(300.0, 500.0, 'normal').draw(rng) for _ in range(20000)])
+
+    assert np.mean((values == 300.0) | (values == 500.0)) == pytest.approx(0.046, abs=0.01)
+    assert values.std() == pytest.approx(50.0, rel=0.1)
 
 
 def test_normal_draw_is_centred_on_the_range():
