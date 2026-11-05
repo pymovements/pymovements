@@ -17,14 +17,14 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test pymovements filters."""
+"""Test pymovements event filter utilities."""
 from __future__ import annotations
 
 import numpy as np
 import pytest
 
-from pymovements.events._utils._filters import events_split_nans
-from pymovements.events._utils._filters import filter_candidates_remove_nans
+from pymovements.events._utils.filters import events_split_nans
+from pymovements.events._utils.filters import filter_candidates_remove_nans
 
 
 @pytest.mark.parametrize(

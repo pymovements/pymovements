@@ -24,7 +24,7 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from pymovements._utils import _html
+from pymovements._utils import html
 
 DATAFRAME = pl.DataFrame({'a': [1, 2], 'b': [3, 4]})
 
@@ -108,12 +108,12 @@ class LongRepr:
 )
 def test_html_repr(cls, attrs, init_args, init_kwargs, expected_html):
     # Apply decorator
-    cls = _html.repr_html(attrs)(cls)
+    cls = html.repr_html(attrs)(cls)
     # Create instance of the class
     obj = cls(*init_args, **init_kwargs)
     # Get HTML representation
-    html = obj._repr_html_()
-    assert re.search(expected_html, html, re.MULTILINE)
+    result = obj._repr_html_()
+    assert re.search(expected_html, result, re.MULTILINE)
 
 
 @pytest.mark.parametrize(
@@ -172,7 +172,7 @@ def test_html_repr(cls, attrs, init_args, init_kwargs, expected_html):
     ],
 )
 def test_attr_inline_details_html(obj, expected_inline, expected_expandable):
-    inline, expandable = _html._attr_inline_details_html(obj)
+    inline, expandable = html._attr_inline_details_html(obj)
     assert inline == expected_inline
     assert expandable == expected_expandable
 
@@ -247,11 +247,11 @@ def test_attr_inline_details_html(obj, expected_inline, expected_expandable):
     ],
 )
 def test_attr_details_html(obj, expected_html, regex):
-    html = _html._attr_details_html(obj)
+    result = html._attr_details_html(obj)
     if regex:
-        assert re.search(expected_html, html, re.MULTILINE)
+        assert re.search(expected_html, result, re.MULTILINE)
     else:
-        assert html == expected_html
+        assert result == expected_html
 
 
 @pytest.mark.parametrize(
@@ -376,5 +376,5 @@ def test_attr_details_html(obj, expected_html, regex):
     ],
 )
 def test_attr_html(name, obj, expected_html):
-    html = _html._attr_html(name, obj)
-    assert re.search(expected_html, html, re.MULTILINE)
+    result = html._attr_html(name, obj)
+    assert re.search(expected_html, result, re.MULTILINE)
