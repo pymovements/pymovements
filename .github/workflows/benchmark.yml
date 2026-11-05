@@ -81,7 +81,7 @@ jobs:
 
       - name: Cache environment
         uses: actions/cache/save@v4
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && steps.cache-restore.outputs.cache-hit != 'true'
         with:
           key:
             ${{ steps.cache-restore.outputs.cache-primary-key }}
