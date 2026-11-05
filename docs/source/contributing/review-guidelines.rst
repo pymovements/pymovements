@@ -86,9 +86,8 @@ Deprecations
   minor releases later (for example deprecated in v0.26.1, removed in v0.31.0).
 - The warning names the removal version, and a test using ``assert_deprecation_is_removed``
   covers it.
-- The pull request description opens with a "⚠️ Deprecation" section, added on demand and not
-  part of the template. It has one paragraph per deprecated item, naming the item, the version
-  that deprecates it, its replacement and the removal version.
+- The pull request description opens with a ⚠️ Deprecation section in the shape defined in
+  :ref:`creating-pull-requests`.
 - The pull request carries the ``deprecation`` label, next to ``enhancement`` when it also adds a
   feature.
 
