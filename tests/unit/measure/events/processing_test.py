@@ -91,6 +91,22 @@ def test_event_processor_init_exceptions(args, kwargs, exception, message):
             pl.DataFrame(data=[1, 11], schema={'duration': pl.Int64}),
             id='duration_two_events',
         ),
+        pytest.param(
+            pl.DataFrame(schema={'onset': pl.Int64, 'offset': pl.Int64}),
+            [
+                'duration',
+                ('duration', {'output_name': 'duration1'}),
+                ('duration', {'output_name': 'duration2'}),
+            ],
+            pl.DataFrame(
+                schema={
+                    'duration': pl.Int64,
+                    'duration1': pl.Int64,
+                    'duration2': pl.Int64,
+                },
+            ),
+            id='duration_output_names',
+        ),
     ],
 )
 def test_event_processor_process_correct_result(events, measures, expected_dataframe):
@@ -175,6 +191,12 @@ def test_event_samples_processor_init(args, kwargs, expected_measures):
             TypeError,
             'measures must be of type str, tuple, or list',
             id='measures_invalid_type',
+        ),
+        pytest.param(
+            [['peak_velocity', 'peak_velocity']], {},
+            ValueError,
+            r'Duplicate output name\(s\) found: peak_velocity.',
+            id='duplicate_output_names',
         ),
     ],
 )
