@@ -17,6 +17,7 @@ Transforms
     clip
     downsample
     norm
+    nullify
     pix2deg
     deg2pix
     pos2acc

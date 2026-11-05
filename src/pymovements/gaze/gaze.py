@@ -964,6 +964,71 @@ class Gaze:
             **kwargs,
         )
 
+    def nullify(
+            self,
+            lower_bound: int | float | None,
+            upper_bound: int | float | None,
+            *,
+            input_column: str,
+            output_column: str,
+            **kwargs: Any,
+    ) -> None:
+        """Set gaze samples with any component outside a lower and upper bound to null.
+
+        A sample is set to null as a whole as soon as one of its components is below the lower
+        or above the upper bound. Samples with null components keep their existing nulls. Only
+        ``output_column`` is affected, other signal columns of the same sample are untouched.
+
+        After success, the out-of-bound samples in :py:attr:`~.Gaze.samples` are null.
+
+        Parameters
+        ----------
+        lower_bound : int | float | None
+            Lower bound of the valid range. ``None`` means no lower bound.
+        upper_bound : int | float | None
+            Upper bound of the valid range. ``None`` means no upper bound.
+        input_column : str
+            Name of the input column.
+        output_column : str
+            Name of the output column.
+        **kwargs: Any
+            Additional keyword arguments to be passed to the
+            :func:`~pymovements.transforms.nullify()` method.
+
+        Raises
+        ------
+        AttributeError
+            If :py:attr:`~.Gaze.samples` is None, or if the number of components cannot be
+            inferred from :py:attr:`~.Gaze.samples`.
+
+        See Also
+        --------
+        pymovements.Gaze.clip : Replace out-of-bound components by the bound instead.
+        pymovements.Gaze.nullify_event_samples : Set every signal column of event samples to null.
+
+        Examples
+        --------
+        >>> import polars as pl
+        >>> import pymovements as pm
+        >>> gaze = pm.Gaze(
+        ...     samples=pl.DataFrame({'x': [1.0, 50.0, 5.0], 'y': [4.0, 5.0, 6.0]}),
+        ...     pixel_columns=['x', 'y'],
+        ... )
+        >>> gaze.nullify(
+        ...     lower_bound=0, upper_bound=10, input_column='pixel', output_column='pixel',
+        ... )
+        >>> gaze.samples['pixel'].to_list()
+        [[1.0, 4.0], None, [5.0, 6.0]]
+        """
+        self.transform(
+            'nullify',
+            lower_bound=lower_bound,
+            upper_bound=upper_bound,
+            input_column=input_column,
+            output_column=output_column,
+            **kwargs,
+        )
+
     def pix2deg(self) -> None:
         """Compute gaze positions in degrees of visual angle from pixel position coordinates.
 
