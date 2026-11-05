@@ -92,7 +92,7 @@ class StatisticalSampleGenerator(SampleGenerator):
     saccade_consistency: RangeLike
         The jitter along a saccade. (default: Range(0.0, 5.0))
     smooth_pursuit_velocity: RangeLike
-        The velocity of a pursuit; a growing or decreasing pursuit spans the whole range.
+        The velocity of a pursuit. A growing or decreasing pursuit spans the whole range.
         (default: Range(10.0, 30.0))
     smooth_pursuit_onset_duration: RangeLike
         The duration of the onset of a pursuit. (default: Range(40.0, 120.0))
@@ -414,7 +414,7 @@ class StatisticalSampleGenerator(SampleGenerator):
 
 
 def _range(value: RangeLike) -> Range:
-    """Return the value as a range; fields hold ranges once constructed."""
+    """Return the value as a range. Fields hold ranges once constructed."""
     return Range.from_value(value)
 
 
