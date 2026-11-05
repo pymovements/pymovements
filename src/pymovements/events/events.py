@@ -1219,7 +1219,7 @@ class Events:
           the frame.
 
         AOI columns used as trial/page keys are only appended when the events frame does not
-        already contain a column with that name; existing event columns are never overwritten.
+        already contain a column with that name. Existing event columns are never overwritten.
 
         Parameters
         ----------
