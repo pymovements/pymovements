@@ -10,9 +10,6 @@ on:
   pull_request_target:
     types: [ready_for_review]
 
-permissions:
-  contents: read
-
 jobs:
   re-request-review:
     runs-on: ubuntu-latest
@@ -20,7 +17,7 @@ jobs:
       # write permission is required to request reviewers
       pull-requests: write
     steps:
-      - uses: actions/github-script@v8
+      - uses: actions/github-script@v9
         with:
           script: |
             // Ask GitHub for the latest review of each reviewer with write access.
