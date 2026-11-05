@@ -117,27 +117,7 @@ class _Generator(abc.ABC, Generic[OutputT]):
         ExperimentalWarning
             Always. Synthetic data generation is experimental.
         """
-        return self._generate_at(seed, run, depth=2)
-
-    def _generate_at(self, seed: int | None, run: dict[str, Any], *, depth: int) -> OutputT:
-        """Do the work of ``generate()``, warning at the line ``depth`` calls above this method.
-
-        Parameters
-        ----------
-        seed: int | None
-            The random seed, or ``None`` to draw one.
-        run: dict[str, Any]
-            The run parameters as passed to ``generate()``.
-        depth: int
-            The number of calls above this method that the warning points at. ``generate()`` and
-            the entry points, which call this method in its place, pass 2: the line of the user.
-
-        Returns
-        -------
-        OutputT
-            The generated data, as ``generate()`` returns it.
-        """
-        _warn_experimental(depth)
+        _warn_experimental()
         self._check_class()
         run = self._resolve_run(run)
         seed = _resolve_seed(seed)
@@ -463,21 +443,15 @@ def _plain(value: Any) -> Any:
     return value
 
 
-def _warn_experimental(depth: int) -> None:
-    """Warn that synthetic data generation is experimental.
-
-    Parameters
-    ----------
-    depth: int
-        The number of calls above the caller of this function that the warning points at.
-    """
+def _warn_experimental() -> None:
+    """Warn that synthetic data generation is experimental, at the line calling ``generate()``."""
     warn(
         'Synthetic gaze generation is experimental. '
         'Names and behavior may change without being considered a breaking change. '
         'Please set the used pymovements version explicitly to prevent unexpected changes. '
         f'The used pymovements version is v{__version__}.',
         ExperimentalWarning,
-        stacklevel=depth + 2,
+        stacklevel=3,
     )
 
 

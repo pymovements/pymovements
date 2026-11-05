@@ -19,8 +19,6 @@
 # SOFTWARE.
 """Provides functionality for generating synthetic eye gaze data."""
 from pymovements.synthetic.bridge_gaps import bridge_gaps
-from pymovements.synthetic.generate import generate_events
-from pymovements.synthetic.generate import generate_samples
 from pymovements.synthetic.generator import EventGenerator
 from pymovements.synthetic.generator import SampleGenerator
 from pymovements.synthetic.registry import EventGeneratorRegistry
@@ -37,8 +35,6 @@ __all__ = [
     'SampleGeneratorRegistry',
     'Range',
     'register_generator',
-    'generate_events',
-    'generate_samples',
     'bridge_gaps',
     'step_function',
 ]
