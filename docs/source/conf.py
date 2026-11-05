@@ -313,7 +313,7 @@ nitpick_ignore_regex = [
     (
         r'py:class', r'^pymovements\.(?:dataset\.dataset_library\.'
         r'DatasetDefinitionClass|measure\.samples\.library\.SampleMeasure|'
-        r'synthetic\.library\.GeneratorT|synthetic\.generator\.OutputT)$',
+        r'synthetic\.(?:registry\.GeneratorT|generator\.OutputT))$',
     ),
     # generic types https://github.com/sphinx-doc/sphinx/issues/14159
     (r'py:class', r'.*dict\[str'),

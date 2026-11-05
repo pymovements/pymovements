@@ -70,6 +70,25 @@ def make_events_fixture():
                     'location': [(1, 2), (2, 3)],
                 },
             )
+        elif name == '2_fixations_one_without_location':
+            events = pl.DataFrame(
+                data={
+                    'trial': [1, 1],
+                    'name': ['fixation', 'fixation'],
+                    'onset': [0, 2],
+                    'offset': [1, 3],
+                    'duration': [1, 1],
+                    'location': [(1, 2), None],
+                },
+                schema={
+                    'trial': pl.Int64,
+                    'name': pl.String,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'duration': pl.Int64,
+                    'location': pl.List(pl.Int64),
+                },
+            )
         elif name == '3_events':
             events = pl.DataFrame(
                 data={
@@ -265,6 +284,10 @@ def test_scanpathplot_noshow(gaze, monkeypatch):
         pytest.param('1_fixation', 'fixation', 1, id='fixation'),
         pytest.param('1_fixation', 'saccade', 0, id='fixation'),
         pytest.param('2_fixations', 'fixation', 2, id='fixation'),
+        pytest.param(
+            '2_fixations_one_without_location', 'fixation', 1,
+            id='fixation_one_without_location',
+        ),
         pytest.param('3_events', 'fixation', 1, id='fixation'),
         pytest.param('3_events', 'saccade', 1, id='saccade'),
         pytest.param('3_events', 'foo', 1, id='foo'),

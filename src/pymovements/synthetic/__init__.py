@@ -23,9 +23,9 @@ from pymovements.synthetic.generate import generate_events
 from pymovements.synthetic.generate import generate_samples
 from pymovements.synthetic.generator import EventGenerator
 from pymovements.synthetic.generator import SampleGenerator
-from pymovements.synthetic.library import EventGeneratorLibrary
-from pymovements.synthetic.library import register_generator
-from pymovements.synthetic.library import SampleGeneratorLibrary
+from pymovements.synthetic.registry import EventGeneratorRegistry
+from pymovements.synthetic.registry import register_generator
+from pymovements.synthetic.registry import SampleGeneratorRegistry
 from pymovements.synthetic.step_function import step_function
 from pymovements.synthetic.value_range import Range
 
@@ -33,8 +33,8 @@ from pymovements.synthetic.value_range import Range
 __all__ = [
     'EventGenerator',
     'SampleGenerator',
-    'EventGeneratorLibrary',
-    'SampleGeneratorLibrary',
+    'EventGeneratorRegistry',
+    'SampleGeneratorRegistry',
     'Range',
     'register_generator',
     'generate_events',

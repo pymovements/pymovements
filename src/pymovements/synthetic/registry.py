@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides the libraries of event and sample generators."""
+"""Provides the registries of event and sample generators."""
 from __future__ import annotations
 
 from typing import Generic
@@ -29,14 +29,14 @@ from pymovements.synthetic.generator import SampleGenerator
 GeneratorT = TypeVar('GeneratorT', EventGenerator, SampleGenerator)
 
 
-class _GeneratorLibrary(Generic[GeneratorT]):
-    """Shared behaviour of the generator libraries."""
+class _GeneratorRegistry(Generic[GeneratorT]):
+    """Shared behaviour of the generator registries."""
 
     generators: dict[str, type[GeneratorT]]
 
     @classmethod
     def add(cls, generator: type[GeneratorT]) -> None:
-        """Add a generator to the library.
+        """Add a generator to the registry.
 
         Parameters
         ----------
@@ -112,11 +112,11 @@ class _GeneratorLibrary(Generic[GeneratorT]):
         return name in cls.generators
 
 
-class EventGeneratorLibrary(_GeneratorLibrary[EventGenerator]):
+class EventGeneratorRegistry(_GeneratorRegistry[EventGenerator]):
     """Provides access by name to event generators.
 
     Generators register themselves via :py:func:`~pymovements.synthetic.register_generator`, so
-    adding one requires no change to this library.
+    adding one requires no change to this registry.
 
     Attributes
     ----------
@@ -127,11 +127,11 @@ class EventGeneratorLibrary(_GeneratorLibrary[EventGenerator]):
     generators: dict[str, type[EventGenerator]] = {}
 
 
-class SampleGeneratorLibrary(_GeneratorLibrary[SampleGenerator]):
+class SampleGeneratorRegistry(_GeneratorRegistry[SampleGenerator]):
     """Provides access by name to sample generators.
 
     Generators register themselves via :py:func:`~pymovements.synthetic.register_generator`, so
-    adding one requires no change to this library.
+    adding one requires no change to this registry.
 
     Attributes
     ----------
@@ -143,7 +143,7 @@ class SampleGeneratorLibrary(_GeneratorLibrary[SampleGenerator]):
 
 
 def register_generator(generator: type[GeneratorT]) -> type[GeneratorT]:
-    """Register a generator in the library of its level. Intended as a class decorator.
+    """Register a generator in the registry of its level. Intended as a class decorator.
 
     Parameters
     ----------
@@ -162,14 +162,14 @@ def register_generator(generator: type[GeneratorT]) -> type[GeneratorT]:
 
     Examples
     --------
-    The decorator sorts the class into the library of its level:
+    The decorator sorts the class into the registry of its level:
 
     >>> import dataclasses
     >>> import pymovements as pm
     >>> @pm.synthetic.register_generator
     ... @dataclasses.dataclass
-    ... class EvenFixations(pm.synthetic.EventGenerator):
-    ...     name = 'even_fixations'
+    ... class EqualFixations(pm.synthetic.EventGenerator):
+    ...     name = 'equal_fixations'
     ...     fixation_duration: float = 250.0
     ...
     ...     def _generate(self, *, rng, duration):
@@ -177,15 +177,15 @@ def register_generator(generator: type[GeneratorT]) -> type[GeneratorT]:
     ...         onsets = [index * self.fixation_duration for index in range(count)]
     ...         offsets = [onset + self.fixation_duration for onset in onsets]
     ...         return pm.Events(name=['fixation'] * count, onsets=onsets, offsets=offsets)
-    >>> 'even_fixations' in pm.synthetic.EventGeneratorLibrary()
+    >>> 'equal_fixations' in pm.synthetic.EventGeneratorRegistry()
     True
-    >>> 'even_fixations' in pm.synthetic.SampleGeneratorLibrary()
+    >>> 'equal_fixations' in pm.synthetic.SampleGeneratorRegistry()
     False
     """
     if issubclass(generator, EventGenerator):
-        EventGeneratorLibrary.add(generator)
+        EventGeneratorRegistry.add(generator)
     elif issubclass(generator, SampleGenerator):
-        SampleGeneratorLibrary.add(generator)
+        SampleGeneratorRegistry.add(generator)
     else:
         raise TypeError(
             f'{generator.__name__} must be a subclass of EventGenerator or SampleGenerator '

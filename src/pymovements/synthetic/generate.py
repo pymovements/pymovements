@@ -25,8 +25,8 @@ from typing import Any
 
 from pymovements.events.events import Events
 from pymovements.gaze.gaze import Gaze
-from pymovements.synthetic.library import EventGeneratorLibrary
-from pymovements.synthetic.library import SampleGeneratorLibrary
+from pymovements.synthetic.registry import EventGeneratorRegistry
+from pymovements.synthetic.registry import SampleGeneratorRegistry
 
 
 def generate_events(name: str, *, seed: int | None = None, **kwargs: Any) -> Events:
@@ -58,15 +58,15 @@ def generate_events(name: str, *, seed: int | None = None, **kwargs: Any) -> Eve
 
     Examples
     --------
-    ``fixation_duration`` is a field of the generator below, so it goes to the constructor;
+    ``fixation_duration`` is a field of the generator below, so it goes to the constructor.
     ``duration`` is not, so it goes to ``generate()``:
 
     >>> import dataclasses
     >>> import pymovements as pm
     >>> @pm.synthetic.register_generator
     ... @dataclasses.dataclass
-    ... class EvenFixations(pm.synthetic.EventGenerator):
-    ...     name = 'even_fixations'
+    ... class RegularFixations(pm.synthetic.EventGenerator):
+    ...     name = 'regular_fixations'
     ...     fixation_duration: float = 250.0
     ...
     ...     def _generate(self, *, rng, duration):
@@ -75,14 +75,16 @@ def generate_events(name: str, *, seed: int | None = None, **kwargs: Any) -> Eve
     ...         offsets = [onset + self.fixation_duration for onset in onsets]
     ...         return pm.Events(name=['fixation'] * count, onsets=onsets, offsets=offsets)
     >>> events = pm.synthetic.generate_events(
-    ...     'even_fixations', duration=1.0, seed=42, fixation_duration=500.0,
+    ...     'regular_fixations', duration=1.0, seed=42, fixation_duration=500.0,
     ... )  # doctest: +IGNORE_WARNINGS
     >>> events.frame['name'].to_list()
     ['fixation', 'fixation']
     """
-    generator_class = EventGeneratorLibrary.get(name)
+    generator_class = EventGeneratorRegistry.get(name)
     hyperparameters, run = _split_kwargs(generator_class, kwargs)
-    return generator_class(**hyperparameters).generate(seed=seed, **run)
+    generator = generator_class(**hyperparameters)
+    # In place of generate(), so the experimental warning points at the caller of this function.
+    return generator._generate_at(seed, run, depth=2)  # pylint: disable=protected-access
 
 
 def generate_samples(name: str, *, seed: int | None = None, **kwargs: Any) -> Gaze:
@@ -117,7 +119,7 @@ def generate_samples(name: str, *, seed: int | None = None, **kwargs: Any) -> Ga
     Examples
     --------
     ``sampling_rate`` and ``noise`` are fields of the generator below, so they go to the
-    constructor; ``events`` is not, so it goes to ``generate()``:
+    constructor. ``events`` is not, so it goes to ``generate()``:
 
     >>> import dataclasses
     >>> import numpy as np
@@ -125,8 +127,8 @@ def generate_samples(name: str, *, seed: int | None = None, **kwargs: Any) -> Ga
     >>> import pymovements as pm
     >>> @pm.synthetic.register_generator
     ... @dataclasses.dataclass
-    ... class StillGaze(pm.synthetic.SampleGenerator):
-    ...     name = 'still_gaze'
+    ... class RestingGaze(pm.synthetic.SampleGenerator):
+    ...     name = 'resting_gaze'
     ...     noise: float = 0.1
     ...
     ...     def _generate(self, *, rng, events):
@@ -144,14 +146,16 @@ def generate_samples(name: str, *, seed: int | None = None, **kwargs: Any) -> Ga
     ...         )
     >>> events = pm.Events(name=['fixation'], onsets=[0], offsets=[500])
     >>> gaze = pm.synthetic.generate_samples(
-    ...     'still_gaze', events=events, sampling_rate=500, seed=42, noise=0.5,
+    ...     'resting_gaze', events=events, sampling_rate=500, seed=42, noise=0.5,
     ... )  # doctest: +IGNORE_WARNINGS
     >>> gaze.metadata['synthetic']['hyperparameters']
     {'sampling_rate': 500.0, 'noise': 0.5}
     """
-    generator_class = SampleGeneratorLibrary.get(name)
+    generator_class = SampleGeneratorRegistry.get(name)
     hyperparameters, run = _split_kwargs(generator_class, kwargs)
-    return generator_class(**hyperparameters).generate(seed=seed, **run)
+    generator = generator_class(**hyperparameters)
+    # In place of generate(), so the experimental warning points at the caller of this function.
+    return generator._generate_at(seed, run, depth=2)  # pylint: disable=protected-access
 
 
 def _split_kwargs(
