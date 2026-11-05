@@ -135,8 +135,29 @@ from pymovements.synthetic import bridge_gaps
 def test_bridge_gaps_returns(events, max_gap, expected):
     bridged = bridge_gaps(events, max_gap=max_gap)
 
-    assert_frame_equal(bridged.frame, expected.frame)
+    assert_frame_equal(bridged.frame.drop('offset'), expected.frame.drop('offset'))
     assert bridged.trial_columns == expected.trial_columns
+
+
+def test_bridge_gaps_reads_the_end_of_an_event_from_its_duration():
+    """PMEP 1: an event ends at onset + duration, so it needs no offset."""
+    events = Events(
+        pl.DataFrame({'name': ['fixation'] * 2, 'onset': [0, 300], 'duration': [250, 260]}),
+    )
+
+    bridged = bridge_gaps(events)
+
+    assert bridged.frame['name'].to_list() == ['fixation', 'saccade', 'fixation']
+    assert bridged.frame['onset'].dt.total_milliseconds().to_list() == [0, 250, 300]
+    assert bridged.frame['duration'].dt.total_milliseconds().to_list() == [250, 50, 260]
+
+
+def test_bridge_gaps_writes_no_offset_for_the_inserted_saccades():
+    events = Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560])
+
+    bridged = bridge_gaps(events)
+
+    assert bridged.frame['offset'].dt.total_milliseconds().to_list() == [250, None, 560]
 
 
 def test_bridge_gaps_leaves_extra_columns_null_for_saccades():
@@ -191,6 +212,15 @@ def test_bridge_gaps_accepts_real_numbers(max_gap):
             ValueError,
             ('overlap', 'fixation', '200.0 ms', '250.0 ms'),
             id='overlapping_events_raise_value_error',
+        ),
+        pytest.param(
+            Events(
+                pl.DataFrame({'name': ['fixation'] * 2, 'onset': [0, 200], 'duration': [250, 360]}),
+            ),
+            None,
+            ValueError,
+            ('overlap', 'fixation', '200.0 ms', '250.0 ms'),
+            id='overlap_is_read_from_the_duration',
         ),
         pytest.param(
             Events(name=['fixation'] * 2, onsets=[0.0, 200.25], offsets=[250.5, 560.0]),

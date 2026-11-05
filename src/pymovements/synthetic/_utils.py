@@ -34,9 +34,12 @@ import polars as pl
 from pymovements.events.events import Events
 
 
-def previous_offset(trial_columns: list[str]) -> pl.Expr:
-    """Return the offset of the event before each one in its trial, null for the first."""
-    expression = pl.col('offset').shift(1)
+def previous_end(trial_columns: list[str]) -> pl.Expr:
+    """Return the end of the event before each one in its trial, null for the first.
+
+    An event spans ``[onset, onset + duration)``, as in PMEP 1, so no ``offset`` is needed.
+    """
+    expression = (pl.col('onset') + pl.col('duration')).shift(1)
     if trial_columns:
         expression = expression.over(trial_columns)
     return expression
@@ -52,17 +55,17 @@ def ordered_frame(events: Events, *, generator: str | None = None) -> pl.DataFra
     trial_columns = events.trial_columns or []
     frame = events.frame.sort([*trial_columns, 'onset'], maintain_order=True)
 
-    overlapping = frame.with_columns(previous_offset=previous_offset(trial_columns)).filter(
-        pl.col('onset') < pl.col('previous_offset'),
+    overlapping = frame.with_columns(previous_end=previous_end(trial_columns)).filter(
+        pl.col('onset') < pl.col('previous_end'),
     )
     if overlapping.height:
         first = overlapping.with_columns(
-            pl.col('onset', 'previous_offset').dt.total_milliseconds(fractional=True),
+            pl.col('onset', 'previous_end').dt.total_milliseconds(fractional=True),
         ).row(0, named=True)
         raise ValueError(
             f"{_prefix(generator)}events overlap, a {first['name']} starts at "
             f"{first['onset']} ms before the previous event ends "
-            f"at {first['previous_offset']} ms",
+            f"at {first['previous_end']} ms",
         )
 
     return frame
@@ -76,16 +79,16 @@ def check_contiguous(events: Events, *, generator: str | None = None) -> None:
     """
     trial_columns = events.trial_columns or []
     gaps = ordered_frame(events, generator=generator).with_columns(
-        previous_offset=previous_offset(trial_columns),
-    ).filter(pl.col('onset') > pl.col('previous_offset'))
+        previous_end=previous_end(trial_columns),
+    ).filter(pl.col('onset') > pl.col('previous_end'))
 
     if gaps.height:
         first = gaps.with_columns(
-            pl.col('onset', 'previous_offset').dt.total_milliseconds(fractional=True),
+            pl.col('onset', 'previous_end').dt.total_milliseconds(fractional=True),
         ).row(0, named=True)
         raise ValueError(
             f"{_prefix(generator)}events leave a gap from "
-            f"{first['previous_offset']} ms to {first['onset']} ms "
+            f"{first['previous_end']} ms to {first['onset']} ms "
             f"before a {first['name']}; fill it first, for example with "
             'pymovements.synthetic.bridge_gaps',
         )

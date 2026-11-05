@@ -28,6 +28,7 @@ import pytest
 from polars.testing import assert_frame_equal
 
 from pymovements import Events
+from pymovements.synthetic import bridge_gaps
 from pymovements.synthetic._utils import check_contiguous
 from pymovements.synthetic._utils import per_trial
 from pymovements.synthetic._utils import sample_times
@@ -49,6 +50,10 @@ from pymovements.synthetic._utils import sample_times
             id='trials_start_independently',
         ),
         pytest.param(Events(name=[], onsets=[], offsets=[]), id='empty_events'),
+        pytest.param(
+            bridge_gaps(Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560])),
+            id='bridged_events',
+        ),
     ],
 )
 def test_check_contiguous_accepts(events):
@@ -62,6 +67,13 @@ def test_check_contiguous_accepts(events):
             Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560]),
             ('gap', '250.0 ms', '300.0 ms', 'fixation', 'bridge_gaps'),
             id='gap',
+        ),
+        pytest.param(
+            Events(
+                pl.DataFrame({'name': ['fixation'] * 2, 'onset': [0, 300], 'duration': [250, 260]}),
+            ),
+            ('gap', '250.0 ms', '300.0 ms'),
+            id='gap_is_read_from_the_duration',
         ),
         pytest.param(
             Events(name=['fixation', 'saccade'], onsets=[0.0, 250.75], offsets=[250.5, 300.0]),
