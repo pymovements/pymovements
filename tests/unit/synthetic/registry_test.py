@@ -19,6 +19,7 @@
 # SOFTWARE.
 """Test the event and sample generator registries."""
 import pytest
+from polars.testing import assert_frame_equal
 
 from pymovements.synthetic import EventGeneratorRegistry
 from pymovements.synthetic import register_generator
@@ -141,3 +142,105 @@ def test_registering_same_name_twice_overwrites(noise_sample_generator):
 
     assert first is not second
     assert SampleGeneratorRegistry.get('duplicate') is second
+
+
+@pytest.mark.parametrize(
+    ('generator', 'registry', 'parameters'),
+    [
+        pytest.param(
+            'noise_sample_generator', SampleGeneratorRegistry,
+            {'sampling_rate': 500.0, 'scale': 2.0},
+            id='sample_generator',
+        ),
+        pytest.param(
+            'uniform_event_generator', EventGeneratorRegistry, {'max_duration': 150.0},
+            id='event_generator',
+        ),
+    ],
+)
+def test_create_returns_the_generator_the_constructor_returns(
+        request, generator, registry, parameters,
+):
+    generator_class = register_generator(request.getfixturevalue(generator))
+
+    created = registry.create(generator_class.name, **parameters)
+
+    assert created == generator_class(**parameters)
+
+
+@pytest.mark.filterwarnings(
+    'ignore:Synthetic gaze generation is experimental:pymovements.ExperimentalWarning',
+)
+def test_created_sample_generator_generates_what_the_constructed_one_does(
+        noise_sample_generator, fixations,
+):
+    register_generator(noise_sample_generator)
+
+    created = SampleGeneratorRegistry.create('test_noise', sampling_rate=1000.0, scale=2.0)
+    constructed = noise_sample_generator(sampling_rate=1000.0, scale=2.0)
+    gaze = created.generate(events=fixations, seed=42)
+    expected = constructed.generate(events=fixations, seed=42)
+
+    assert_frame_equal(gaze.samples, expected.samples)
+    assert gaze.metadata == expected.metadata
+
+
+@pytest.mark.filterwarnings(
+    'ignore:Synthetic gaze generation is experimental:pymovements.ExperimentalWarning',
+)
+def test_created_event_generator_generates_what_the_constructed_one_does(
+        uniform_event_generator,
+):
+    register_generator(uniform_event_generator)
+
+    created = EventGeneratorRegistry.create('test_uniform', max_duration=150.0)
+    constructed = uniform_event_generator(max_duration=150.0)
+    events = created.generate(duration=2.0, seed=42)
+    expected = constructed.generate(duration=2.0, seed=42)
+
+    assert_frame_equal(events.frame, expected.frame)
+    assert events.metadata == expected.metadata
+
+
+@pytest.mark.parametrize(
+    ('registry', 'name'),
+    [
+        pytest.param(SampleGeneratorRegistry, 'does_not_exist', id='sample_registry'),
+        pytest.param(EventGeneratorRegistry, 'does_not_exist', id='event_registry'),
+        pytest.param(
+            EventGeneratorRegistry, 'test_noise',
+            id='sample_generator_is_not_an_event_generator',
+        ),
+    ],
+)
+def test_create_unknown_generator_raises_key_error(noise_sample_generator, registry, name):
+    register_generator(noise_sample_generator)
+
+    with pytest.raises(KeyError) as excinfo:
+        registry.create(name)
+
+    msg, = excinfo.value.args
+    for msg_substring in (name, 'not found', registry.__name__):
+        assert msg_substring in msg
+
+
+@pytest.mark.parametrize(
+    ('generator', 'registry', 'parameters'),
+    [
+        pytest.param(
+            'noise_sample_generator', SampleGeneratorRegistry, {'sampling_rate': 1000.0},
+            id='sample_generator',
+        ),
+        pytest.param('uniform_event_generator', EventGeneratorRegistry, {}, id='event_generator'),
+    ],
+)
+def test_create_with_unknown_parameter_raises_type_error(
+        request, generator, registry, parameters,
+):
+    generator_class = register_generator(request.getfixturevalue(generator))
+
+    with pytest.raises(TypeError) as excinfo:
+        registry.create(generator_class.name, scael=2.0, **parameters)
+
+    msg, = excinfo.value.args
+    assert 'scael' in msg
