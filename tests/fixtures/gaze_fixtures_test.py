@@ -18,8 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test gaze fixtures."""
+import polars as pl
 import pytest
 
+from pymovements import Events
 from pymovements import Gaze
 
 
@@ -67,3 +69,49 @@ def test_gaze_minimal_no_experiment(gaze_minimal):
 def test_gaze_fixtures_are_gaze_objects(fixture_name, request):
     gaze = request.getfixturevalue(fixture_name)
     assert isinstance(gaze, Gaze)
+
+
+def test_make_unvalidated_gaze_returns_gaze(make_unvalidated_gaze):
+    gaze = make_unvalidated_gaze(pl.DataFrame({'time': [0, 1]}))
+    assert isinstance(gaze, Gaze)
+
+
+def test_make_unvalidated_gaze_defaults(make_unvalidated_gaze):
+    gaze = make_unvalidated_gaze(pl.DataFrame({'time': [0, 1]}))
+    assert gaze.trial_columns is None
+    assert gaze.experiment is None
+    assert gaze.events == Events()
+
+
+def test_make_unvalidated_gaze_converts_numeric_time_to_duration(make_unvalidated_gaze):
+    gaze = make_unvalidated_gaze(pl.DataFrame({'time': [0.0, 1.5, 2.0]}))
+    assert gaze.samples.schema['time'] == pl.Duration('us')
+    assert gaze.samples['time'].dt.total_microseconds().to_list() == [0, 1500, 2000]
+
+
+def test_make_unvalidated_gaze_keeps_numeric_time(make_unvalidated_gaze):
+    samples = pl.DataFrame({'time': [0, 1, 2]})
+    gaze = make_unvalidated_gaze(samples, convert_time=False)
+    assert gaze.samples.equals(samples)
+
+
+def test_make_unvalidated_gaze_stores_samples(make_unvalidated_gaze):
+    samples = pl.DataFrame({'x': [0.0, 1.0, 2.0]})
+    gaze = make_unvalidated_gaze(samples)
+    assert gaze.samples.equals(samples)
+
+
+def test_make_unvalidated_gaze_allows_missing_trial_columns(make_unvalidated_gaze):
+    gaze = make_unvalidated_gaze(pl.DataFrame({'time': [0]}), trial_columns=['missing'])
+    assert gaze.trial_columns == ['missing']
+
+
+def test_make_unvalidated_gaze_sets_metadata(make_unvalidated_gaze):
+    gaze = make_unvalidated_gaze(pl.DataFrame({'time': [0]}), metadata={'subject_id': 's1'})
+    assert gaze.metadata == {'subject_id': 's1'}
+
+
+def test_make_unvalidated_gaze_sets_experiment(make_unvalidated_gaze, make_experiment):
+    experiment = make_experiment()
+    gaze = make_unvalidated_gaze(pl.DataFrame({'time': [0]}), experiment=experiment)
+    assert gaze.experiment is experiment
