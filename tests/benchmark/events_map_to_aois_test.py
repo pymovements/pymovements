@@ -20,8 +20,9 @@
 """Benchmark ``Events.map_to_aois``.
 
 Mapping fixations to AOIs used to run a Python loop over all events, filtering the AOI frame and
-checking the spatial bounds once per event. It is now a single vectorized join plus spatial
-filter. These benchmarks track that cost on synthetic events and AOIs.
+checking the spatial bounds once per event, then a cross join of fixations and AOIs with a spatial
+filter. It is now an inequality join (``join_where``) on the AOI bounds, one per key group on the
+keyed path. These benchmarks track time on both paths with synthetic events and AOIs.
 """
 import polars as pl
 from pytest_benchmark.fixture import BenchmarkFixture
