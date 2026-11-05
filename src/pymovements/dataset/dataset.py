@@ -1155,9 +1155,10 @@ class Dataset:
     ) -> ReadingMeasures:
         """Map fixations to AOIs and compute reading measures for an entire dataset.
 
-        The fixations of each recording are mapped to the AOIs of its text on an internal copy,
-        see :py:meth:`~pymovements.Events.measure_reading`. Whether the events of the dataset are
-        annotated with the AOI columns as well is controlled by ``annotate_events``.
+        The fixations of each recording are mapped to the AOIs of its text and word-level reading
+        measures are computed from the mapping, see :py:meth:`~pymovements.Events.measure_reading`.
+        With ``annotate_events=True`` the mapping happens on the events of the dataset and index
+        columns of an earlier mapping are replaced there, otherwise on an internal copy.
 
         Parameters
         ----------
@@ -1184,8 +1185,8 @@ class Dataset:
             fixation rows (see :py:meth:`~pymovements.Events.map_to_aois`).
             (default: ``'fixation'``)
         annotate_events : bool | None
-            If ``True``, the events of the dataset are annotated with the AOI columns in place as
-            well, see :py:meth:`~pymovements.Events.map_to_aois`. If ``False``, the events of the
+            If ``True``, the events of the dataset are annotated with the AOI columns in place,
+            see :py:meth:`~pymovements.Events.map_to_aois`. If ``False``, the events of the
             dataset stay untouched. ``None`` behaves like ``True`` and emits a
             :py:class:`DeprecationWarning`, the default changes to ``False`` in v0.34.0.
             (default: None)
@@ -1255,7 +1256,7 @@ class Dataset:
                         event_name=event_name,
                         group_columns=group_columns,
                     ),
-                    metadata=merge_sources(events.metadata, aoi_text_stimulus.metadata),
+                    metadata=merge_sources(deepcopy(events.metadata), aoi_text_stimulus.metadata),
                 )
             else:
                 reading_measures = events.measure_reading(
