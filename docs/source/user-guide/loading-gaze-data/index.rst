@@ -20,6 +20,7 @@ required for further interpretation and analysis.
    :maxdepth: 3
 
    csv
+   psychopy
    asc
    begaze
    ipc
