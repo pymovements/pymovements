@@ -116,23 +116,6 @@ def _is_string_like(dtype: polars.PolarsDataType) -> bool:
     )
 
 
-def _cast_key(
-        expr: polars.Expr,
-        source_dtype: polars.PolarsDataType,
-        target_dtype: polars.PolarsDataType,
-) -> polars.Expr:
-    """Cast a key value to another key dtype, turning values that cannot be cast into null.
-
-    Categorical and Enum values are cast via their string form, as polars refuses direct casts
-    between them and other kinds.
-    """
-    if source_dtype == target_dtype:
-        return expr
-    if _is_string_like(source_dtype) or _is_string_like(target_dtype):
-        expr = expr.cast(polars.String, strict=False)
-    return expr.cast(target_dtype, strict=False)
-
-
 def _key_cast_is_valid(
         original: polars.Expr,
         source_dtype: polars.PolarsDataType,
@@ -149,10 +132,10 @@ def _key_cast_is_valid(
         return polars.lit(True)
     if _is_string_like(source_dtype) and _is_string_like(target_dtype):
         return polars.lit(True)
-    cast = _cast_key(original, source_dtype, target_dtype)
+    cast = original.cast(target_dtype, strict=False)
     is_valid = cast.is_not_null()
     if _is_numeric_like(source_dtype):
-        round_trip = _cast_key(cast, target_dtype, source_dtype)
+        round_trip = cast.cast(source_dtype, strict=False)
         is_valid = is_valid & (round_trip == original)
     return original.is_null() | is_valid
 
@@ -212,9 +195,9 @@ def _map_fixations_to_aois(
         *[polars.col(column) for column in key_columns],
         # Cast to the AOI key dtypes so the join keys always share a common dtype.
         *[
-            _cast_key(
-                polars.col(column), frame.schema[column], aoi_dataframe.aois.schema[column],
-            ).alias(_aoi_join_key_name(column))
+            polars.col(column)
+            .cast(aoi_dataframe.aois.schema[column], strict=False)
+            .alias(_aoi_join_key_name(column))
             for column in key_columns
         ],
     )
