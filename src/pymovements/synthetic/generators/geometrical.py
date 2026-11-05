@@ -48,7 +48,7 @@ from pymovements.synthetic._utils import check_name
 from pymovements.synthetic._utils import per_trial
 from pymovements.synthetic._utils import sample_times
 from pymovements.synthetic.generator import SampleGenerator
-from pymovements.synthetic.library import register_generator
+from pymovements.synthetic.registry import register_generator
 from pymovements.synthetic.value_range import Range
 
 #: The event types the generator can render. Everything that is not a fixation is interpolated.
