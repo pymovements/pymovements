@@ -37,7 +37,7 @@ from matplotlib.collections import LineCollection
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import FancyArrowPatch
 
-from pymovements.plotting.screen import screen as screen_axes
+from pymovements.plotting.screen import make_screen_axes
 
 LinearSegmentedColormapType: TypeAlias = dict[
     Literal['red', 'green', 'blue', 'alpha'],
@@ -313,7 +313,7 @@ def _set_screen_axes(
 ) -> None:
     """Set axes limits and aspect ratio from a screen's pixel extent, if available.
 
-    Thin wrapper around ``pymovements.plotting.screen()`` that keeps the gaze
+    Thin wrapper around ``pymovements.plotting.make_screen_axes()`` that keeps the gaze
     plotters' behavior: skip silently when the resolution is unset, and accept
     only the ``'upper left'`` origin the gaze data is expressed in.
 
@@ -344,4 +344,4 @@ def _set_screen_axes(
             f'{func_name}: screen origin must be "upper left", got "{origin}".',
         )
 
-    screen_axes(width_px, height_px, origin=origin, ax=ax)
+    make_screen_axes(width_px, height_px, origin=origin, ax=ax)
