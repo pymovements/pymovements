@@ -91,7 +91,7 @@ def test_events_map_to_aois_benchmark(benchmark: BenchmarkFixture) -> None:
     stimulus = _build_stimulus()
 
     def _run(events: Events) -> None:
-        events.map_to_aois(stimulus, verbose=False)
+        events.map_to_aois(stimulus)
 
     def _setup() -> tuple[tuple[Events, ...], dict[str, object]]:
         return (_build_events(),), {}
@@ -104,7 +104,7 @@ def test_events_map_to_aois_keyed_benchmark(benchmark: BenchmarkFixture) -> None
     stimulus = _build_stimulus(keyed=True)
 
     def _run(events: Events) -> None:
-        events.map_to_aois(stimulus, verbose=False)
+        events.map_to_aois(stimulus)
 
     def _setup() -> tuple[tuple[Events, ...], dict[str, object]]:
         return (_build_events(keyed=True),), {}
