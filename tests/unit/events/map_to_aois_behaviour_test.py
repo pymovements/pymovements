@@ -581,6 +581,34 @@ def test_map_to_aois_numeric_string_key_matches_integer_key(
     assert events.frame.get_column('label').to_list() == [expected_label]
 
 
+@pytest.mark.parametrize(
+    'key_dtype',
+    [
+        pytest.param(pl.Categorical, id='categorical'),
+        pytest.param(pl.Enum(['1', '2']), id='enum'),
+    ],
+)
+def test_map_to_aois_categorical_key_matches_integer_key(
+    stimulus_with_trials: TextStimulus,
+    key_dtype: pl.DataType,
+) -> None:
+    """A Categorical or Enum key matches the integer AOI key like its string form."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'fixation', 'fixation'],
+            'onset': [0, 1, 2],
+            'offset': [1, 2, 3],
+            'location': [[5.0, 5.0], [25.0, 25.0], [5.0, 5.0]],
+            'trial': pl.Series(['1', '2', '1'], dtype=key_dtype),
+        },
+    )
+    events = Events(data=df, trial_columns=['trial'])
+
+    events.map_to_aois(stimulus_with_trials, verbose=False)
+
+    assert events.frame.get_column('label').to_list() == ['A', 'B', 'A']
+
+
 def test_map_to_aois_integer_key_matches_string_key() -> None:
     """An integer key matches a string AOI key with the same textual value."""
     stimulus = TextStimulus(
