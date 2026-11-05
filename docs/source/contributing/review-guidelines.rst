@@ -82,8 +82,8 @@ API Consistency
 Deprecations
 ------------
 
-- The project cycle is a warning in the next minor release and removal five minor releases later
-  (for example deprecated in v0.28.0, removed in v0.33.0).
+- A deprecation starts with a warning in the release that introduces it, and removal follows five
+  minor releases later (for example deprecated in v0.26.1, removed in v0.31.0).
 - The warning names the removal version, and a test using ``assert_deprecation_is_removed``
   covers it.
 - The pull request description opens with a "⚠️ Deprecation" section, added on demand and not
