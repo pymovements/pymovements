@@ -1684,10 +1684,13 @@ class Events:
                 # map_to_aois still filters the entry's AOIs by this column, so values other
                 # than the key would leave every fixation of the sequence unmatched. AOI rows
                 # with a null value are ignored by the mapping and by this check.
-                values = (
-                    stim.aois[sequence_column].drop_nulls().cast(sequence_dtype, strict=False)
-                    .unique().to_list()
-                )
+                values = stim.aois.select(
+                    _cast_key(
+                        polars.col(sequence_column).drop_nulls(),
+                        stim.aois.schema[sequence_column],
+                        sequence_dtype,
+                    ).unique(),
+                ).to_series().to_list()
                 if values != [key]:
                     raise ValueError(
                         f'stimulus for key {original_key!r} has {sequence_column} values '
