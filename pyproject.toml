@@ -74,6 +74,7 @@ docs = [
   "sphinxcontrib.bibtex>=2.4.2"
 ]
 dev = [
+  "pymovements[all]",
   "codespell>=2.2",
   "covdefaults>=2.3.0",
   "tox>=4.12.0",

@@ -59,7 +59,7 @@
 
                     git clone https://github.com/pymovements/pymovements.git
                     pip install --upgrade pip
-                    pip install -e '.[all,dev]'
+                    pip install -e '.[dev]'
 
 
 Optional Dependencies
