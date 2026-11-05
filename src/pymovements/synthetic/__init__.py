@@ -18,9 +18,34 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides functionality for generating synthetic eye gaze data."""
+from pymovements.synthetic import generators
+from pymovements.synthetic.capabilities import ConditioningMode
+from pymovements.synthetic.capabilities import GeneratorCapabilities
+from pymovements.synthetic.capabilities import SignalRepresentation
+from pymovements.synthetic.config import GeneratorConfig
+from pymovements.synthetic.generate import generate
+from pymovements.synthetic.generator import GazeGenerator
+from pymovements.synthetic.library import GeneratorLibrary
+from pymovements.synthetic.library import register_generator
 from pymovements.synthetic.step_function import step_function
+from pymovements.synthetic.validation import GenerationContractError
+from pymovements.synthetic.validation import InputContractError
+from pymovements.synthetic.validation import OutputContractError
 
 
 __all__ = [
+    'ConditioningMode',
+    'GazeGenerator',
+    'GenerationContractError',
+    'GeneratorCapabilities',
+    'GeneratorConfig',
+    'GeneratorLibrary',
+    'InputContractError',
+    'OutputContractError',
+    'SignalRepresentation',
+    'generate',
+    'register_generator',
+
+    'generators',
     'step_function',
 ]
