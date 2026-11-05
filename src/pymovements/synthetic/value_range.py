@@ -31,9 +31,6 @@ from pymovements.synthetic._utils import check_name
 from pymovements.synthetic._utils import check_not_negative
 from pymovements.synthetic._utils import check_number
 
-#: The distributions a value can be drawn from.
-DISTRIBUTIONS = ('normal', 'uniform')
-
 
 @dataclasses.dataclass(frozen=True)
 class Range:
@@ -51,7 +48,8 @@ class Range:
     maximum: float
         The largest value. Must not be smaller than ``minimum``.
     distribution: str
-        The distribution a value is drawn from, one of ``DISTRIBUTIONS``. (default: 'uniform')
+        The distribution a value is drawn from, ``'uniform'`` or ``'normal'``.
+        (default: 'uniform')
     std: float | None
         The standard deviation of a normal draw, or ``None`` for a quarter of the width. Must not
         be negative, and is only accepted for a normal range. (default: None)
@@ -88,7 +86,7 @@ class Range:
                 f'minimum ({self.minimum}) must not be greater than maximum ({self.maximum})',
             )
 
-        check_name(self.distribution, 'distribution', DISTRIBUTIONS)
+        check_name(self.distribution, 'distribution', ('normal', 'uniform'))
 
         if self.std is not None:
             object.__setattr__(self, 'std', check_not_negative(self.std, 'std'))
