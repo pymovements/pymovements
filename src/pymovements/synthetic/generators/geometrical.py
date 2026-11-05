@@ -68,7 +68,7 @@ class GeometricalSampleGenerator(SampleGenerator):
 
     Conditioned on fixations with a ``location``, every sample inside a fixation takes its
     location, and every other sample is interpolated between the locations around it, per axis.
-    These are the gaps between fixations and the saccades ``bridge_gaps`` fills them with; a
+    These are the gaps between fixations and the saccades ``bridge_gaps`` fills them with. A
     saccade's own location is not used. Before the first and after the last fixation of a trial,
     the nearest location is held. Events with trial columns are generated trial by trial.
 
