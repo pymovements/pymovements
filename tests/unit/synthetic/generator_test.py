@@ -364,13 +364,13 @@ def test_generate_warns_at_its_caller(request, generator, init, run):
     assert record[0].filename == __file__
 
 
-def test_hyperparameters_are_the_dataclass_fields(uniform_event_generator):
+def test_to_dict_returns_the_dataclass_fields(uniform_event_generator):
     generator = uniform_event_generator(min_duration=50.0)
 
-    assert generator.hyperparameters() == {'min_duration': 50.0, 'max_duration': 300.0}
+    assert generator.to_dict() == {'min_duration': 50.0, 'max_duration': 300.0}
 
 
-def test_hyperparameters_leave_out_fields_without_init(noise_sample_generator):
+def test_to_dict_leaves_out_fields_without_init(noise_sample_generator):
     @dataclasses.dataclass
     class WeightedGenerator(noise_sample_generator):
         weights_path: str = 'weights.npz'
@@ -379,7 +379,7 @@ def test_hyperparameters_leave_out_fields_without_init(noise_sample_generator):
     # pylint cannot see the base's fields through the fixture, so it rejects the keyword.
     generator = WeightedGenerator(sampling_rate=1000.0)  # pylint: disable=unexpected-keyword-arg
 
-    assert generator.hyperparameters() == {
+    assert generator.to_dict() == {
         'sampling_rate': 1000.0, 'scale': 1.0, 'weights_path': 'weights.npz',
     }
 
@@ -393,10 +393,10 @@ def test_hyperparameters_leave_out_fields_without_init(noise_sample_generator):
         pytest.param('uniform_event_generator', {'max_duration': 200.0}, id='events'),
     ],
 )
-def test_hyperparameters_rebuild_an_equal_generator(request, generator, init):
+def test_to_dict_rebuilds_an_equal_generator(request, generator, init):
     generator = request.getfixturevalue(generator)(**init)
 
-    assert type(generator)(**generator.hyperparameters()) == generator
+    assert type(generator)(**generator.to_dict()) == generator
 
 
 class _NeverGenerates(EventGenerator):
@@ -464,9 +464,9 @@ def test_generate_rejects_a_generator_class_that_cannot_be_recorded(
         assert msg_substring in msg
 
 
-def test_hyperparameters_reject_a_generator_that_is_no_dataclass():
+def test_to_dict_rejects_a_generator_that_is_no_dataclass():
     with pytest.raises(TypeError) as excinfo:
-        _PlainGenerator().hyperparameters()
+        _PlainGenerator().to_dict()
 
     msg, = excinfo.value.args
     for msg_substring in ('_PlainGenerator', 'dataclass'):

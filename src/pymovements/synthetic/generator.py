@@ -57,11 +57,11 @@ class _Generator(abc.ABC, Generic[OutputT]):
     # Each level declares the abstract method; concrete generators narrow its run parameters.
     _generate: Callable[..., OutputT]
 
-    def hyperparameters(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Return the parameters the generator was constructed with.
 
         These are the dataclass fields that ``__init__`` takes, so that
-        ``type(generator)(**generator.hyperparameters())`` is an equal generator. A value derived
+        ``type(generator)(**generator.to_dict())`` is an equal generator. A value derived
         in ``__post_init__`` is declared with ``init=False`` and left out. A neural generator
         loads its weights from a path, and the path is the hyperparameter.
 
@@ -255,7 +255,7 @@ class _Generator(abc.ABC, Generic[OutputT]):
             PROVENANCE_KEY: {
                 'generator': self.name,
                 'level': self.level,
-                'hyperparameters': self.hyperparameters(),
+                'hyperparameters': self.to_dict(),
                 'run': dict(run),
                 'seed': seed,
                 'pymovements_version': __version__,
