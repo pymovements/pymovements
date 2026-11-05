@@ -49,13 +49,6 @@ from pymovements.synthetic.value_range import Range
 #: The event types a velocity profile is defined for.
 EVENT_TYPES = ('fixation', 'saccade', 'smooth_pursuit')
 
-#: The shapes a smooth pursuit can take after its onset.
-PURSUIT_PROFILES = ('constant', 'growing', 'decreasing')
-
-#: The column the velocity magnitude is written to. A magnitude has no x and y, so it is not one
-#: of the Gaze component columns.
-VELOCITY_MAGNITUDE_COLUMN = 'velocity_magnitude'
-
 RangeLike = Range | tuple[float, float] | float
 
 
@@ -104,7 +97,8 @@ class StatisticalSampleGenerator(SampleGenerator):
     smooth_pursuit_onset_duration: RangeLike
         The duration of the onset of a pursuit. (default: Range(40.0, 120.0))
     smooth_pursuit_profile: str
-        The shape after the onset, one of ``PURSUIT_PROFILES``. (default: 'constant')
+        The shape after the onset, ``'constant'``, ``'growing'`` or ``'decreasing'``.
+        (default: 'constant')
     smooth_pursuit_consistency: RangeLike
         The jitter along a pursuit. (default: Range(0.0, 2.0))
     noise_percentage: float
@@ -191,7 +185,11 @@ class StatisticalSampleGenerator(SampleGenerator):
                 'a saccade',
             )
 
-        check_name(self.smooth_pursuit_profile, 'smooth_pursuit_profile', PURSUIT_PROFILES)
+        check_name(
+            self.smooth_pursuit_profile,
+            'smooth_pursuit_profile',
+            ('constant', 'growing', 'decreasing'),
+        )
 
         self.noise_percentage = check_number(self.noise_percentage, 'noise_percentage')
         if not 0.0 <= self.noise_percentage <= 100.0:
@@ -320,7 +318,7 @@ class StatisticalSampleGenerator(SampleGenerator):
 
         return pl.DataFrame({
             'time': times,
-            VELOCITY_MAGNITUDE_COLUMN: self._add_noise(magnitudes, rng),
+            'velocity_magnitude': self._add_noise(magnitudes, rng),
         })
 
     def _velocity_profile(
