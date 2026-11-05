@@ -286,12 +286,16 @@ def _events_overlap(
     """Return whether any two events within the same group overlap.
 
     Expects the events sorted by group, onset and offset. Event bounds are inclusive, so events
-    that only share a boundary sample overlap as well.
+    that only share a boundary sample overlap as well. Events with a null onset or offset have no
+    bounds to compare and are left out, so they never force the range path.
     """
+    bounded = events_sorted.filter(
+        pl.col(_ONSET_MS).is_not_null() & pl.col(_OFFSET_MS).is_not_null(),
+    )
     previous_offset = pl.col(_OFFSET_MS).shift(1)
     if by_columns is not None:
         previous_offset = previous_offset.over(by_columns)
-    return bool(events_sorted.select((previous_offset >= pl.col(_ONSET_MS)).any()).item())
+    return bool(bounded.select((previous_offset >= pl.col(_ONSET_MS)).any()).item())
 
 
 def _assign_samples_asof(
