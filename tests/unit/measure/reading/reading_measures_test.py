@@ -22,7 +22,7 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements._utils._time import durations_to_ms
+from pymovements._utils.time import durations_to_ms
 from pymovements.events import Events
 from pymovements.measure.reading import ReadingMeasures
 from pymovements.measure.reading.annotation import annotate_fixations

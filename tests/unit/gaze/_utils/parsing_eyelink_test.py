@@ -30,8 +30,8 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements.gaze._utils import _parsing_eyelink
-from pymovements.gaze._utils._parsing_eyelink import _check_patterns
+from pymovements.gaze._utils import parsing_eyelink
+from pymovements.gaze._utils.parsing_eyelink import _check_patterns
 
 
 def test_eyelink_regexes_are_not_compiled_during_import(monkeypatch):
@@ -42,15 +42,15 @@ def test_eyelink_regexes_are_not_compiled_during_import(monkeypatch):
 
     monkeypatch.setattr(re, 'compile', fail_compile)
 
-    importlib.reload(_parsing_eyelink)
+    importlib.reload(parsing_eyelink)
 
 
 def test_eyelink_regex_helpers_accept_precompiled_patterns():
     """Compiled user-provided patterns should still be accepted by helper wrappers."""
     compiled_pattern = re.compile(r'MSG\s+(?P<timestamp>\d+)\s+(?P<content>.*)')
 
-    match = _parsing_eyelink._match_regex(compiled_pattern, 'MSG 100 START')
-    search = _parsing_eyelink._search_regex(compiled_pattern, 'prefix MSG 200 END')
+    match = parsing_eyelink._match_regex(compiled_pattern, 'MSG 100 START')
+    search = parsing_eyelink._search_regex(compiled_pattern, 'prefix MSG 200 END')
 
     assert match is not None
     assert match.groupdict() == {'timestamp': '100', 'content': 'START'}
@@ -277,7 +277,7 @@ MESSAGES_DF = pl.DataFrame(
 def test_parse_eyelink(make_text_file):
     filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
 
-    gaze_df, event_df, metadata, messages_df = _parsing_eyelink.parse_eyelink(
+    gaze_df, event_df, metadata, messages_df = parsing_eyelink.parse_eyelink(
         filepath,
         patterns=PATTERNS,
         metadata_patterns=METADATA_PATTERNS,
@@ -297,7 +297,7 @@ def test_parse_eyelink(make_text_file):
 def test_parse_eyelink_no_messages(make_text_file):
     filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
 
-    _, _, _, messages_df = _parsing_eyelink.parse_eyelink(filepath)
+    _, _, _, messages_df = parsing_eyelink.parse_eyelink(filepath)
 
     assert messages_df is None
 
@@ -333,7 +333,7 @@ def test_parse_eyelink_no_messages(make_text_file):
 )
 def test_from_asc_metadata_patterns(filename, kwargs, expected_metadata, make_example_file):
     filepath = make_example_file(filename)
-    _, _, metadata, _ = _parsing_eyelink.parse_eyelink(
+    _, _, metadata, _ = parsing_eyelink.parse_eyelink(
         file=filepath, **kwargs,
     )
 
@@ -352,7 +352,7 @@ def test_parse_eyelink_raises_value_error(patterns, make_text_file):
     filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
 
     with pytest.raises(ValueError) as excinfo:
-        _parsing_eyelink.parse_eyelink(
+        parsing_eyelink.parse_eyelink(
             filepath,
             patterns=patterns,
         )
@@ -370,7 +370,7 @@ def test_parse_eyelink_raises_value_error(patterns, make_text_file):
 def test_message_example(make_text_file):
     filepath = make_text_file(filename='sub.asc', body=ASC_TEXT_MSGS)
 
-    _, _, _, messages_df = _parsing_eyelink.parse_eyelink(
+    _, _, _, messages_df = parsing_eyelink.parse_eyelink(
         filepath, messages=True,
     )
     assert_frame_equal(messages_df, MESSAGES_DF)
@@ -397,7 +397,7 @@ def test_message_example_filtered(make_text_file, regexps, matched_lines):
     # content of the DataFrame.
     filepath = make_text_file(filename='sub.asc', body=ASC_TEXT_MSGS)
 
-    _, _, _, messages_df = _parsing_eyelink.parse_eyelink(
+    _, _, _, messages_df = parsing_eyelink.parse_eyelink(
         filepath, messages=regexps,
     )
 
@@ -419,7 +419,7 @@ def test_message_faulty_messages_value(make_text_file, invalid_regexps):
             match=r'Make sure to pass either a bool or a list of regular expressions as '
                   r'strings\. Received',
     ):
-        _parsing_eyelink.parse_eyelink(filepath, messages=invalid_regexps)
+        parsing_eyelink.parse_eyelink(filepath, messages=invalid_regexps)
 
 
 @pytest.mark.parametrize(
@@ -493,7 +493,7 @@ def test_message_faulty_messages_value(make_text_file, invalid_regexps):
 def test_parse_eyelink_version(make_text_file, metadata, expected_version, expected_model):
     filepath = make_text_file(filename='sub.asc', body=metadata)
 
-    _, _, metadata, _ = _parsing_eyelink.parse_eyelink(
+    _, _, metadata, _ = parsing_eyelink.parse_eyelink(
         filepath,
     )
 
@@ -544,7 +544,7 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
     filepath = make_text_file(filename='sub.asc', body=metadata)
 
     with pytest.warns(Warning, match=expected_msg):
-        _, _, metadata, _ = _parsing_eyelink.parse_eyelink(
+        _, _, metadata, _ = parsing_eyelink.parse_eyelink(
             filepath,
         )
 
@@ -739,7 +739,7 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
 def test_val_cal_eyelink(make_text_file, metadata, expected_validation, expected_calibration):
     filepath = make_text_file(filename='sub.asc', body=metadata)
 
-    _, _, parsed_metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
+    _, _, parsed_metadata, _ = parsing_eyelink.parse_eyelink(filepath)
 
     assert parsed_metadata['calibrations'] == expected_calibration
     assert parsed_metadata['validations'] == expected_validation
@@ -749,25 +749,25 @@ def test_check_reccfg_key_warnings_and_behavior():
     """Ensure _check_reccfg_key emits expected warnings and returns correct values."""
     # No recording config -> should warn and return None
     with pytest.warns(UserWarning, match='No recording configuration found.'):
-        assert _parsing_eyelink._check_reccfg_key([], 'sampling_rate') is None
+        assert parsing_eyelink._check_reccfg_key([], 'sampling_rate') is None
 
     # Recording config exists but key missing -> silently return None
     rc = [{'timestamp': '1'}]
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter('always')
-        assert _parsing_eyelink._check_reccfg_key(rc, 'sampling_rate') is None
+        assert parsing_eyelink._check_reccfg_key(rc, 'sampling_rate') is None
         assert len(w) == 0
 
     # Inconsistent values -> should warn and return None
     rc = [{'sampling_rate': '1000'}, {'sampling_rate': '2000'}]
     with pytest.warns(UserWarning, match="Found inconsistent values for 'sampling_rate'"):
-        assert _parsing_eyelink._check_reccfg_key(rc, 'sampling_rate') is None
+        assert parsing_eyelink._check_reccfg_key(rc, 'sampling_rate') is None
 
     # Casting failure should return None silently (no warning)
     rc = [{'sampling_rate': 'not_a_number'}]
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter('always')
-        assert _parsing_eyelink._check_reccfg_key(rc, 'sampling_rate', float) is None
+        assert parsing_eyelink._check_reccfg_key(rc, 'sampling_rate', float) is None
         assert len(w) == 0
 
 
@@ -775,19 +775,19 @@ def test_check_samples_config_key_warnings_and_casting(make_example_file):
     """Ensure _check_samples_config_key emits expected warnings and casts values."""
     # No samples config -> should warn and return None
     with pytest.warns(UserWarning, match='No samples configuration found.'):
-        assert _parsing_eyelink._check_samples_config_key([], 'sampling_rate') is None
+        assert parsing_eyelink._check_samples_config_key([], 'sampling_rate') is None
 
     # Inconsistent values -> should warn and return None
     sc = [{'sampling_rate': '1000.00'}, {'sampling_rate': '2000.00'}]
     with pytest.warns(UserWarning, match="Found inconsistent values for 'sampling_rate'"):
-        assert _parsing_eyelink._check_samples_config_key(sc, 'sampling_rate') is None
+        assert parsing_eyelink._check_samples_config_key(sc, 'sampling_rate') is None
 
     # Consistent value should be returned and cast when astype provided
     sc = [{'sampling_rate': '1000.00'}]
-    assert _parsing_eyelink._check_samples_config_key(sc, 'sampling_rate', float) == 1000.0
+    assert parsing_eyelink._check_samples_config_key(sc, 'sampling_rate', float) == 1000.0
 
     example_asc_monocular_path = make_example_file('eyelink_monocular_example.asc')
-    _, _, metadata, _ = _parsing_eyelink.parse_eyelink(
+    _, _, metadata, _ = parsing_eyelink.parse_eyelink(
         example_asc_monocular_path,
     )
 
@@ -818,7 +818,7 @@ def test_parse_eyelink_datetime(make_text_file):
 
     filepath = make_text_file(filename='sub.asc', body=metadata)
 
-    _, _, parsed_metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
+    _, _, parsed_metadata, _ = parsing_eyelink.parse_eyelink(filepath)
 
     assert parsed_metadata['datetime'] == expected_datetime
 
@@ -1000,7 +1000,7 @@ def test_parse_eyelink_datetime(make_text_file):
 def test_parse_eyelink_mount_config(make_text_file, metadata, expected_mount_config):
     filepath = make_text_file(filename='sub.asc', body=metadata)
 
-    _, _, parsed_metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
+    _, _, parsed_metadata, _ = parsing_eyelink.parse_eyelink(filepath)
 
     assert parsed_metadata['mount_configuration'] == expected_mount_config
 
@@ -1028,7 +1028,7 @@ def test_parse_eyelink_encoding(tmp_path, bytestring, encoding, expected_text):
     filepath = tmp_path / 'sub.asc'
     filepath.write_bytes(bytestring)
 
-    _, _, parsed_metadata, _ = _parsing_eyelink.parse_eyelink(
+    _, _, parsed_metadata, _ = parsing_eyelink.parse_eyelink(
         filepath,
         metadata_patterns=[r'(?P<text>.+)'],
         encoding=encoding,
@@ -1077,7 +1077,7 @@ END	1408795 	SAMPLES	EVENTS	RES	 38.54	 31.12
 
     filepath = make_text_file(filename='sub_binoc.asc', body=asc_text)
 
-    gaze_df, event_df, metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
+    gaze_df, event_df, metadata, _ = parsing_eyelink.parse_eyelink(filepath)
 
     assert isinstance(gaze_df, pl.DataFrame)
 
@@ -1171,7 +1171,7 @@ def test_parse_eyelink_binocular_samples_config_after_calibration(make_text_file
 
     filepath = make_text_file(filename='sub_binoc_cal.asc', body=asc_text)
 
-    gaze_df, _, _, _ = _parsing_eyelink.parse_eyelink(filepath)
+    gaze_df, _, _, _ = parsing_eyelink.parse_eyelink(filepath)
 
     assert set(gaze_df.columns) == {
         'time', 'x_left_pix', 'y_left_pix', 'pupil_left',
@@ -1272,7 +1272,7 @@ def test_parse_eyelink_tracked_eye_change_promotes_to_binocular(make_text_file, 
     asc_text = _build_eye_change_asc(block_keys)
     filepath = make_text_file(filename='sub_eye_change.asc', body=asc_text)
 
-    gaze_df, _, metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
+    gaze_df, _, metadata, _ = parsing_eyelink.parse_eyelink(filepath)
 
     expected = {
         'time': [float(_eye_change_block_time(index)) for index in range(len(block_keys))],
@@ -1294,7 +1294,7 @@ def test_parse_eyelink_same_eye_in_two_blocks_stays_monocular(make_text_file):
     asc_text = _build_eye_change_asc(['left', 'left_again'])
     filepath = make_text_file(filename='sub_left_twice.asc', body=asc_text)
 
-    gaze_df, _, metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
+    gaze_df, _, metadata, _ = parsing_eyelink.parse_eyelink(filepath)
 
     expected = {
         'time': [1000.0, 2000.0],
@@ -1314,7 +1314,7 @@ def test_parse_eyelink_tracked_eye_change_with_constant_recorded_eye_warns(make_
     filepath = make_text_file(filename='sub_eye_change_reccfg_l.asc', body=asc_text)
 
     with pytest.warns(Warning, match=r'inconsistent: \[L, LR\]'):
-        _, _, metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
+        _, _, metadata, _ = parsing_eyelink.parse_eyelink(filepath)
 
     assert metadata['tracked_eye'] == 'LR'
     assert metadata['recorded_eye'] == 'L'
@@ -1326,7 +1326,7 @@ def test_parse_eyelink_tracked_eye_change_without_reccfg_warns(make_text_file):
     filepath = make_text_file(filename='sub_eye_change_no_reccfg.asc', body=asc_text)
 
     with pytest.warns(Warning, match='No recording configuration found.'):
-        _, _, metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
+        _, _, metadata, _ = parsing_eyelink.parse_eyelink(filepath)
 
     assert metadata['tracked_eye'] == 'LR'
     assert metadata['recorded_eye'] is None
@@ -1346,7 +1346,7 @@ def test_tracked_vs_recorded_eye_warning(make_text_file):
 
     # The parser maps RECCFG 'LR' -> 'LR' and SAMPLES 'RIGHT' -> 'R', so expect [LR, R]
     with pytest.warns(Warning, match=r'inconsistent: \[LR, R\]'):
-        _parsing_eyelink.parse_eyelink(filepath)
+        parsing_eyelink.parse_eyelink(filepath)
 
 
 @pytest.mark.filterwarnings('ignore:No metadata found.')
@@ -1366,7 +1366,7 @@ def test_sampling_rate_inconsistent_warning(make_text_file):
         Warning,
         match=r"inconsistent values for 'sampling_rate': \[1000\.0, 2000\.0\]",
     ):
-        _parsing_eyelink.parse_eyelink(filepath)
+        parsing_eyelink.parse_eyelink(filepath)
 
 
 @pytest.mark.parametrize(
@@ -1385,7 +1385,7 @@ def test_tracked_eye_mapping_from_samples(make_text_file, samples_line, expected
 
     filepath = make_text_file(filename='sub_tracked.asc', body=asc_text)
 
-    _, _, metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
+    _, _, metadata, _ = parsing_eyelink.parse_eyelink(filepath)
 
     assert metadata['tracked_eye'] == expected_tracked
 
@@ -1410,7 +1410,7 @@ def test_recording_config_missing_sampling_rate_key(monkeypatch, make_text_file)
             return DummyMatch() if 'RECCFG' in line else None
 
     # replace the RECORDING_CONFIG_REGEX with our dummy that returns dict without sampling_rate
-    monkeypatch.setattr(_parsing_eyelink, 'RECORDING_CONFIG_REGEX', DummyRegex())
+    monkeypatch.setattr(parsing_eyelink, 'RECORDING_CONFIG_REGEX', DummyRegex())
 
     asc_text = (
         'MSG\t2154555 RECCFG CR ??? 2 1 L\n'
@@ -1426,7 +1426,7 @@ def test_recording_config_missing_sampling_rate_key(monkeypatch, make_text_file)
     # Now the parser should warn (e.g. missing samples or sampling rate) and
     # set data-loss metrics to None.
     with pytest.warns(Warning):
-        _, _, _, _ = _parsing_eyelink.parse_eyelink(filepath)
+        _, _, _, _ = parsing_eyelink.parse_eyelink(filepath)
 
 
 def test_parse_eyelink_stop_recording_preserves_duration_metadata(make_text_file):
@@ -1445,7 +1445,7 @@ def test_parse_eyelink_stop_recording_preserves_duration_metadata(make_text_file
 
     # parse_eyelink will emit a metadata warning for this minimal file; capture it
     with pytest.warns(UserWarning):
-        _, _, metadata, _ = _parsing_eyelink.parse_eyelink(str(p))
+        _, _, metadata, _ = parsing_eyelink.parse_eyelink(str(p))
 
     assert metadata['total_recording_duration_ms'] == 1000.0
 
@@ -1453,7 +1453,7 @@ def test_parse_eyelink_stop_recording_preserves_duration_metadata(make_text_file
 def test_check_reccfg_key_warns_on_empty_config() -> None:
     # Empty recording_config should produce a warning and return None
     with pytest.warns(UserWarning):
-        assert _parsing_eyelink._check_reccfg_key([], 'sampling_rate') is None
+        assert parsing_eyelink._check_reccfg_key([], 'sampling_rate') is None
 
 
 def test_check_reccfg_key_handles_unorderable_values_with_warning() -> None:
@@ -1468,7 +1468,7 @@ def test_check_reccfg_key_handles_unorderable_values_with_warning() -> None:
     ]
 
     with pytest.warns(UserWarning) as w:
-        result = _parsing_eyelink._check_reccfg_key(recording_config, 'sampling_rate')
+        result = parsing_eyelink._check_reccfg_key(recording_config, 'sampling_rate')
 
     # Function should return None when inconsistent values are found
     assert result is None
@@ -1526,7 +1526,7 @@ def test_unmatched_event_end_uses_current_context_and_warns(
 
     # Expect a warning about missing start marker
     with pytest.warns(UserWarning) as warn:
-        _, event_df, _, _ = _parsing_eyelink.parse_eyelink(filepath, patterns=patterns)
+        _, event_df, _, _ = parsing_eyelink.parse_eyelink(filepath, patterns=patterns)
 
     assert len(event_df) == 1
     assert event_df['name'][0] == f'{event_name}_eyelink'
@@ -1575,7 +1575,7 @@ def test_unmatched_blink_no_patterns_warns_and_records_param(make_text_file, eye
     )
 
     with pytest.warns(UserWarning) as warn:
-        _, event_df, _, _ = _parsing_eyelink.parse_eyelink(filepath)
+        _, event_df, _, _ = parsing_eyelink.parse_eyelink(filepath)
 
     assert len(event_df) == 1
     assert event_df['name'][0] == 'blink_eyelink'
@@ -1618,7 +1618,7 @@ def test_reccfg_with_optional_fields_parses(
     filepath = make_text_file(filename='sub_reccfg.asc', body=asc_text)
 
     # Should parse without any warning about missing recording configuration
-    _, _, metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
+    _, _, metadata, _ = parsing_eyelink.parse_eyelink(filepath)
 
     # Ensure we captured a recording_config in metadata
     rec_cfg_list = metadata.get('recording_config', [])
@@ -1653,7 +1653,7 @@ def test_gaze_coords_without_reccfg_warns_and_skips(make_text_file):
         UserWarning,
         match='GAZE_COORDS encountered before any RECCFG|No recording configuration found',
     ):
-        _, _, metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
+        _, _, metadata, _ = parsing_eyelink.parse_eyelink(filepath)
 
     assert metadata.get('recording_config', []) == []
 
@@ -1690,7 +1690,7 @@ END 400 SAMPLES EVENTS RES 0 0
     ]
 
     with pytest.warns(UserWarning, match='Missing start marker before end for event'):
-        _, event_df, _, _ = _parsing_eyelink.parse_eyelink(filepath, patterns=patterns)
+        _, event_df, _, _ = parsing_eyelink.parse_eyelink(filepath, patterns=patterns)
 
     # expect 2 finished events:
     # 1. The orphaned EFIX (onset 120, offset 150)
@@ -1734,7 +1734,7 @@ END 400 SAMPLES EVENTS RES 0 0
         r'start_trial_(?P<trial>\d+)',
     ]
 
-    _, event_df, _, _ = _parsing_eyelink.parse_eyelink(filepath, patterns=patterns)
+    _, event_df, _, _ = parsing_eyelink.parse_eyelink(filepath, patterns=patterns)
 
     assert len(event_df) == 1
     # 1. SFIX L 200 matches. current_event_additional is set to {trial: None}
@@ -1756,7 +1756,7 @@ END 400 SAMPLES EVENTS RES 0 0
     ],
 )
 def test_parse_eyelink_event_start_helper(line, expected):
-    assert _parsing_eyelink.parse_eyelink_event_start(line) == expected
+    assert parsing_eyelink.parse_eyelink_event_start(line) == expected
 
 
 @pytest.mark.parametrize(
@@ -1772,7 +1772,7 @@ def test_parse_eyelink_event_start_helper(line, expected):
     ],
 )
 def test_parse_eyelink_event_end_helper(line, expected):
-    assert _parsing_eyelink.parse_eyelink_event_end(line) == expected
+    assert parsing_eyelink.parse_eyelink_event_end(line) == expected
 
 
 @pytest.mark.parametrize(
@@ -1791,11 +1791,11 @@ def test_check_samples_config_key_helper(configs, key, astype, expected_value, e
     """Test EyeLink samples config key check."""
     if expected_warning:
         with pytest.warns(UserWarning, match=expected_warning):
-            assert _parsing_eyelink._check_samples_config_key(
+            assert parsing_eyelink._check_samples_config_key(
                 configs, key, astype=astype,
             ) == expected_value
     else:
-        assert _parsing_eyelink._check_samples_config_key(
+        assert parsing_eyelink._check_samples_config_key(
             configs, key, astype=astype,
         ) == expected_value
 
@@ -1820,15 +1820,15 @@ def test_check_reccfg_key_helper(configs, key, astype, expected_value, expected_
     """Test EyeLink recording config key check."""
     if expected_warning:
         with pytest.warns(UserWarning, match=expected_warning):
-            assert _parsing_eyelink._check_reccfg_key(configs, key, astype=astype) == expected_value
+            assert parsing_eyelink._check_reccfg_key(configs, key, astype=astype) == expected_value
     else:
-        assert _parsing_eyelink._check_reccfg_key(configs, key, astype=astype) == expected_value
+        assert parsing_eyelink._check_reccfg_key(configs, key, astype=astype) == expected_value
 
 
 def test_parse_tracked_eye_layout_helper_raises_on_unknown_token():
     """An eye token outside the SAMPLES regex alternatives raises instead of mislabelling."""
     with pytest.raises(ValueError, match="Unknown tracked-eye token 'BOTH'"):
-        _parsing_eyelink._parse_tracked_eye_layout('BOTH')
+        parsing_eyelink._parse_tracked_eye_layout('BOTH')
 
 
 @pytest.mark.filterwarnings('ignore:No metadata found.')
@@ -1841,7 +1841,7 @@ END 20 SAMPLES EVENTS RES 0 0
     filepath = make_text_file('unmatched_stop.asc', body=asc_content)
 
     with pytest.warns(UserWarning, match='END recording message without associated START'):
-        _parsing_eyelink.parse_eyelink(filepath)
+        parsing_eyelink.parse_eyelink(filepath)
 
 
 @pytest.mark.filterwarnings('ignore:No metadata found.')
@@ -1856,7 +1856,7 @@ END 30 SAMPLES EVENTS RES 0 0
     filepath = make_text_file('second_unmatched_stop.asc', body=asc_content)
 
     with pytest.warns(UserWarning, match='END recording message without associated START'):
-        _parsing_eyelink.parse_eyelink(filepath)
+        parsing_eyelink.parse_eyelink(filepath)
 
 
 @pytest.mark.parametrize(
@@ -1968,7 +1968,7 @@ def test_parse_eyelink_resolution_handling(
 ):
     """Test EyeLink GAZE_COORDS resolution handling (increments for odd values)."""
     filepath = make_text_file('res_test.asc', body=asc_body)
-    _, _, metadata, _ = _parsing_eyelink.parse_eyelink(
+    _, _, metadata, _ = parsing_eyelink.parse_eyelink(
         filepath, extend_resolution=extend_resolution,
     )
     res = metadata['recording_config'][0]['resolution']
@@ -1994,7 +1994,7 @@ END 300 SAMPLES EVENTS RES 0 0
 
     # calling without patterns -> additional_columns will be an empty set
     with pytest.warns(UserWarning, match='Missing start marker'):
-        _, event_df, _, _ = _parsing_eyelink.parse_eyelink(filepath, patterns=None)
+        _, event_df, _, _ = parsing_eyelink.parse_eyelink(filepath, patterns=None)
 
     assert len(event_df) == 2
     assert 'trial' not in event_df.columns
@@ -2029,7 +2029,7 @@ def test_parse_eyelink_warnings(make_text_file, asc_content, expected_warning_ma
     """Test various EyeLink parser warnings."""
     filepath = make_text_file('warnings_test.asc', body=asc_content)
     with pytest.warns(UserWarning, match=expected_warning_match):
-        _parsing_eyelink.parse_eyelink(filepath)
+        parsing_eyelink.parse_eyelink(filepath)
 
 
 @pytest.mark.parametrize(
@@ -2054,7 +2054,7 @@ MSG 30 MESSAGE_B
 MSG 40 OTHER
 """
     filepath = make_text_file('msg_filter.asc', body=asc_content)
-    _, _, _, msg_df = _parsing_eyelink.parse_eyelink(filepath, messages=messages_param)
+    _, _, _, msg_df = parsing_eyelink.parse_eyelink(filepath, messages=messages_param)
 
     assert len(msg_df) == len(expected_result)
     for i, content in enumerate(expected_result):
@@ -2078,7 +2078,7 @@ def test_parse_eyelink_messages_parameter_validation(
     filepath = make_text_file('msg_val.asc', body=asc_content)
 
     with pytest.raises(ValueError, match=expected_error_match):
-        _parsing_eyelink.parse_eyelink(filepath, messages=messages_param)
+        parsing_eyelink.parse_eyelink(filepath, messages=messages_param)
 
 
 @pytest.mark.parametrize(

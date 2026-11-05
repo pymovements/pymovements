@@ -31,7 +31,7 @@ from typing import Literal
 
 import polars
 
-from pymovements._utils._html import repr_html
+from pymovements._utils.html import repr_html
 from pymovements.dataset._bids_dataset import _cast_columns_to_metadata_format
 from pymovements.dataset._bids_dataset import _check_na_conformity
 from pymovements.dataset._bids_dataset import _default_bids_read_csv_kwargs

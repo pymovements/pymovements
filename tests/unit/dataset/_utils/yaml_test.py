@@ -21,7 +21,7 @@
 import pytest
 import yaml
 
-from pymovements.dataset._utils._yaml import type_constructor
+from pymovements.dataset._utils.yaml import type_constructor
 
 
 def test_type_constructor_assertion_error(make_text_file):

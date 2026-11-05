@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pymovements._utils._html import repr_html
+from pymovements._utils.html import repr_html
 
 
 @repr_html()

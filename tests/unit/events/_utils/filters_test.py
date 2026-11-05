@@ -23,8 +23,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pymovements.events._utils._filters import events_split_nans
-from pymovements.events._utils._filters import filter_candidates_remove_nans
+from pymovements.events._utils.filters import events_split_nans
+from pymovements.events._utils.filters import filter_candidates_remove_nans
 
 
 @pytest.mark.parametrize(

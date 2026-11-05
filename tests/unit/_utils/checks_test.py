@@ -17,11 +17,11 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test pymovements _checks."""
+"""Test pymovements checks."""
 import numpy as np
 import pytest
 
-from pymovements._utils import _checks
+from pymovements._utils import checks
 
 
 @pytest.mark.parametrize(
@@ -53,10 +53,10 @@ from pymovements._utils import _checks
 def test_check_no_zeros_raises_error(variable, expected_error, expected_err_msg):
     """Test that check_no_zeros() only raises an Exception if there are zeros in the input array."""
     if expected_error is None:
-        _checks.check_no_zeros(variable)
+        checks.check_no_zeros(variable)
     else:
         with pytest.raises(expected_error) as excinfo:
-            _checks.check_no_zeros(variable)
+            checks.check_no_zeros(variable)
         msg, = excinfo.value.args
         assert msg == expected_err_msg
 
@@ -139,24 +139,24 @@ def test_check_shapes_raises_error(kwargs, expected_error, expected_err_msg):
     positions and velocities are not equal.
     """
     if expected_error is None:
-        _checks.check_shapes(**kwargs)
+        checks.check_shapes(**kwargs)
     else:
         with pytest.raises(expected_error) as excinfo:
-            _checks.check_shapes(**kwargs)
+            checks.check_shapes(**kwargs)
         msg, = excinfo.value.args
         assert msg == expected_err_msg
 
 
 def test_check_two_kwargs_with_three_kwargs_raises_value_error() -> None:
     with pytest.raises(ValueError):
-        _checks.check_two_kwargs(a=1, b=2, c=3)
+        checks.check_two_kwargs(a=1, b=2, c=3)
 
 
 def test_check_is_not_none_raises_type_error() -> None:
     with pytest.raises(TypeError):
-        _checks.check_is_not_none(a=1, b=None)
+        checks.check_is_not_none(a=1, b=None)
 
 
 def test_check_is_scalar_raises_type_error() -> None:
     with pytest.raises(TypeError):
-        _checks.check_is_scalar(a=1, b=None)
+        checks.check_is_scalar(a=1, b=None)

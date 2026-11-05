@@ -36,14 +36,14 @@ import polars
 import yaml
 
 from pymovements import transforms
-from pymovements._utils._column_nesting import get_nested_columns
-from pymovements._utils._column_nesting import unnest_list_columns
-from pymovements._utils._html import repr_html
-from pymovements._utils._nulls import row_is_null
-from pymovements._utils._sources import merge_sources
-from pymovements._utils._time import duration_to_ms
-from pymovements._utils._time import durations_to_ms
-from pymovements._utils._time import time_column_to_duration_us
+from pymovements._utils.column_nesting import get_nested_columns
+from pymovements._utils.column_nesting import unnest_list_columns
+from pymovements._utils.html import repr_html
+from pymovements._utils.nulls import row_is_null
+from pymovements._utils.sources import merge_sources
+from pymovements._utils.time import duration_to_ms
+from pymovements._utils.time import durations_to_ms
+from pymovements._utils.time import time_column_to_duration_us
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
 from pymovements.gaze.experiment import Experiment
