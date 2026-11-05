@@ -8,7 +8,7 @@ Add "!" after prefix and scope for a breaking change, as in "feat!: ..." or "fea
 <!--
 If it applies: open the body with a "## 💥 Breaking Change" and/or a "## ⚠️ Deprecation" section.
 Definitions:
-https://pymovements.readthedocs.io/en/latest/contributing/contributing-code.html#creating-pull-requests
+https://pymovements.readthedocs.io/en/latest/contributing/contributing-code.html#pull-request-body
 -->
 
 ## Description
@@ -26,7 +26,7 @@ https://pymovements.readthedocs.io/en/latest/contributing/contributing-code.html
 <!--
 If it applies: add "## 🚨 Merge Danger" and "## Dependencies" after Testing, in that order.
 Definitions:
-https://pymovements.readthedocs.io/en/latest/contributing/contributing-code.html#creating-pull-requests
+https://pymovements.readthedocs.io/en/latest/contributing/contributing-code.html#pull-request-body
 -->
 
 ## Checklist

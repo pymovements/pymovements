@@ -312,6 +312,8 @@ Add ``!`` after prefix and scope for a breaking change, as in ``feat!: ...`` or
 ``feat(events)!: ...``. This sets the ``breaking`` label, lists the pull request under
 💥 Breaking Changes and bumps the minor version of the next release.
 
+.. _pull-request-body:
+
 Body
 """"
 
