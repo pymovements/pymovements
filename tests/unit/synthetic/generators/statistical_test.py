@@ -29,7 +29,7 @@ from polars.testing import assert_frame_equal
 import pymovements as pm
 from pymovements import Events
 from pymovements.synthetic import Range
-from pymovements.synthetic import SampleGeneratorLibrary
+from pymovements.synthetic import SampleGeneratorRegistry
 from pymovements.synthetic import StatisticalSampleGenerator
 
 pytestmark = pytest.mark.filterwarnings(
@@ -461,7 +461,7 @@ def test_generates_from_bridged_fixations(fixations):
 
 
 def test_is_registered_by_name(contiguous_events):
-    assert SampleGeneratorLibrary.get('statistical') is StatisticalSampleGenerator
+    assert SampleGeneratorRegistry.get('statistical') is StatisticalSampleGenerator
 
     gaze = pm.synthetic.generate_samples(
         'statistical', events=contiguous_events, sampling_rate=1000.0, seed=42,
