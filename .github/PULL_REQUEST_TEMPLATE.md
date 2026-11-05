@@ -1,9 +1,14 @@
 <!--
 Title: start with a type prefix and a colon, as in "fix: ..." or "feat: ...".
-Prefixes: feat, fix, docs, dataset, depr, perf, build, chore, ci, refactor, test. Maintainers
-also use release.
+Prefixes: feat, fix, docs, dataset, depr, perf, build, chore, ci, refactor, test, release.
 A scope in parentheses is optional, as in "feat(events): ...".
 Add "!" after prefix and scope for a breaking change, as in "feat!: ..." or "feat(events)!: ...".
+-->
+
+<!--
+If it applies: open the body with a "## 💥 Breaking Change" and/or a "## ⚠️ Deprecation" section.
+Definitions:
+https://pymovements.readthedocs.io/en/latest/contributing/contributing-code.html#creating-pull-requests
 -->
 
 ## Description
@@ -19,8 +24,8 @@ Add "!" after prefix and scope for a breaking change, as in "feat!: ..." or "fea
 <!-- How did you verify the change? Name the tests you added or ran and the checks you made. -->
 
 <!--
-If it applies: open the body with a "⚠️ Deprecation" and a "💥 Breaking Change" section, and
-add "🚨 Merge Danger" and "Dependencies" after Testing, each pair in that order. Definitions:
+If it applies: add "## 🚨 Merge Danger" and "## Dependencies" after Testing, in that order.
+Definitions:
 https://pymovements.readthedocs.io/en/latest/contributing/contributing-code.html#creating-pull-requests
 -->
 
