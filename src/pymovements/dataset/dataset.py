@@ -52,6 +52,7 @@ from pymovements.gaze.quality import compute_measures
 from pymovements.gaze.quality import DataQualityReport
 from pymovements.gaze.quality import ValidationError
 from pymovements.gaze.validation import _ALL_CHECKS
+from pymovements.measure.reading import compute_reading_measures
 from pymovements.measure.reading import ReadingMeasures
 from pymovements.stimulus import text
 from pymovements.stimulus.image import ImageStimulus
@@ -1236,15 +1237,34 @@ class Dataset:
             )
 
             if annotate_events:
+                # map_to_aois keeps columns the events already have, so a previous mapping
+                # would be reused. The index columns the measures consume are dropped first,
+                # like Events.measure_reading does on its working copy.
+                events.frame = events.frame.drop(
+                    [c for c in (word_index_column, 'char_idx') if c in events.frame.columns],
+                )
                 events.map_to_aois(aoi_text_stimulus)
-
-            reading_measures = events.measure_reading(
-                aoi_text_stimulus,
-                group_columns=group_columns,
-                word_index_column=word_index_column,
-                word_column=word_column,
-                event_name=event_name,
-            )
+                # The measures are computed from the in-place annotation, a second mapping on
+                # an internal copy would only repeat it.
+                reading_measures = ReadingMeasures(
+                    compute_reading_measures(
+                        events.frame,
+                        aoi_text_stimulus.aois,
+                        word_index_column=word_index_column,
+                        word_column=word_column,
+                        event_name=event_name,
+                        group_columns=group_columns,
+                    ),
+                    metadata=merge_sources(events.metadata, aoi_text_stimulus.metadata),
+                )
+            else:
+                reading_measures = events.measure_reading(
+                    aoi_text_stimulus,
+                    group_columns=group_columns,
+                    word_index_column=word_index_column,
+                    word_column=word_column,
+                    event_name=event_name,
+                )
 
             # The reading measures are derived from the events and their AOI stimulus files.
             # AOI files below the dataset root are recorded relative to it, like all other

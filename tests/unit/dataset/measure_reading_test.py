@@ -252,6 +252,37 @@ def test_measure_reading_annotate_events_false_keeps_events(dummy_dataset, make_
     assert untouched.metadata == annotated.metadata
 
 
+def test_measure_reading_annotate_events_true_remaps_stale_columns(
+        dummy_dataset, make_example_file,
+):
+    """A repeated in-place annotation maps the events again instead of reusing stale columns."""
+    aoi_path = make_example_file('potec_word_aoi_b0.tsv')
+    aoi_dict = {'b0': aoi_path}
+    events = dummy_dataset.gaze[0].events
+
+    first = dummy_dataset.measure_reading(
+        aoi_dict,
+        word_index_column='aoi',
+        word_column='character',
+        annotate_events=True,
+    )
+    # Invalidate the first mapping. map_to_aois skips columns the frame already has, so
+    # without the remap the measures would be computed from these nulls.
+    events.frame = events.frame.with_columns(
+        pl.lit(None).cast(events.frame.schema['aoi']).alias('aoi'),
+    )
+
+    second = dummy_dataset.measure_reading(
+        aoi_dict,
+        word_index_column='aoi',
+        word_column='character',
+        annotate_events=True,
+    )
+
+    assert second.frame.equals(first.frame)
+    assert events.frame['aoi'].null_count() < len(events.frame)
+
+
 def test_compute_reading_measures_empty_dataset(tmp_path):
     definition = DatasetDefinition(name='dummy')
     dataset = Dataset(definition, path=tmp_path)
