@@ -715,34 +715,17 @@ def test_from_asc_sets_public_cal_interfaces(filename, expected_grade, make_exam
     assert gaze.calibrations['grade'].to_list() == expected_grade
 
 
-@pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
-@pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
-@pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
-@pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
-@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
-@pytest.mark.filterwarnings('ignore:.*No sampling rate found.*:UserWarning')
-@pytest.mark.filterwarnings('ignore:.*No tracked eye information found.*:UserWarning')
-@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
-@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
-@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
-def test_from_asc_parses_calibration_grade_failed(make_text_file):
-    body = (
-        'MSG	524874 RECCFG CR 1000 2 1 L\n'
-        'MSG	524874 GAZE_COORDS 0 0 1919 1079\n'
-        'MSG	524874 !CAL\n'
-        '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
-        'MSG	524879 !CAL CALIBRATION HV9 L LEFT    FAILED\n'
-    )
-    filepath = make_text_file(filename='failed_cal.asc', body=body)
-
-    gaze = from_asc(filepath)
-
-    assert gaze.calibrations['grade'].to_list() == ['FAILED']
-
-
 @pytest.mark.parametrize(
     ('body', 'expected_eye', 'expected_grade'),
     [
+        pytest.param(
+            'MSG	524874 !CAL\n'
+            '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+            'MSG	524879 !CAL CALIBRATION HV9 L LEFT    FAILED\n',
+            ['left'],
+            ['FAILED'],
+            id='header_match',
+        ),
         pytest.param(
             'MSG	524874 !CAL\n'
             '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
