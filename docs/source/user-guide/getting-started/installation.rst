@@ -80,8 +80,9 @@ Install them through an extra:
       - Needed for
     * - ``datasets``
       - ``pyreadr``, ``fastexcel``
-      - Loading R data files (``.rda``) and Excel files (``.xlsx``),
-        as used by the MECO and ChineseReading datasets.
+      - Loading R data files (``.rda``), as used by :ref:`MECOL1W1`, :ref:`MECOL1W2`,
+        :ref:`MECOL2W1` and :ref:`MECOL2W2`, and Excel files (``.xlsx``),
+        as used by :ref:`ChineseReading`.
     * - ``all``
       - all of the above
       - Every optional feature.
