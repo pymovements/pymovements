@@ -852,6 +852,29 @@ def test_map_to_aois_non_numeric_list_without_structure_gets_no_match(
     assert events.frame.get_column('label').to_list() == [None]
 
 
+@pytest.mark.parametrize('preserve_structure', [True, False])
+def test_map_to_aois_null_component_falls_back_to_location_list(
+    simple_stimulus: TextStimulus,
+    preserve_structure: bool,
+) -> None:
+    """A row with a null component coordinate takes both coordinates from the list."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'fixation', 'fixation'],
+            'onset': [0, 1, 2],
+            'offset': [1, 2, 3],
+            'location_x': [5.0, None, 5.0],
+            'location_y': [5.0, 5.0, None],
+            'location': [[50.0, 50.0], [5.0, 5.0], [5.0, 5.0]],
+        },
+    )
+    events = Events(data=df)
+
+    events.map_to_aois(simple_stimulus, preserve_structure=preserve_structure, verbose=False)
+
+    assert events.frame.get_column('label').to_list() == ['A', 'A', 'A']
+
+
 def test_map_to_aois_missing_coordinate_columns_get_no_match(
     simple_stimulus: TextStimulus,
 ) -> None:
