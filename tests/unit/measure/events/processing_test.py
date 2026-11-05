@@ -1185,6 +1185,53 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             ),
             id='overlapping_events_without_identifiers',
         ),
+
+        pytest.param(
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1, 1], 'name': ['A', 'B', 'C'],
+                    'onset': [0, 5, 1000], 'offset': [10, 15, 1010],
+                },
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
+            ),
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(21),
+                    'time': np.arange(21),
+                    'position': np.column_stack([np.arange(21), np.arange(21)]),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'position': pl.List(pl.Float64),
+                },
+            ),
+            {'measures': ['location', 'dispersion', 'disposition']},
+            {'identifiers': 'subject_id'},
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1, 1],
+                    'name': ['A', 'B', 'C'],
+                    'onset': [0, 5, 1000],
+                    'offset': [10, 15, 1010],
+                    'location': [[5.0, 5.0], [10.0, 10.0], None],
+                    'dispersion': [20.0, 20.0, None],
+                    'disposition': [sqrt(200), sqrt(200), None],
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'name': pl.Utf8,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'location': pl.List(pl.Float64),
+                    'dispersion': pl.Float64,
+                    'disposition': pl.Float64,
+                },
+            ),
+            id='overlapping_events_and_event_without_samples',
+        ),
     ],
 )
 def test_event_samples_processor_process_correct_result(
