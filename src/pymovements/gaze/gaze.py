@@ -1431,34 +1431,27 @@ class Gaze:
                 )
 
             # Only detectors that accept an ``events`` argument look at previously detected
-            # events. For all others the per-trial events selection can be skipped, and an empty
-            # events frame can be shared across trials instead of being filtered once per trial.
+            # events. For these, one partition of the events frame serves every trial, and
+            # trials without events share one empty Events.
             needs_events = 'events' in method_args
-            shared_empty_events = (
-                Events(self.events.frame)
-                if needs_events and self.events.frame.height == 0
-                else None
+            events_by_trial = (
+                self.events.frame.partition_by(
+                    self.trial_columns, maintain_order=True, include_key=True, as_dict=True,
+                )
+                if needs_events
+                else {}
             )
+            empty_events = Events(self.events.frame.clear()) if needs_events else self.events
 
             new_events_grouped: list[polars.DataFrame] = []
 
             for group_identifier, group_gaze in grouped_samples.items():
                 if not needs_events:
                     group_events = self.events
-                elif shared_empty_events is not None:
-                    group_events = shared_empty_events
+                elif group_identifier in events_by_trial:
+                    group_events = Events(events_by_trial[group_identifier])
                 else:
-                    # Create filter expression for selecting respective group rows.
-                    group_filter_expression = polars.col(
-                        self.trial_columns[0],
-                    ) == group_identifier[0]
-                    for name, value in zip(self.trial_columns[1:], group_identifier[1:]):
-                        group_filter_expression = group_filter_expression & (
-                            polars.col(name) == value
-                        )
-
-                    # Select group events.
-                    group_events = Events(self.events.frame.filter(group_filter_expression))
+                    group_events = empty_events
 
                 method_kwargs = self._fill_event_detection_kwargs(
                     method,
