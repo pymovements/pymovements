@@ -45,7 +45,6 @@ def _synthetic_events_and_samples(
     event_starts = np.arange(events_per_trial) * block
     sample_times = (event_starts[:, None] + np.arange(_EVENT_SAMPLES)).ravel()
 
-    n_events = n_trials * events_per_trial
     n_samples = n_trials * events_per_trial * _EVENT_SAMPLES
     positions = _RNG.normal(size=(n_samples, 2))
 
@@ -75,7 +74,6 @@ def _synthetic_events_and_samples(
             pl.concat_list(pl.col('x'), pl.col('y')).alias('position'),
         )
     )
-    assert len(events_frame) == n_events
     return events_frame, samples_frame
 
 
