@@ -27,6 +27,7 @@ track the cost of the vectorized implementation on synthetic 1 kHz recordings.
 """
 import numpy as np
 import polars as pl
+import pytest
 
 from pymovements.measure.events import EventSamplesProcessor
 
@@ -77,9 +78,23 @@ def _synthetic_events_and_samples(
     return events_frame, samples_frame
 
 
-def test_event_properties_benchmark(benchmark):
-    """Benchmark location and dispersion over 600k samples and 2.4k events."""
-    events, samples = _synthetic_events_and_samples(n_trials=12, events_per_trial=200)
+@pytest.mark.parametrize('events_per_trial', [100, 400])
+@pytest.mark.parametrize('overlapping', [False, True])
+def test_event_properties_benchmark(benchmark, events_per_trial, overlapping):
+    """Benchmark location and dispersion over 12 trials of 1 kHz samples.
+
+    Two sizes show the scaling in the number of events. The overlapping variant adds a copy of
+    every event under a second name with its onset two samples later, which exercises the range
+    assignment path instead of the cheaper asof path.
+    """
+    events, samples = _synthetic_events_and_samples(
+        n_trials=12, events_per_trial=events_per_trial,
+    )
+    if overlapping:
+        events = pl.concat([
+            events,
+            events.with_columns(pl.lit('fixation.ivt').alias('name'), pl.col('onset') + 2),
+        ])
     processor = EventSamplesProcessor(['location', 'dispersion'])
 
     benchmark.pedantic(
