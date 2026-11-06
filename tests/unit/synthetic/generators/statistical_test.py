@@ -745,6 +745,24 @@ def test_run_is_replayed_from_its_record(contiguous_events):
             id='non_positive_profile_sampling_rate',
         ),
         pytest.param(
+            {'profile_sampling_rate': math.inf},
+            ValueError,
+            ('profile_sampling_rate', 'finite', 'inf'),
+            id='infinite_profile_sampling_rate',
+        ),
+        pytest.param(
+            {'saccade_peak_velocity': math.nan},
+            ValueError,
+            ('saccade_peak_velocity', 'finite', 'nan'),
+            id='nan_saccade_peak_velocity',
+        ),
+        pytest.param(
+            {'fixation_consistency': math.inf},
+            ValueError,
+            ('fixation_consistency', 'finite', 'inf'),
+            id='infinite_fixation_consistency',
+        ),
+        pytest.param(
             {'saccade_peak_velocity': 'fast'},
             TypeError,
             ('range', 'str', 'fast'),

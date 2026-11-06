@@ -27,9 +27,9 @@ from typing import Any
 
 import numpy as np
 
+from pymovements.synthetic._utils import check_finite
 from pymovements.synthetic._utils import check_name
 from pymovements.synthetic._utils import check_not_negative
-from pymovements.synthetic._utils import check_number
 
 
 @dataclasses.dataclass(frozen=True)
@@ -59,8 +59,9 @@ class Range:
     TypeError
         If a bound or the standard deviation is not a number.
     ValueError
-        If the range is inverted, the distribution is unknown, or the standard deviation is
-        negative or given for a uniform range.
+        If a bound or the standard deviation is not finite, the range is inverted, the
+        distribution is unknown, or the standard deviation is negative or given for a uniform
+        range.
 
     Examples
     --------
@@ -80,8 +81,8 @@ class Range:
 
     def __post_init__(self) -> None:
         """Validate the range and cast its numbers to float."""
-        object.__setattr__(self, 'minimum', check_number(self.minimum, 'minimum'))
-        object.__setattr__(self, 'maximum', check_number(self.maximum, 'maximum'))
+        object.__setattr__(self, 'minimum', check_finite(self.minimum, 'minimum'))
+        object.__setattr__(self, 'maximum', check_finite(self.maximum, 'maximum'))
 
         if self.minimum > self.maximum:
             raise ValueError(
@@ -91,6 +92,7 @@ class Range:
         check_name(self.distribution, 'distribution', ('normal', 'uniform'))
 
         if self.std is not None:
+            check_finite(self.std, 'std')
             object.__setattr__(self, 'std', check_not_negative(self.std, 'std'))
 
             if self.distribution != 'normal':

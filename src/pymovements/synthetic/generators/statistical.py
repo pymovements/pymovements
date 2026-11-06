@@ -174,7 +174,11 @@ class StatisticalSampleGenerator(SampleGenerator):
 
         for field in dataclasses.fields(self):
             if field.type == 'RangeLike':
-                value = _range(getattr(self, field.name))
+                try:
+                    value = _range(getattr(self, field.name))
+                except ValueError as error:
+                    raise ValueError(f'{field.name}: {error}') from error
+
                 if field.name != 'noise_velocity' and value.minimum < 0:
                     raise ValueError(
                         f'{field.name} must not be negative but has a minimum of: '
