@@ -189,7 +189,8 @@ class GeometricalSampleGenerator(SampleGenerator):
         ValueError
             If the events are empty, overlap, all have a duration of zero, contain a null or
             negative duration, an event type other than fixations and saccades, or a fixation
-            without a usable location, or if no sample falls inside a fixation.
+            without a usable location, if a trial has no fixation, or if no sample falls inside
+            a fixation.
         """
         if not isinstance(events, Events):
             raise TypeError(
@@ -282,6 +283,12 @@ class GeometricalSampleGenerator(SampleGenerator):
         times = sample_times(onsets[0], ends[-1], self.sampling_rate)
 
         is_fixation = (trial['name'] == 'fixation').to_numpy()
+        if not is_fixation.any():
+            raise ValueError(
+                f"generator '{self.name}': the trial starting at {onsets[0]} ms has no fixation "
+                'of a non-zero duration, so there is no location to follow',
+            )
+
         locations = self._locations(trial.filter(is_fixation))
 
         # Rounding can put a sample just below the onset or end it falls on, so events are compared
@@ -299,12 +306,6 @@ class GeometricalSampleGenerator(SampleGenerator):
                 f"generator '{self.name}': no sample falls inside the fixation at "
                 f'{onsets[is_fixation][unsampled[0]]} ms at {self.sampling_rate} Hz, so its '
                 'location would be lost; raise the sampling rate or drop the fixation',
-            )
-
-        if not held.any():
-            raise ValueError(
-                f"generator '{self.name}': no sample of a trial falls inside a fixation at "
-                f'{self.sampling_rate} Hz, so there is no location to start from',
             )
 
         positions = self._interpolate(times, locations[fixation], held)
