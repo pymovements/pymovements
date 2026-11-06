@@ -64,7 +64,7 @@ class StatisticalSampleGenerator(SampleGenerator):
     or decreasing pursuit. Each sample is then the mean of the profile from its own time up to the
     next sample, and measurement noise is added last. Events with trial columns are generated
     trial by trial. An event with a duration of zero gets no samples and stays in the attached
-    events, while an event with a null duration is rejected, as its end is unknown.
+    events, while a null duration is rejected, as the end is unknown, and so is a negative one.
 
     Each random quantity is a :py:class:`~pymovements.synthetic.Range`, given as a range, a
     ``(minimum, maximum)`` pair for a uniform range, or a single value. Durations are in
@@ -292,7 +292,7 @@ class StatisticalSampleGenerator(SampleGenerator):
             If ``events`` is not an ``Events`` object.
         ValueError
             If the events have gaps, overlap, are empty, all have a duration of zero, contain
-            a null duration or an event type without a profile.
+            a null or negative duration, or an event type without a profile.
         """
         if not isinstance(events, Events):
             raise TypeError(
@@ -315,6 +315,16 @@ class StatisticalSampleGenerator(SampleGenerator):
             raise ValueError(
                 f"generator '{self.name}': a {first['name']} at {first['onset']} ms has no known "
                 'duration, so the time after it cannot be generated; set its duration or drop it',
+            )
+
+        negative = events.frame.filter(pl.col('duration') < pl.duration(microseconds=0))
+        if negative.height:
+            first = negative.with_columns(
+                pl.col('onset', 'duration').dt.total_milliseconds(fractional=True),
+            ).row(0, named=True)
+            raise ValueError(
+                f"generator '{self.name}': a {first['name']} at {first['onset']} ms has a "
+                f"negative duration of {first['duration']} ms; correct its duration or drop it",
             )
 
         # An event of zero duration selects no samples. A separate copy is rendered, since the

@@ -1002,6 +1002,16 @@ def test_statistical_raises_error(hyperparameters, exception, msg_substrings):
             ('statistical', 'saccade', '200.0 ms', 'no known duration'),
             id='event_of_null_duration',
         ),
+        pytest.param(
+            Events(
+                name=['fixation', 'saccade', 'fixation'],
+                onsets=[0, 200, 200],
+                offsets=[200, 150, 400],
+                time_unit='ms',
+            ),
+            ('statistical', 'saccade', '200.0 ms', '-50.0 ms', 'negative', 'drop it'),
+            id='event_of_negative_duration',
+        ),
     ],
 )
 def test_statistical_raises_error_on_generate(events, msg_substrings):
