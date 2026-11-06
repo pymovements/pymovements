@@ -191,6 +191,66 @@ def test_event_shorter_than_one_sample_gets_one_sample():
     assert gaze.samples.height == 1
 
 
+@pytest.mark.parametrize(
+    ('segments', 'expected_height'),
+    [
+        pytest.param(
+            (('saccade', 0.0), ('fixation', 200.0)), 200, id='first',
+        ),
+        pytest.param(
+            (('fixation', 200.0), ('saccade', 0.0), ('fixation', 200.0)), 400, id='between',
+        ),
+        pytest.param(
+            (('fixation', 200.0), ('saccade', 0.0)), 200, id='last',
+        ),
+    ],
+)
+def test_event_of_zero_duration_gets_no_samples(segments, expected_height):
+    """An impulse selects no samples, so it adds no motion, and it stays in the ground truth."""
+    events = _events(*segments)
+    generator = StatisticalSampleGenerator(sampling_rate=1000.0, **WITHOUT_JITTER)
+
+    gaze = generator.generate(events=events, seed=42)
+
+    assert gaze.samples.height == expected_height
+    assert gaze.samples['velocity_magnitude'].max() == 0.0
+    assert_frame_equal(gaze.events.frame, events.frame)
+
+
+def test_event_of_zero_duration_does_not_depend_on_the_row_order():
+    events = Events(
+        pl.DataFrame({
+            'name': ['fixation', 'saccade', 'fixation'],
+            'onset': [200, 200, 0],
+            'offset': [400, 200, 200],
+        }),
+        time_unit='ms',
+    )
+    generator = StatisticalSampleGenerator(sampling_rate=1000.0, **WITHOUT_JITTER)
+
+    gaze = generator.generate(events=events, seed=42)
+
+    assert gaze.samples.height == 400
+
+
+def test_trial_of_only_zero_durations_gets_no_samples():
+    events = Events(
+        pl.DataFrame({
+            'trial': [1, 2],
+            'name': ['fixation', 'saccade'],
+            'onset': [0, 0],
+            'offset': [200, 0],
+        }),
+        trial_columns='trial',
+        time_unit='ms',
+    )
+
+    gaze = StatisticalSampleGenerator(sampling_rate=1000.0).generate(events=events, seed=42)
+
+    assert gaze.samples['trial'].unique().to_list() == [1]
+    assert gaze.samples.height == 200
+
+
 def test_samples_start_at_the_first_onset():
     events = Events(
         name=['fixation', 'saccade'], onsets=[500, 700], offsets=[700, 740], time_unit='ms',
@@ -924,6 +984,23 @@ def test_statistical_raises_error(hyperparameters, exception, msg_substrings):
             Events(name=[], onsets=[], offsets=[], time_unit='ms'),
             ('statistical', 'empty'),
             id='empty_events',
+        ),
+        pytest.param(
+            _events(('saccade', 0.0)),
+            ('statistical', 'duration of zero', 'nothing to generate'),
+            id='only_events_of_zero_duration',
+        ),
+        pytest.param(
+            Events(
+                pl.DataFrame({
+                    'name': ['fixation', 'saccade'],
+                    'onset': [0, 200],
+                    'duration': [200, None],
+                }),
+                time_unit='ms',
+            ),
+            ('statistical', 'saccade', '200.0 ms', 'no known duration'),
+            id='event_of_null_duration',
         ),
     ],
 )

@@ -63,7 +63,8 @@ class StatisticalSampleGenerator(SampleGenerator):
     Gamma-shaped profile, and smooth pursuits open with a sigmoid onset before a constant, growing
     or decreasing pursuit. Each sample is then the mean of the profile from its own time up to the
     next sample, and measurement noise is added last. Events with trial columns are generated
-    trial by trial.
+    trial by trial. An event with a duration of zero gets no samples and stays in the attached
+    events, while an event with a null duration is rejected, as its end is unknown.
 
     Each random quantity is a :py:class:`~pymovements.synthetic.Range`, given as a range, a
     ``(minimum, maximum)`` pair for a uniform range, or a single value. Durations are in
@@ -290,8 +291,8 @@ class StatisticalSampleGenerator(SampleGenerator):
         TypeError
             If ``events`` is not an ``Events`` object.
         ValueError
-            If the events have gaps, overlap, are empty or contain an event type without a
-            profile.
+            If the events have gaps, overlap, are empty, all have a duration of zero, contain
+            a null duration or an event type without a profile.
         """
         if not isinstance(events, Events):
             raise TypeError(
@@ -306,12 +307,32 @@ class StatisticalSampleGenerator(SampleGenerator):
                 f'Supported event types are: {list(EVENT_TYPES)}',
             )
 
-        check_contiguous(events, generator=self.name)
+        unknown_end = events.frame.filter(pl.col('duration').is_null())
+        if unknown_end.height:
+            first = unknown_end.with_columns(
+                pl.col('onset').dt.total_milliseconds(fractional=True),
+            ).row(0, named=True)
+            raise ValueError(
+                f"generator '{self.name}': a {first['name']} at {first['onset']} ms has no known "
+                'duration, so the time after it cannot be generated; set its duration or drop it',
+            )
+
+        # An event of zero duration selects no samples. A separate copy is rendered, since the
+        # events are attached to the output as they came.
+        rendered = events.clone()
+        rendered.frame = rendered.frame.filter(pl.col('duration') > pl.duration(microseconds=0))
+        if rendered.frame.is_empty() and not events.frame.is_empty():
+            raise ValueError(
+                f"generator '{self.name}': all events have a duration of zero, so there is "
+                'nothing to generate samples for',
+            )
+
+        check_contiguous(rendered, generator=self.name)
 
         def synthesize(trial: pl.DataFrame) -> pl.DataFrame:
             return self._synthesize_trial(trial, rng)
 
-        samples = per_trial(events, synthesize, generator=self.name)
+        samples = per_trial(rendered, synthesize, generator=self.name)
         samples = samples.with_columns(
             pl.Series(
                 'velocity_magnitude',
