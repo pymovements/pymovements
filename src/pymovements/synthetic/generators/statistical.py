@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import dataclasses
 import warnings
+from typing import cast
 from typing import ClassVar
 
 import numpy as np
@@ -114,9 +115,9 @@ class StatisticalSampleGenerator(SampleGenerator):
         The share of all samples that receive noise, from 0 to 100. (default: 0.0)
     noise_velocity: RangeLike
         The velocity change of a noisy sample. (default: Range(0.0, 0.0))
-    profile_sampling_rate: float
-        The rate in Hz the profiles are built at. Must not be below the sampling rate.
-        (default: 10000.0)
+    profile_sampling_rate: float | None
+        The rate in Hz the profiles are built at. Must not be below the sampling rate. ``None``
+        means 10000 Hz, or the sampling rate if that is higher. (default: None)
 
     Raises
     ------
@@ -165,7 +166,7 @@ class StatisticalSampleGenerator(SampleGenerator):
     smooth_pursuit_consistency: RangeLike = Range(0.0, 2.0)
     noise_percentage: float = 0.0
     noise_velocity: RangeLike = Range(0.0, 0.0)
-    profile_sampling_rate: float = 10_000.0
+    profile_sampling_rate: float | None = None
 
     def __post_init__(self) -> None:
         """Read each range from its accepted forms and validate the parameters."""
@@ -206,6 +207,8 @@ class StatisticalSampleGenerator(SampleGenerator):
                 f'noise_percentage must be between 0 and 100 but is: {self.noise_percentage}',
             )
 
+        if self.profile_sampling_rate is None:
+            self.profile_sampling_rate = max(10_000.0, self.sampling_rate)
         self.profile_sampling_rate = check_positive(
             self.profile_sampling_rate, 'profile_sampling_rate',
         )
@@ -343,7 +346,7 @@ class StatisticalSampleGenerator(SampleGenerator):
             rng: np.random.Generator,
     ) -> np.ndarray:
         """Build one event's velocity profile at the profile sampling rate."""
-        n_samples = max(round(duration * self.profile_sampling_rate / 1000.0), 1)
+        n_samples = max(self._profile_points(duration), 1)
 
         if event_type == 'fixation':
             profile = np.zeros(n_samples)
@@ -406,7 +409,7 @@ class StatisticalSampleGenerator(SampleGenerator):
             pursuit = np.full(n_samples, velocities.draw(rng))
 
         onset = _range(self.smooth_pursuit_onset_duration).draw(rng)
-        onset_samples = min(round(onset * self.profile_sampling_rate / 1000.0), n_samples)
+        onset_samples = min(self._profile_points(onset), n_samples)
 
         # A sigmoid over [-6, 6] is saturated at both ends, so the onset meets the pursuit smoothly.
         # Its lower end is left out, so that an onset of one point is not lost at almost zero.
@@ -414,6 +417,10 @@ class StatisticalSampleGenerator(SampleGenerator):
         ramp[:onset_samples] = 1.0 / (1.0 + np.exp(-np.linspace(-6.0, 6.0, onset_samples + 1)[1:]))
 
         return pursuit * ramp
+
+    def _profile_points(self, duration: float) -> int:
+        """Return the number of profile points of a duration in milliseconds."""
+        return round(duration * cast(float, self.profile_sampling_rate) / 1000.0)
 
     def _add_noise(self, magnitudes: np.ndarray, rng: np.random.Generator) -> np.ndarray:
         """Change a share of the samples, picked uniformly, by a drawn velocity."""

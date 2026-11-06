@@ -138,6 +138,26 @@ def test_arbitrary_sampling_rate(sampling_rate):
     assert gaze.samples.height == round(sampling_rate * 2.0)
 
 
+@pytest.mark.parametrize(
+    ('sampling_rate', 'expected_profile_sampling_rate'),
+    [
+        pytest.param(1000.0, 10_000.0, id='below_the_default'),
+        pytest.param(10_000.0, 10_000.0, id='at_the_default'),
+        pytest.param(20_000.0, 20_000.0, id='above_the_default'),
+    ],
+)
+def test_profile_sampling_rate_follows_a_higher_sampling_rate(
+        contiguous_events, sampling_rate, expected_profile_sampling_rate,
+):
+    generator = StatisticalSampleGenerator(sampling_rate=sampling_rate)
+
+    gaze = generator.generate(events=contiguous_events, seed=42)
+
+    hyperparameters = gaze.metadata['synthetic']['hyperparameters']
+    assert hyperparameters['profile_sampling_rate'] == expected_profile_sampling_rate
+    assert gaze.samples.height == 640 * sampling_rate / 1000.0
+
+
 def test_output_is_a_velocity_magnitude(contiguous_events):
     """A magnitude has no x and y, so none of the Gaze component columns is filled."""
     gaze = StatisticalSampleGenerator(sampling_rate=1000.0).generate(
