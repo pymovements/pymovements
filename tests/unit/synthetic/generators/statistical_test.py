@@ -475,6 +475,32 @@ def test_noise_changes_the_requested_share_of_samples_within_its_range(noise_vel
     assert noisy.max() <= 60.0
 
 
+def test_noise_percentage_holds_across_short_trials():
+    """Noise picks its share of all samples, so 10 % of 80 samples are 8, whatever the trials."""
+    events = Events(
+        pl.DataFrame({
+            'trial': list(range(20)),
+            'name': ['fixation'] * 20,
+            'onset': [0.0] * 20,
+            'offset': [4.0] * 20,
+        }),
+        trial_columns='trial',
+        time_unit='ms',
+    )
+    generator = StatisticalSampleGenerator(
+        sampling_rate=1000.0,
+        noise_percentage=10.0,
+        noise_velocity=(50.0, 60.0),
+        **WITHOUT_JITTER,
+    )
+
+    gaze = generator.generate(events=events, seed=42)
+
+    magnitudes = _magnitudes(gaze)
+    assert magnitudes.len() == 80
+    assert (magnitudes > 0.0).sum() == 8
+
+
 def test_reproducible_under_seed(contiguous_events):
     generator = StatisticalSampleGenerator(sampling_rate=1000.0)
 
