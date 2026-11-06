@@ -73,7 +73,8 @@ class GeometricalSampleGenerator(SampleGenerator):
     These are the gaps between fixations and the saccades ``bridge_gaps`` fills them with. A
     saccade's own location is not used. Before the first and after the last fixation of a trial,
     the nearest location is held. Events with trial columns are generated trial by trial. An
-    event of zero duration gets no samples and stays in the attached events.
+    event of zero duration gets no samples and stays in the attached events. A fixation that no
+    sample falls inside is rejected, since its location would be lost.
 
     A small scatter of the fixation samples can be added with ``fixation_deviation``, in the unit
     of the locations: per fixation, a deviation is drawn from the range and used as the standard
@@ -187,7 +188,7 @@ class GeometricalSampleGenerator(SampleGenerator):
         ValueError
             If the events are empty, overlap, all have a duration of zero, contain a null or
             negative duration, an event type other than fixations and saccades, or a fixation
-            without a usable location, or if no sample of a trial falls inside a fixation.
+            without a usable location, or if no sample falls inside a fixation.
         """
         if not isinstance(events, Events):
             raise TypeError(
@@ -286,6 +287,15 @@ class GeometricalSampleGenerator(SampleGenerator):
         # A sample before the first fixation gets -1, which picks the appended end of -inf.
         fixation = np.searchsorted(onsets[is_fixation], times, side='right') - 1
         held = times < np.append(ends[is_fixation], -np.inf)[fixation]
+
+        unsampled = np.setdiff1d(np.arange(len(locations)), fixation[held])
+        if unsampled.size:
+            raise ValueError(
+                f"generator '{self.name}': no sample falls inside the fixation at "
+                f'{onsets[is_fixation][unsampled[0]]} ms at {self.sampling_rate} Hz, so its '
+                'location would be lost; raise the sampling rate or drop the fixation',
+            )
+
         if not held.any():
             raise ValueError(
                 f"generator '{self.name}': no sample of a trial falls inside a fixation at "
