@@ -73,12 +73,16 @@ class StatisticalSampleGenerator(SampleGenerator):
     which the source only calls fluctuations. The absolute value of the profile is taken, so
     a fixation's mean lies above zero, at about 0.8 times its consistency. Since samples are means,
     their spread is smaller than the consistency, and shrinks as ``profile_sampling_rate`` rises
-    or ``sampling_rate`` falls. A consistency tuned at one pair of rates does not carry over.
+    or ``sampling_rate`` falls. A consistency tuned at one pair of rates does not carry over. It
+    is drawn once per event, while Figure 2 of the source suggests a draw per sample, so its
+    distribution changes how the strength of the jitter varies between events, not the look of the
+    fluctuation.
 
     The output is a velocity magnitude without direction, so detectors and transforms that need
     positions cannot consume it. Not implemented from the source: the sequence constraints of
     §3.1, which belong to an event generator, fluctuating sampling rates (§3.5), a normal
-    distribution for where noise is placed (§3.6), and post-saccadic movement.
+    distribution for where noise is placed (§3.6), and post-saccadic movement. A skewed saccade
+    has not decayed when its event ends and stops above zero, as in Figure 3 of the source.
 
     Attributes
     ----------

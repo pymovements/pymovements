@@ -432,6 +432,21 @@ def test_default_saccade_is_as_wide_as_in_the_source():
         assert (magnitudes > magnitudes.max() / 2).sum() >= 60
 
 
+def test_skewed_saccade_stops_above_zero_as_in_the_source():
+    """Fuhl et al. Figure 3: a skewed saccade has not decayed when its event ends."""
+    generator = StatisticalSampleGenerator(
+        sampling_rate=1000.0,
+        profile_sampling_rate=1000.0,
+        saccade_duration=(20.0, 120.0),
+        saccade_skewness=1.5,
+        **WITHOUT_JITTER,
+    )
+
+    magnitudes = _magnitudes(generator.generate(events=_events(('saccade', 120.0)), seed=42))
+
+    assert magnitudes[-1] > 0.1 * magnitudes.max()
+
+
 def _still_fixation(**noise):
     """Generate a still fixation, so every sample that is not zero is noise."""
     generator = StatisticalSampleGenerator(sampling_rate=1000.0, fixation_consistency=0.0, **noise)
