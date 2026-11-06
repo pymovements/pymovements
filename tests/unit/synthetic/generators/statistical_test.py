@@ -318,8 +318,23 @@ def test_smooth_pursuit_follows_its_profile(hyperparameters, expected_first, exp
     gaze = _pursuit(smooth_pursuit_onset_duration=0.0, **hyperparameters)
 
     magnitudes = _magnitudes(gaze)
-    assert magnitudes[1] == pytest.approx(expected_first, abs=0.1)
+    assert magnitudes[0] == pytest.approx(expected_first, abs=0.1)
     assert magnitudes[-1] == pytest.approx(expected_last)
+
+
+def test_smooth_pursuit_without_an_onset_starts_at_its_velocity():
+    gaze = _pursuit(
+        duration=3.0, smooth_pursuit_velocity=20.0, smooth_pursuit_onset_duration=0.0,
+    )
+
+    assert _magnitudes(gaze).to_list() == pytest.approx([20.0] * 3)
+
+
+def test_smooth_pursuit_of_one_onset_point_is_not_lost():
+    """An onset cut to one point keeps almost the full velocity of the pursuit."""
+    gaze = _pursuit(duration=1.0, smooth_pursuit_velocity=20.0)
+
+    assert _magnitudes(gaze).to_list() == pytest.approx([20.0], abs=0.1)
 
 
 def test_smooth_pursuit_velocity_takes_its_distribution():
