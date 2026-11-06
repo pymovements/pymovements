@@ -79,9 +79,9 @@ class GeometricalSampleGenerator(SampleGenerator):
 
     The movement between fixations is interpolated, not modelled: a cubic spline gives a
     symmetric velocity profile peaking mid-gap, linear interpolation a constant one, and the
-    duration of a movement is the gap the events leave. Not implemented from Fuhl & Kasneci
-    (2018) §3.7: the mapping of velocity profiles onto the path, the deviation of saccades from
-    the straight line, and saliency maps for choosing fixation targets.
+    duration of a movement is the gap the events leave. Not modelled are velocity profiles
+    along the path, saccades that deviate from the straight line, and saliency maps for choosing
+    fixation targets.
 
     Attributes
     ----------
