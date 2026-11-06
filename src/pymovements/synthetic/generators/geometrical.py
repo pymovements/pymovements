@@ -283,10 +283,14 @@ class GeometricalSampleGenerator(SampleGenerator):
         is_fixation = (trial['name'] == 'fixation').to_numpy()
         locations = self._locations(trial.filter(is_fixation))
 
+        # Rounding can put a sample just below the onset or end it falls on, so events are compared
+        # with a margin far below their precision of a microsecond.
+        exact_times = times + 1e-6
+
         # The fixation each sample falls into, if any: the last one starting at or before it.
         # A sample before the first fixation gets -1, which picks the appended end of -inf.
-        fixation = np.searchsorted(onsets[is_fixation], times, side='right') - 1
-        held = times < np.append(ends[is_fixation], -np.inf)[fixation]
+        fixation = np.searchsorted(onsets[is_fixation], exact_times, side='right') - 1
+        held = exact_times < np.append(ends[is_fixation], -np.inf)[fixation]
 
         unsampled = np.setdiff1d(np.arange(len(locations)), fixation[held])
         if unsampled.size:
