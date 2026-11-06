@@ -74,7 +74,8 @@ class _Generator(abc.ABC, Generic[OutputT]):
         Raises
         ------
         TypeError
-            If the generator is not a dataclass.
+            If the generator is not a dataclass, or one of its classes annotates fields without
+            being one.
         """
         return {
             field.name: getattr(self, field.name)
@@ -106,7 +107,8 @@ class _Generator(abc.ABC, Generic[OutputT]):
         Raises
         ------
         TypeError
-            If the generator is not a dataclass or has no ``name``, the seed is not an integer,
+            If the generator is not a dataclass, one of its classes annotates fields without being
+            one, it has no ``name``, the seed is not an integer,
             or a run parameter is unknown to the generator or missing.
         ValueError
             If the seed is negative, or the samples a sample generator made carry an experiment
@@ -210,6 +212,29 @@ class _Generator(abc.ABC, Generic[OutputT]):
                 f'{type(self).__name__} must be a dataclass, so that its hyperparameters are '
                 'recorded and the run can be reproduced; decorate it with @dataclasses.dataclass',
             )
+
+        # A subclass inherits the dataclass check above, so a class without the decorator passes
+        # it, and the fields it annotates would be left out of the constructor and the record.
+        for generator_class in type(self).__mro__:
+            # A plain mixin is no generator, and the base classes of this module annotate class
+            # attributes, not fields.
+            if (
+                not issubclass(generator_class, _Generator)
+                or generator_class.__module__ == __name__
+                or '__dataclass_fields__' in vars(generator_class)
+            ):
+                continue
+
+            undeclared = [
+                name for name, annotation in inspect.get_annotations(generator_class).items()
+                if 'ClassVar' not in str(annotation)
+            ]
+            if undeclared:
+                raise TypeError(
+                    f'{generator_class.__name__} annotates {undeclared} without being a dataclass '
+                    'itself, so they are no hyperparameters and the run cannot be reproduced; '
+                    'decorate it with @dataclasses.dataclass',
+                )
 
         return dataclasses.fields(self)
 
