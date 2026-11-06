@@ -69,20 +69,19 @@ class StatisticalSampleGenerator(SampleGenerator):
     milliseconds, velocities and consistencies in degrees per second. The defaults are
     illustrations, not measured values.
 
-    The consistency is the standard deviation of the normal jitter at each point of a profile,
-    which the source only calls fluctuations. The absolute value of the profile is taken, so
-    a fixation's mean lies above zero, at about 0.8 times its consistency. Since samples are means,
-    their spread is smaller than the consistency, and shrinks as ``profile_sampling_rate`` rises
-    or ``sampling_rate`` falls. A consistency tuned at one pair of rates does not carry over. It
-    is drawn once per event, while Figure 2 of the source suggests a draw per sample, so its
-    distribution changes how the strength of the jitter varies between events, not the look of the
-    fluctuation.
+    The consistency is the standard deviation of the normal jitter at each point of a profile.
+    The absolute value of the profile is taken, so a fixation's mean lies above zero, at about
+    0.8 times its consistency. Since samples are means, their spread is smaller than the
+    consistency, and shrinks as ``profile_sampling_rate`` rises or ``sampling_rate`` falls. A
+    consistency tuned at one pair of rates does not carry over. It is drawn once per event, so
+    its distribution changes how strong the jitter is from event to event, not the look of the
+    fluctuation within one event.
 
     The output is a velocity magnitude without direction, so detectors and transforms that need
-    positions cannot consume it. Not implemented from the source: the sequence constraints of
-    §3.1, which belong to an event generator, fluctuating sampling rates (§3.5), a normal
-    distribution for where noise is placed (§3.6), and post-saccadic movement. A skewed saccade
-    has not decayed when its event ends and stops above zero, as in Figure 3 of the source.
+    positions cannot consume it. Not modelled are constraints on the order of the events, which
+    belong to an event generator, fluctuating sampling rates, a normal distribution for where
+    noise is placed, and post-saccadic movement. A skewed saccade has not decayed when its event
+    ends, so it stops above zero.
 
     Attributes
     ----------
@@ -97,10 +96,8 @@ class StatisticalSampleGenerator(SampleGenerator):
         The peak velocity of a saccade of the longest duration. (default: Range(300.0, 500.0))
     saccade_skewness: RangeLike
         The skewness of the Gamma-shaped profile. Must lie between zero and two, where the
-        profile stops rising to a peak. It also sets the width of a saccade, as the source leaves
-        the part of the Gamma that a saccade covers open: a low skewness gives a narrow peak, not
-        a wide and nearly symmetric saccade. The default gives the width of Figure 3 of the source.
-        (default: Range(1.0, 1.5))
+        profile stops rising to a peak. It also sets the width of a saccade: a low skewness gives
+        a narrow peak, not a wide and nearly symmetric saccade. (default: Range(1.0, 1.5))
     saccade_consistency: RangeLike
         The jitter along a saccade. (default: Range(0.0, 5.0))
     smooth_pursuit_velocity: RangeLike
