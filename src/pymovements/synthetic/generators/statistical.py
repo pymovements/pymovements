@@ -58,17 +58,22 @@ class StatisticalSampleGenerator(SampleGenerator):
     """Generates velocity magnitudes from parametrised profiles of fixations, saccades and pursuits.
 
     Conditioned on a gap-free event sequence, each event gets a velocity profile, built at
-    ``profile_sampling_rate``: fixations fluctuate around zero, saccades follow a Gamma-shaped
-    profile, and smooth pursuits open with a sigmoid onset before a constant, growing or
-    decreasing pursuit. Each sample is then the mean of the profile from its own time up to the
+    ``profile_sampling_rate``: fixations are a small fluctuation above zero, saccades follow a
+    Gamma-shaped profile, and smooth pursuits open with a sigmoid onset before a constant, growing
+    or decreasing pursuit. Each sample is then the mean of the profile from its own time up to the
     next sample, and measurement noise is added last. Events with trial columns are generated
     trial by trial.
 
     Each random quantity is a :py:class:`~pymovements.synthetic.Range`, given as a range, a
     ``(minimum, maximum)`` pair for a uniform range, or a single value. Durations are in
-    milliseconds, velocities and consistencies in degrees per second. The consistency is the
-    standard deviation of the jitter along a profile. The defaults are illustrations, not
-    measured values.
+    milliseconds, velocities and consistencies in degrees per second. The defaults are
+    illustrations, not measured values.
+
+    The consistency is the standard deviation of the normal jitter at each point of a profile,
+    which the source only calls fluctuations. The absolute value of the profile is taken, so
+    a fixation's mean lies above zero, at about 0.8 times its consistency. Since samples are means,
+    their spread is smaller than the consistency, and shrinks as ``profile_sampling_rate`` rises
+    or ``sampling_rate`` falls. A consistency tuned at one pair of rates does not carry over.
 
     The output is a velocity magnitude without direction, so detectors and transforms that need
     positions cannot consume it. Not implemented from the source: the sequence constraints of
@@ -88,7 +93,9 @@ class StatisticalSampleGenerator(SampleGenerator):
         The peak velocity of a saccade of the longest duration. (default: Range(300.0, 500.0))
     saccade_skewness: RangeLike
         The skewness of the Gamma-shaped profile. Must lie between zero and two, where the
-        profile stops rising to a peak. (default: Range(0.5, 1.5))
+        profile stops rising to a peak. It also sets the width of a saccade, as the source leaves
+        the part of the Gamma that a saccade covers open: a low skewness gives a narrow peak, not
+        a wide and nearly symmetric saccade. (default: Range(0.5, 1.5))
     saccade_consistency: RangeLike
         The jitter along a saccade. (default: Range(0.0, 5.0))
     smooth_pursuit_velocity: RangeLike
