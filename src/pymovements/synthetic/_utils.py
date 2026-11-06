@@ -24,6 +24,7 @@ checks of hyperparameters and run parameters.
 """
 from __future__ import annotations
 
+import math
 import numbers
 from collections.abc import Callable
 from typing import Any
@@ -139,6 +140,16 @@ def check_number(value: Any, name: str) -> float:
     return float(value)
 
 
+def check_finite(value: Any, name: str) -> float:
+    """Return the value as a float, rejecting non-numbers, NaN and infinity."""
+    number = check_number(value, name)
+
+    if not math.isfinite(number):
+        raise ValueError(f'{name} must be finite but is: {number}')
+
+    return number
+
+
 def check_not_negative(value: Any, name: str) -> float:
     """Return the value as a float, rejecting non-numbers and negative values."""
     number = check_number(value, name)
@@ -150,8 +161,8 @@ def check_not_negative(value: Any, name: str) -> float:
 
 
 def check_positive(value: Any, name: str) -> float:
-    """Return the value as a float, rejecting non-numbers and values of zero or less."""
-    number = check_number(value, name)
+    """Return the value as a float, rejecting non-finite numbers and values of zero or less."""
+    number = check_finite(value, name)
 
     if number <= 0:
         raise ValueError(f'{name} must be greater than zero but is: {number}')

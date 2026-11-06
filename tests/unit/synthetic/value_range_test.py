@@ -19,6 +19,7 @@
 # SOFTWARE.
 """Test the range type that generator hyperparameters are drawn from."""
 import dataclasses
+import math
 
 import numpy as np
 import pytest
@@ -67,6 +68,24 @@ def test_range_returns(kwargs, expected):
             ValueError,
             ('minimum (5.0)', 'maximum (1.0)'),
             id='inverted_range_raises_value_error',
+        ),
+        pytest.param(
+            {'minimum': math.nan, 'maximum': 1.0},
+            ValueError,
+            ('minimum', 'finite', 'nan'),
+            id='nan_minimum_raises_value_error',
+        ),
+        pytest.param(
+            {'minimum': 0.0, 'maximum': math.inf},
+            ValueError,
+            ('maximum', 'finite', 'inf'),
+            id='infinite_maximum_raises_value_error',
+        ),
+        pytest.param(
+            {'minimum': 0.0, 'maximum': 1.0, 'distribution': 'normal', 'std': math.nan},
+            ValueError,
+            ('std', 'finite', 'nan'),
+            id='nan_std_raises_value_error',
         ),
         pytest.param(
             {'minimum': 0.0, 'maximum': 1.0, 'distribution': 'gamma'},
