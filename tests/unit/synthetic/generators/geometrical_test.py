@@ -39,6 +39,9 @@ pytestmark = pytest.mark.filterwarnings(
 #: The locations of the three fixations ``_fixations`` returns by default, in degrees.
 LOCATIONS = ((0.0, 0.0), (10.0, 0.0), (10.0, 5.0))
 
+#: A location that shows up in the output if an event of zero duration is rendered after all.
+IGNORED = (99.0, 99.0)
+
 
 def _fixations(
         onsets=(0, 300, 620),
@@ -181,6 +184,58 @@ def test_attaches_a_copy_of_the_events():
 
     assert_frame_equal(gaze.events.frame, events.frame)
     assert gaze.events is not events
+
+
+@pytest.mark.parametrize(
+    ('onsets', 'offsets', 'locations', 'names', 'expected_times'),
+    [
+        pytest.param(
+            (0, 100, 300), (0, 200, 500), (IGNORED, (0.0, 0.0), (10.0, 0.0)), None, (100.0, 499.0),
+            id='fixation_first',
+        ),
+        pytest.param(
+            (0, 250, 300), (200, 250, 500), ((0.0, 0.0), IGNORED, (10.0, 0.0)), None, (0.0, 499.0),
+            id='fixation_in_the_middle',
+        ),
+        pytest.param(
+            (0, 300, 700), (200, 500, 700), ((0.0, 0.0), (10.0, 0.0), IGNORED), None, (0.0, 499.0),
+            id='fixation_last',
+        ),
+        pytest.param(
+            (0, 200, 200), (200, 200, 400), ((0.0, 0.0), None, (10.0, 0.0)),
+            ['fixation', 'saccade', 'fixation'], (0.0, 399.0),
+            id='saccade_in_the_middle',
+        ),
+        pytest.param(
+            (0, 200, 200), (200, 400, 200), ((0.0, 0.0), (10.0, 0.0), None),
+            ['fixation', 'fixation', 'saccade'], (0.0, 399.0),
+            id='saccade_sorted_after_the_fixation_at_its_onset',
+        ),
+        pytest.param(
+            (0, 200, 300), (200, 200, 300), ((0.0, 0.0), None, None),
+            ['fixation', 'saccade', 'saccade'], (0.0, 199.0),
+            id='saccade_last',
+        ),
+    ],
+)
+def test_event_of_zero_duration_gets_no_samples(onsets, offsets, locations, names, expected_times):
+    """An impulse neither moves the gaze nor stretches the signal, and stays in the ground truth."""
+    events = _fixations(onsets=onsets, offsets=offsets, locations=locations, names=names)
+
+    gaze = _generate(events)
+
+    assert _times(gaze)[[0, -1]].tolist() == list(expected_times)
+    assert _positions(gaze)[:, 1].max() == 0.0
+    assert_frame_equal(gaze.events.frame, events.frame)
+
+
+def test_trial_of_only_zero_durations_gets_no_samples():
+    gaze = _generate(
+        _fixations(onsets=(0, 0), offsets=(200, 0), locations=LOCATIONS[:2], trial=[1, 2]),
+    )
+
+    assert gaze.samples['trial'].unique().to_list() == [1]
+    assert gaze.samples.height == 200
 
 
 def test_reads_the_end_of_a_fixation_from_its_duration():
@@ -550,6 +605,60 @@ def test_geometrical_raises_error(hyperparameters, exception, msg_substrings):
             1000.0,
             ('geometrical', 'location', 'number', '[1.0, None]'),
             id='location_with_a_missing_component',
+        ),
+        pytest.param(
+            _fixations(onsets=(0, 300), offsets=(None, 500), locations=LOCATIONS[:2]),
+            1000.0,
+            ('geometrical', 'fixation at 0.0 ms', 'no known duration', 'drop it'),
+            id='null_duration_of_the_first_fixation',
+        ),
+        pytest.param(
+            _fixations(offsets=(250, None, 900)),
+            1000.0,
+            ('geometrical', 'fixation at 300.0 ms', 'no known duration'),
+            id='null_duration_of_a_fixation_in_the_middle',
+        ),
+        pytest.param(
+            _fixations(onsets=(0, 300), offsets=(250, None), locations=LOCATIONS[:2]),
+            1000.0,
+            ('geometrical', 'fixation at 300.0 ms', 'no known duration'),
+            id='null_duration_of_the_last_fixation',
+        ),
+        pytest.param(
+            _fixations(onsets=(0,), offsets=(None,), locations=LOCATIONS[:1]),
+            1000.0,
+            ('geometrical', 'fixation at 0.0 ms', 'no known duration'),
+            id='null_duration_of_the_only_fixation',
+        ),
+        pytest.param(
+            _fixations(
+                onsets=(0, 250), offsets=(250, None), locations=(LOCATIONS[0], None),
+                names=['fixation', 'saccade'],
+            ),
+            1000.0,
+            ('geometrical', 'saccade at 250.0 ms', 'no known duration'),
+            id='null_duration_of_a_saccade',
+        ),
+        pytest.param(
+            _fixations(onsets=(0, 300), offsets=(250, 100), locations=LOCATIONS[:2]),
+            1000.0,
+            ('geometrical', 'fixation at 300.0 ms', '-200.0 ms', 'negative', 'drop it'),
+            id='negative_duration_of_a_fixation',
+        ),
+        pytest.param(
+            _fixations(
+                onsets=(0, 250), offsets=(250, 240), locations=(LOCATIONS[0], None),
+                names=['fixation', 'saccade'],
+            ),
+            1000.0,
+            ('geometrical', 'saccade at 250.0 ms', '-10.0 ms', 'negative'),
+            id='negative_duration_of_a_saccade',
+        ),
+        pytest.param(
+            _fixations(onsets=(0, 300), offsets=(0, 300), locations=LOCATIONS[:2]),
+            1000.0,
+            ('geometrical', 'all events', 'duration of zero', 'nothing to generate'),
+            id='all_durations_of_zero',
         ),
         pytest.param(
             _fixations(onsets=(0, 200), offsets=(250, 500), locations=LOCATIONS[:2]),

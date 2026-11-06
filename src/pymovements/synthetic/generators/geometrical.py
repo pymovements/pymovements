@@ -70,7 +70,8 @@ class GeometricalSampleGenerator(SampleGenerator):
     location, and every other sample is interpolated between the locations around it, per axis.
     These are the gaps between fixations and the saccades ``bridge_gaps`` fills them with. A
     saccade's own location is not used. Before the first and after the last fixation of a trial,
-    the nearest location is held. Events with trial columns are generated trial by trial.
+    the nearest location is held. Events with trial columns are generated trial by trial. An
+    event of zero duration gets no samples and stays in the attached events.
 
     A small scatter of the fixation samples can be added with ``fixation_deviation``, in the unit
     of the locations: per fixation, a deviation is drawn from the range and used as the standard
@@ -178,9 +179,9 @@ class GeometricalSampleGenerator(SampleGenerator):
         TypeError
             If ``events`` is not an ``Events`` object.
         ValueError
-            If the events are empty, overlap, contain an event type other than fixations and
-            saccades, or a fixation without a usable location, or if no sample of a trial
-            falls inside a fixation.
+            If the events are empty, overlap, all have a duration of zero, contain a null or
+            negative duration, an event type other than fixations and saccades, or a fixation
+            without a usable location, or if no sample of a trial falls inside a fixation.
         """
         if not isinstance(events, Events):
             raise TypeError(
@@ -195,10 +196,40 @@ class GeometricalSampleGenerator(SampleGenerator):
                 f'Supported event types are: {list(EVENT_TYPES)}',
             )
 
+        unknown_end = events.frame.filter(pl.col('duration').is_null())
+        if unknown_end.height:
+            first = unknown_end.with_columns(
+                pl.col('onset').dt.total_milliseconds(fractional=True),
+            ).row(0, named=True)
+            raise ValueError(
+                f"generator '{self.name}': a {first['name']} at {first['onset']} ms has no known "
+                'duration, so the time after it cannot be generated; set its duration or drop it',
+            )
+
+        negative = events.frame.filter(pl.col('duration') < pl.duration(microseconds=0))
+        if negative.height:
+            first = negative.with_columns(
+                pl.col('onset', 'duration').dt.total_milliseconds(fractional=True),
+            ).row(0, named=True)
+            raise ValueError(
+                f"generator '{self.name}': a {first['name']} at {first['onset']} ms has a "
+                f"negative duration of {first['duration']} ms; correct its duration or drop it",
+            )
+
+        # An event of zero duration selects no samples. A separate copy is rendered, since the
+        # events are attached to the output as they came.
+        rendered = events.clone()
+        rendered.frame = rendered.frame.filter(pl.col('duration') > pl.duration(microseconds=0))
+        if rendered.frame.is_empty() and not events.frame.is_empty():
+            raise ValueError(
+                f"generator '{self.name}': all events have a duration of zero, so there is "
+                'nothing to generate samples for',
+            )
+
         def synthesize(trial: pl.DataFrame) -> pl.DataFrame:
             return self._synthesize_trial(trial, rng)
 
-        samples = per_trial(events, synthesize, generator=self.name)
+        samples = per_trial(rendered, synthesize, generator=self.name)
 
         in_pixels = self.location_column_group == 'pixel'
         return Gaze(
