@@ -216,9 +216,11 @@ class _Generator(abc.ABC, Generic[OutputT]):
         # A subclass inherits the dataclass check above, so a class without the decorator passes
         # it, and the fields it annotates would be left out of the constructor and the record.
         for generator_class in type(self).__mro__:
-            # The base classes of this module annotate class attributes, not fields.
+            # A plain mixin is no generator, and the base classes of this module annotate class
+            # attributes, not fields.
             if (
-                generator_class.__module__ == __name__
+                not issubclass(generator_class, _Generator)
+                or generator_class.__module__ == __name__
                 or '__dataclass_fields__' in vars(generator_class)
             ):
                 continue

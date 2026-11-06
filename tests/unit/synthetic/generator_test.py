@@ -458,6 +458,19 @@ class _DecoratedOnUndecoratedGenerator(_NewFieldGenerator):
     other: float = 3.0
 
 
+class _UndecoratedLevelBase(_NeverGenerates):
+    extra: float = 2.0
+
+
+@dataclasses.dataclass
+class _DecoratedOnLevelBaseGenerator(_UndecoratedLevelBase):
+    name = 'decorated_on_level_base'
+
+
+class _AnnotatedMixin:
+    cache: dict
+
+
 @pytest.mark.parametrize(
     ('generator_class', 'msg_substrings'),
     [
@@ -495,6 +508,11 @@ class _DecoratedOnUndecoratedGenerator(_NewFieldGenerator):
             _DecoratedOnUndecoratedGenerator,
             ('_NewFieldGenerator', "'extra'", '@dataclasses.dataclass'),
             id='field_of_an_undecorated_base',
+        ),
+        pytest.param(
+            _DecoratedOnLevelBaseGenerator,
+            ('_UndecoratedLevelBase', "'extra'", '@dataclasses.dataclass'),
+            id='field_of_an_undecorated_base_of_the_level',
         ),
     ],
 )
@@ -539,6 +557,22 @@ def test_to_dict_rejects_a_field_without_the_decorator():
     msg, = excinfo.value.args
     for msg_substring in ('_NewFieldGenerator', "'extra'", '@dataclasses.dataclass'):
         assert msg_substring in msg
+
+
+@pytest.mark.parametrize(('generator', 'init', 'run'), LEVELS)
+def test_annotation_of_a_plain_mixin_is_no_field(request, generator, init, run):
+    """A mixin is no generator, and dataclasses read no fields from it."""
+    base_class = request.getfixturevalue(generator)
+
+    @dataclasses.dataclass
+    class MixedGenerator(_AnnotatedMixin, base_class):
+        pass
+
+    expected = base_class(**init).generate(seed=42, **run)
+
+    generated = MixedGenerator(**init).generate(seed=42, **run)
+
+    assert generated.metadata == expected.metadata
 
 
 @pytest.mark.parametrize(('generator', 'init', 'run'), LEVELS)
