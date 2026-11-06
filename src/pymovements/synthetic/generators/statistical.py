@@ -172,19 +172,27 @@ class StatisticalSampleGenerator(SampleGenerator):
         """Read each range from its accepted forms and validate the parameters."""
         super().__post_init__()
 
-        for field in dataclasses.fields(self):
-            if field.type == 'RangeLike':
-                try:
-                    value = _range(getattr(self, field.name))
-                except ValueError as error:
-                    raise ValueError(f'{field.name}: {error}') from error
+        for name in (
+            'fixation_consistency',
+            'saccade_duration',
+            'saccade_peak_velocity',
+            'saccade_skewness',
+            'saccade_consistency',
+            'smooth_pursuit_velocity',
+            'smooth_pursuit_onset_duration',
+            'smooth_pursuit_consistency',
+            'noise_velocity',
+        ):
+            try:
+                value = _range(getattr(self, name))
+            except ValueError as error:
+                raise ValueError(f'{name}: {error}') from error
 
-                if field.name != 'noise_velocity' and value.minimum < 0:
-                    raise ValueError(
-                        f'{field.name} must not be negative but has a minimum of: '
-                        f'{value.minimum}',
-                    )
-                setattr(self, field.name, value)
+            if name != 'noise_velocity' and value.minimum < 0:
+                raise ValueError(
+                    f'{name} must not be negative but has a minimum of: {value.minimum}',
+                )
+            setattr(self, name, value)
 
         skewness = _range(self.saccade_skewness)
         if skewness.minimum <= 0:
