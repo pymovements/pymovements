@@ -197,7 +197,7 @@ class GeometricalSampleGenerator(SampleGenerator):
                 f'{type(events).__name__}',
             )
 
-        unknown = sorted(set(events.frame['name'].to_list()) - set(EVENT_TYPES))
+        unknown = sorted(set(events.frame['name'].to_list()) - set(EVENT_TYPES), key=str)
         if unknown:
             raise ValueError(
                 f"generator '{self.name}' cannot render the event types {unknown}. "
