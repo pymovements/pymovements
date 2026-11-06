@@ -739,6 +739,18 @@ def test_geometrical_raises_error(hyperparameters, exception, msg_substrings):
             id='event_type_it_cannot_render',
         ),
         pytest.param(
+            _fixations(names=[None, 'fixation', 'fixation']),
+            1000.0,
+            ('geometrical', '[None]', 'fixation', 'saccade'),
+            id='null_event_name',
+        ),
+        pytest.param(
+            _fixations(names=[None, 'blink', 'fixation']),
+            1000.0,
+            ('geometrical', "[None, 'blink']", 'fixation', 'saccade'),
+            id='null_event_name_beside_an_unknown_type',
+        ),
+        pytest.param(
             Events(name=[], onsets=[], offsets=[], time_unit='ms'),
             1000.0,
             ('geometrical', 'empty'),
