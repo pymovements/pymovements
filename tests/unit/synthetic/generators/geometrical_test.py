@@ -560,7 +560,7 @@ def test_run_is_replayed_from_its_record():
         pytest.param(
             {'fixation_deviation': (0.2, 0.1)},
             ValueError,
-            ('minimum', 'maximum'),
+            ('fixation_deviation', 'minimum', 'maximum'),
             id='inverted_deviation',
         ),
         pytest.param(

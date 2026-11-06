@@ -148,7 +148,11 @@ class GeometricalSampleGenerator(SampleGenerator):
             self.location_column_group, 'location_column_group', ('position', 'pixel'),
         )
 
-        self.fixation_deviation = Range.from_value(self.fixation_deviation)
+        try:
+            self.fixation_deviation = Range.from_value(self.fixation_deviation)
+        except ValueError as error:
+            raise ValueError(f'fixation_deviation: {error}') from error
+
         if self.fixation_deviation.minimum < 0:
             raise ValueError(
                 'fixation_deviation must not be negative but has a minimum of: '
