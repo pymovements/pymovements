@@ -762,8 +762,25 @@ def test_geometrical_raises_error(hyperparameters, exception, msg_substrings):
                 names=['fixation', 'saccade'], trial=[1, 2],
             ),
             1000.0,
-            ('geometrical', 'no sample', 'fixation', '1000.0 Hz'),
+            ('geometrical', 'starting at 0.0 ms', 'no fixation', 'no location'),
             id='trial_without_a_fixation',
+        ),
+        pytest.param(
+            _fixations(
+                onsets=(500,), offsets=(550,), locations=(None,), names=['saccade'],
+            ),
+            1000.0,
+            ('geometrical', 'starting at 500.0 ms', 'no fixation', 'no location'),
+            id='only_a_saccade',
+        ),
+        pytest.param(
+            _fixations(
+                onsets=(0, 100), offsets=(0, 150), locations=(LOCATIONS[0], None),
+                names=['fixation', 'saccade'],
+            ),
+            1000.0,
+            ('geometrical', 'starting at 100.0 ms', 'no fixation', 'no location'),
+            id='only_a_fixation_of_zero_duration',
         ),
         pytest.param(
             _fixations(
