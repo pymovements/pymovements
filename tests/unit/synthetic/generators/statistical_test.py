@@ -414,6 +414,24 @@ def test_saccade_skewness_sets_its_width():
     assert samples_above_half_of_the_peak(0.5) < samples_above_half_of_the_peak(1.5)
 
 
+def test_default_saccade_is_as_wide_as_in_the_source():
+    """Fuhl et al. Figure 3: a 120 ms saccade stays above half its peak for over 60 ms."""
+    generator = StatisticalSampleGenerator(
+        sampling_rate=1000.0,
+        saccade_duration=(20.0, 120.0),
+        saccade_skewness=(1.0, 1.5),
+        **WITHOUT_JITTER,
+    )
+    default_skewness = StatisticalSampleGenerator(sampling_rate=1000.0).saccade_skewness
+
+    assert default_skewness == generator.saccade_skewness
+
+    for seed in range(20):
+        magnitudes = _magnitudes(generator.generate(events=_events(('saccade', 120.0)), seed=seed))
+
+        assert (magnitudes > magnitudes.max() / 2).sum() >= 60
+
+
 def _still_fixation(**noise):
     """Generate a still fixation, so every sample that is not zero is noise."""
     generator = StatisticalSampleGenerator(sampling_rate=1000.0, fixation_consistency=0.0, **noise)

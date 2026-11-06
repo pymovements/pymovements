@@ -95,7 +95,8 @@ class StatisticalSampleGenerator(SampleGenerator):
         The skewness of the Gamma-shaped profile. Must lie between zero and two, where the
         profile stops rising to a peak. It also sets the width of a saccade, as the source leaves
         the part of the Gamma that a saccade covers open: a low skewness gives a narrow peak, not
-        a wide and nearly symmetric saccade. (default: Range(0.5, 1.5))
+        a wide and nearly symmetric saccade. The default gives the width of Figure 3 of the source.
+        (default: Range(1.0, 1.5))
     saccade_consistency: RangeLike
         The jitter along a saccade. (default: Range(0.0, 5.0))
     smooth_pursuit_velocity: RangeLike
@@ -155,7 +156,7 @@ class StatisticalSampleGenerator(SampleGenerator):
     fixation_consistency: RangeLike = Range(0.0, 1.0)
     saccade_duration: RangeLike = Range(20.0, 80.0)
     saccade_peak_velocity: RangeLike = Range(300.0, 500.0)
-    saccade_skewness: RangeLike = Range(0.5, 1.5)
+    saccade_skewness: RangeLike = Range(1.0, 1.5)
     saccade_consistency: RangeLike = Range(0.0, 5.0)
     smooth_pursuit_velocity: RangeLike = Range(10.0, 30.0)
     smooth_pursuit_onset_duration: RangeLike = Range(40.0, 120.0)
