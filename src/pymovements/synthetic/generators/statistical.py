@@ -111,7 +111,7 @@ class StatisticalSampleGenerator(SampleGenerator):
     smooth_pursuit_consistency: RangeLike
         The jitter along a pursuit. (default: Range(0.0, 2.0))
     noise_percentage: float
-        The share of the samples that receive noise, from 0 to 100. (default: 0.0)
+        The share of all samples that receive noise, from 0 to 100. (default: 0.0)
     noise_velocity: RangeLike
         The velocity change of a noisy sample. (default: Range(0.0, 0.0))
     profile_sampling_rate: float
@@ -297,6 +297,12 @@ class StatisticalSampleGenerator(SampleGenerator):
             return self._synthesize_trial(trial, rng)
 
         samples = per_trial(events, synthesize, generator=self.name)
+        samples = samples.with_columns(
+            pl.Series(
+                'velocity_magnitude',
+                self._add_noise(samples['velocity_magnitude'].to_numpy(), rng),
+            ),
+        )
 
         # A magnitude fills none of the Gaze component columns, which Gaze warns about. Its
         # advice, to declare position or velocity columns, cannot apply to a signal without axes.
@@ -327,7 +333,7 @@ class StatisticalSampleGenerator(SampleGenerator):
 
         return pl.DataFrame({
             'time': times,
-            'velocity_magnitude': self._add_noise(magnitudes, rng),
+            'velocity_magnitude': magnitudes,
         })
 
     def _velocity_profile(
