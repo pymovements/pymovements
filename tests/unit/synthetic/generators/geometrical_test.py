@@ -313,6 +313,14 @@ def test_fixation_shorter_than_one_sample_gets_one_sample():
     assert gaze.samples['position'].to_list() == [[1.0, 2.0]]
 
 
+def test_fixation_between_samples_keeps_its_location_if_one_sample_falls_inside():
+    events = _fixations(onsets=(0, 195, 300), offsets=(100, 205, 400), locations=LOCATIONS)
+
+    gaze = _generate(events, sampling_rate=10.0, interpolation='linear')
+
+    assert _positions(gaze)[2].tolist() == [10.0, 0.0]
+
+
 def test_samples_start_at_the_first_onset():
     events = _fixations(onsets=(500,), offsets=(740,), locations=((1.0, 2.0),))
 
@@ -707,8 +715,14 @@ def test_geometrical_raises_error(hyperparameters, exception, msg_substrings):
                 names=['saccade', 'fixation'],
             ),
             250.0,
-            ('geometrical', 'no sample', 'fixation', '250.0 Hz'),
+            ('geometrical', 'no sample', 'fixation at 3.0 ms', '250.0 Hz', 'sampling rate'),
             id='fixation_shorter_than_one_sample',
+        ),
+        pytest.param(
+            _fixations(onsets=(0, 105, 200), offsets=(100, 108, 300), locations=LOCATIONS),
+            10.0,
+            ('geometrical', 'no sample', 'fixation at 105.0 ms', '10.0 Hz', 'sampling rate'),
+            id='fixation_between_two_samples',
         ),
     ],
 )
