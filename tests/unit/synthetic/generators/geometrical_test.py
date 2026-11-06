@@ -321,6 +321,50 @@ def test_fixation_between_samples_keeps_its_location_if_one_sample_falls_inside(
     assert _positions(gaze)[2].tolist() == [10.0, 0.0]
 
 
+@pytest.mark.parametrize(
+    ('sampling_rate', 'onset'),
+    [
+        pytest.param(12.0, 16250, id='12hz'),
+        pytest.param(19.0, 1000, id='19hz'),
+        pytest.param(76.0, 250, id='76hz'),
+    ],
+)
+def test_sample_on_an_onset_belongs_to_that_fixation(sampling_rate, onset):
+    """These rates round the time of the sample just below the onset it falls on."""
+    events = _fixations(
+        onsets=(0, onset), offsets=(onset, onset + 500), locations=((0.0, 0.0), (10.0, 0.0)),
+    )
+
+    positions = _positions(_generate(events, sampling_rate=sampling_rate, interpolation='linear'))
+
+    index = round(onset * sampling_rate / 1000.0)
+    assert positions[index - 1].tolist() == [0.0, 0.0]
+    assert positions[index].tolist() == [10.0, 0.0]
+
+
+@pytest.mark.parametrize(
+    ('sampling_rate', 'end'),
+    [
+        pytest.param(12.0, 16250, id='12hz'),
+        pytest.param(19.0, 1000, id='19hz'),
+        pytest.param(76.0, 250, id='76hz'),
+    ],
+)
+def test_sample_on_an_end_is_outside_that_fixation(sampling_rate, end):
+    """An event spans ``[onset, onset + duration)``, so the sample moves into the gap."""
+    events = _fixations(
+        onsets=(0, end + 500),
+        offsets=(end, end + 1000),
+        locations=((0.0, 0.0), (10.0, 0.0)),
+    )
+
+    positions = _positions(_generate(events, sampling_rate=sampling_rate, interpolation='linear'))
+
+    index = round(end * sampling_rate / 1000.0)
+    assert positions[index - 1].tolist() == [0.0, 0.0]
+    assert positions[index][0] > 0.0
+
+
 def test_samples_start_at_the_first_onset():
     events = _fixations(onsets=(500,), offsets=(740,), locations=((1.0, 2.0),))
 
