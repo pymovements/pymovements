@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test the statistical sample generator."""
+import dataclasses
 import json
 import math
 
@@ -35,6 +36,12 @@ from pymovements.synthetic import StatisticalSampleGenerator
 pytestmark = pytest.mark.filterwarnings(
     'ignore:Synthetic gaze generation is experimental:pymovements.ExperimentalWarning',
 )
+
+#: The fields that hold a range, read from the class so that a new one cannot be missed.
+RANGE_FIELDS = [
+    field.name for field in dataclasses.fields(StatisticalSampleGenerator)
+    if isinstance(field.default, Range)
+]
 
 #: Hyperparameters without any jitter, so a profile can be read off the samples exactly.
 WITHOUT_JITTER = {
@@ -658,6 +665,25 @@ def test_reads_a_range_from_each_accepted_form(value, expected):
     generator = StatisticalSampleGenerator(sampling_rate=1000.0, saccade_peak_velocity=value)
 
     assert generator.saccade_peak_velocity == expected
+
+
+@pytest.mark.parametrize('name', RANGE_FIELDS)
+def test_reads_every_range_field(name):
+    hyperparameters = {'noise_percentage': 10.0, 'noise_velocity': (1.0, 2.0), name: (1.0, 1.5)}
+
+    generator = StatisticalSampleGenerator(sampling_rate=1000.0, **hyperparameters)
+
+    assert getattr(generator, name) == Range(1.0, 1.5)
+
+
+@pytest.mark.parametrize('name', sorted(set(RANGE_FIELDS) - {'noise_velocity'}))
+def test_range_fields_reject_a_negative_minimum(name):
+    with pytest.raises(ValueError) as excinfo:
+        StatisticalSampleGenerator(sampling_rate=1000.0, **{name: (-1.0, 1.0)})
+
+    msg, = excinfo.value.args
+    for msg_substring in (name, 'negative', '-1.0'):
+        assert msg_substring in msg
 
 
 def test_records_its_hyperparameters(contiguous_events):
