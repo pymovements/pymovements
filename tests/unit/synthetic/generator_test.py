@@ -577,7 +577,7 @@ def test_annotation_of_a_plain_mixin_is_no_field(request, generator, init, run):
 
 @pytest.mark.parametrize(('generator', 'init', 'run'), LEVELS)
 def test_subclass_without_new_fields_needs_no_decorator(request, generator, init, run):
-    """Overriding a method or adding a class variable leaves the fields as they are."""
+    """Adding a class variable leaves the fields as they are, so no decorator is needed."""
     base_class = request.getfixturevalue(generator)
 
     class UndecoratedGenerator(base_class):
