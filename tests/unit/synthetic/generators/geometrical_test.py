@@ -19,6 +19,7 @@
 # SOFTWARE.
 """Test the geometrical sample generator."""
 import json
+import math
 
 import numpy as np
 import polars as pl
@@ -603,8 +604,18 @@ def test_geometrical_raises_error(hyperparameters, exception, msg_substrings):
         pytest.param(
             _fixations(onsets=(0,), offsets=(250,), locations=((1.0, None),)),
             1000.0,
-            ('geometrical', 'location', 'number', '[1.0, None]'),
+            ('geometrical', 'location', 'finite number', '[1.0, None]'),
             id='location_with_a_missing_component',
+        ),
+        pytest.param(
+            Events(
+                pl.DataFrame({
+                    'name': ['fixation'], 'onset': [0], 'offset': [250], 'location': [['a', 'b']],
+                }),
+            ),
+            1000.0,
+            ('geometrical', 'location', 'finite number', "['a', 'b']"),
+            id='location_of_text',
         ),
         pytest.param(
             _fixations(onsets=(0, 300), offsets=(None, 500), locations=LOCATIONS[:2]),
@@ -708,6 +719,35 @@ def test_geometrical_raises_error_on_generate(events, sampling_rate, msg_substri
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
         assert msg_substring in msg
+
+
+@pytest.mark.parametrize(
+    'interpolation',
+    [
+        pytest.param('linear', id='linear'),
+        pytest.param('cubic_spline', id='cubic_spline'),
+    ],
+)
+@pytest.mark.parametrize(
+    'component',
+    [
+        pytest.param(math.nan, id='nan'),
+        pytest.param(math.inf, id='infinity'),
+        pytest.param(-math.inf, id='negative_infinity'),
+    ],
+)
+def test_location_that_is_not_finite_raises_error(interpolation, component):
+    """Linear interpolation would carry a NaN into the samples without any error."""
+    events = _fixations(
+        onsets=(0, 300), offsets=(200, 500), locations=((0.0, 0.0), (component, 1.0)),
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        _generate(events, interpolation=interpolation)
+
+    msg, = excinfo.value.args
+    assert 'finite number' in msg
+    assert str(component) in msg
 
 
 @pytest.mark.parametrize(
