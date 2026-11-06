@@ -368,6 +368,52 @@ def test_fixation_consistency_adds_jitter():
     assert (_magnitudes(gaze) > 0.0).any()
 
 
+def test_fixation_jitter_lies_above_zero():
+    """The absolute value of normal jitter has a mean of sigma * sqrt(2 / pi)."""
+    generator = StatisticalSampleGenerator(
+        sampling_rate=1000.0, profile_sampling_rate=1000.0, fixation_consistency=10.0,
+    )
+
+    magnitudes = _magnitudes(generator.generate(events=_events(('fixation', 2000.0)), seed=42))
+
+    assert magnitudes.min() >= 0
+    assert magnitudes.mean() == pytest.approx(7.98, rel=0.05)
+
+
+def test_jitter_shrinks_with_the_profile_points_behind_a_sample():
+    """A sample is a mean, so ten profile points divide the spread by about sqrt(10)."""
+    events = _events(('fixation', 2000.0))
+
+    spreads = [
+        _magnitudes(
+            StatisticalSampleGenerator(
+                sampling_rate=1000.0,
+                profile_sampling_rate=profile_sampling_rate,
+                fixation_consistency=10.0,
+            ).generate(events=events, seed=42),
+        ).std()
+        for profile_sampling_rate in (1000.0, 10_000.0)
+    ]
+
+    assert spreads[0] / spreads[1] == pytest.approx(math.sqrt(10), rel=0.1)
+
+
+def test_saccade_skewness_sets_its_width():
+    """The source leaves the support open, so the skewness also decides the width."""
+    def samples_above_half_of_the_peak(skewness):
+        generator = StatisticalSampleGenerator(
+            sampling_rate=1000.0,
+            profile_sampling_rate=1000.0,
+            saccade_duration=(20.0, 120.0),
+            saccade_skewness=skewness,
+            **WITHOUT_JITTER,
+        )
+        magnitudes = _magnitudes(generator.generate(events=_events(('saccade', 120.0)), seed=42))
+        return (magnitudes > magnitudes.max() / 2).sum()
+
+    assert samples_above_half_of_the_peak(0.5) < samples_above_half_of_the_peak(1.5)
+
+
 def _still_fixation(**noise):
     """Generate a still fixation, so every sample that is not zero is noise."""
     generator = StatisticalSampleGenerator(sampling_rate=1000.0, fixation_consistency=0.0, **noise)
