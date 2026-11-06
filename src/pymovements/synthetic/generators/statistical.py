@@ -406,11 +406,12 @@ class StatisticalSampleGenerator(SampleGenerator):
             pursuit = np.full(n_samples, velocities.draw(rng))
 
         onset = _range(self.smooth_pursuit_onset_duration).draw(rng)
-        onset_samples = min(max(round(onset * self.profile_sampling_rate / 1000.0), 1), n_samples)
+        onset_samples = min(round(onset * self.profile_sampling_rate / 1000.0), n_samples)
 
         # A sigmoid over [-6, 6] is saturated at both ends, so the onset meets the pursuit smoothly.
+        # Its lower end is left out, so that an onset of one point is not lost at almost zero.
         ramp = np.ones(n_samples)
-        ramp[:onset_samples] = 1.0 / (1.0 + np.exp(-np.linspace(-6.0, 6.0, onset_samples)))
+        ramp[:onset_samples] = 1.0 / (1.0 + np.exp(-np.linspace(-6.0, 6.0, onset_samples + 1)[1:]))
 
         return pursuit * ramp
 
