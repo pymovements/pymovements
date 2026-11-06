@@ -38,6 +38,7 @@ from __future__ import annotations
 import dataclasses
 import math
 import numbers
+from typing import cast
 from typing import ClassVar
 
 import numpy as np
@@ -307,7 +308,7 @@ class GeometricalSampleGenerator(SampleGenerator):
             )
 
         positions = self._interpolate(times, locations[fixation], held)
-        positions = self._scatter(positions, fixation, held, len(locations), rng)
+        positions = self._scatter(positions, fixation[held], held, rng)
 
         return pl.DataFrame({'time': times, 'x': positions[:, 0], 'y': positions[:, 1]})
 
@@ -338,20 +339,22 @@ class GeometricalSampleGenerator(SampleGenerator):
     def _scatter(
             self,
             positions: np.ndarray,
-            fixation: np.ndarray,
+            held_fixation: np.ndarray,
             held: np.ndarray,
-            n_fixations: int,
             rng: np.random.Generator,
     ) -> np.ndarray:
-        """Return the positions with each fixation's samples scattered by a drawn deviation."""
-        deviations = Range.from_value(self.fixation_deviation)
+        """Return the positions with each fixation's samples scattered by a drawn deviation.
+
+        The held samples are in time order, so each fixation's samples are one run of them.
+        """
+        deviations = cast(Range, self.fixation_deviation)
         scattered = positions.copy()
 
-        for index in range(n_fixations):
+        boundaries = np.flatnonzero(np.diff(held_fixation)) + 1
+        for samples in np.split(np.flatnonzero(held), boundaries):
             deviation = deviations.draw(rng)
-            samples = held & (fixation == index)
 
-            if deviation and samples.any():
-                scattered[samples] += rng.normal(0.0, deviation, (samples.sum(), 2))
+            if deviation:
+                scattered[samples] += rng.normal(0.0, deviation, (samples.size, 2))
 
         return scattered
