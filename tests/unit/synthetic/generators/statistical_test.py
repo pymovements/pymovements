@@ -579,6 +579,34 @@ def test_generates_each_trial_separately(trials, trial_columns):
     assert second['time'].dt.total_milliseconds().to_list()[0] == 0
 
 
+def test_orders_unsorted_events_within_each_trial():
+    """The rows mix both trials, and a trial's saccade comes before its fixation."""
+    events = Events(
+        pl.DataFrame({
+            'trial': [1, 2, 1],
+            'name': ['saccade', 'fixation', 'fixation'],
+            'onset': [250, 0, 0],
+            'offset': [300, 200, 250],
+        }),
+        trial_columns='trial',
+        time_unit='ms',
+    )
+    generator = StatisticalSampleGenerator(
+        sampling_rate=1000.0, profile_sampling_rate=1000.0, **WITHOUT_JITTER,
+    )
+
+    gaze = generator.generate(events=events, seed=42)
+
+    first, second = gaze.samples.partition_by('trial', maintain_order=True)
+    assert first['trial'][0] == 1
+    assert first.height == 300
+    assert (first['velocity_magnitude'].head(250) == 0.0).all()
+    assert first['velocity_magnitude'].tail(50).max() > 0.0
+    assert second['trial'][0] == 2
+    assert second.height == 200
+    assert (second['velocity_magnitude'] == 0.0).all()
+
+
 def test_does_not_fill_the_time_between_trials():
     events = Events(
         name=['fixation'] * 2, onsets=[0, 5000], offsets=[250, 5300], trials=[1, 2],
@@ -834,11 +862,10 @@ def test_statistical_raises_error(hyperparameters, exception, msg_substrings):
 
 
 @pytest.mark.parametrize(
-    ('events', 'hyperparameters', 'msg_substrings'),
+    ('events', 'msg_substrings'),
     [
         pytest.param(
             Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560], time_unit='ms'),
-            {},
             ('statistical', 'gap', '250.0', '300.0', 'bridge_gaps'),
             id='gap_between_events',
         ),
@@ -847,19 +874,16 @@ def test_statistical_raises_error(hyperparameters, exception, msg_substrings):
                 name=['fixation', 'saccade'], onsets=[0.0, 250.75], offsets=[250.5, 300.0],
                 time_unit='ms',
             ),
-            {},
             ('statistical', 'gap', '250.5 ms', '250.75 ms', 'saccade'),
             id='sub_millisecond_gap',
         ),
         pytest.param(
             Events(name=['fixation'] * 2, onsets=[0, 200], offsets=[250, 500], time_unit='ms'),
-            {},
             ('statistical', 'overlap'),
             id='overlapping_events',
         ),
         pytest.param(
             _events(('fixation', 200.0), ('blink', 100.0)),
-            {},
             ('statistical', 'blink', 'fixation', 'saccade', 'smooth_pursuit'),
             id='event_type_without_a_profile',
         ),
@@ -867,20 +891,18 @@ def test_statistical_raises_error(hyperparameters, exception, msg_substrings):
             Events(
                 pl.DataFrame({'name': ['fixation'] * 2, 'onset': [0, 300], 'duration': [250, 260]}),
             ),
-            {},
             ('gap', '250.0 ms', '300.0 ms', 'bridge_gaps'),
             id='gap_is_read_from_the_duration',
         ),
         pytest.param(
             Events(name=[], onsets=[], offsets=[], time_unit='ms'),
-            {},
             ('statistical', 'empty'),
             id='empty_events',
         ),
     ],
 )
-def test_statistical_raises_error_on_generate(events, hyperparameters, msg_substrings):
-    generator = StatisticalSampleGenerator(sampling_rate=1000.0, **hyperparameters)
+def test_statistical_raises_error_on_generate(events, msg_substrings):
+    generator = StatisticalSampleGenerator(sampling_rate=1000.0)
 
     with pytest.raises(ValueError) as excinfo:
         generator.generate(events=events, seed=42)
