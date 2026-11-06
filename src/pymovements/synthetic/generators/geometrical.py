@@ -36,6 +36,8 @@ section 3.7 of:
 from __future__ import annotations
 
 import dataclasses
+import math
+import numbers
 from typing import ClassVar
 
 import numpy as np
@@ -242,7 +244,7 @@ class GeometricalSampleGenerator(SampleGenerator):
         )
 
     def _locations(self, fixations: pl.DataFrame) -> np.ndarray:
-        """Return the locations of the fixations, rejecting any that is not two numbers."""
+        """Return the locations of the fixations, rejecting any that is not two finite numbers."""
         if LOCATION_COLUMN not in fixations.columns:
             raise ValueError(
                 f"generator '{self.name}' needs a '{LOCATION_COLUMN}' column holding the position "
@@ -256,9 +258,12 @@ class GeometricalSampleGenerator(SampleGenerator):
                     f"generator '{self.name}' needs a '{LOCATION_COLUMN}' of two components for "
                     f'every fixation, but one has: {location}',
                 )
-            if None in location:
+            if not all(
+                isinstance(value, numbers.Real) and math.isfinite(value)
+                for value in location
+            ):
                 raise ValueError(
-                    f"generator '{self.name}' needs a number for both components of a "
+                    f"generator '{self.name}' needs a finite number for both components of a "
                     f"'{LOCATION_COLUMN}', but one fixation has: {location}",
                 )
 
