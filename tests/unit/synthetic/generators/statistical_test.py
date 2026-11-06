@@ -807,7 +807,7 @@ def test_run_is_replayed_from_its_record(contiguous_events):
         pytest.param(
             {'saccade_skewness': (0.5, 2.0)},
             ValueError,
-            ('saccade_skewness', 'below two', 'onset'),
+            ('saccade_skewness', 'below two', 'close to two', 'onset'),
             id='skewness_without_a_rising_onset',
         ),
         pytest.param(

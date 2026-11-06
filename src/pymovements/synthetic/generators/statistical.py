@@ -204,8 +204,8 @@ class StatisticalSampleGenerator(SampleGenerator):
         if skewness.maximum >= 2:
             raise ValueError(
                 f'saccade_skewness must stay below two but has a maximum of: {skewness.maximum}. '
-                'At two the profile peaks at its first sample and loses the onset that makes it '
-                'a saccade',
+                'At two the profile peaks at its start, and close to two a short saccade already '
+                'loses the onset that makes it one, so stay well below',
             )
 
         check_name(
