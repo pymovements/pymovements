@@ -1087,3 +1087,29 @@ def test_statistical_raises_type_error_on_events_of_wrong_type():
     msg, = excinfo.value.args
     for msg_substring in ('statistical', 'events', 'Events', 'NoneType'):
         assert msg_substring in msg
+
+
+@pytest.mark.parametrize(
+    'trial_column',
+    [
+        pytest.param('position', id='position'),
+        pytest.param('pixel', id='pixel'),
+        pytest.param('velocity', id='velocity'),
+        pytest.param('acceleration', id='acceleration'),
+    ],
+)
+def test_trial_column_named_like_a_gaze_column_raises_error(trial_column):
+    events = Events(
+        pl.DataFrame({trial_column: [1], 'name': ['fixation'], 'onset': [0], 'offset': [200]}),
+        trial_columns=trial_column,
+        time_unit='ms',
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        StatisticalSampleGenerator(sampling_rate=1000.0).generate(events=events, seed=42)
+
+    msg, = excinfo.value.args
+    assert 'statistical' in msg
+    assert f"['{trial_column}']" in msg
+    assert 'Gaze' in msg
+    assert 'rename' in msg

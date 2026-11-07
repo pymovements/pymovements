@@ -292,7 +292,8 @@ class StatisticalSampleGenerator(SampleGenerator):
             If ``events`` is not an ``Events`` object.
         ValueError
             If the events have gaps, overlap, are empty, all have a duration of zero, contain
-            a null or negative duration, or an event type without a profile.
+            a null or negative duration or an event type without a profile, or if a trial
+            column has the name of a generated or ``Gaze`` column.
         """
         if not isinstance(events, Events):
             raise TypeError(
