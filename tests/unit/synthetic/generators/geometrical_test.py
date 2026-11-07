@@ -652,6 +652,18 @@ def test_run_is_replayed_from_its_record():
             id='inverted_deviation',
         ),
         pytest.param(
+            {'fixation_deviation': math.nan},
+            ValueError,
+            ('fixation_deviation', 'minimum', 'finite', 'nan'),
+            id='nan_deviation',
+        ),
+        pytest.param(
+            {'fixation_deviation': (0.0, math.inf)},
+            ValueError,
+            ('fixation_deviation', 'maximum', 'finite', 'inf'),
+            id='infinite_deviation',
+        ),
+        pytest.param(
             {'fixation_deviation': 'large'},
             TypeError,
             ('range', 'str', 'large'),
