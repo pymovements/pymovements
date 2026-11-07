@@ -107,11 +107,12 @@ def per_trial(
     filled. ``synthesize`` receives one trial's events, ordered by onset, and returns its
     samples. A trial column named like a generated column is rejected, since the join would rename
     one of them, and so is one named like a column ``Gaze`` keeps for itself, which it would
-    overwrite or fail on.
+    overwrite, fail on or read as the eye-to-screen distance.
     """
     trial_columns = events.trial_columns or []
 
-    reserved = sorted({'position', 'pixel', 'velocity', 'acceleration'} & set(trial_columns))
+    gaze_columns = {'position', 'pixel', 'velocity', 'acceleration', 'distance'}
+    reserved = sorted(gaze_columns & set(trial_columns))
     if reserved:
         raise ValueError(
             f'{_prefix(generator)}the trial columns {reserved} have the names of Gaze columns; '
