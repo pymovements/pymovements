@@ -879,8 +879,14 @@ def test_run_is_replayed_from_its_record(contiguous_events):
         pytest.param(
             {'saccade_peak_velocity': 'fast'},
             TypeError,
-            ('range', 'str', 'fast'),
+            ('saccade_peak_velocity', 'range', 'str', 'fast'),
             id='range_of_wrong_type',
+        ),
+        pytest.param(
+            {'saccade_peak_velocity': ('a', 1)},
+            TypeError,
+            ('saccade_peak_velocity', 'minimum', 'number', 'str'),
+            id='range_bound_of_wrong_type',
         ),
         pytest.param(
             {'noise_percentage': '10'},
