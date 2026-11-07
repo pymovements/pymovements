@@ -745,6 +745,24 @@ def test_geometrical_raises_error(hyperparameters, exception, msg_substrings):
             id='overlapping_fixations',
         ),
         pytest.param(
+            _fixations(onsets=(0,), offsets=(250,), locations=LOCATIONS[:1], time=[1]),
+            1000.0,
+            ('geometrical', "['time']", 'generated', 'rename'),
+            id='trial_column_named_time',
+        ),
+        pytest.param(
+            _fixations(onsets=(0,), offsets=(250,), locations=LOCATIONS[:1], x=[1]),
+            1000.0,
+            ('geometrical', "['x']", 'generated', 'rename'),
+            id='trial_column_named_x',
+        ),
+        pytest.param(
+            _fixations(onsets=(0,), offsets=(250,), locations=LOCATIONS[:1], y=[1]),
+            1000.0,
+            ('geometrical', "['y']", 'generated', 'rename'),
+            id='trial_column_named_y',
+        ),
+        pytest.param(
             _fixations(
                 onsets=(0, 250), offsets=(250, 650), locations=(LOCATIONS[0], None),
                 names=['fixation', 'smooth_pursuit'],
