@@ -105,7 +105,8 @@ def per_trial(
 
     Each trial is generated as its own continuous signal, so the time between trials is never
     filled. ``synthesize`` receives one trial's events, ordered by onset, and returns its
-    samples.
+    samples. A trial column named like a generated column is rejected, since the join would rename
+    one of them.
     """
     trial_columns = events.trial_columns or []
     frame = ordered_frame(events, generator=generator)
@@ -118,10 +119,20 @@ def per_trial(
     if not trial_columns:
         return synthesize(frame)
 
-    return pl.concat([
-        trial.select(trial_columns).head(1).join(synthesize(trial), how='cross')
-        for trial in frame.partition_by(trial_columns, maintain_order=True)
-    ])
+    samples = []
+    for trial in frame.partition_by(trial_columns, maintain_order=True):
+        generated = synthesize(trial)
+
+        clashing = sorted(set(trial_columns) & set(generated.columns))
+        if clashing:
+            raise ValueError(
+                f'{_prefix(generator)}the trial columns {clashing} have the names of generated '
+                'columns; rename them',
+            )
+
+        samples.append(trial.select(trial_columns).head(1).join(generated, how='cross'))
+
+    return pl.concat(samples)
 
 
 def sample_times(onset: float, offset: float, sampling_rate: float) -> np.ndarray:

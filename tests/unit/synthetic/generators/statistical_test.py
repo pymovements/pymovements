@@ -1022,6 +1022,28 @@ def test_statistical_raises_error(hyperparameters, exception, msg_substrings):
             ('statistical', 'saccade', '200.0 ms', '-50.0 ms', 'negative', 'drop it'),
             id='event_of_negative_duration',
         ),
+        pytest.param(
+            Events(
+                pl.DataFrame({
+                    'time': [1], 'name': ['fixation'], 'onset': [0], 'offset': [200],
+                }),
+                trial_columns='time',
+                time_unit='ms',
+            ),
+            ('statistical', "['time']", 'generated', 'rename'),
+            id='trial_column_named_time',
+        ),
+        pytest.param(
+            Events(
+                pl.DataFrame({
+                    'velocity_magnitude': [1], 'name': ['fixation'], 'onset': [0], 'offset': [200],
+                }),
+                trial_columns='velocity_magnitude',
+                time_unit='ms',
+            ),
+            ('statistical', "['velocity_magnitude']", 'generated', 'rename'),
+            id='trial_column_named_velocity_magnitude',
+        ),
     ],
 )
 def test_statistical_raises_error_on_generate(events, msg_substrings):
