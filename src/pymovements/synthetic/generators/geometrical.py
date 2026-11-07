@@ -153,8 +153,8 @@ class GeometricalSampleGenerator(SampleGenerator):
 
         try:
             self.fixation_deviation = Range.from_value(self.fixation_deviation)
-        except ValueError as error:
-            raise ValueError(f'fixation_deviation: {error}') from error
+        except (TypeError, ValueError) as error:
+            raise type(error)(f'fixation_deviation: {error}') from error
 
         if self.fixation_deviation.minimum < 0:
             raise ValueError(
