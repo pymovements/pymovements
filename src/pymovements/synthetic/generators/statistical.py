@@ -186,8 +186,8 @@ class StatisticalSampleGenerator(SampleGenerator):
         ):
             try:
                 value = _range(getattr(self, name))
-            except ValueError as error:
-                raise ValueError(f'{name}: {error}') from error
+            except (TypeError, ValueError) as error:
+                raise type(error)(f'{name}: {error}') from error
 
             if name != 'noise_velocity' and value.minimum < 0:
                 raise ValueError(
