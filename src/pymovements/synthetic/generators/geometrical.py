@@ -267,7 +267,8 @@ class GeometricalSampleGenerator(SampleGenerator):
                     f'every fixation, but one has: {location}',
                 )
             if not all(
-                isinstance(value, numbers.Real) and math.isfinite(value)
+                isinstance(value, numbers.Real) and not isinstance(value, bool)
+                and math.isfinite(value)
                 for value in location
             ):
                 raise ValueError(
