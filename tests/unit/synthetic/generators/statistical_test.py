@@ -1014,6 +1014,18 @@ def test_statistical_raises_error(hyperparameters, exception, msg_substrings):
         ),
         pytest.param(
             Events(
+                pl.DataFrame({
+                    'name': ['fixation', 'saccade'],
+                    'onset': [None, 200],
+                    'duration': [200, 40],
+                }),
+                time_unit='ms',
+            ),
+            ('statistical', 'fixation', 'no known onset', 'drop it'),
+            id='event_of_null_onset',
+        ),
+        pytest.param(
+            Events(
                 name=['fixation', 'saccade', 'fixation'],
                 onsets=[0, 200, 200],
                 offsets=[200, 150, 400],
