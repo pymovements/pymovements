@@ -718,6 +718,19 @@ def test_geometrical_raises_error(hyperparameters, exception, msg_substrings):
             id='location_of_text',
         ),
         pytest.param(
+            Events(
+                pl.DataFrame({
+                    'name': ['fixation'],
+                    'onset': [0],
+                    'offset': [250],
+                    'location': [[True, False]],
+                }),
+            ),
+            1000.0,
+            ('geometrical', 'location', 'finite number', '[True, False]'),
+            id='location_of_booleans',
+        ),
+        pytest.param(
             _fixations(onsets=(0, 300), offsets=(None, 500), locations=LOCATIONS[:2]),
             1000.0,
             ('geometrical', 'fixation at 0.0 ms', 'no known duration', 'drop it'),
