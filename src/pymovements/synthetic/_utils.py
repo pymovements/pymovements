@@ -105,9 +105,18 @@ def per_trial(
     Each trial is generated as its own continuous signal, so the time between trials is never
     filled. ``synthesize`` receives one trial's events, ordered by onset, and returns its
     samples. A trial column named like a generated column is rejected, since the join would rename
-    one of them.
+    one of them, and so is one named like a column ``Gaze`` keeps for itself, which it would
+    overwrite or fail on.
     """
     trial_columns = events.trial_columns or []
+
+    reserved = sorted({'position', 'pixel', 'velocity', 'acceleration'} & set(trial_columns))
+    if reserved:
+        raise ValueError(
+            f'{_prefix(generator)}the trial columns {reserved} have the names of Gaze columns; '
+            'rename them',
+        )
+
     frame = ordered_frame(events, generator=generator)
 
     if frame.is_empty():
