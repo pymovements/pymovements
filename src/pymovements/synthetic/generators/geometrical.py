@@ -242,14 +242,11 @@ class GeometricalSampleGenerator(SampleGenerator):
 
         samples = per_trial(rendered, synthesize, generator=self.name)
 
-        in_pixels = self.location_column_group == 'pixel'
         return Gaze(
             samples=samples,
             trial_columns=events.trial_columns,
             time_column='time',
             time_unit='ms',
-            pixel_columns=['_x', '_y'] if in_pixels else None,
-            position_columns=None if in_pixels else ['_x', '_y'],
         )
 
     def _locations(self, fixations: pl.DataFrame) -> np.ndarray:
@@ -314,7 +311,7 @@ class GeometricalSampleGenerator(SampleGenerator):
         positions = self._interpolate(times, locations[fixation], held)
         positions = self._scatter(positions, fixation[held], held, rng)
 
-        return pl.DataFrame({'time': times, '_x': positions[:, 0], '_y': positions[:, 1]})
+        return pl.DataFrame({'time': times, self.location_column_group: positions.tolist()})
 
     def _interpolate(
             self,
