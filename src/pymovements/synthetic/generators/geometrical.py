@@ -258,7 +258,8 @@ class GeometricalSampleGenerator(SampleGenerator):
                 f'columns are: {fixations.columns}',
             )
 
-        for location in fixations[LOCATION_COLUMN].to_list():
+        locations = fixations[LOCATION_COLUMN].to_list()
+        for location in locations:
             if not isinstance(location, list) or len(location) != 2:
                 raise ValueError(
                     f"generator '{self.name}' needs a '{LOCATION_COLUMN}' of two components for "
@@ -274,7 +275,7 @@ class GeometricalSampleGenerator(SampleGenerator):
                     f"'{LOCATION_COLUMN}', but one fixation has: {location}",
                 )
 
-        return np.array(fixations[LOCATION_COLUMN].to_list(), dtype=float).reshape(-1, 2)
+        return np.array(locations, dtype=float).reshape(-1, 2)
 
     def _synthesize_trial(self, trial: pl.DataFrame, rng: np.random.Generator) -> pl.DataFrame:
         """Return the samples of one trial's ordered events."""
