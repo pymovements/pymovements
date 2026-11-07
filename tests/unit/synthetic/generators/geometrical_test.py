@@ -445,6 +445,27 @@ def test_generates_each_trial_separately(trials, trial_columns):
     np.testing.assert_array_equal(second['position'].to_list(), np.tile((5.0, 5.0), (200, 1)))
 
 
+@pytest.mark.parametrize(
+    ('location_column_group', 'trial_column'),
+    [
+        pytest.param('position', 'x', id='x_with_position'),
+        pytest.param('position', 'y', id='y_with_position'),
+        pytest.param('pixel', 'x', id='x_with_pixel'),
+        pytest.param('pixel', 'y', id='y_with_pixel'),
+    ],
+)
+def test_trial_column_may_be_named_like_an_axis(location_column_group, trial_column):
+    events = _fixations(
+        onsets=(0,), offsets=(2,), locations=((1.0, 2.0),), **{trial_column: [7]},
+    )
+
+    gaze = _generate(events, location_column_group=location_column_group)
+
+    assert gaze.samples.columns == [trial_column, 'time', location_column_group]
+    assert gaze.samples[trial_column].to_list() == [7, 7]
+    assert gaze.samples[location_column_group].to_list() == [[1.0, 2.0], [1.0, 2.0]]
+
+
 def test_does_not_fill_the_time_between_trials():
     events = _fixations(
         onsets=(0, 5000),
@@ -751,18 +772,6 @@ def test_geometrical_raises_error(hyperparameters, exception, msg_substrings):
             id='trial_column_named_time',
         ),
         pytest.param(
-            _fixations(onsets=(0,), offsets=(250,), locations=LOCATIONS[:1], x=[1]),
-            1000.0,
-            ('geometrical', "['x']", 'generated', 'rename'),
-            id='trial_column_named_x',
-        ),
-        pytest.param(
-            _fixations(onsets=(0,), offsets=(250,), locations=LOCATIONS[:1], y=[1]),
-            1000.0,
-            ('geometrical', "['y']", 'generated', 'rename'),
-            id='trial_column_named_y',
-        ),
-        pytest.param(
             _fixations(
                 onsets=(0, 250), offsets=(250, 650), locations=(LOCATIONS[0], None),
                 names=['fixation', 'smooth_pursuit'],
@@ -839,6 +848,38 @@ def test_geometrical_raises_error_on_generate(events, sampling_rate, msg_substri
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
         assert msg_substring in msg
+
+
+@pytest.mark.parametrize(
+    'location_column_group',
+    [
+        pytest.param('position', id='position_output'),
+        pytest.param('pixel', id='pixel_output'),
+    ],
+)
+@pytest.mark.parametrize(
+    'trial_column',
+    [
+        pytest.param('position', id='position'),
+        pytest.param('pixel', id='pixel'),
+        pytest.param('velocity', id='velocity'),
+        pytest.param('acceleration', id='acceleration'),
+    ],
+)
+def test_trial_column_named_like_a_gaze_column_raises_error(location_column_group, trial_column):
+    """The one matching the output would be overwritten, which loses the trials silently."""
+    events = _fixations(
+        onsets=(0,), offsets=(250,), locations=LOCATIONS[:1], **{trial_column: [1]},
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        _generate(events, location_column_group=location_column_group)
+
+    msg, = excinfo.value.args
+    assert 'geometrical' in msg
+    assert f"['{trial_column}']" in msg
+    assert 'Gaze' in msg
+    assert 'rename' in msg
 
 
 @pytest.mark.parametrize(
