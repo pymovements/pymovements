@@ -666,8 +666,14 @@ def test_run_is_replayed_from_its_record():
         pytest.param(
             {'fixation_deviation': 'large'},
             TypeError,
-            ('range', 'str', 'large'),
+            ('fixation_deviation', 'range', 'str', 'large'),
             id='deviation_of_wrong_type',
+        ),
+        pytest.param(
+            {'fixation_deviation': ('a', 1)},
+            TypeError,
+            ('fixation_deviation', 'minimum', 'number', 'str'),
+            id='deviation_bound_of_wrong_type',
         ),
     ],
 )
