@@ -889,6 +889,7 @@ def test_geometrical_raises_error_on_generate(events, sampling_rate, msg_substri
         pytest.param('pixel', id='pixel'),
         pytest.param('velocity', id='velocity'),
         pytest.param('acceleration', id='acceleration'),
+        pytest.param('distance', id='distance'),
     ],
 )
 def test_trial_column_named_like_a_gaze_column_raises_error(location_column_group, trial_column):
