@@ -1096,6 +1096,7 @@ def test_statistical_raises_type_error_on_events_of_wrong_type():
         pytest.param('pixel', id='pixel'),
         pytest.param('velocity', id='velocity'),
         pytest.param('acceleration', id='acceleration'),
+        pytest.param('distance', id='distance'),
     ],
 )
 def test_trial_column_named_like_a_gaze_column_raises_error(trial_column):
