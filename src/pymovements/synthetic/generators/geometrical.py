@@ -188,10 +188,11 @@ class GeometricalSampleGenerator(SampleGenerator):
         TypeError
             If ``events`` is not an ``Events`` object.
         ValueError
-            If the events are empty, overlap, all have a duration of zero, contain a null or
-            negative duration, an event type other than fixations and saccades, or a fixation
-            without a usable location, if a trial has no fixation, if no sample falls inside a
-            fixation, or if a trial column has the name of a generated or ``Gaze`` column.
+            If the events are empty, overlap, all have a duration of zero, contain a null onset,
+            a null or negative duration, an event type other than fixations and saccades, or a
+            fixation without a usable location, if a trial has no fixation, if no sample falls
+            inside a fixation, or if a trial column has the name of a generated or ``Gaze``
+            column.
         """
         if not isinstance(events, Events):
             raise TypeError(
