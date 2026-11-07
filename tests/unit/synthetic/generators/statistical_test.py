@@ -974,6 +974,16 @@ def test_statistical_raises_error(hyperparameters, exception, msg_substrings):
             id='event_type_without_a_profile',
         ),
         pytest.param(
+            _events((None, 100.0), ('fixation', 200.0)),
+            ('statistical', '[None]', 'fixation', 'saccade', 'smooth_pursuit'),
+            id='null_event_name',
+        ),
+        pytest.param(
+            _events((None, 100.0), ('blink', 100.0), ('fixation', 200.0)),
+            ('statistical', "[None, 'blink']", 'fixation', 'saccade', 'smooth_pursuit'),
+            id='null_event_name_beside_an_unknown_type',
+        ),
+        pytest.param(
             Events(
                 pl.DataFrame({'name': ['fixation'] * 2, 'onset': [0, 300], 'duration': [250, 260]}),
             ),
