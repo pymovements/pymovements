@@ -107,7 +107,7 @@ class GeometricalSampleGenerator(SampleGenerator):
     TypeError
         If a parameter has the wrong type.
     ValueError
-        If a name is unknown or the deviation is negative.
+        If a name is unknown or the deviation is negative or not finite.
 
     Examples
     --------
