@@ -82,11 +82,12 @@ class GeometricalSampleGenerator(SampleGenerator):
     deviation of a normal scatter per sample and axis. It is added after the interpolation, so
     the gaps follow the locations themselves. The default of zero gives noise-free output.
 
-    The movement between fixations is interpolated, not modelled: a cubic spline gives a
-    symmetric velocity profile peaking mid-gap, linear interpolation a constant one, and the
-    duration of a movement is the gap the events leave. Not modelled are velocity profiles
-    along the path, saccades that deviate from the straight line, and saliency maps for choosing
-    fixation targets.
+    The movement between fixations is interpolated, not modelled, and its duration is the gap the
+    events leave. Linear interpolation gives a constant velocity. A cubic spline, fitted over all
+    fixations of a trial, gives a smooth movement whose velocity peaks around mid-gap, and it can
+    overshoot a location at low rates or around very short fixations. Not modelled are velocity
+    profiles along the path, saccades that deviate from the straight line, and saliency maps for
+    choosing fixation targets.
 
     Attributes
     ----------

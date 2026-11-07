@@ -169,12 +169,27 @@ def test_cubic_gap_connects_the_two_locations():
 
 
 def test_cubic_gap_peaks_at_its_middle():
-    """The disclosed limitation: the velocity of a cubic gap is symmetric, peaking mid-gap."""
+    """The disclosed limitation: the velocity of a cubic gap peaks around its middle."""
     gaze = _generate()
 
     # The 51 steps from the last sample of the first fixation to the first of the second.
     speeds = np.abs(np.diff(_positions(gaze)[249:301, 0]))
     assert abs(int(np.argmax(speeds)) - 25) <= 1
+
+
+def test_cubic_gap_can_overshoot_around_a_short_fixation():
+    """The disclosed limitation: the spline is fitted over the trial, not per gap."""
+    events = _fixations(
+        onsets=(0, 300, 600),
+        offsets=(100, 310, 700),
+        locations=((0.0, 0.0), (10.0, 0.0), (10.0, 0.0)),
+    )
+
+    cubic = _positions(_generate(events, sampling_rate=100.0))
+    linear = _positions(_generate(events, sampling_rate=100.0, interpolation='linear'))
+
+    assert cubic[:, 0].max() == pytest.approx(11.86, abs=0.01)
+    assert linear[:, 0].max() == 10.0
 
 
 def test_attaches_a_copy_of_the_events():
