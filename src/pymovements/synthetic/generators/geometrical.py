@@ -191,23 +191,12 @@ class GeometricalSampleGenerator(SampleGenerator):
             If the events are empty, overlap, all have a duration of zero, contain a null or
             negative duration, an event type other than fixations and saccades, or a fixation
             without a usable location, if a trial has no fixation, if no sample falls inside a
-            fixation, or if a trial column has the name of a ``Gaze`` column.
+            fixation, or if a trial column has the name of a generated or ``Gaze`` column.
         """
         if not isinstance(events, Events):
             raise TypeError(
                 f"generator '{self.name}' needs events of type Events to condition on, but got "
                 f'{type(events).__name__}',
-            )
-
-        # Gaze keeps these columns for itself, so it overwrites or fails on a trial column of
-        # such a name.
-        reserved = sorted(
-            {'position', 'pixel', 'velocity', 'acceleration'} & set(events.trial_columns or []),
-        )
-        if reserved:
-            raise ValueError(
-                f"generator '{self.name}': the trial columns {reserved} have the names of Gaze "
-                'columns; rename them',
             )
 
         unknown = sorted(set(events.frame['name'].to_list()) - set(EVENT_TYPES), key=str)
