@@ -158,9 +158,26 @@ class Range:
         float
             The drawn value, within the range.
         """
+        return float(self.draw_many(rng, 1)[0])
+
+    def draw_many(self, rng: np.random.Generator, size: int) -> np.ndarray:
+        """Draw several values at once, the same values as as many single draws.
+
+        Parameters
+        ----------
+        rng: np.random.Generator
+            The random generator to draw from.
+        size: int
+            The number of values to draw.
+
+        Returns
+        -------
+        np.ndarray
+            The drawn values, within the range.
+        """
         if self.distribution == 'uniform':
-            return float(rng.uniform(self.minimum, self.maximum))
+            return rng.uniform(self.minimum, self.maximum, size)
 
         std = (self.maximum - self.minimum) / 4.0 if self.std is None else self.std
         centre = (self.minimum + self.maximum) / 2.0
-        return float(np.clip(rng.normal(centre, std), self.minimum, self.maximum))
+        return np.clip(rng.normal(centre, std, size), self.minimum, self.maximum)

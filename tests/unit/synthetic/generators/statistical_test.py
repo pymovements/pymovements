@@ -470,16 +470,66 @@ def test_fixation_consistency_adds_jitter():
     assert (_magnitudes(gaze) > 0.0).any()
 
 
-def test_fixation_jitter_lies_above_zero():
-    """The absolute value of normal jitter has a mean of sigma * sqrt(2 / pi)."""
+def test_fixation_consistency_of_one_value_holds_every_sample_at_it():
+    """Every profile point draws its jitter from the range, here always 2.5 deg/s."""
+    gaze = StatisticalSampleGenerator(sampling_rate=1000.0, fixation_consistency=2.5).generate(
+        events=_events(('fixation', 100.0)), seed=42,
+    )
+
+    assert _magnitudes(gaze).to_list() == pytest.approx([2.5] * 100)
+
+
+def test_fixation_jitter_spans_its_range_within_one_fixation():
+    """The draws vary from point to point, so one fixation is uniform on [2, 4] deg/s."""
     generator = StatisticalSampleGenerator(
-        sampling_rate=1000.0, profile_sampling_rate=1000.0, fixation_consistency=10.0,
+        sampling_rate=1000.0, profile_sampling_rate=1000.0, fixation_consistency=(2.0, 4.0),
     )
 
     magnitudes = _magnitudes(generator.generate(events=_events(('fixation', 2000.0)), seed=42))
 
-    assert magnitudes.min() >= 0
-    assert magnitudes.mean() == pytest.approx(7.98, rel=0.05)
+    assert magnitudes.min() >= 2.0
+    assert magnitudes.max() <= 4.0
+    assert magnitudes.mean() == pytest.approx(3.0, abs=0.05)
+    assert magnitudes.std() == pytest.approx(2.0 / math.sqrt(12), rel=0.05)
+
+
+@pytest.mark.parametrize(
+    ('consistency', 'expected_share_on_the_bounds'),
+    [
+        pytest.param(Range(0.0, 1.0, 'normal', std=2.0), 0.80, id='normal'),
+        pytest.param(Range(0.0, 1.0), 0.0, id='uniform'),
+    ],
+)
+def test_fixation_jitter_distribution_sets_its_look(consistency, expected_share_on_the_bounds):
+    """Fuhl et al. Figure 2 sets a consistency of 1 deg/s, normal with a std of 2, or uniform.
+
+    A normal draw centred on 0.5 with a std of 2 falls outside [0, 1] with a probability of
+    1 - P(|z| < 0.25) = 0.80, and is clipped to a bound, while a uniform draw never is.
+    """
+    generator = StatisticalSampleGenerator(
+        sampling_rate=1000.0, profile_sampling_rate=1000.0, fixation_consistency=consistency,
+    )
+
+    magnitudes = _magnitudes(generator.generate(events=_events(('fixation', 5000.0)), seed=42))
+    on_the_bounds = ((magnitudes == 0.0) | (magnitudes == 1.0)).mean()
+
+    assert on_the_bounds == pytest.approx(expected_share_on_the_bounds, abs=0.02)
+
+
+def test_saccade_jitter_moves_each_point_up_or_down_by_its_draw():
+    """A consistency of one value moves every point by exactly 5 deg/s, in either direction."""
+    def saccade(consistency):
+        generator = StatisticalSampleGenerator(
+            sampling_rate=1000.0, profile_sampling_rate=1000.0, saccade_consistency=consistency,
+        )
+        return _magnitudes(generator.generate(events=_events(('saccade', 60.0)), seed=42))
+
+    smooth = saccade(0.0)
+    moves = (saccade(5.0) - smooth).filter(smooth > 5.0)
+
+    assert moves.abs().to_list() == pytest.approx([5.0] * moves.len())
+    assert (moves > 0).any()
+    assert (moves < 0).any()
 
 
 def test_jitter_shrinks_with_the_profile_points_behind_a_sample():
@@ -491,7 +541,7 @@ def test_jitter_shrinks_with_the_profile_points_behind_a_sample():
             StatisticalSampleGenerator(
                 sampling_rate=1000.0,
                 profile_sampling_rate=profile_sampling_rate,
-                fixation_consistency=10.0,
+                fixation_consistency=(0.0, 10.0),
             ).generate(events=events, seed=42),
         ).std()
         for profile_sampling_rate in (1000.0, 10_000.0)

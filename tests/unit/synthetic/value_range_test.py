@@ -229,6 +229,26 @@ def test_draw_is_reproducible_under_seed(value_range):
     assert first == second
 
 
+@pytest.mark.parametrize(
+    'value_range',
+    [
+        pytest.param(Range(300.0, 500.0), id='uniform'),
+        pytest.param(Range(300.0, 500.0, 'normal', std=50.0), id='normal'),
+        pytest.param(Range(300.0, 500.0, 'normal'), id='normal_without_std'),
+        pytest.param(Range(3.0, 3.0), id='single_value'),
+    ],
+)
+def test_draw_many_returns_the_values_of_one_draw_after_another(value_range):
+    """Drawing at once must not change a seeded run, so the values are those of single draws."""
+    one_rng, many_rng = np.random.default_rng(7), np.random.default_rng(7)
+
+    one_by_one = [value_range.draw(one_rng) for _ in range(1000)]
+    many = value_range.draw_many(many_rng, 1000)
+
+    assert many.shape == (1000,)
+    assert many.tolist() == one_by_one
+
+
 def test_normal_draw_without_std_spreads_over_a_quarter_of_the_width():
     """About 95 % of the draws fall inside the range, so the bounds hold only the tails."""
     rng = np.random.default_rng(42)
