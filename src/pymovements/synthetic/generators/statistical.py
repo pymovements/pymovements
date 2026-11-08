@@ -71,13 +71,13 @@ class StatisticalSampleGenerator(SampleGenerator):
     milliseconds, velocities and consistencies in degrees per second. The defaults are
     illustrations, not measured values.
 
-    The consistency is the standard deviation of the normal jitter at each point of a profile.
-    The absolute value of the profile is taken, so a fixation's mean lies above zero, at about
-    0.8 times its consistency. Since samples are means, their spread is smaller than the
-    consistency, and shrinks as ``profile_sampling_rate`` rises or ``sampling_rate`` falls. A
-    consistency tuned at one pair of rates does not carry over. It is drawn once per event, so
-    its distribution changes how strong the jitter is from event to event, not the look of the
-    fluctuation within one event.
+    The consistency is the jitter at each point of a profile: every point draws a value from the
+    range and moves up or down by it, with an equal chance of either direction, which is our
+    choice. The distribution therefore sets the look of the fluctuation. A normal range with a
+    large ``std`` puts most points on its bounds, a uniform one spreads them evenly. The absolute
+    value of the profile is taken, so a fixation lies at its drawn values. Since samples are
+    means, they spread less than the points, and less still as ``profile_sampling_rate`` rises or
+    ``sampling_rate`` falls. A consistency tuned at one pair of rates does not carry over.
 
     The output is a velocity magnitude without direction, so detectors and transforms that need
     positions cannot consume it. Not modelled are constraints on the order of the events, which
@@ -402,9 +402,10 @@ class StatisticalSampleGenerator(SampleGenerator):
             profile = self._pursuit_profile(n_samples, rng)
             consistency = self.smooth_pursuit_consistency
 
-        jitter = _range(consistency).draw(rng)
-        if jitter:
-            profile = profile + rng.normal(0.0, jitter, n_samples)
+        jitter = _range(consistency)
+        if jitter.maximum:
+            moves = jitter.draw_many(rng, n_samples)
+            profile = profile + rng.choice((-1.0, 1.0), n_samples) * moves
 
         return np.abs(profile)
 
