@@ -377,6 +377,13 @@ def test_set_screen_axes_valid(gaze):
     assert ax.get_aspect() == 1
 
 
+def test_set_screen_axes_skipped_for_position_column(gaze):
+    _, ax = scanpathplot(gaze=gaze, gaze_position_column='position', add_traceplot=True)
+
+    assert ax.get_xlim() != (0, gaze.experiment.screen.width_px)
+    assert ax.get_ylim() != (gaze.experiment.screen.height_px, 0)
+
+
 @pytest.mark.parametrize('origin', ['lower left', 'center'])
 def test_set_screen_axes_invalid_origin(origin, gaze):
     gaze.experiment.screen.origin = origin

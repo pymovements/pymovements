@@ -231,6 +231,19 @@ def test_set_screen_axes_valid(gaze):
     assert ax.get_aspect() == 1
 
 
+@pytest.mark.parametrize('gaze', ['200'], indirect=True)
+def test_set_screen_axes_skipped_for_position_column(gaze):
+    _, ax = traceplot(gaze=gaze, position_column='position')
+
+    x = gaze.samples['position'].list.get(0)
+    y = gaze.samples['position'].list.get(1)
+    x_lim, y_lim = ax.get_xlim(), ax.get_ylim()
+    assert x_lim != (0, gaze.experiment.screen.width_px)
+    assert y_lim != (gaze.experiment.screen.height_px, 0)
+    assert min(x_lim) <= x.min() and x.max() <= max(x_lim)
+    assert min(y_lim) <= y.min() and y.max() <= max(y_lim)
+
+
 @pytest.mark.parametrize('origin', ['lower left', 'center', 'upper right'])
 def test_set_screen_axes_invalid_origin(origin, gaze):
     gaze.experiment.screen.origin = origin

@@ -222,6 +222,15 @@ def test_heatmap_sets_screen_axes_correctly(gaze):
     assert ax.get_aspect() == 1.0
 
 
+def test_heatmap_position_column_does_not_use_pixel_axes(gaze):
+    gaze.pix2deg()
+    _, ax = pm.plotting.heatmap(gaze, position_column='position')
+
+    x_min, x_max, y_bottom, y_top = ax.get_images()[0].get_extent()
+    assert ax.get_xlim() == (x_min, x_max)
+    assert ax.get_ylim() == (y_bottom, y_top)
+
+
 @pytest.mark.parametrize('origin', ['lower left', 'center', 'upper right'])
 def test_heatmap_invalid_screen_origin_raises(origin, gaze):
     gaze.experiment.screen.origin = origin

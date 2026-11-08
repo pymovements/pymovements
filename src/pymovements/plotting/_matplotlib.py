@@ -309,13 +309,15 @@ def _set_screen_axes(
     height_px: int | None,
     origin: str | None,
     *,
+    position_column: str,
     func_name: str,
 ) -> None:
     """Set axes limits and aspect ratio from a screen's pixel extent, if available.
 
     Thin wrapper around ``pymovements.plotting.make_screen_axes()`` that keeps the gaze
-    plotters' behavior: skip silently when the resolution is unset, and accept
-    only the ``'upper left'`` origin the gaze data is expressed in.
+    plotters' behavior: skip silently when the resolution is unset or the plotted
+    column is not in pixel coordinates, and accept only the ``'upper left'`` origin
+    the gaze data is expressed in.
 
     Parameters
     ----------
@@ -327,6 +329,10 @@ def _set_screen_axes(
         Screen height in pixels.
     origin : str | None
         Origin of the screen coordinate system.
+    position_column : str
+        Name of the plotted gaze column. The pixel extent is only applied to the
+        ``'pixel'`` column, as other columns (e.g. ``'position'`` in degrees of visual
+        angle) are not in pixel units.
     func_name : str
         Name of the plotting function, used in error messages.
 
@@ -335,6 +341,10 @@ def _set_screen_axes(
     ValueError
         If the screen origin is not 'upper left'.
     """
+    # The pixel extent does not apply to columns in other units, e.g. degrees of visual angle
+    if position_column != 'pixel':
+        return
+
     # If screen has no pixel info, skip silently
     if width_px is None or height_px is None:
         return
