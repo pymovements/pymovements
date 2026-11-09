@@ -85,9 +85,14 @@ VALIDATION_REGEX = (
     r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+!CAL\s+VALIDATION\s+HV'
     r'(?P<num_points>\d\d?).*'
     r'(?P<tracked_eye>LEFT|RIGHT)\s+'
-    r'(?P<error>\D*)\s+'
-    r'(?P<validation_score_avg>\d.\d\d)\s+avg\.\s+'
-    r'(?P<validation_score_max>\d.\d\d)\s+max'
+    r'(?P<error>(?:(?P<grade>GOOD|FAIR|POOR)\s+)?\D*)\s+'
+    r'(?P<validation_score_avg>\d+\.\d+)\s+avg\.\s+'
+    r'(?P<validation_score_max>\d+\.\d+)\s+max'
+)
+
+VALIDATION_ABORTED_REGEX = (
+    r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+!CAL\s+VALIDATION\s+'
+    r'(?P<tracked_eye>L|R)\s+ABORTED\b'
 )
 
 FIXATION_START_REGEX = r'SFIX\s+(?P<eye>R|L)\s+(?P<timestamp>(\d+[.]?\d*))\s*'
@@ -117,6 +122,13 @@ CALIBRATION_REGEX = (
     r'>+\s+CALIBRATION\s+\(HV(?P<num_points>\d\d?),'
     r'(?P<type>.*)\).*'
     r'(?P<tracked_eye>RIGHT|LEFT):\s+<{9}'
+)
+
+CALIBRATION_GRADE_REGEX = (
+    r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+!CAL\s+CALIBRATION\s+HV'
+    r'(?P<num_points>\d\d?).*'
+    r'(?P<tracked_eye>LEFT|RIGHT)\s+'
+    r'(?P<grade>GOOD|FAILED)\b'
 )
 
 RECORDING_CONFIG_REGEX = (
@@ -883,6 +895,42 @@ def parse_eyelink(
 
         elif match := _match_regex(VALIDATION_REGEX, line):
             validations.append(match.groupdict())
+
+        elif match := _match_regex(VALIDATION_ABORTED_REGEX, line):
+            validation = match.groupdict()
+            validation['tracked_eye'] = (
+                'LEFT' if validation['tracked_eye'] == 'L' else 'RIGHT'
+            )
+            validation['grade'] = 'ABORTED'
+            validations.append(validation)
+
+        elif match := _match_regex(CALIBRATION_GRADE_REGEX, line):
+            # The calibration grade is logged after the calibration points block,
+            # so attach it to the most recent calibration entry lacking a grade yet.
+            grade_match = match.groupdict()
+            candidates = [
+                calibration for calibration in calibrations
+                if 'grade' not in calibration
+            ]
+            matched_calibration = next(
+                (
+                    calibration for calibration in reversed(candidates)
+                    if calibration.get('tracked_eye') == grade_match['tracked_eye']
+                ),
+                None,
+            )
+            if matched_calibration is None:
+                # Only fall back to entries whose header failed to parse, i.e. entries
+                # without a tracked_eye key. Never attach a grade to the other eye.
+                matched_calibration = next(
+                    (
+                        calibration for calibration in reversed(candidates)
+                        if 'tracked_eye' not in calibration
+                    ),
+                    None,
+                )
+            if matched_calibration is not None:
+                matched_calibration['grade'] = grade_match['grade']
 
         elif compiled_metadata_patterns:
             for pattern_dict in compiled_metadata_patterns.copy():
