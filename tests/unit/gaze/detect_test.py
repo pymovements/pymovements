@@ -1820,6 +1820,15 @@ def test_gaze_detect_explicit_sampling_rate_wins_over_experiment():
     assert gaze.events.frame['duration'].to_list() == [timedelta(milliseconds=101)]
 
 
+def test_gaze_detect_sampling_rate_none_falls_back_to_experiment():
+    gaze = _velocity_gaze(experiment=pm.Experiment(sampling_rate=1000))
+
+    gaze.detect('ivt', minimum_duration=1, sampling_rate=None)
+
+    assert gaze.events.metadata == _detected_entries(1000)
+    assert gaze.events.frame['duration'].to_list() == [timedelta(milliseconds=100)]
+
+
 @pytest.mark.parametrize(
     'trial',
     [
