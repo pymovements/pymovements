@@ -20,6 +20,7 @@ https://github.com/pymovements/pymovements/issues/new/choose) or write to us at
     - [Development Installation](#development-installation)
     - [Creating a Branch](#creating-a-branch)
     - [Code Style](#code-style)
+    - [Dependencies](#dependencies)
     - [Testing](#testing)
     - [Documentation](#documentation)
     - [Pull Requests](#pull-requests)
@@ -183,6 +184,40 @@ For running a specific hook on all git repository files use
 ```bash
 pre-commit run mypy -a
 ```
+
+### Dependencies
+
+`pyproject.toml` is the only place that declares a dependency and its version. Every requirement
+carries a lower bound and no upper bound. The lower bound is the oldest version the code works
+with, and the minimum-requirements job in CI runs the tests against it. A breaking upstream release
+is caught by the daily build and fixed forward.
+
+A new required dependency needs a justification in the pull request description. Prefer what
+pymovements already depends on.
+
+A package that only a few features need goes into an extra instead of the required dependencies.
+Code imports it through `import_optional_dependency` from `pymovements._utils.optional`, which
+raises an `ImportError` with the install hint when the package is missing or older than the extra
+requires. Place the call on the code path that needs the package, not on a branch that works
+without it. A change to the extras updates the Optional Dependencies section of the
+[installation guide](https://pymovements.readthedocs.io/en/latest/user-guide/getting-started/installation.html).
+
+Heavy packages are imported inside the function that uses them, so that `import pymovements`
+stays fast. Today these are scipy, matplotlib, pandas, scikit-learn and PIL. Import the module
+with `importlib.import_module` and bind it to an alias, which keeps pylint's
+`import-outside-toplevel` check on. Imports needed only for type annotations go under
+`TYPE_CHECKING`.
+
+```python
+plt = importlib.import_module('matplotlib.pyplot')
+```
+
+`tests/unit/import_test.py` checks which packages `import pymovements` loads. Add a new heavy
+package to its list.
+
+Tests for code behind an extra go through the public function and mock the boundary: set
+`sys.modules[name]` to `None` for a missing package, patch `importlib.metadata.version` for the
+version check.
 
 ### Testing
 
