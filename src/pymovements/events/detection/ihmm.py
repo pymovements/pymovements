@@ -694,7 +694,8 @@ def _collapse_states(
         timesteps: numpy.ndarray,
         fixation_state: int = 0,
         min_duration: int = 0,
-
+        *,
+        sampling_interval: float,
 ) -> tuple[numpy.ndarray, numpy.ndarray]:
     """Extract contiguous fixation periods from a sequence of state labels.
 
@@ -718,6 +719,10 @@ def _collapse_states(
 
     min_duration: int
         Minimum fixation duration. The duration should be the same unit as the timesteps array.
+
+    sampling_interval: float
+        The nominal interval covered by each sample, in the unit of the timesteps array. It is
+        added to the span of a fixation block before the comparison against ``min_duration``.
 
     Returns
     -------
@@ -757,7 +762,8 @@ def _collapse_states(
 
             offset_time = timesteps[j - 1]
 
-            duration = offset_time - onset_time
+            # Each sample covers the nominal interval, so the block reaches past its last sample.
+            duration = offset_time - onset_time + sampling_interval
 
             # only keep fixations that meet the minimum duration threshold
 
@@ -1444,6 +1450,7 @@ def ihmm(
 
     onsets_arr, offsets_arr = _collapse_states(
         states, timesteps=timesteps_masked, min_duration=minimum_duration,
+        sampling_interval=sampling_interval,
     )
 
     # Each sample covers the nominal interval, so the duration reaches past the last sample.
