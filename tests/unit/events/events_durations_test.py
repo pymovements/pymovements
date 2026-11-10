@@ -886,21 +886,34 @@ def test_metadata_offsets_inclusive_differing_from_entry_raises(input_kwargs):
 
 
 @pytest.mark.parametrize(
+    ('sampling_rate', 'expected_match'),
+    [
+        pytest.param(
+            500,
+            r'sampling_rate=500 differs from the metadata entry '
+            r"metadata\['sampling_rate'\] = 1000\.0\. Correct the entry or drop the keyword\.",
+            id='different',
+        ),
+        pytest.param(
+            1000.0004,
+            r'sampling_rate=1000\.0004 differs from the metadata entry '
+            r"metadata\['sampling_rate'\] = 1000\.0\. Correct the entry or drop the keyword\.",
+            id='close',
+        ),
+    ],
+)
+@pytest.mark.parametrize(
     'input_kwargs',
     [
         pytest.param({'onsets': [0], 'offsets': [5], 'offsets_inclusive': True}, id='offset'),
         pytest.param({'onsets': [0], 'durations': [5]}, id='no_offset'),
     ],
 )
-def test_metadata_sampling_rate_differing_from_entry_raises(input_kwargs):
-    with pytest.raises(
-            ValueError,
-            match=(
-                r'sampling_rate=500 differs from the metadata entry '
-                r"metadata\['sampling_rate'\] = 1000\. Correct the entry or drop the keyword\."
-            ),
-    ):
-        Events(**input_kwargs, sampling_rate=500, metadata={'sampling_rate': 1000.0})
+def test_metadata_sampling_rate_differing_from_entry_raises(
+        input_kwargs, sampling_rate, expected_match,
+):
+    with pytest.raises(ValueError, match=expected_match):
+        Events(**input_kwargs, sampling_rate=sampling_rate, metadata={'sampling_rate': 1000.0})
 
 
 def test_metadata_keywords_agreeing_with_entries_pass():
