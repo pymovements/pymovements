@@ -140,12 +140,13 @@ def _key_cast_is_valid(
     return original.is_null() | is_valid
 
 
-def _event_coordinate_exprs(frame: polars.DataFrame) -> tuple[polars.Expr, polars.Expr, bool]:
-    """Resolve the fixation coordinates and report whether their source is numeric.
+def _event_coordinate_exprs(frame: polars.DataFrame) -> tuple[polars.Expr, polars.Expr]:
+    """Resolve the fixation coordinates as one expression per axis.
 
-    Numeric ``location_x``/``location_y`` columns come first. A row with a null component takes
-    both coordinates from a numeric ``location`` list column instead, as in the per-row lookup.
-    Anything else resolves to null so it receives no match.
+    Numeric ``location_x``/``location_y`` columns come first. When every present component
+    column is numeric, a row with a null component takes both coordinates from a numeric
+    ``location`` list column instead, as in the per-row lookup. A list with fewer than two
+    entries yields null. Anything else resolves to null so it receives no match.
     """
     null = polars.lit(None, dtype=polars.Float64)
     list_exprs: tuple[polars.Expr, polars.Expr] | None = None
@@ -153,31 +154,31 @@ def _event_coordinate_exprs(frame: polars.DataFrame) -> tuple[polars.Expr, polar
         list_dtype = frame.schema['location']
         if isinstance(list_dtype, polars.List) and _is_numeric_like(list_dtype.inner):
             list_exprs = (
-                polars.col('location').list.get(0).cast(polars.Float64),
-                polars.col('location').list.get(1).cast(polars.Float64),
+                polars.col('location').list.get(0, null_on_oob=True).cast(polars.Float64),
+                polars.col('location').list.get(1, null_on_oob=True).cast(polars.Float64),
             )
 
-    component_columns = [
-        column for column in ('location_x', 'location_y') if column in frame.columns
-    ]
-    if not component_columns:
-        if list_exprs is None:
-            return null, null, False
-        return list_exprs[0], list_exprs[1], True
-    if not all(_is_numeric_like(frame.schema[column]) for column in component_columns):
-        return null, null, False
+    component_dtypes = {
+        column: frame.schema[column]
+        for column in ('location_x', 'location_y')
+        if column in frame.columns
+    }
+    if not component_dtypes:
+        return list_exprs if list_exprs is not None else (null, null)
+    if not all(_is_numeric_like(dtype) for dtype in component_dtypes.values()):
+        return null, null
 
     x_expr, y_expr = (
-        polars.col(column).cast(polars.Float64) if column in frame.columns else null
+        polars.col(column).cast(polars.Float64) if column in component_dtypes else null
         for column in ('location_x', 'location_y')
     )
     if list_exprs is None:
-        return x_expr, y_expr, True
+        return x_expr, y_expr
     both_present = x_expr.is_not_null() & y_expr.is_not_null()
+    list_x_expr, list_y_expr = list_exprs
     return (
-        polars.when(both_present).then(x_expr).otherwise(list_exprs[0]),
-        polars.when(both_present).then(y_expr).otherwise(list_exprs[1]),
-        True,
+        polars.when(both_present).then(x_expr).otherwise(list_x_expr),
+        polars.when(both_present).then(y_expr).otherwise(list_y_expr),
     )
 
 
@@ -200,7 +201,7 @@ def _map_fixations_to_aois(
         if column is not None and column in frame.columns
     ]
 
-    x_expr, y_expr, coordinates_are_numeric = _event_coordinate_exprs(frame)
+    x_expr, y_expr = _event_coordinate_exprs(frame)
 
     candidates = frame.select(
         polars.int_range(polars.len()).alias(_AOI_ROW_ID),
@@ -229,10 +230,7 @@ def _map_fixations_to_aois(
     )
 
     n_fixations = candidates.filter(is_fixation).height
-    if coordinates_are_numeric:
-        n_invalid = candidates.filter(is_fixation & ~has_valid_xy).height
-    else:
-        n_invalid = n_fixations
+    n_invalid = candidates.filter(is_fixation & ~has_valid_xy).height
     if n_invalid:
         warnings.warn(
             f'Invalid eye coordinates in {n_invalid} of {n_fixations} fixations for AOI '
@@ -1187,11 +1185,13 @@ class Events:
 
         Fixations are matched against the AOI rectangles with a vectorised join and
         half-open rectangle test (``start <= coordinate < end``) instead of one lookup per
-        row. Coordinates are taken from numeric ``location_x``/``location_y`` columns. A row
-        with a null component, or a frame without component columns, reads both coordinates
-        from a numeric ``location`` list column instead.
-        Fixations whose coordinates are missing, ``NaN`` or non-numeric receive no match,
-        and one ``UserWarning`` reports the number of such fixations per call.
+        row. Coordinates are taken from numeric ``location_x``/``location_y`` columns. When
+        every present component column is numeric, a row with a null component reads both
+        coordinates from a numeric ``location`` list column instead. A frame without component
+        columns reads every row from that list. A list with fewer than two entries counts as
+        missing. Fixations whose coordinates are still missing after the list fallback,
+        ``NaN`` or non-numeric receive no match, and one ``UserWarning`` reports the number
+        of such fixations per call.
 
         Trial and page keys:
 
@@ -1266,8 +1266,8 @@ class Events:
         ):
             self.frame = self.frame.with_columns(
                 [
-                    polars.col('location').list.get(0).alias('location_x'),
-                    polars.col('location').list.get(1).alias('location_y'),
+                    polars.col('location').list.get(0, null_on_oob=True).alias('location_x'),
+                    polars.col('location').list.get(1, null_on_oob=True).alias('location_y'),
                 ],
             ).drop('location')
 

@@ -875,6 +875,72 @@ def test_map_to_aois_null_component_falls_back_to_location_list(
     assert events.frame.get_column('label').to_list() == ['A', 'A', 'A']
 
 
+@pytest.mark.parametrize('preserve_structure', [True, False])
+def test_map_to_aois_short_location_list_gets_no_match(
+    simple_stimulus: TextStimulus,
+    preserve_structure: bool,
+) -> None:
+    """A null component with a list of fewer than two entries gets no match and warns."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'fixation', 'fixation'],
+            'onset': [0, 1, 2],
+            'offset': [1, 2, 3],
+            'location_x': [None, None, 5.0],
+            'location_y': [5.0, 5.0, None],
+            'location': [[5.0], [], [5.0, 5.0]],
+        },
+    )
+    events = Events(data=df)
+
+    with pytest.warns(UserWarning, match='Invalid eye coordinates in 2 of 3 fixations'):
+        events.map_to_aois(simple_stimulus, preserve_structure=preserve_structure, verbose=False)
+
+    assert events.frame.get_column('label').to_list() == [None, None, 'A']
+
+
+@pytest.mark.parametrize('preserve_structure', [True, False])
+def test_map_to_aois_short_location_list_without_components_gets_no_match(
+    simple_stimulus: TextStimulus,
+    preserve_structure: bool,
+) -> None:
+    """A list of fewer than two entries gets no match when it is the only coordinate source."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'fixation', 'fixation'],
+            'onset': [0, 1, 2],
+            'offset': [1, 2, 3],
+            'location': [[5.0], [], [5.0, 5.0]],
+        },
+    )
+    events = Events(data=df)
+
+    with pytest.warns(UserWarning, match='Invalid eye coordinates in 2 of 3 fixations'):
+        events.map_to_aois(simple_stimulus, preserve_structure=preserve_structure, verbose=False)
+
+    assert events.frame.get_column('label').to_list() == [None, None, 'A']
+
+
+def test_map_to_aois_single_component_column_reads_location_list(
+    simple_stimulus: TextStimulus,
+) -> None:
+    """With only one component column present, every row reads the list."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'fixation'],
+            'onset': [0, 1],
+            'offset': [1, 2],
+            'location_x': [50.0, 5.0],
+            'location': [[5.0, 5.0], [50.0, 50.0]],
+        },
+    )
+    events = Events(data=df)
+
+    events.map_to_aois(simple_stimulus, preserve_structure=False, verbose=False)
+
+    assert events.frame.get_column('label').to_list() == ['A', None]
+
+
 def test_map_to_aois_missing_coordinate_columns_get_no_match(
     simple_stimulus: TextStimulus,
 ) -> None:
