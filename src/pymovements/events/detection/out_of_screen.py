@@ -40,8 +40,8 @@ def out_of_screen(
         x_min: float = 0,
         y_min: float = 0,
         timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
-        sampling_rate: float,
         name: str = 'out_of_screen',
+        sampling_rate: float,
 ) -> Events:
     """Detect gaze samples with pixel coordinates outside of screen boundaries.
 
@@ -67,12 +67,12 @@ def out_of_screen(
         shape (N, )
         Corresponding continuous 1D timestep time series. If None, sample based timesteps are
         assumed. (default: None)
+    name: str
+        Name for detected events in Events. (default: 'out_of_screen')
     sampling_rate: float
         Sampling rate of the signal in Hz. Each sample covers the nominal interval
         ``1000 / sampling_rate`` milliseconds, which is added to the duration of every event
         and written to the sampling-rate entry of the events metadata.
-    name: str
-        Name for detected events in Events. (default: 'out_of_screen')
 
     Returns
     -------
