@@ -648,7 +648,7 @@ def test_map_to_aois_key_without_aois_gets_no_aoi(stimulus_with_trials: TextStim
     )
     events = Events(data=df, trial_columns=['trial'])
 
-    events.map_to_aois(stimulus_with_trials, verbose=False)
+    events.map_to_aois(stimulus_with_trials)
 
     assert events.frame.get_column('label').to_list() == ['A', None]
 

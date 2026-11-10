@@ -169,6 +169,77 @@ def _event_coordinate_expr(
     return polars.lit(None, dtype=polars.Float64), False
 
 
+def _join_within_aois(fixations: polars.DataFrame, aoi_group: polars.DataFrame) -> polars.DataFrame:
+    """Return the fixations in ``fixations`` joined to the AOIs of ``aoi_group`` they fall into.
+
+    The half-open rectangle test runs as inequality predicates of ``join_where``, so the cross
+    product of fixations and AOIs is never materialised.
+    """
+    return fixations.join_where(
+        aoi_group,
+        polars.col(_AOI_START_X) <= polars.col(_AOI_X),
+        polars.col(_AOI_X) < polars.col(_AOI_END_X),
+        polars.col(_AOI_START_Y) <= polars.col(_AOI_Y),
+        polars.col(_AOI_Y) < polars.col(_AOI_END_Y),
+        suffix='_aoi',
+    )
+
+
+def _join_fixations_to_aois(
+        constrained: polars.DataFrame,
+        aoi_dataframe: TextStimulus,
+        key_columns: list[str],
+) -> polars.DataFrame:
+    """Return the matches of the fixations in ``constrained`` against the AOIs.
+
+    With key columns the join runs once per key group, where the group ids come from one
+    equi-join on the keys: key equality stays polars equality and fixations whose key has no AOIs
+    drop out there.
+    """
+    aois = aoi_dataframe.aois.with_columns(
+        polars.int_range(polars.len()).alias(_AOI_MATCH_ORDER),
+    )
+    start_x = polars.col(aoi_dataframe.start_x_column)
+    start_y = polars.col(aoi_dataframe.start_y_column)
+    if aoi_dataframe.width_column is not None:
+        end_x = start_x + polars.col(aoi_dataframe.width_column)
+        end_y = start_y + polars.col(aoi_dataframe.height_column)
+    else:
+        end_x = polars.col(aoi_dataframe.end_x_column)
+        end_y = polars.col(aoi_dataframe.end_y_column)
+    # join_where compares only columns of equal dtype, so the bounds get the coordinate dtype.
+    aois = aois.with_columns(
+        start_x.cast(polars.Float64).alias(_AOI_START_X),
+        start_y.cast(polars.Float64).alias(_AOI_START_Y),
+        end_x.cast(polars.Float64).alias(_AOI_END_X),
+        end_y.cast(polars.Float64).alias(_AOI_END_Y),
+    )
+
+    # The original key columns only serve the wildcard lookup in the caller. Without them the
+    # AOI key columns keep their names in the join.
+    constrained = constrained.drop(key_columns)
+    if not key_columns:
+        return _join_within_aois(constrained, aois)
+
+    # join_where takes no equality keys: it rewrites an equality predicate into an equi-join
+    # with the inequalities as a filter after it, which materialises the per-key product again.
+    # One join_where per key group keeps memory flat.
+    join_keys = [_aoi_join_key_name(column) for column in key_columns]
+    group_ids = aois.select(key_columns).unique().with_row_index(_AOI_GROUP_ID)
+    # The group id stays on the fixation side only, so every part and the empty fallback below
+    # share one schema.
+    aoi_groups = aois.join(group_ids, on=key_columns).partition_by(
+        _AOI_GROUP_ID, as_dict=True, include_key=False,
+    )
+    constrained = constrained.join(group_ids, left_on=join_keys, right_on=key_columns, how='inner')
+    parts = [
+        _join_within_aois(group, aoi_groups[group_id])
+        for group_id, group in constrained.partition_by(_AOI_GROUP_ID, as_dict=True).items()
+    ]
+    # No groups means no constrained rows, so the join of the empty frame is the result.
+    return polars.concat(parts) if parts else _join_within_aois(constrained, aois)
+
+
 def _map_fixations_to_aois(
         frame: polars.DataFrame,
         aoi_dataframe: TextStimulus,
@@ -255,60 +326,7 @@ def _map_fixations_to_aois(
         constrained = candidates
         wildcard = candidates.head(0)
 
-    aois = aoi_dataframe.aois.with_columns(
-        polars.int_range(polars.len()).alias(_AOI_MATCH_ORDER),
-    )
-    start_x = polars.col(aoi_dataframe.start_x_column)
-    start_y = polars.col(aoi_dataframe.start_y_column)
-    if aoi_dataframe.width_column is not None:
-        end_x = start_x + polars.col(aoi_dataframe.width_column)
-        end_y = start_y + polars.col(aoi_dataframe.height_column)
-    else:
-        end_x = polars.col(aoi_dataframe.end_x_column)
-        end_y = polars.col(aoi_dataframe.end_y_column)
-    # join_where compares only columns of equal dtype, so the bounds get the coordinate dtype.
-    aois = aois.with_columns(
-        start_x.cast(polars.Float64).alias(_AOI_START_X),
-        start_y.cast(polars.Float64).alias(_AOI_START_Y),
-        end_x.cast(polars.Float64).alias(_AOI_END_X),
-        end_y.cast(polars.Float64).alias(_AOI_END_Y),
-    )
-
-    def join_within_aois(fixations: polars.DataFrame, aois: polars.DataFrame) -> polars.DataFrame:
-        # Half-open rectangle test as inequality predicates: join_where matches fixations
-        # against AOIs without materialising their cross product.
-        return fixations.join_where(
-            aois,
-            polars.col(_AOI_START_X) <= polars.col(_AOI_X),
-            polars.col(_AOI_X) < polars.col(_AOI_END_X),
-            polars.col(_AOI_START_Y) <= polars.col(_AOI_Y),
-            polars.col(_AOI_Y) < polars.col(_AOI_END_Y),
-            suffix='_aoi',
-        )
-
-    # The original key columns only serve the wildcard lookup below. Without them the AOI key
-    # columns keep their names in the join.
-    constrained = constrained.drop(key_columns)
-    if key_columns:
-        # join_where takes no equality keys: it rewrites an equality predicate into an
-        # equi-join with the inequalities as a filter after it, which materialises the per-key
-        # product again. One join_where per key group keeps memory flat. The group id comes
-        # from one equi-join on the keys, so key equality stays polars equality as before and
-        # fixations whose key has no AOIs drop out here.
-        join_keys = [_aoi_join_key_name(column) for column in key_columns]
-        group_ids = aois.select(key_columns).unique().with_row_index(_AOI_GROUP_ID)
-        aoi_groups = aois.join(group_ids, on=key_columns).partition_by(_AOI_GROUP_ID, as_dict=True)
-        constrained = constrained.join(
-            group_ids, left_on=join_keys, right_on=key_columns, how='inner',
-        )
-        parts = [
-            join_within_aois(group, aoi_groups[group_id])
-            for group_id, group in constrained.partition_by(_AOI_GROUP_ID, as_dict=True).items()
-        ]
-        # No groups means no constrained rows, so the join of the empty frame is the result.
-        matches = polars.concat(parts) if parts else join_within_aois(constrained, aois)
-    else:
-        matches = join_within_aois(constrained, aois)
+    matches = _join_fixations_to_aois(constrained, aoi_dataframe, key_columns)
 
     multiple = (
         matches.group_by(_AOI_ROW_ID).len().filter(polars.col('len') > 1)
