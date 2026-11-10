@@ -583,7 +583,7 @@ def test_map_to_aois_numeric_string_key_matches_integer_key(
 
 
 def _events_with_trials(trial_values: list[Any] | pl.Series) -> Events:
-    """Return three fixations in AOI A, AOI B and AOI A again with ``trial_values`` as key."""
+    """Return three fixations placed at AOI A, AOI B and AOI A, keyed by ``trial_values``."""
     df = pl.DataFrame(
         {
             'name': ['fixation', 'fixation', 'fixation'],
