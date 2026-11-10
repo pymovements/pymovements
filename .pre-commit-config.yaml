@@ -64,7 +64,7 @@ repos:
       - id: pydoclint
         args: [ "--config=pyproject.toml" ]
   - repo: https://github.com/nbQA-dev/nbQA
-    rev: 1.9.1
+    rev: 1.10.0
     hooks:
       - id: nbqa-autopep8
       - id: nbqa-flake8
