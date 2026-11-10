@@ -88,7 +88,7 @@ def idt(
         Minimum fixation duration. Each sample covers the interval to its successor, so a
         fixation is measured from its first sample to the sample after its last one. The last
         sample covers the nominal interval of ``sampling_rate``. The duration is specified in
-        the units used in ``timesteps``; for a ``polars.Duration`` timesteps series the unit is
+        the units used in ``timesteps``. For a ``polars.Duration`` timesteps series the unit is
         milliseconds. If ``timesteps`` is None, then ``minimum_duration`` is specified in
         numbers of samples. (default: 100)
     dispersion_threshold: float
