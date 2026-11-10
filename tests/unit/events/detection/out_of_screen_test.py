@@ -34,6 +34,7 @@ from pymovements.events import out_of_screen
     [
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': None,
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -44,6 +45,7 @@ from pymovements.events import out_of_screen
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': pl.ones(100, dtype=pl.Int64, eager=True),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -54,6 +56,7 @@ from pymovements.events import out_of_screen
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': np.ones(100),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -64,6 +67,7 @@ from pymovements.events import out_of_screen
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': pl.repeat((1, 2, 3), 100, eager=True),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -74,6 +78,7 @@ from pymovements.events import out_of_screen
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': np.ones((100, 3)),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -84,6 +89,7 @@ from pymovements.events import out_of_screen
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': pl.Series([[1, 2], [1, 2, 3]]),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -94,6 +100,7 @@ from pymovements.events import out_of_screen
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': np.ones((100, 2)),
                 'x_min': 100, 'x_max': 100,
                 'y_min': 0, 'y_max': 1080,
@@ -104,6 +111,7 @@ from pymovements.events import out_of_screen
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': np.ones((100, 2)),
                 'x_min': 200, 'x_max': 100,
                 'y_min': 0, 'y_max': 1080,
@@ -114,6 +122,7 @@ from pymovements.events import out_of_screen
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': np.ones((100, 2)),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 1080, 'y_max': 0,
@@ -124,6 +133,7 @@ from pymovements.events import out_of_screen
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': pl.repeat((1, 1), 10, eager=True),
                 'timesteps': pl.repeat('b', 10, eager=True),
                 'x_min': 0, 'x_max': 1920,
@@ -135,6 +145,7 @@ from pymovements.events import out_of_screen
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': pl.repeat((1, 1), 10, eager=True),
                 'timesteps': pl.arange(20, eager=True),
                 'x_min': 0, 'x_max': 1920,
@@ -146,6 +157,7 @@ from pymovements.events import out_of_screen
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': np.ones((10, 2)),
                 'timesteps': np.arange(20, dtype=int),
                 'x_min': 0, 'x_max': 1920,
@@ -168,6 +180,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
     [
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': pl.Series([[960, 540], [960, 540], [960, 540]]),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -177,6 +190,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': np.array([[960, 540], [960, 540], [960, 540]]),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -186,6 +200,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': pl.Series([[0, 0], [1919.9, 1079.9], [960, 540]]),
                 'x_max': 1920, 'y_max': 1080,
             },
@@ -194,6 +209,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': np.array([[0, 0], [1919.9, 1079.9], [960, 540]]),
                 'x_max': 1920, 'y_max': 1080,
             },
@@ -202,6 +218,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': pl.Series([[0, 0], [1920, 1080], [960, 540]]),
                 'x_max': 1920, 'y_max': 1080,
             },
@@ -209,11 +226,14 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 name='out_of_screen',
                 onsets=[1],
                 offsets=[1],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='at_max_boundary_exclusive_detected',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': np.array([[0, 0], [1920, 1080], [960, 540]]),
                 'x_max': 1920, 'y_max': 1080,
             },
@@ -221,11 +241,14 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 name='out_of_screen',
                 onsets=[1],
                 offsets=[1],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='at_max_boundary_exclusive_detected_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': pl.Series([[-1, 540], [960, 540], [960, 540]]),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -234,11 +257,14 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 name='out_of_screen',
                 onsets=[0],
                 offsets=[0],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='single_sample_below_x_min',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': np.array([[-1, 540], [960, 540], [960, 540]]),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -247,11 +273,14 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 name='out_of_screen',
                 onsets=[0],
                 offsets=[0],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='single_sample_below_x_min_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': pl.Series([[960, 540], [1921, 540], [960, 540]]),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -260,11 +289,14 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 name='out_of_screen',
                 onsets=[1],
                 offsets=[1],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='single_sample_above_x_max',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': np.array([[960, 540], [1921, 540], [960, 540]]),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -273,11 +305,14 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 name='out_of_screen',
                 onsets=[1],
                 offsets=[1],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='single_sample_above_x_max_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': pl.Series([[960, -1], [960, 540], [960, 540]]),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -286,11 +321,14 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 name='out_of_screen',
                 onsets=[0],
                 offsets=[0],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='single_sample_below_y_min',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': np.array([[960, -1], [960, 540], [960, 540]]),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -299,11 +337,14 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 name='out_of_screen',
                 onsets=[0],
                 offsets=[0],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='single_sample_below_y_min_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': pl.Series([[960, 540], [960, 540], [960, 1081]]),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -312,11 +353,14 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 name='out_of_screen',
                 onsets=[2],
                 offsets=[2],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='single_sample_above_y_max',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': np.array([[960, 540], [960, 540], [960, 1081]]),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -325,11 +369,14 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 name='out_of_screen',
                 onsets=[2],
                 offsets=[2],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='single_sample_above_y_max_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': pl.Series([
                     [-1, 540], [-1, 540], [-1, 540],
                     [960, 540],
@@ -342,11 +389,14 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 name='out_of_screen',
                 onsets=[0, 4],
                 offsets=[2, 5],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='two_consecutive_out_of_screen_events',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': np.array([
                     [-1, 540], [-1, 540], [-1, 540],
                     [960, 540],
@@ -359,11 +409,14 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 name='out_of_screen',
                 onsets=[0, 4],
                 offsets=[2, 5],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='two_consecutive_out_of_screen_events_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': pl.Series([
                     [-1, 540], [960, 540], [960, 1081],
                 ]),
@@ -375,11 +428,14 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 name='out_of_screen',
                 onsets=[1000, 1002],
                 offsets=[1000, 1002],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='with_timesteps',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': pl.Series([
                     [-1, 540], [960, 540], [960, 1081],
                 ]),
@@ -391,11 +447,14 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 name='out_of_screen',
                 onsets=[1000, 1002],
                 offsets=[1000, 1002],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='with_duration_timesteps',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': np.array([
                     [-1, 540], [960, 540], [960, 1081],
                 ]),
@@ -407,11 +466,14 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 name='out_of_screen',
                 onsets=[1000, 1002],
                 offsets=[1000, 1002],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='with_timesteps_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': pl.Series([[-1, 540], [960, 540]]),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -421,11 +483,14 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 name='noise',
                 onsets=[0],
                 offsets=[0],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='custom_name',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': np.array([[-1, 540], [960, 540]]),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -435,11 +500,14 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 name='noise',
                 onsets=[0],
                 offsets=[0],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='custom_name_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': pl.Series([[-1, -1], [2000, 2000], [-5, 2000]]),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -448,11 +516,14 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 name='out_of_screen',
                 onsets=[0],
                 offsets=[2],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='all_out_of_screen_single_event',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'pixels': np.array([[-1, -1], [2000, 2000], [-5, 2000]]),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -461,6 +532,8 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 name='out_of_screen',
                 onsets=[0],
                 offsets=[2],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='all_out_of_screen_single_event_numpy',
         ),
