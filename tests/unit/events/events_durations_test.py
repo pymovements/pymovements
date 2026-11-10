@@ -851,12 +851,55 @@ def test_metadata_entries_declare_and_rate_rebuild_without_keywords(
     }
 
 
-def test_metadata_entries_rebuild_checks_durations_against_entries():
-    events = Events(onsets=[0], offsets=[120], offsets_inclusive=True, sampling_rate=1000)
-    frame = events.frame.with_columns(pl.col('duration') - pl.duration(milliseconds=1))
+@pytest.mark.parametrize(
+    ('offsets_inclusive', 'shift_ms', 'expected_matches', 'unexpected'),
+    [
+        pytest.param(
+            True, -1,
+            [
+                r'every row contradicts offsets_inclusive=True from the metadata entry',
+                r'durations_from_offsets=True',
+                r"metadata\['offset'\] = \{'inclusive': False\} if the offsets are exclusive",
+                r'validate=False',
+            ],
+            ['offsets_inclusive=False'],
+            id='inclusive',
+        ),
+        pytest.param(
+            False, 1,
+            [
+                r'every row contradicts offsets_inclusive=False from the metadata entry',
+                r"metadata\['offset'\] = \{'inclusive': True\} if the offsets are inclusive",
+                r'validate=False',
+            ],
+            ['offsets_inclusive=True', 'durations_from_offsets'],
+            id='exclusive',
+        ),
+    ],
+)
+def test_metadata_entries_rebuild_checks_durations_against_entries(
+        offsets_inclusive, shift_ms, expected_matches, unexpected,
+):
+    events = Events(
+        onsets=[0], offsets=[120], offsets_inclusive=offsets_inclusive, sampling_rate=1000,
+    )
+    frame = events.frame.with_columns(pl.col('duration') + pl.duration(milliseconds=shift_ms))
 
-    with pytest.raises(ValueError, match=r'every row contradicts offsets_inclusive=True'):
+    with pytest.raises(ValueError) as excinfo:
         Events(frame, metadata=events.metadata)
+
+    message = str(excinfo.value)
+    for pattern in expected_matches:
+        assert re.search(pattern, message), (pattern, message)
+    for substring in unexpected:
+        assert substring not in message
+
+    # The offered correction of the entry builds the events without a warning.
+    corrected = {**events.metadata, 'offset': {'inclusive': not offsets_inclusive}}
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        rebuilt = Events(frame, metadata=corrected)
+    assert rebuilt.metadata == corrected
 
 
 @pytest.mark.parametrize(
