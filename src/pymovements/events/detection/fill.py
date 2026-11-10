@@ -23,8 +23,8 @@ from __future__ import annotations
 import numpy
 import polars
 
-from pymovements._utils._time import duration_to_ms
-from pymovements._utils._time import timesteps_to_numpy
+from pymovements._utils.time import duration_to_ms
+from pymovements._utils.time import timesteps_to_numpy
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.transforms.numpy import consecutive

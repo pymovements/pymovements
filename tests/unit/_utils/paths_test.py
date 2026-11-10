@@ -25,8 +25,8 @@ from pathlib import Path
 
 import pytest
 
-from pymovements._utils._paths import get_filepaths
-from pymovements._utils._paths import match_filepaths
+from pymovements._utils.paths import get_filepaths
+from pymovements._utils.paths import match_filepaths
 
 
 def test_get_filepaths_mut_excl_extension_and_regex_error():

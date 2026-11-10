@@ -25,8 +25,8 @@ from collections.abc import Sequence
 import numpy
 import polars
 
-from pymovements._utils import _checks
-from pymovements._utils._time import timesteps_to_numpy
+from pymovements._utils import checks
+from pymovements._utils.time import timesteps_to_numpy
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.transforms.numpy import consecutive
@@ -141,7 +141,7 @@ def blink(
     else:
         timesteps = numpy.arange(len(pupil), dtype=numpy.int64)
     timesteps = numpy.array(timesteps)
-    _checks.check_is_length_matching(pupil=pupil, timesteps=timesteps)
+    checks.check_is_length_matching(pupil=pupil, timesteps=timesteps)
 
     if delta is not None and delta <= 0:
         raise ValueError(

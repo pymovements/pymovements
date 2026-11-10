@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import polars as pl
 
-from pymovements._utils import _checks
+from pymovements._utils import checks
 from pymovements.transforms.library import register_transform
 
 
@@ -45,7 +45,7 @@ def downsample(
     pl.Expr
         The respective polars expression.
     """
-    _checks.check_is_int(factor=factor)
-    _checks.check_is_positive_value(factor=factor)
+    checks.check_is_int(factor=factor)
+    checks.check_is_positive_value(factor=factor)
 
     return pl.all().gather_every(n=factor)
