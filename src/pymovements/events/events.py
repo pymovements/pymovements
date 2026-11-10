@@ -1159,7 +1159,7 @@ class Events:
             aoi_dataframe: TextStimulus,
             *,
             preserve_structure: bool = True,
-            verbose: bool = True,
+            verbose: bool | None = None,
     ) -> None:
         """Map events to AOIs, ignoring non-fixations.
 
@@ -1211,8 +1211,13 @@ class Events:
         preserve_structure: bool
             Control whether to derive component columns and drop the list column as described
             above. Default: True.
-        verbose : bool
-            If ``True``, show a progress bar. (default: True)
+        verbose: bool | None
+            If ``True``, show a progress bar over the fixations with a null trial or page value,
+            the only ones that are still looked up one by one. (default: None)
+
+            .. deprecated:: v0.29.0
+                The mapping no longer loops over all events.
+                This argument will be removed in v0.34.0.
 
         Raises
         ------
@@ -1224,6 +1229,15 @@ class Events:
         ValueError
             If the events frame is empty.
         """
+        if verbose is not None:
+            warnings.warn(
+                DeprecationWarning(
+                    "Events.map_to_aois argument 'verbose' is deprecated since version v0.29.0. "
+                    'The mapping no longer loops over all events. '
+                    'This argument will be removed in v0.34.0.',
+                ),
+            )
+
         # Validate AOI configuration early
         if aoi_dataframe.width_column is None and aoi_dataframe.end_x_column is None:
             raise ValueError(
@@ -1268,7 +1282,7 @@ class Events:
 
         if aoi_columns:
             aoi_df = _map_fixations_to_aois(
-                self.frame, aoi_dataframe, aoi_columns, aoi_schema, verbose,
+                self.frame, aoi_dataframe, aoi_columns, aoi_schema, verbose is True,
             )
             self.frame = polars.concat([self.frame, aoi_df], how='horizontal_extend')
 
@@ -1584,7 +1598,7 @@ class Events:
         else:
             stimuli = [stimulus]
             mapped = Events(working_frame, trial_columns=self.trial_columns)
-            mapped.map_to_aois(stimulus, verbose=False)
+            mapped.map_to_aois(stimulus)
             fixations, aois = mapped.frame, stimulus.aois
 
         # The measures are derived from the events and the stimulus files.
@@ -1669,7 +1683,7 @@ class Events:
             )
             if subset.frame.is_empty():
                 continue
-            subset.map_to_aois(stim, verbose=False)
+            subset.map_to_aois(stim)
             mapped_frames.append(subset.frame)
 
         # Rows whose key has no stimulus entry pass through unmapped, so that
