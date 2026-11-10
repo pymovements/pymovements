@@ -637,9 +637,6 @@ class Events:
                 self.trial_columns = trial_columns
 
         else:
-            # Onsets are the anchor: durations and offsets are only accepted beside them.
-            if onsets is None and (durations is not None or offsets is not None):
-                raise ValueError('durations and offsets can only be passed together with onsets')
             durations_supplied = durations is not None
 
             if onsets is not None:
@@ -677,6 +674,12 @@ class Events:
                     self.trial_columns = None
 
             else:
+                # Onsets are the anchor: without them there is nothing to attach durations or
+                # offsets to.
+                if durations is not None or offsets is not None:
+                    raise ValueError(
+                        'durations and offsets can only be passed together with onsets',
+                    )
                 data_dict = {
                     'onset': polars.Series([], dtype=polars.Float64),
                     'duration': polars.Series([], dtype=polars.Float64),
