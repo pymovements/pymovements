@@ -62,6 +62,14 @@ _SAMPLING_RATE_KEY = 'sampling_rate'
 # True while pymovements rebuilds events from a frame it already holds, see _rebuild_events.
 _SILENT_CONSTRUCTION: ContextVar[bool] = ContextVar('_SILENT_CONSTRUCTION', default=False)
 
+# Where a declaration comes from: the constructor keyword or the metadata entry.
+_DeclarationSource = Literal['keyword', 'entry']
+
+
+def _source_description(source: _DeclarationSource, keyword: str) -> str:
+    """Return the source of a declaration as named in messages."""
+    return f'the {keyword} keyword' if source == 'keyword' else 'the metadata entry'
+
 
 def _entry_convention(entry: Any) -> bool | None:
     """Return the convention of a metadata entry, None if it is no convention entry."""
@@ -814,13 +822,10 @@ class Events:
             durations_supplied=durations_supplied,
             offsets_inclusive=offsets_inclusive if offsets_inclusive is not None
             else entry_inclusive,
-            declared_by_keyword=offsets_inclusive is not None,
+            offsets_inclusive_source='keyword' if offsets_inclusive is not None else 'entry',
             durations_from_offsets=durations_from_offsets,
             sampling_rate=sampling_rate if sampling_rate is not None else entry_rate,
-            sampling_rate_source=(
-                'the sampling_rate keyword' if sampling_rate is not None
-                else 'the metadata entry'
-            ),
+            sampling_rate_source='keyword' if sampling_rate is not None else 'entry',
             validate=validate,
             silent=silent,
         )
@@ -947,10 +952,10 @@ class Events:
             *,
             durations_supplied: bool,
             offsets_inclusive: bool | None,
-            declared_by_keyword: bool,
+            offsets_inclusive_source: _DeclarationSource,
             durations_from_offsets: bool,
             sampling_rate: float | None,
-            sampling_rate_source: str,
+            sampling_rate_source: _DeclarationSource,
             validate: bool,
             silent: bool,
     ) -> None:
@@ -960,7 +965,7 @@ class Events:
         """
         if 'offset' not in self.frame.columns:
             ignored = []
-            if declared_by_keyword:
+            if offsets_inclusive_source == 'keyword':
                 ignored.append(f'offsets_inclusive={offsets_inclusive}')
             if durations_from_offsets:
                 ignored.append('durations_from_offsets=True')
@@ -1020,6 +1025,7 @@ class Events:
         if validate:
             self._check_durations_against_offsets(
                 offsets_inclusive=offsets_inclusive,
+                offsets_inclusive_source=offsets_inclusive_source,
                 sampling_rate=sampling_rate,
                 sampling_interval=sampling_interval,
                 sampling_rate_source=sampling_rate_source,
@@ -1030,9 +1036,10 @@ class Events:
             self,
             *,
             offsets_inclusive: bool,
+            offsets_inclusive_source: _DeclarationSource,
             sampling_rate: float | None,
             sampling_interval: int | None,
-            sampling_rate_source: str,
+            sampling_rate_source: _DeclarationSource,
             silent: bool,
     ) -> None:
         """Check the stored durations against the declared offsets.
@@ -1050,6 +1057,8 @@ class Events:
             return
 
         declaration = f'offsets_inclusive={offsets_inclusive}'
+        if offsets_inclusive_source == 'entry':
+            declaration += ' from the metadata entry'
         if not offsets_inclusive:
             expected = 0
             expected_description = '0'
@@ -1096,23 +1105,29 @@ class Events:
             )
             if offsets_inclusive and all(abs(r) <= _RESIDUAL_TOLERANCE_US for r in distinct):
                 message += ', the durations look like pre-v0.29.0 values'
-            if offsets_inclusive:
-                message += (
-                    '. Pass durations_from_offsets=True to derive the durations from the '
-                    'offsets, offsets_inclusive=False if the offsets are exclusive, or '
-                    'validate=False to keep the durations unchecked.'
-                )
+            # The correction is offered where the convention was declared.
+            if offsets_inclusive_source == 'keyword':
+                correction = f'offsets_inclusive={not offsets_inclusive}'
             else:
-                message += (
-                    '. Pass offsets_inclusive=True if the offsets are inclusive, or '
-                    'validate=False to keep the durations unchecked.'
+                correction = (
+                    f"metadata['offset'] = {{'{_INCLUSIVE_KEY}': {not offsets_inclusive}}}"
                 )
+            recipes = []
+            if offsets_inclusive:
+                recipes.append(
+                    'durations_from_offsets=True to derive the durations from the offsets',
+                )
+            other = 'exclusive' if offsets_inclusive else 'inclusive'
+            recipes.append(f'{correction} if the offsets are {other}')
+            recipes.append('validate=False to keep the durations unchecked')
+            message += f". Pass {', '.join(recipes[:-1])}, or {recipes[-1]}."
             raise ValueError(message)
 
         if sampling_interval is not None and offsets_inclusive:
             expected_description = (
                 f'{_format_microseconds(sampling_interval)} '
-                f'(sampling_rate={sampling_rate:g} from {sampling_rate_source})'
+                f'(sampling_rate={sampling_rate:g} from '
+                f"{_source_description(sampling_rate_source, 'sampling_rate')})"
             )
         message = (
             f'{len(contradicting)} of {len(residuals)} rows contradict {declaration}: '
