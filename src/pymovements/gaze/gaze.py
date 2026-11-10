@@ -46,7 +46,9 @@ from pymovements._utils._time import durations_to_ms
 from pymovements._utils._time import time_column_to_duration_us
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
+from pymovements.events.events import _entry_convention
 from pymovements.events.events import _rebuild_events
+from pymovements.events.events import _SAMPLING_RATE_KEY
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.quality import DataQualityReport
 from pymovements.gaze.quality import run_report
@@ -1358,6 +1360,11 @@ class Gaze:
     ) -> None:
         """Detect events by applying a specific event detection method.
 
+        A method that takes a ``sampling_rate`` keyword receives the sampling rate of the
+        experiment unless ``sampling_rate`` is passed in ``kwargs``. The entries of the detected
+        events, the sampling rate and the offset convention, are carried into the metadata of
+        :py:attr:`~.Gaze.events`.
+
         Parameters
         ----------
         method: Callable[..., Events] | str
@@ -1372,6 +1379,14 @@ class Gaze:
             merged into the existing one. (default: False)
         **kwargs: Any
             Additional keyword arguments to be passed to the event detection method.
+
+        Raises
+        ------
+        ValueError
+            If the method takes ``sampling_rate`` and neither ``kwargs`` nor the experiment
+            provide one. If the sampling rate or the offset convention of the detected events
+            differs from the entry already stored in :py:attr:`~.Gaze.events`, unless ``clear``
+            is ``True``.
         """
         if self.events is None or clear:
             self.clear_events()
@@ -1404,6 +1419,7 @@ class Gaze:
             )
 
             new_events = method(**method_kwargs)
+            _carry_detected_entries(self.events.metadata, new_events.metadata)
 
             if len(new_events) == 0:
                 warn(
@@ -1479,6 +1495,7 @@ class Gaze:
                 )
 
                 new_events = method(**method_kwargs)
+                _carry_detected_entries(self.events.metadata, new_events.metadata)
                 # add group identifiers as new columns
                 new_events.add_trial_column(self.trial_columns, group_identifier)
 
@@ -2865,6 +2882,15 @@ class Gaze:
             else:
                 kwargs['timesteps'] = timesteps_series
 
+        if 'sampling_rate' in method_args and 'sampling_rate' not in kwargs:
+            if self.experiment is None or self.experiment.sampling_rate is None:
+                raise ValueError(
+                    f"{getattr(method, '__name__', method)} requires a sampling_rate, but the "
+                    'gaze has no experiment sampling rate. Pass Experiment(sampling_rate=...) '
+                    'to the gaze or sampling_rate= to detect().',
+                )
+            kwargs['sampling_rate'] = self.experiment.sampling_rate
+
         return kwargs
 
     def _init_columns(
@@ -3534,3 +3560,45 @@ def _check_messages(messages: polars.DataFrame) -> None:
             raise TypeError(
                 "The `messages` polars DataFrame must contain the columns ['time', 'content'].",
             )
+
+
+def _carry_detected_entries(metadata: dict[str, Any], detected: dict[str, Any]) -> None:
+    """Carry the metadata entries of detected events into the metadata of the gaze's events.
+
+    An entry absent from ``metadata`` is copied, an equal entry is left alone, and a differing
+    sampling-rate entry or offset convention entry raises, since one events frame holds one
+    sampling grid and one convention per offset column. Keys that are no entry, such as the
+    sources, are left untouched on both sides.
+
+    Parameters
+    ----------
+    metadata: dict[str, Any]
+        The metadata of the gaze's events, updated in place.
+    detected: dict[str, Any]
+        The metadata of the detected events.
+
+    Raises
+    ------
+    ValueError
+        If the sampling rate or an offset convention of the detected events differs from the
+        entry stored in ``metadata``.
+    """
+    for key, value in detected.items():
+        if key == _SAMPLING_RATE_KEY:
+            if key not in metadata:
+                metadata[key] = value
+            elif metadata[key] != value:
+                raise ValueError(
+                    f'detected events have sampling_rate={value!r}, but the existing events '
+                    f"carry metadata['{key}'] = {metadata[key]!r}. "
+                    'Call detect(clear=True) to replace the existing events.',
+                )
+        elif _entry_convention(value) is not None:
+            if key not in metadata:
+                metadata[key] = dict(value)
+            elif _entry_convention(metadata[key]) != _entry_convention(value):
+                raise ValueError(
+                    f"detected events declare metadata['{key}'] = {value!r}, but the existing "
+                    f"events carry metadata['{key}'] = {metadata[key]!r}. "
+                    'Call detect(clear=True) to replace the existing events.',
+                )
