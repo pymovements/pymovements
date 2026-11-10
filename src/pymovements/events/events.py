@@ -2408,3 +2408,56 @@ def _rebuild_events(
         return Events(data, trial_columns=trial_columns, metadata=metadata, validate=False)
     finally:
         _SILENT_CONSTRUCTION.reset(token)
+
+
+def _carry_detected_entries(events: Events, detected: Events) -> None:
+    """Carry the metadata entries of detected events into the metadata of existing events.
+
+    An entry absent from the metadata of ``events`` is copied, an equal entry is left alone,
+    and a differing sampling-rate entry or offset convention entry raises, since one events
+    frame holds one sampling grid and one convention per offset column. An offset column of
+    ``events`` without a convention entry raises as well: the detected convention would declare
+    rows that were never declared. Keys that are no entry, such as the sources, are left
+    untouched on both sides.
+
+    Parameters
+    ----------
+    events: Events
+        The existing events, their metadata is updated in place.
+    detected: Events
+        The detected events.
+
+    Raises
+    ------
+    ValueError
+        If the sampling rate or an offset convention of the detected events differs from the
+        entry stored in the metadata of ``events``, or if ``events`` has an undeclared offset
+        column that the detected events declare.
+    """
+    metadata = events.metadata
+    for key, value in detected.metadata.items():
+        if key == _SAMPLING_RATE_KEY:
+            if key not in metadata:
+                metadata[key] = value
+            elif metadata[key] != value:
+                raise ValueError(
+                    f'detected events have sampling_rate={value!r}, but the existing events '
+                    f"carry metadata['{key}'] = {metadata[key]!r}. "
+                    'Call detect(clear=True) to replace the existing events.',
+                )
+        elif _entry_convention(value) is not None:
+            if key not in metadata:
+                if key in events.frame.columns:
+                    raise ValueError(
+                        f"detected events declare metadata['{key}'] = {value!r}, but the "
+                        f"existing events carry an undeclared '{key}' column. Declare it, for "
+                        f"the 'offset' column with offsets_inclusive=, or call "
+                        'detect(clear=True) to replace the existing events.',
+                    )
+                metadata[key] = dict(value)
+            elif _entry_convention(metadata[key]) != _entry_convention(value):
+                raise ValueError(
+                    f"detected events declare metadata['{key}'] = {value!r}, but the existing "
+                    f"events carry metadata['{key}'] = {metadata[key]!r}. "
+                    'Call detect(clear=True) to replace the existing events.',
+                )

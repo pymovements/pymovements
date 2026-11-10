@@ -25,6 +25,7 @@ import polars
 
 from pymovements._utils import _checks
 from pymovements._utils._time import normalize_timesteps
+from pymovements._utils._time import sampling_interval_ms
 from pymovements.events._utils._filters import filter_candidates_remove_nans
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
@@ -40,6 +41,8 @@ def ivt(
         velocity_threshold: float = 20.0,
         include_nan: bool = False,
         name: str = 'fixation',
+        *,
+        sampling_rate: float,
 ) -> Events:
     """Identification of fixations based on a velocity-threshold (I-VT).
 
@@ -72,6 +75,10 @@ def ivt(
         (default: False)
     name: str
         Name for detected events in Events. (default: 'fixation')
+    sampling_rate: float
+        Sampling rate of the signal in Hz. Each sample covers the nominal interval
+        ``1000 / sampling_rate`` milliseconds, which is added to the duration of every event
+        and written to the sampling-rate entry of the events metadata.
 
     Returns
     -------
@@ -84,6 +91,7 @@ def ivt(
         If velocities is a polars Series and dtype not List
         If timesteps is neither a Duration series nor of a numeric dtype
     ValueError
+        If sampling_rate is not positive
         If velocities is None
         If velocities does not have shape (N, 2)
         If timesteps are not in ascending order
@@ -107,26 +115,26 @@ def ivt(
 
     Apply event detection algorithm on numpy array:
 
-    >>> ivt(velocities)
+    >>> ivt(velocities, sampling_rate=1000)
     shape: (1, 4)
     ┌──────────────┬──────────────┬──────────┬──────────────┐
     │ onset        ┆ duration     ┆ name     ┆ offset       │
     │ ---          ┆ ---          ┆ ---      ┆ ---          │
     │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
     ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 9ms          ┆ 101ms        ┆ fixation ┆ 110ms        │
+    │ 9ms          ┆ 102ms        ┆ fixation ┆ 110ms        │
     └──────────────┴──────────────┴──────────┴──────────────┘
 
     Run fixation detection with custom parameters:
 
-    >>> ivt(velocities, minimum_duration = 50, velocity_threshold=30)
+    >>> ivt(velocities, minimum_duration = 50, velocity_threshold=30, sampling_rate=1000)
     shape: (1, 4)
     ┌──────────────┬──────────────┬──────────┬──────────────┐
     │ onset        ┆ duration     ┆ name     ┆ offset       │
     │ ---          ┆ ---          ┆ ---      ┆ ---          │
     │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
     ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 9ms          ┆ 190ms        ┆ fixation ┆ 199ms        │
+    │ 9ms          ┆ 191ms        ┆ fixation ┆ 199ms        │
     └──────────────┴──────────────┴──────────┴──────────────┘
 
     Polars series are also supported as input. Let's create a nested position series from our numpy
@@ -153,14 +161,14 @@ def ivt(
 
     Apply event detection algorithm on polars series:
 
-    >>> ivt(velocity_series)
+    >>> ivt(velocity_series, sampling_rate=1000)
     shape: (1, 4)
     ┌──────────────┬──────────────┬──────────┬──────────────┐
     │ onset        ┆ duration     ┆ name     ┆ offset       │
     │ ---          ┆ ---          ┆ ---      ┆ ---          │
     │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
     ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 9ms          ┆ 101ms        ┆ fixation ┆ 110ms        │
+    │ 9ms          ┆ 102ms        ┆ fixation ┆ 110ms        │
     └──────────────┴──────────────┴──────────┴──────────────┘
 
     We can also apply the detection on a :py:class:`~pymovements.Gaze` object.
@@ -169,8 +177,12 @@ def ivt(
     >>> gaze = from_numpy(
     ...    velocity=velocities.T,
     ...    time=np.arange(len(velocities)),
+    ...    experiment=Experiment(sampling_rate=1000),
     ... )
     >>> gaze
+    Experiment(screen=Screen(resolution=None, size=None, distance_cm=None, origin=None),
+      eyetracker=EyeTracker(sampling_rate=1000, left=None, right=None, model=None, version=None,
+      vendor=None, mount=None))
     shape: (200, 2)
     ┌──────────────┬──────────────┐
     │ time         ┆ velocity     │
@@ -200,7 +212,7 @@ def ivt(
     │ ---          ┆ ---          ┆ ---      ┆ ---          │
     │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
     ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 9ms          ┆ 101ms        ┆ fixation ┆ 110ms        │
+    │ 9ms          ┆ 102ms        ┆ fixation ┆ 110ms        │
     └──────────────┴──────────────┴──────────┴──────────────┘
 
     Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
@@ -213,7 +225,7 @@ def ivt(
     │ ---          ┆ ---          ┆ ---          ┆ ---          │
     │ duration[μs] ┆ duration[μs] ┆ str          ┆ duration[μs] │
     ╞══════════════╪══════════════╪══════════════╪══════════════╡
-    │ 9ms          ┆ 190ms        ┆ fixation_ivt ┆ 199ms        │
+    │ 9ms          ┆ 191ms        ┆ fixation_ivt ┆ 199ms        │
     └──────────────┴──────────────┴──────────────┴──────────────┘
     """
     if isinstance(velocities, polars.Series):
@@ -233,6 +245,8 @@ def ivt(
 
     timesteps = normalize_timesteps(timesteps, length=len(velocities))
     _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
+
+    sampling_interval = sampling_interval_ms(sampling_rate)
 
     # Get all indices with norm-velocities below threshold.
     velocity_norm = norm(velocities, axis=1)
@@ -255,17 +269,22 @@ def ivt(
     # Remove empty candidates.
     candidates = [candidate for candidate in candidates if len(candidate) > 0]
 
-    # Filter all candidates by minimum duration.
+    # Filter all candidates by minimum duration, each sample covering the nominal interval.
     candidates = [
         candidate for candidate in candidates
-        if timesteps[candidate[-1]] - timesteps[candidate[0]] >= minimum_duration
+        if timesteps[candidate[-1]] - timesteps[candidate[0]] + sampling_interval
+        >= minimum_duration
     ]
 
     # Onset of each event candidate is first index in candidate indices.
     onsets = timesteps[[candidate_indices[0] for candidate_indices in candidates]].flatten()
     # Offset of each event candidate is last event in candidate indices.
     offsets = timesteps[[candidate_indices[-1] for candidate_indices in candidates]].flatten()
+    # Each sample covers the nominal interval, so the duration reaches past the last sample.
+    durations = offsets - onsets + sampling_interval
 
-    # Create event dataframe from onsets and offsets.
-    events = Events(name=name, onsets=onsets, offsets=offsets)
+    events = Events(
+        name=name, onsets=onsets, durations=durations,
+        offsets=offsets, offsets_inclusive=True, sampling_rate=sampling_rate,
+    )
     return events

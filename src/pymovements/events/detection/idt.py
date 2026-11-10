@@ -25,6 +25,7 @@ import polars
 
 from pymovements._utils import _checks
 from pymovements._utils._time import normalize_timesteps
+from pymovements._utils._time import sampling_interval_ms
 from pymovements.events._utils._filters import events_split_nans
 from pymovements.events._utils._filters import filter_candidates_remove_nans
 from pymovements.events.detection.library import register_event_detection
@@ -58,6 +59,8 @@ def idt(
         dispersion_threshold: float = 1.0,
         include_nan: bool = False,
         name: str = 'fixation',
+        *,
+        sampling_rate: float,
 ) -> Events:
     """Fixation identification based on a dispersion threshold (I-DT).
 
@@ -84,8 +87,8 @@ def idt(
     minimum_duration: float
         Minimum fixation duration. Each sample covers the interval to its successor, so a
         fixation is measured from its first sample to the sample after its last one. The last
-        sample's interval is taken as the last observed one. The duration is specified in the
-        units used in ``timesteps``; for a ``polars.Duration`` timesteps series the unit is
+        sample covers the nominal interval of ``sampling_rate``. The duration is specified in
+        the units used in ``timesteps``. For a ``polars.Duration`` timesteps series the unit is
         milliseconds. If ``timesteps`` is None, then ``minimum_duration`` is specified in
         numbers of samples. (default: 100)
     dispersion_threshold: float
@@ -96,6 +99,10 @@ def idt(
         (default: False)
     name: str
         Name for detected events in Events. (default: 'fixation')
+    sampling_rate: float
+        Sampling rate of the signal in Hz. Each sample covers the nominal interval
+        ``1000 / sampling_rate`` milliseconds, which is added to the duration of every event
+        and written to the sampling-rate entry of the events metadata.
 
     Returns
     -------
@@ -108,6 +115,7 @@ def idt(
         If positions is a polars Series and dtype not List
         If timesteps is neither a Duration series nor of a numeric dtype
     ValueError
+        If sampling_rate is not positive
         If positions is not shaped (N, 2)
         If positions and timesteps differ in length
         If timesteps are not in ascending order
@@ -131,27 +139,27 @@ def idt(
 
     Apply event detection algorithm on numpy array:
 
-    >>> idt(positions)
+    >>> idt(positions, sampling_rate=1000)
     shape: (1, 4)
     ┌──────────────┬──────────────┬──────────┬──────────────┐
     │ onset        ┆ duration     ┆ name     ┆ offset       │
     │ ---          ┆ ---          ┆ ---      ┆ ---          │
     │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
     ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 9ms          ┆ 102ms        ┆ fixation ┆ 111ms        │
+    │ 9ms          ┆ 103ms        ┆ fixation ┆ 111ms        │
     └──────────────┴──────────────┴──────────┴──────────────┘
 
     Run fixation detection with custom parameters:
 
-    >>> idt(positions, minimum_duration = 50, dispersion_threshold = 0.5)
+    >>> idt(positions, minimum_duration = 50, dispersion_threshold = 0.5, sampling_rate=1000)
     shape: (2, 4)
     ┌──────────────┬──────────────┬──────────┬──────────────┐
     │ onset        ┆ duration     ┆ name     ┆ offset       │
     │ ---          ┆ ---          ┆ ---      ┆ ---          │
     │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
     ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 9ms          ┆ 102ms        ┆ fixation ┆ 111ms        │
-    │ 150ms        ┆ 49ms         ┆ fixation ┆ 199ms        │
+    │ 9ms          ┆ 103ms        ┆ fixation ┆ 111ms        │
+    │ 150ms        ┆ 50ms         ┆ fixation ┆ 199ms        │
     └──────────────┴──────────────┴──────────┴──────────────┘
 
     Polars series are also supported as input. Let's create a nested position series from our numpy
@@ -178,14 +186,14 @@ def idt(
 
     Apply event detection algorithm on polars series:
 
-    >>> idt(position_series)
+    >>> idt(position_series, sampling_rate=1000)
     shape: (1, 4)
     ┌──────────────┬──────────────┬──────────┬──────────────┐
     │ onset        ┆ duration     ┆ name     ┆ offset       │
     │ ---          ┆ ---          ┆ ---      ┆ ---          │
     │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
     ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 9ms          ┆ 102ms        ┆ fixation ┆ 111ms        │
+    │ 9ms          ┆ 103ms        ┆ fixation ┆ 111ms        │
     └──────────────┴──────────────┴──────────┴──────────────┘
 
     We can also apply the detection on a :py:class:`~pymovements.Gaze` object.
@@ -194,8 +202,12 @@ def idt(
     >>> gaze = from_numpy(
     ...    position=positions.T,
     ...    time=np.arange(len(positions)),
+    ...    experiment=Experiment(sampling_rate=1000),
     ... )
     >>> gaze
+    Experiment(screen=Screen(resolution=None, size=None, distance_cm=None, origin=None),
+      eyetracker=EyeTracker(sampling_rate=1000, left=None, right=None, model=None, version=None,
+      vendor=None, mount=None))
     shape: (200, 2)
     ┌──────────────┬────────────┐
     │ time         ┆ position   │
@@ -225,7 +237,7 @@ def idt(
     │ ---          ┆ ---          ┆ ---      ┆ ---          │
     │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
     ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 9ms          ┆ 102ms        ┆ fixation ┆ 111ms        │
+    │ 9ms          ┆ 103ms        ┆ fixation ┆ 111ms        │
     └──────────────┴──────────────┴──────────┴──────────────┘
 
     Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
@@ -238,8 +250,8 @@ def idt(
     │ ---          ┆ ---          ┆ ---          ┆ ---          │
     │ duration[μs] ┆ duration[μs] ┆ str          ┆ duration[μs] │
     ╞══════════════╪══════════════╪══════════════╪══════════════╡
-    │ 9ms          ┆ 102ms        ┆ fixation_idt ┆ 111ms        │
-    │ 150ms        ┆ 49ms         ┆ fixation_idt ┆ 199ms        │
+    │ 9ms          ┆ 103ms        ┆ fixation_idt ┆ 111ms        │
+    │ 150ms        ┆ 50ms         ┆ fixation_idt ┆ 199ms        │
     └──────────────┴──────────────┴──────────────┴──────────────┘
     """
     if isinstance(positions, polars.Series):
@@ -255,19 +267,23 @@ def idt(
     timesteps = normalize_timesteps(timesteps, length=len(positions))
     _checks.check_is_length_matching(positions=positions, timesteps=timesteps)
 
+    sampling_interval = sampling_interval_ms(sampling_rate)
+
     if dispersion_threshold <= 0:
         raise ValueError('dispersion_threshold must be greater than 0')
     if minimum_duration <= 0:
         raise ValueError('minimum_duration must be greater than 0')
 
     # Each sample covers the interval to its successor, so a window [win_start, win_end) covers
-    # end_times[win_end] - timesteps[win_start]. The last sample has no successor, its interval
-    # is taken as the last observed one (PMEP 1 replaces it with the nominal interval from the
-    # sampling rate). A window must hold at least two samples, so a single sample never forms
-    # a fixation.
+    # end_times[win_end] - timesteps[win_start]. The last sample has no successor, it covers
+    # the nominal interval of the sampling rate. A window must hold at least two samples, so a
+    # single sample never forms a fixation.
     if len(timesteps) < 2:
-        return Events(name=name, onsets=[], offsets=[])
-    end_times = numpy.append(timesteps, 2 * timesteps[-1] - timesteps[-2])
+        return Events(
+            name=name, onsets=[], durations=[],
+            offsets=[], offsets_inclusive=True, sampling_rate=sampling_rate,
+        )
+    end_times = numpy.append(timesteps, timesteps[-1] + sampling_interval)
 
     onsets = []
     offsets = []
@@ -338,6 +354,11 @@ def idt(
     # Create proper flat numpy arrays.
     onsets_arr = numpy.array(onsets).flatten()
     offsets_arr = numpy.array(offsets).flatten()
+    # Each sample covers the nominal interval, so the duration reaches past the last sample.
+    durations_arr = offsets_arr - onsets_arr + sampling_interval
 
-    events = Events(name=name, onsets=onsets_arr, offsets=offsets_arr)
+    events = Events(
+        name=name, onsets=onsets_arr, durations=durations_arr,
+        offsets=offsets_arr, offsets_inclusive=True, sampling_rate=sampling_rate,
+    )
     return events
