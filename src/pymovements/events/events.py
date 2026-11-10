@@ -25,6 +25,7 @@ import warnings
 from collections.abc import Sequence
 from contextvars import ContextVar
 from copy import deepcopy
+from numbers import Real
 from typing import Any
 from typing import Literal
 from typing import overload
@@ -872,18 +873,26 @@ class Events:
                 'Correct the entry or drop the keyword.',
             )
         entry_rate = self.metadata.get(_SAMPLING_RATE_KEY)
-        if entry_rate is not None and not entry_rate > 0:
-            raise ValueError(
-                f"the metadata entry metadata['{_SAMPLING_RATE_KEY}'] must be positive, "
-                f'but is {entry_rate}.',
-            )
-        if sampling_rate is not None and entry_rate is not None and sampling_rate != entry_rate:
+        rate = None
+        if entry_rate is not None:
+            if isinstance(entry_rate, bool) or not isinstance(entry_rate, Real):
+                raise ValueError(
+                    f"the metadata entry metadata['{_SAMPLING_RATE_KEY}'] must be a number, "
+                    f'but is {entry_rate!r}.',
+                )
+            rate = float(entry_rate)
+            if rate <= 0:
+                raise ValueError(
+                    f"the metadata entry metadata['{_SAMPLING_RATE_KEY}'] must be positive, "
+                    f'but is {entry_rate}.',
+                )
+        if sampling_rate is not None and rate is not None and sampling_rate != rate:
             raise ValueError(
                 f'sampling_rate={sampling_rate:g} differs from the metadata entry '
                 f"metadata['{_SAMPLING_RATE_KEY}'] = {entry_rate:g}. "
                 'Correct the entry or drop the keyword.',
             )
-        return entry_inclusive, entry_rate
+        return entry_inclusive, rate
 
     def _write_entries(
             self,
