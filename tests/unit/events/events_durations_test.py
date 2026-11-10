@@ -660,7 +660,7 @@ def test_merge_subsequent_close_events_without_offset_gaps_from_durations(
     assert events.frame['duration'].to_list() == [timedelta(milliseconds=v) for v in expected_ms]
 
 
-def _rebuild_gaze(events):
+def test_compute_event_properties_on_empty_events_without_offset_warns():
     gaze = pm.Gaze(
         samples=pl.DataFrame({
             'time': list(range(0, 600)) * 2,
@@ -672,15 +672,6 @@ def _rebuild_gaze(events):
         pixel_columns=['x', 'y'],
         trial_columns='trial',
     )
-    if events is not None:
-        gaze.events = events
-    else:
-        gaze.events.metadata = {'key': 'value'}
-    return gaze
-
-
-def test_compute_event_properties_on_empty_events_without_offset_warns():
-    gaze = _rebuild_gaze(None)
     assert 'offset' not in gaze.events.columns
 
     with pytest.warns(UserWarning, match='No events available'):
