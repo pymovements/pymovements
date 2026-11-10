@@ -24,6 +24,8 @@ Before You Start
   report a finding that came back as a regression.
 - Judgment calls that an earlier review round accepted (naming, structure, style) stay settled
   unless there is new evidence.
+- A contribution that falls short of the :ref:`Use of Generative AI <use-of-generative-ai>` policy
+  may be declined with a link to the policy, without investigating which tools the author used.
 
 Maintainer Commits
 ------------------
