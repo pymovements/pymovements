@@ -1247,15 +1247,15 @@ def ihmm(
 
     Apply event detection algorithm on numpy array:
 
-    >>> ihmm(velocities)
+    >>> ihmm(velocities, sampling_rate=1000)
     shape: (2, 4)
     ┌──────────────┬──────────────┬──────────┬──────────────┐
     │ onset        ┆ duration     ┆ name     ┆ offset       │
     │ ---          ┆ ---          ┆ ---      ┆ ---          │
     │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
     ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 52ms         ┆ 195ms        ┆ fixation ┆ 247ms        │
-    │ 252ms        ┆ 195ms        ┆ fixation ┆ 447ms        │
+    │ 52ms         ┆ 196ms        ┆ fixation ┆ 247ms        │
+    │ 252ms        ┆ 196ms        ┆ fixation ┆ 447ms        │
     └──────────────┴──────────────┴──────────┴──────────────┘
 
     Run fixation detection with custom HMM parameters:
@@ -1264,15 +1264,15 @@ def ihmm(
     ...         'sigma': [1.3220152347857494, 87.32409626093246],
     ...         'init': [1.e+00, 1.e-12],
     ...         'trans': [[0.97360507, 0.02639493],[0.07593547, 0.92406453]]}
-    >>> ihmm(velocities, hmm_parameters_dict = hmm_parameters)
+    >>> ihmm(velocities, hmm_parameters_dict = hmm_parameters, sampling_rate=1000)
     shape: (2, 4)
     ┌──────────────┬──────────────┬──────────┬──────────────┐
     │ onset        ┆ duration     ┆ name     ┆ offset       │
     │ ---          ┆ ---          ┆ ---      ┆ ---          │
     │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
     ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 52ms         ┆ 195ms        ┆ fixation ┆ 247ms        │
-    │ 252ms        ┆ 195ms        ┆ fixation ┆ 447ms        │
+    │ 52ms         ┆ 196ms        ┆ fixation ┆ 247ms        │
+    │ 252ms        ┆ 196ms        ┆ fixation ┆ 447ms        │
     └──────────────┴──────────────┴──────────┴──────────────┘
 
     We can also apply the detection on a :py:class:`~pymovements.Gaze` object.
@@ -1280,8 +1280,13 @@ def ihmm(
     >>> from pymovements import Experiment
     >>> gaze = from_numpy(
     ...         velocity=velocities.T,
-    ...         time=np.arange(len(velocities)),)
+    ...         time=np.arange(len(velocities)),
+    ...         experiment=Experiment(sampling_rate=1000),
+    ... )
     >>> gaze
+    Experiment(screen=Screen(resolution=None, size=None, distance_cm=None, origin=None),
+      eyetracker=EyeTracker(sampling_rate=1000, left=None, right=None, model=None, version=None,
+      vendor=None, mount=None))
     shape: (500, 2)
     ┌──────────────┬────────────┐
     │ time         ┆ velocity   │
@@ -1311,8 +1316,8 @@ def ihmm(
     │ ---          ┆ ---          ┆ ---      ┆ ---          │
     │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
     ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 52ms         ┆ 195ms        ┆ fixation ┆ 247ms        │
-    │ 252ms        ┆ 195ms        ┆ fixation ┆ 447ms        │
+    │ 52ms         ┆ 196ms        ┆ fixation ┆ 247ms        │
+    │ 252ms        ┆ 196ms        ┆ fixation ┆ 447ms        │
     └──────────────┴──────────────┴──────────┴──────────────┘
 
     Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
@@ -1325,8 +1330,8 @@ def ihmm(
     │ ---          ┆ ---          ┆ ---           ┆ ---          │
     │ duration[μs] ┆ duration[μs] ┆ str           ┆ duration[μs] │
     ╞══════════════╪══════════════╪═══════════════╪══════════════╡
-    │ 52ms         ┆ 195ms        ┆ fixation_ihmm ┆ 247ms        │
-    │ 252ms        ┆ 195ms        ┆ fixation_ihmm ┆ 447ms        │
+    │ 52ms         ┆ 196ms        ┆ fixation_ihmm ┆ 247ms        │
+    │ 252ms        ┆ 196ms        ┆ fixation_ihmm ┆ 447ms        │
     └──────────────┴──────────────┴───────────────┴──────────────┘
     """
     if isinstance(velocities, polars.Series):
