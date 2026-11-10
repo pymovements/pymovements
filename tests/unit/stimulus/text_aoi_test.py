@@ -111,7 +111,7 @@ def test_get_aoi_raises_value_error_when_no_size_columns(row: dict[str, int]) ->
         _ = stim.get_aoi(row=row, x_eye='x', y_eye='y')
 
 
-def test_get_aoi_raises_value_error_when_width_without_height():
+def test_get_aoi_raises_value_error_when_width_without_height() -> None:
     stim = TextStimulus(
         aois=pl.DataFrame({'label': ['Z'], 'sx': [0], 'sy': [0], 'width': [10]}),
         aoi_column='label',

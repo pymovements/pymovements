@@ -23,6 +23,7 @@ from __future__ import annotations
 import re
 import warnings
 from datetime import timedelta
+from typing import NamedTuple
 
 import polars as pl
 import pytest
@@ -714,6 +715,15 @@ def _rebuild_gaze(events):
 _REBUILD_ENTRY_COLUMNS = ['trial', 'onset', 'duration', 'name', 'offset', 'location']
 
 
+class _Construction(NamedTuple):
+    """One ``Events`` construction recorded by the spy."""
+
+    frame: pl.DataFrame
+    data: object
+    kwargs: dict
+    metadata: dict
+
+
 @pytest.mark.parametrize(
     ('prepare', 'rebuild', 'expected_columns'),
     [
@@ -782,7 +792,7 @@ def test_rebuild_sites_pass_validate_false_and_carry_metadata(
     def spy_init(self, data=None, **kwargs):
         original_init(self, data, **kwargs)
         # The frame is recorded at construction, as measure_reading maps its copy afterwards.
-        calls.append((self, self.frame, data, kwargs))
+        calls.append(_Construction(self.frame, data, kwargs, self.metadata))
 
     monkeypatch.setattr(Events, '__init__', spy_init)
     with warnings.catch_warnings():
@@ -790,14 +800,14 @@ def test_rebuild_sites_pass_validate_false_and_carry_metadata(
         warnings.filterwarnings('ignore', message='.*No events were detected')
         rebuild(entry)
 
-    rebuilds = [call for call in calls if call[2] is not None]
+    rebuilds = [call for call in calls if call.data is not None]
     assert rebuilds
-    for rebuilt, frame, data, kwargs in rebuilds:
-        assert kwargs['validate'] is False
-        assert set(kwargs) <= {'trial_columns', 'metadata', 'validate'}
-        assert_frame_equal(frame, data)
-        assert frame.columns == expected_columns
-        assert rebuilt.metadata.items() >= {'key': 'value'}.items()
+    for call in rebuilds:
+        assert call.kwargs['validate'] is False
+        assert set(call.kwargs) <= {'trial_columns', 'metadata', 'validate'}
+        assert_frame_equal(call.frame, call.data)
+        assert call.frame.columns == expected_columns
+        assert call.metadata.items() >= {'key': 'value'}.items()
 
 
 def test_compute_event_properties_on_empty_events_without_offset_warns():
