@@ -27,7 +27,7 @@ from pymovements.measure.reading import ReadingMeasures
 from pymovements.stimulus.text import TextStimulus
 
 
-def _make_stimulus(words, trial='trial_1', start_x=None):
+def _make_stimulus(words, trial='trial_1', start_x=None, trial_dtype=None):
     n = len(words)
     if start_x is None:
         start_x = [10.0 + 10 * i for i in range(n)]
@@ -42,7 +42,7 @@ def _make_stimulus(words, trial='trial_1', start_x=None):
         'height': [20.0] * n,
     })
     if trial is not None:
-        aois = aois.with_columns(pl.lit(trial).alias('trial'))
+        aois = aois.with_columns(pl.lit(trial, dtype=trial_dtype).alias('trial'))
     return TextStimulus(
         aois=aois,
         aoi_column='char',
@@ -315,15 +315,13 @@ def test_events_measure_reading_multiple_stimuli_stimulus_column_dtype_differs(f
         pytest.param(pl.Enum(['1']), id='enum'),
     ],
 )
-def test_events_measure_reading_multiple_stimuli_categorical_stimulus_column(
+def test_events_measure_reading_multiple_stimuli_categorical_or_enum_stimulus_column(
     fixation_events, key_dtype,
 ):
     # the stimulus keeps its sequence column as Categorical or Enum while the key and the
     # events are ints
     events = Events(fixation_events.frame.with_columns(pl.lit(1).alias('trial')))
-    stimulus = _make_stimulus(['The', 'quick', 'brown'], trial='1')
-    stimulus.aois = stimulus.aois.with_columns(pl.col('trial').cast(key_dtype))
-    stimuli = {1: stimulus}
+    stimuli = {1: _make_stimulus(['The', 'quick', 'brown'], trial='1', trial_dtype=key_dtype)}
 
     result = events.measure_reading(stimuli, group_columns=['trial'])
 
