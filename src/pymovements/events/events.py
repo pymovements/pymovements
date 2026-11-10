@@ -2415,8 +2415,10 @@ def _carry_detected_entries(events: Events, detected: Events) -> None:
 
     An entry absent from the metadata of ``events`` is copied, an equal entry is left alone,
     and a differing sampling-rate entry or offset convention entry raises, since one events
-    frame holds one sampling grid and one convention per offset column. Keys that are no entry,
-    such as the sources, are left untouched on both sides.
+    frame holds one sampling grid and one convention per offset column. An offset column of
+    ``events`` without a convention entry raises as well: the detected convention would declare
+    rows that were never declared. Keys that are no entry, such as the sources, are left
+    untouched on both sides.
 
     Parameters
     ----------
@@ -2429,7 +2431,8 @@ def _carry_detected_entries(events: Events, detected: Events) -> None:
     ------
     ValueError
         If the sampling rate or an offset convention of the detected events differs from the
-        entry stored in the metadata of ``events``.
+        entry stored in the metadata of ``events``, or if ``events`` has an undeclared offset
+        column that the detected events declare.
     """
     metadata = events.metadata
     for key, value in detected.metadata.items():
@@ -2444,6 +2447,13 @@ def _carry_detected_entries(events: Events, detected: Events) -> None:
                 )
         elif _entry_convention(value) is not None:
             if key not in metadata:
+                if key in events.frame.columns:
+                    raise ValueError(
+                        f"detected events declare metadata['{key}'] = {value!r}, but the "
+                        f"existing events carry an undeclared '{key}' column. Declare it, for "
+                        f"the 'offset' column with offsets_inclusive=, or call "
+                        'detect(clear=True) to replace the existing events.',
+                    )
                 metadata[key] = dict(value)
             elif _entry_convention(metadata[key]) != _entry_convention(value):
                 raise ValueError(

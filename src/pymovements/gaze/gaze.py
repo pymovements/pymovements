@@ -1384,7 +1384,8 @@ class Gaze:
         ValueError
             If the method takes ``sampling_rate`` and neither ``kwargs`` nor the experiment
             provide one. If the sampling rate or the offset convention of the detected events
-            differs from the entry already stored in :py:attr:`~.Gaze.events`, unless ``clear``
+            differs from the entry already stored in :py:attr:`~.Gaze.events`, or if the
+            existing events carry an offset column without a convention entry, unless ``clear``
             is ``True``.
         """
         if self.events is None or clear:

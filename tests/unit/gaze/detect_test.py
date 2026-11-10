@@ -958,17 +958,23 @@ from pymovements.synthetic import step_function
             id='microsaccades_two_steps_one_saccade_per_trial',
         ),
 
-        # fill: the gaze's own events are undeclared and keep their durations of
-        # offset - onset, the filled rows count the nominal interval.
+        # fill: the gaze's own events declare the inclusive convention and the filled rows
+        # count the nominal interval. fill reads an existing offset as exclusive (#1795).
         pytest.param(
             'fill',
             {'sampling_rate': 1000},
             pm.gaze.from_numpy(
                 time=np.arange(0, 100),
                 position=np.zeros((2, 100)),
-                events=pm.Events(name='fixation', onsets=[0], offsets=[100]),
+                events=pm.Events(
+                    name='fixation', onsets=[0], offsets=[100],
+                    offsets_inclusive=True, sampling_rate=1000,
+                ),
             ),
-            pm.Events(name='fixation', onsets=[0], offsets=[100]),
+            pm.Events(
+                name='fixation', onsets=[0], offsets=[100],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='fill_fixation_from_start_to_end_no_fill',
         ),
 
@@ -978,13 +984,16 @@ from pymovements.synthetic import step_function
             pm.gaze.from_numpy(
                 time=np.arange(0, 100),
                 position=np.zeros((2, 100)),
-                events=pm.Events(name='fixation', onsets=[10], offsets=[100]),
+                events=pm.Events(
+                    name='fixation', onsets=[10], offsets=[100],
+                    offsets_inclusive=True, sampling_rate=1000,
+                ),
             ),
             pm.Events(
                 name=['fixation', 'unclassified'],
                 onsets=[10, 0],
-                durations=[90, 10],
                 offsets=[100, 9],
+                offsets_inclusive=True, sampling_rate=1000,
             ),
             id='fill_fixation_10_ms_after_start_to_end_single_fill',
         ),
@@ -995,13 +1004,16 @@ from pymovements.synthetic import step_function
             pm.gaze.from_numpy(
                 time=np.arange(0, 100),
                 position=np.zeros((2, 100)),
-                events=pm.Events(name='fixation', onsets=[0], offsets=[90]),
+                events=pm.Events(
+                    name='fixation', onsets=[0], offsets=[90],
+                    offsets_inclusive=True, sampling_rate=1000,
+                ),
             ),
             pm.Events(
                 name=['fixation', 'unclassified'],
                 onsets=[0, 90],
-                durations=[90, 10],
                 offsets=[90, 99],
+                offsets_inclusive=True, sampling_rate=1000,
             ),
             id='fill_fixation_from_start_to_10_ms_before_end_single_fill',
         ),
@@ -1012,13 +1024,16 @@ from pymovements.synthetic import step_function
             pm.gaze.from_numpy(
                 time=np.arange(0, 100),
                 position=np.zeros((2, 100)),
-                events=pm.Events(name='fixation', onsets=[0, 50], offsets=[40, 100]),
+                events=pm.Events(
+                    name='fixation', onsets=[0, 50], offsets=[40, 100],
+                    offsets_inclusive=True, sampling_rate=1000,
+                ),
             ),
             pm.Events(
                 name=['fixation', 'fixation', 'unclassified'],
                 onsets=[0, 50, 40],
-                durations=[40, 50, 10],
                 offsets=[40, 100, 49],
+                offsets_inclusive=True, sampling_rate=1000,
             ),
             id='fill_fixation_10_ms_break_at_40ms_single_fill',
         ),
@@ -1031,13 +1046,14 @@ from pymovements.synthetic import step_function
                 position=np.zeros((2, 100)),
                 events=pm.Events(
                     name=['fixation', 'saccade'], onsets=[0, 50], offsets=[40, 100],
+                    offsets_inclusive=True, sampling_rate=1000,
                 ),
             ),
             pm.Events(
                 name=['fixation', 'saccade', 'unclassified'],
                 onsets=[0, 50, 40],
-                durations=[40, 50, 10],
                 offsets=[40, 100, 49],
+                offsets_inclusive=True, sampling_rate=1000,
             ),
             id='fill_fixation_10_ms_break_then_saccade_until_end_single_fill',
         ),
@@ -1051,14 +1067,15 @@ from pymovements.synthetic import step_function
                 position=np.zeros((2, 100)),
                 events=pm.Events(
                     name='fixation', onsets=[0, 90], offsets=[10, 100], trials=[1, 2],
+                    offsets_inclusive=True, sampling_rate=1000,
                 ),
             ),
             pm.Events(
                 name=['fixation', 'unclassified', 'unclassified', 'fixation'],
                 onsets=[0, 10, 50, 90],
-                durations=[10, 40, 40, 10],
                 offsets=[10, 49, 89, 100],
                 trials=[1, 1, 2, 2],
+                offsets_inclusive=True, sampling_rate=1000,
             ),
             id='fill_10ms_fixation_at_start_and_end_one_fill_per_trial',
         ),
@@ -1072,6 +1089,7 @@ from pymovements.synthetic import step_function
                 position=np.zeros((2, 100)),
                 events=pm.Events(
                     name='fixation', onsets=[0, 40], offsets=[10, 50], trials=[1, 2],
+                    offsets_inclusive=True, sampling_rate=1000,
                 ),
             ),
             pm.Events(
@@ -1080,11 +1098,12 @@ from pymovements.synthetic import step_function
                         'trial': [1, 1, 2, 2],
                         'name': ['fixation', 'unclassified', 'unclassified', 'fixation'],
                         'onset': [0, 10, 0, 40],
-                        'duration': [10, 40, 40, 10],
+                        'duration': [11, 40, 40, 11],
                         'offset': [10, 49, 39, 50],
                     },
                 ),
                 trial_columns='trial',
+                offsets_inclusive=True, sampling_rate=1000,
             ),
             id='fill_10ms_fixation_at_start_and_end_one_fill_per_trial_restarting_timesteps',
         ),
@@ -1098,13 +1117,14 @@ from pymovements.synthetic import step_function
                 position=np.zeros((2, 100)),
                 events=pm.Events(
                     name=['fixation', 'saccade'], onsets=[0, 50], offsets=[40, 100],
+                    offsets_inclusive=True, sampling_rate=1000,
                 ),
             ),
             pm.Events(
                 name=['fixation', 'saccade', 'unclassified'],
                 onsets=[0, 50, 100],
-                durations=[40, 50, 100],
                 offsets=[40, 100, 199],
+                offsets_inclusive=True, sampling_rate=1000,
             ),
             id='fill_fixation_events_before_timesteps',
         ),
@@ -1117,13 +1137,14 @@ from pymovements.synthetic import step_function
                 position=np.zeros((2, 100)),
                 events=pm.Events(
                     name=['fixation', 'saccade'], onsets=[210, 250], offsets=[240, 300],
+                    offsets_inclusive=True, sampling_rate=1000,
                 ),
             ),
             pm.Events(
                 name=['fixation', 'saccade', 'unclassified'],
                 onsets=[210, 250, 0],
-                durations=[30, 50, 200],
                 offsets=[240, 300, 199],
+                offsets_inclusive=True, sampling_rate=1000,
             ),
             id='fill_fixation_events_after_timesteps',
         ),
@@ -1136,13 +1157,14 @@ from pymovements.synthetic import step_function
                 position=np.zeros((2, 100)),
                 events=pm.Events(
                     name=['fixation', 'fixation'], onsets=[0, 120], offsets=[110, 220],
+                    offsets_inclusive=True, sampling_rate=1000,
                 ),
             ),
             pm.Events(
                 name=['fixation', 'fixation', 'unclassified'],
                 onsets=[0, 120, 110],
-                durations=[110, 100, 10],
                 offsets=[110, 220, 119],
+                offsets_inclusive=True, sampling_rate=1000,
             ),
             id='fill_fixation_events_exceed_time_boundaries',
         ),
@@ -1843,6 +1865,34 @@ def test_gaze_detect_existing_exclusive_events_raise_naming_clear():
 
     with pytest.raises(ValueError, match=r'detect\(clear=True\)'):
         gaze.detect('ivt', minimum_duration=1)
+
+
+@pytest.mark.parametrize(
+    'trial',
+    [
+        pytest.param(None, id='trial_less'),
+        pytest.param(np.array(['A'] * 50 + ['B'] * 50), id='grouped'),
+    ],
+)
+def test_gaze_detect_existing_undeclared_offsets_raise_naming_clear(trial):
+    gaze = _velocity_gaze(
+        trial=trial,
+        experiment=pm.Experiment(sampling_rate=1000),
+        events=pm.Events(
+            name='fixation', onsets=[0], offsets=[10],
+            trials=None if trial is None else ['A'],
+        ),
+    )
+
+    with pytest.raises(ValueError, match=r"undeclared 'offset' column.*detect\(clear=True\)"):
+        gaze.detect('ivt', minimum_duration=1)
+
+    assert gaze.events.metadata == {}
+    assert gaze.events.frame.height == 1
+
+    gaze.detect('ivt', minimum_duration=1, clear=True)
+
+    assert gaze.events.metadata == _detected_entries(1000)
 
 
 def test_gaze_detect_clear_replaces_the_sampling_rate_entry():
