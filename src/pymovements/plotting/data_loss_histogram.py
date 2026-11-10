@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 
-from pymovements._utils._time import duration_to_ms
+from pymovements._utils.time import duration_to_ms
 from pymovements.measure.samples.measures import _is_invalid
 from pymovements.plotting._matplotlib import prepare_figure
 

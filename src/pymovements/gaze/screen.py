@@ -30,8 +30,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 from deprecated.sphinx import deprecated
 
-from pymovements._utils import _checks
-from pymovements._utils._html import repr_html
+from pymovements._utils import checks
+from pymovements._utils.html import repr_html
 from pymovements.plotting.screen import make_screen_axes
 from pymovements.transforms.numpy import pix2deg
 
@@ -154,10 +154,10 @@ class Screen:
         size: tuple[float | None, float | None] | None = None,
     ):
         # Check mutual exclusivity.
-        _checks.check_is_mutual_exclusive(width_px=width_px, resolution=resolution)
-        _checks.check_is_mutual_exclusive(height_px=height_px, resolution=resolution)
-        _checks.check_is_mutual_exclusive(width_cm=width_cm, size=size)
-        _checks.check_is_mutual_exclusive(height_cm=height_cm, size=size)
+        checks.check_is_mutual_exclusive(width_px=width_px, resolution=resolution)
+        checks.check_is_mutual_exclusive(height_px=height_px, resolution=resolution)
+        checks.check_is_mutual_exclusive(width_cm=width_cm, size=size)
+        checks.check_is_mutual_exclusive(height_cm=height_cm, size=size)
 
         # Build the tuple from the individual px/cm arguments if not provided.
         self.resolution = resolution if resolution is not None else (width_px, height_px)
@@ -277,7 +277,7 @@ class Screen:
         self._check_numerical_attribute('distance_cm')
         assert self.distance_cm is not None
 
-        _checks.check_is_not_none(origin=self.origin)
+        checks.check_is_not_none(origin=self.origin)
         assert self.origin is not None
 
         return float(
@@ -302,7 +302,7 @@ class Screen:
         self._check_numerical_attribute('distance_cm')
         assert self.distance_cm is not None
 
-        _checks.check_is_not_none(origin=self.origin)
+        checks.check_is_not_none(origin=self.origin)
         assert self.origin is not None
 
         return float(
@@ -327,7 +327,7 @@ class Screen:
         self._check_numerical_attribute('distance_cm')
         assert self.distance_cm is not None
 
-        _checks.check_is_not_none(origin=self.origin)
+        checks.check_is_not_none(origin=self.origin)
         assert self.origin is not None
 
         return float(
@@ -352,7 +352,7 @@ class Screen:
         self._check_numerical_attribute('distance_cm')
         assert self.distance_cm is not None
 
-        _checks.check_is_not_none(origin=self.origin)
+        checks.check_is_not_none(origin=self.origin)
         assert self.origin is not None
 
         return float(
@@ -435,7 +435,7 @@ class Screen:
         self._check_numerical_attribute('distance_cm')
         assert self.distance_cm is not None
 
-        _checks.check_is_not_none(origin=self.origin)
+        checks.check_is_not_none(origin=self.origin)
         assert self.origin is not None
 
         return pix2deg(
@@ -449,9 +449,9 @@ class Screen:
     def _check_numerical_attribute(self, key: str) -> None:
         """Check if numerical attribute is not None and greater than zero."""
         value = getattr(self, key, None)
-        _checks.check_is_not_none(**{key: value})
+        checks.check_is_not_none(**{key: value})
         assert isinstance(value, (int, float))
-        _checks.check_is_greater_than_zero(**{key: value})
+        checks.check_is_greater_than_zero(**{key: value})
 
     def to_dict(
             self,

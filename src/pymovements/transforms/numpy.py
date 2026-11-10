@@ -25,7 +25,7 @@ from typing import Any
 import numpy as np
 from scipy.signal import savgol_filter
 
-from pymovements._utils import _checks
+from pymovements._utils import checks
 
 
 def pix2deg(
@@ -105,9 +105,9 @@ def pix2deg(
     if arr is None:
         raise TypeError('arr must not be None')
 
-    _checks.check_no_zeros(screen_px, 'screen_px')
-    _checks.check_no_zeros(screen_cm, 'screen_px')
-    _checks.check_no_zeros(distance_cm, 'distance_cm')
+    checks.check_no_zeros(screen_px, 'screen_px')
+    checks.check_no_zeros(screen_cm, 'screen_px')
+    checks.check_no_zeros(distance_cm, 'distance_cm')
 
     arr = np.array(arr)
     screen_px = np.array(screen_px)
