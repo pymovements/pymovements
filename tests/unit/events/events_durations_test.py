@@ -30,6 +30,7 @@ import pytest
 from polars.testing import assert_frame_equal
 
 import pymovements as pm
+import pymovements.events.events as events_module
 from pymovements import Events
 
 
@@ -661,7 +662,7 @@ def test_merge_subsequent_close_events_without_offset_gaps_from_durations(
     assert events.frame['duration'].to_list() == [timedelta(milliseconds=v) for v in expected_ms]
 
 
-_REBUILD_METADATA = {'key': 'value', 'offset': {'inclusive': False}}
+_REBUILD_METADATA = {'key': 'value', 'offset': {'inclusive': False}, 'sampling_rate': 1000.0}
 
 
 def _rebuild_entry_events():
@@ -678,6 +679,7 @@ def _rebuild_entry_events():
             }),
             trial_columns='trial',
             offsets_inclusive=False,
+            sampling_rate=1000,
             metadata={'key': 'value'},
         )
     assert len(record) == 1
@@ -717,7 +719,8 @@ def _rebuild_gaze(events):
     if events is not None:
         gaze.events = events
     else:
-        # A convention entry without its column, kept quietly on every rebuild.
+        # A convention entry without its column. The rebuild sites pass validate=False, which
+        # already skips the orphan-entry warning, so this case checks the silence flag alone.
         gaze.events.metadata = deepcopy(_REBUILD_METADATA)
     return gaze
 
@@ -791,9 +794,10 @@ def test_rebuild_sites_carry_metadata_and_do_not_warn(
     original_init = Events.__init__
 
     def spy_init(self, data=None, **kwargs):
+        silent = events_module._SILENT_CONSTRUCTION.get()
         original_init(self, data, **kwargs)
         # The frame is recorded at construction, as measure_reading maps its copy afterwards.
-        calls.append((self, self.frame, data, kwargs))
+        calls.append((self, self.frame, data, kwargs, silent))
 
     monkeypatch.setattr(Events, '__init__', spy_init)
     with warnings.catch_warnings():
@@ -804,7 +808,8 @@ def test_rebuild_sites_carry_metadata_and_do_not_warn(
 
     rebuilds = [call for call in calls if call[2] is not None]
     assert rebuilds
-    for rebuilt, frame, data, kwargs in rebuilds:
+    for rebuilt, frame, data, kwargs, silent in rebuilds:
+        assert silent is True
         assert kwargs['validate'] is False
         assert set(kwargs) <= {'trial_columns', 'metadata', 'validate'}
         assert_frame_equal(frame, data)
@@ -903,29 +908,30 @@ def test_metadata_entries_rebuild_checks_durations_against_entries(
 
 
 @pytest.mark.parametrize(
-    'input_kwargs',
+    ('data', 'expected_match'),
     [
-        pytest.param({'data': pl.DataFrame({'onset': [0], 'offset': [5]})}, id='offset'),
-        pytest.param({'data': pl.DataFrame({'onset': [0], 'duration': [5]})}, id='no_offset'),
+        pytest.param(
+            pl.DataFrame({'onset': [0], 'offset': [5]}),
+            r'offsets_inclusive=False differs from the metadata entry '
+            r"metadata\['offset'\] = \{'inclusive': True\}\. "
+            r'Correct the entry or drop the keyword\.',
+            id='offset',
+        ),
+        pytest.param(
+            pl.DataFrame({'onset': [0], 'duration': [5]}),
+            r'offsets_inclusive=False differs from the metadata entry '
+            r"metadata\['offset'\] = \{'inclusive': True\}, and the events frame has no "
+            r"'offset' column\. Correct the entry or drop the keyword\.",
+            id='no_offset',
+        ),
     ],
 )
-def test_metadata_offsets_inclusive_differing_from_entry_raises(input_kwargs):
-    message = (
-        r'offsets_inclusive=False differs from the metadata entry '
-        r"metadata\['offset'\] = \{'inclusive': True\}"
-    )
-    if 'offset' not in input_kwargs['data'].columns:
-        message += r", and the events frame has no 'offset' column"
-    message += r'\. Correct the entry or drop the keyword\.'
-
+def test_metadata_offsets_inclusive_differing_from_entry_raises(data, expected_match):
     with warnings.catch_warnings():
         # The comparison runs before the missing-column warning.
         warnings.simplefilter('error')
-        with pytest.raises(ValueError, match=message):
-            Events(
-                **input_kwargs, offsets_inclusive=False,
-                metadata={'offset': {'inclusive': True}},
-            )
+        with pytest.raises(ValueError, match=expected_match):
+            Events(data, offsets_inclusive=False, metadata={'offset': {'inclusive': True}})
 
 
 @pytest.mark.parametrize(
@@ -967,6 +973,20 @@ def test_metadata_keywords_agreeing_with_entries_pass():
     )
 
     assert events.frame['duration'].to_list() == [timedelta(milliseconds=6)]
+    assert events.metadata == metadata
+
+
+def test_metadata_offsets_inclusive_agreeing_with_orphan_entry_warns_for_keyword_and_entry():
+    metadata = {'offset': {'inclusive': True}}
+
+    with pytest.warns(UserWarning) as record:
+        events = Events(onsets=[0], durations=[5], offsets_inclusive=True, metadata=metadata)
+
+    assert [str(warning.message) for warning in record] == [
+        "offsets_inclusive=True ignored: the events frame has no 'offset' column.",
+        "metadata holds offset convention entry for the column 'offset', "
+        'which the events frame does not have. The metadata is kept.',
+    ]
     assert events.metadata == metadata
 
 
@@ -1083,14 +1103,16 @@ def test_drop_offset_column_removes_its_convention_entry(column):
 
 
 @pytest.mark.parametrize(
-    'rebuild',
+    ('rebuild', 'expected_parts'),
     [
-        pytest.param(lambda events: [events.clone()], id='clone'),
-        pytest.param(lambda events: events.split(), id='split'),
-        pytest.param(lambda events: list(events.split(as_dict=True).values()), id='split_dict'),
+        pytest.param(lambda events: [events.clone()], 1, id='clone'),
+        pytest.param(lambda events: events.split(), 2, id='split'),
+        pytest.param(
+            lambda events: list(events.split(as_dict=True).values()), 2, id='split_dict',
+        ),
     ],
 )
-def test_metadata_entries_carried_by_clone_and_split(rebuild):
+def test_metadata_entries_carried_by_clone_and_split(rebuild, expected_parts):
     events = Events(
         onsets=[0, 200], offsets=[120, 320], trials=[1, 2],
         offsets_inclusive=True, sampling_rate=1000,
@@ -1098,7 +1120,7 @@ def test_metadata_entries_carried_by_clone_and_split(rebuild):
 
     rebuilt = rebuild(events)
 
-    assert len(rebuilt) in {1, 2}
+    assert len(rebuilt) == expected_parts
     for part in rebuilt:
         assert part.metadata == {'offset': {'inclusive': True}, 'sampling_rate': 1000.0}
         assert part.metadata['offset'] is not events.metadata['offset']
