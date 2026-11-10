@@ -185,16 +185,11 @@ def _join_within_aois(fixations: polars.DataFrame, aoi_group: polars.DataFrame) 
     )
 
 
-def _join_fixations_to_aois(
-        constrained: polars.DataFrame,
-        aoi_dataframe: TextStimulus,
-        key_columns: list[str],
-) -> polars.DataFrame:
-    """Return the matches of the fixations in ``constrained`` against the AOIs.
+def _aoi_bounds(aoi_dataframe: TextStimulus) -> polars.DataFrame:
+    """Return the AOIs of ``aoi_dataframe`` with their match order and Float64 bound columns.
 
-    With key columns the join runs once per key group, where the group ids come from one
-    equi-join on the keys: key equality stays polars equality and fixations whose key has no AOIs
-    drop out there.
+    The bounds are the half-open rectangle of each AOI in both layouts, from width and height
+    or from the end coordinates.
     """
     aois = aoi_dataframe.aois.with_columns(
         polars.int_range(polars.len()).alias(_AOI_MATCH_ORDER),
@@ -208,18 +203,32 @@ def _join_fixations_to_aois(
         end_x = polars.col(aoi_dataframe.end_x_column)
         end_y = polars.col(aoi_dataframe.end_y_column)
     # join_where compares only columns of equal dtype, so the bounds get the coordinate dtype.
-    aois = aois.with_columns(
+    return aois.with_columns(
         start_x.cast(polars.Float64).alias(_AOI_START_X),
         start_y.cast(polars.Float64).alias(_AOI_START_Y),
         end_x.cast(polars.Float64).alias(_AOI_END_X),
         end_y.cast(polars.Float64).alias(_AOI_END_Y),
     )
 
+
+def _join_fixations_to_aois(
+        fixations: polars.DataFrame,
+        aoi_dataframe: TextStimulus,
+        key_columns: list[str],
+) -> polars.DataFrame:
+    """Return the matches of the fixations in ``fixations`` against the AOIs.
+
+    With key columns the join runs once per key group, where the group ids come from one
+    equi-join on the keys: key equality stays polars equality and fixations whose key has no AOIs
+    drop out there.
+    """
+    aois = _aoi_bounds(aoi_dataframe)
+
     # The original key columns only serve the wildcard lookup in the caller. Without them the
     # AOI key columns keep their names in the join.
-    constrained = constrained.drop(key_columns)
+    fixations = fixations.drop(key_columns)
     if not key_columns:
-        return _join_within_aois(constrained, aois)
+        return _join_within_aois(fixations, aois)
 
     # join_where takes no equality keys: it rewrites an equality predicate into an equi-join
     # with the inequalities as a filter after it, which materialises the per-key product again.
@@ -231,13 +240,13 @@ def _join_fixations_to_aois(
     aoi_groups = aois.join(group_ids, on=key_columns).partition_by(
         _AOI_GROUP_ID, as_dict=True, include_key=False,
     )
-    constrained = constrained.join(group_ids, left_on=join_keys, right_on=key_columns, how='inner')
+    fixations = fixations.join(group_ids, left_on=join_keys, right_on=key_columns, how='inner')
     parts = [
         _join_within_aois(group, aoi_groups[group_id])
-        for group_id, group in constrained.partition_by(_AOI_GROUP_ID, as_dict=True).items()
+        for group_id, group in fixations.partition_by(_AOI_GROUP_ID, as_dict=True).items()
     ]
-    # No groups means no constrained rows, so the join of the empty frame is the result.
-    return polars.concat(parts) if parts else _join_within_aois(constrained, aois)
+    # No groups means no fixation rows, so the join of the empty frame is the result.
+    return polars.concat(parts) if parts else _join_within_aois(fixations, aois)
 
 
 def _map_fixations_to_aois(
@@ -250,9 +259,7 @@ def _map_fixations_to_aois(
     """Return the AOI columns for all fixations in ``frame``, aligned to its row order.
 
     Non-fixation rows, rows with invalid coordinates and rows without a matching AOI receive
-    null values. Fixation-to-AOI matching is an inequality join (``join_where``) on the AOI
-    bounds, one per key group when key columns are configured, so neither a per-row Python
-    loop nor the cross product of fixations and AOIs is ever materialised.
+    null values. The matching itself is done by ``_join_fixations_to_aois``.
     """
     key_columns = [
         column
