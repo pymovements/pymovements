@@ -83,7 +83,7 @@ class TestGazeValidateDisableChecks:
     )
     def test_disable_single_check(self, kwarg, check_code):
         gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
-        results = gaze.validate(**{kwarg: False})  # type: ignore[arg-type]
+        results = gaze.validate(**{kwarg: False})
         codes = [r.code for r in results]
         assert check_code not in codes
         assert len(results) == 7
@@ -174,9 +174,7 @@ class TestGazeValidateSourcePath:
     def test_pass_results_have_source_path(self):
         gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
         results = gaze.validate(source_path='data/file.csv')
-        for r in results:
-            if r.severity == 'pass':
-                assert r.sources == ['data/file.csv']
+        assert all(r.sources == ['data/file.csv'] for r in results)
 
     def test_empty_source_path_gives_empty_sources(self, make_unvalidated_gaze):
         gaze = make_unvalidated_gaze(
@@ -754,9 +752,9 @@ class TestGazeReportDataQuality:
 
     def test_measures_none_means_all_four(self, clean_gaze):
         report = clean_gaze.report_data_quality(levels=['dataset'], measures=None)
-        if 'dataset' in report.measures:
-            cols = report.measures['dataset'].columns
-            assert any(c in cols for c in ('data_loss', 'std_rms', 'rms_s2s', 'bcea'))
+        assert 'dataset' in report.measures
+        cols = report.measures['dataset'].columns
+        assert any(c in cols for c in ('data_loss', 'std_rms', 'rms_s2s', 'bcea'))
 
     def test_empty_measures_list(self, clean_gaze):
         report = clean_gaze.report_data_quality(levels=['dataset'], measures=[])
