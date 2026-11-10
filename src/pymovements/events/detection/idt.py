@@ -25,6 +25,7 @@ import polars
 
 from pymovements._utils import _checks
 from pymovements._utils._time import normalize_timesteps
+from pymovements._utils._time import sampling_interval_ms
 from pymovements.events._utils._filters import events_split_nans
 from pymovements.events._utils._filters import filter_candidates_remove_nans
 from pymovements.events.detection.library import register_event_detection
@@ -58,6 +59,8 @@ def idt(
         dispersion_threshold: float = 1.0,
         include_nan: bool = False,
         name: str = 'fixation',
+        *,
+        sampling_rate: float,
 ) -> Events:
     """Fixation identification based on a dispersion threshold (I-DT).
 
@@ -96,6 +99,10 @@ def idt(
         (default: False)
     name: str
         Name for detected events in Events. (default: 'fixation')
+    sampling_rate: float
+        Sampling rate of the signal in Hz. Each sample covers the nominal interval
+        ``1000 / sampling_rate`` milliseconds, which is added to the duration of every event
+        and written to the sampling-rate entry of the events metadata.
 
     Returns
     -------
@@ -108,6 +115,7 @@ def idt(
         If positions is a polars Series and dtype not List
         If timesteps is neither a Duration series nor of a numeric dtype
     ValueError
+        If sampling_rate is not positive
         If positions is not shaped (N, 2)
         If positions and timesteps differ in length
         If timesteps are not in ascending order
@@ -255,6 +263,8 @@ def idt(
     timesteps = normalize_timesteps(timesteps, length=len(positions))
     _checks.check_is_length_matching(positions=positions, timesteps=timesteps)
 
+    sampling_interval = sampling_interval_ms(sampling_rate)
+
     if dispersion_threshold <= 0:
         raise ValueError('dispersion_threshold must be greater than 0')
     if minimum_duration <= 0:
@@ -266,7 +276,10 @@ def idt(
     # sampling rate). A window must hold at least two samples, so a single sample never forms
     # a fixation.
     if len(timesteps) < 2:
-        return Events(name=name, onsets=[], offsets=[])
+        return Events(
+            name=name, onsets=[], durations=[],
+            offsets=[], offsets_inclusive=True, sampling_rate=sampling_rate,
+        )
     end_times = numpy.append(timesteps, 2 * timesteps[-1] - timesteps[-2])
 
     onsets = []
@@ -338,6 +351,11 @@ def idt(
     # Create proper flat numpy arrays.
     onsets_arr = numpy.array(onsets).flatten()
     offsets_arr = numpy.array(offsets).flatten()
+    # Each sample covers the nominal interval, so the duration reaches past the last sample.
+    durations_arr = offsets_arr - onsets_arr + sampling_interval
 
-    events = Events(name=name, onsets=onsets_arr, offsets=offsets_arr)
+    events = Events(
+        name=name, onsets=onsets_arr, durations=durations_arr,
+        offsets=offsets_arr, offsets_inclusive=True, sampling_rate=sampling_rate,
+    )
     return events

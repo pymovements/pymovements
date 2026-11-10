@@ -27,6 +27,7 @@ import polars
 
 from pymovements._utils import _checks
 from pymovements._utils._time import normalize_timesteps
+from pymovements._utils._time import sampling_interval_ms
 from pymovements.events._utils._filters import filter_candidates_remove_nans
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
@@ -43,6 +44,8 @@ def microsaccades(
         minimum_threshold: float = 1e-10,
         include_nan: bool = False,
         name: str = 'saccade',
+        *,
+        sampling_rate: float,
 ) -> Events:
     """Detect micro-saccades from velocity gaze sequence.
 
@@ -82,6 +85,10 @@ def microsaccades(
         (default: False)
     name: str
         Name for detected events in Events. (default: 'saccade')
+    sampling_rate: float
+        Sampling rate of the signal in Hz. Each sample covers the nominal interval
+        ``1000 / sampling_rate`` milliseconds, which is added to the duration of every event
+        and written to the sampling-rate entry of the events metadata.
 
     Returns
     -------
@@ -94,6 +101,7 @@ def microsaccades(
         If velocities is a polars Series and dtype not List
         If timesteps is neither a Duration series nor of a numeric dtype
     ValueError
+        If sampling_rate is not positive.
         If timesteps are not in ascending order.
         If `threshold` value is below `min_threshold` value.
         If passed `threshold` is either not two-dimensional or not a supported method.
@@ -239,6 +247,8 @@ def microsaccades(
     timesteps = normalize_timesteps(timesteps, length=len(velocities))
     _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
+    sampling_interval = sampling_interval_ms(sampling_rate)
+
     if isinstance(threshold, str):
         threshold = compute_threshold(velocities, method=threshold)
     else:
@@ -283,9 +293,13 @@ def microsaccades(
     onsets = timesteps[[candidate_indices[0] for candidate_indices in candidates]].flatten()
     # Offset of each event candidate is last event in candidate indices.
     offsets = timesteps[[candidate_indices[-1] for candidate_indices in candidates]].flatten()
+    # Each sample covers the nominal interval, so the duration reaches past the last sample.
+    durations = offsets - onsets + sampling_interval
 
-    # Create event dataframe from onsets and offsets.
-    events = Events(name=name, onsets=onsets, offsets=offsets)
+    events = Events(
+        name=name, onsets=onsets, durations=durations,
+        offsets=offsets, offsets_inclusive=True, sampling_rate=sampling_rate,
+    )
     return events
 
 

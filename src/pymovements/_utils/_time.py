@@ -228,6 +228,29 @@ def normalize_timesteps(
     return timesteps
 
 
+def sampling_interval_ms(sampling_rate: float) -> float:
+    """Return the nominal interval between two samples in milliseconds.
+
+    Parameters
+    ----------
+    sampling_rate: float
+        The sampling rate in Hz.
+
+    Returns
+    -------
+    float
+        The nominal sampling interval ``1000 / sampling_rate`` in milliseconds.
+
+    Raises
+    ------
+    ValueError
+        If the sampling rate is not positive.
+    """
+    if not sampling_rate > 0:
+        raise ValueError(f'sampling_rate must be positive, but is {sampling_rate}.')
+    return 1000 / sampling_rate
+
+
 def durations_to_ms(frame: pl.DataFrame) -> pl.DataFrame:
     """Convert all Duration columns of a dataframe to numeric milliseconds.
 

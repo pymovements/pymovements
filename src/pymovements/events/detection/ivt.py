@@ -25,6 +25,7 @@ import polars
 
 from pymovements._utils import _checks
 from pymovements._utils._time import normalize_timesteps
+from pymovements._utils._time import sampling_interval_ms
 from pymovements.events._utils._filters import filter_candidates_remove_nans
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
@@ -40,6 +41,8 @@ def ivt(
         velocity_threshold: float = 20.0,
         include_nan: bool = False,
         name: str = 'fixation',
+        *,
+        sampling_rate: float,
 ) -> Events:
     """Identification of fixations based on a velocity-threshold (I-VT).
 
@@ -72,6 +75,10 @@ def ivt(
         (default: False)
     name: str
         Name for detected events in Events. (default: 'fixation')
+    sampling_rate: float
+        Sampling rate of the signal in Hz. Each sample covers the nominal interval
+        ``1000 / sampling_rate`` milliseconds, which is added to the duration of every event
+        and written to the sampling-rate entry of the events metadata.
 
     Returns
     -------
@@ -84,6 +91,7 @@ def ivt(
         If velocities is a polars Series and dtype not List
         If timesteps is neither a Duration series nor of a numeric dtype
     ValueError
+        If sampling_rate is not positive
         If velocities is None
         If velocities does not have shape (N, 2)
         If timesteps are not in ascending order
@@ -234,6 +242,8 @@ def ivt(
     timesteps = normalize_timesteps(timesteps, length=len(velocities))
     _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
+    sampling_interval = sampling_interval_ms(sampling_rate)
+
     # Get all indices with norm-velocities below threshold.
     velocity_norm = norm(velocities, axis=1)
     candidate_mask = velocity_norm < velocity_threshold
@@ -265,7 +275,11 @@ def ivt(
     onsets = timesteps[[candidate_indices[0] for candidate_indices in candidates]].flatten()
     # Offset of each event candidate is last event in candidate indices.
     offsets = timesteps[[candidate_indices[-1] for candidate_indices in candidates]].flatten()
+    # Each sample covers the nominal interval, so the duration reaches past the last sample.
+    durations = offsets - onsets + sampling_interval
 
-    # Create event dataframe from onsets and offsets.
-    events = Events(name=name, onsets=onsets, offsets=offsets)
+    events = Events(
+        name=name, onsets=onsets, durations=durations,
+        offsets=offsets, offsets_inclusive=True, sampling_rate=sampling_rate,
+    )
     return events

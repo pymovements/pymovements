@@ -24,6 +24,7 @@ import numpy
 import polars
 
 from pymovements._utils import _checks
+from pymovements._utils._time import sampling_interval_ms
 from pymovements._utils._time import timesteps_to_numpy
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
@@ -39,6 +40,7 @@ def out_of_screen(
         x_min: float = 0,
         y_min: float = 0,
         timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
+        sampling_rate: float,
         name: str = 'out_of_screen',
 ) -> Events:
     """Detect gaze samples with pixel coordinates outside of screen boundaries.
@@ -65,6 +67,10 @@ def out_of_screen(
         shape (N, )
         Corresponding continuous 1D timestep time series. If None, sample based timesteps are
         assumed. (default: None)
+    sampling_rate: float
+        Sampling rate of the signal in Hz. Each sample covers the nominal interval
+        ``1000 / sampling_rate`` milliseconds, which is added to the duration of every event
+        and written to the sampling-rate entry of the events metadata.
     name: str
         Name for detected events in Events. (default: 'out_of_screen')
 
@@ -79,6 +85,7 @@ def out_of_screen(
         If pixels is a polars Series and dtype not List
     ValueError
         If pixels is None or does not have shape (N, 2).
+        If sampling_rate is not positive.
         If x_min >= x_max.
         If y_min >= y_max.
     """
@@ -110,6 +117,8 @@ def out_of_screen(
     timesteps = numpy.array(timesteps)
     _checks.check_is_length_matching(pixels=pixels, timesteps=timesteps)
 
+    sampling_interval = sampling_interval_ms(sampling_rate)
+
     # A sample is out-of-screen if x or y is outside the screen boundaries.
     x = pixels[:, 0]
     y = pixels[:, 1]
@@ -123,7 +132,10 @@ def out_of_screen(
     candidate_indices = numpy.where(out_of_screen_mask)[0]
 
     if len(candidate_indices) == 0:
-        return Events(name=name, onsets=[], offsets=[])
+        return Events(
+            name=name, onsets=[], durations=[],
+            offsets=[], offsets_inclusive=True, sampling_rate=sampling_rate,
+        )
 
     # Group consecutive indices into events.
     candidates = consecutive(arr=candidate_indices)
@@ -132,5 +144,10 @@ def out_of_screen(
     onsets = timesteps[[candidate[0] for candidate in candidates]].flatten()
     # Offset of each event candidate is last index in candidate indices.
     offsets = timesteps[[candidate[-1] for candidate in candidates]].flatten()
+    # Each sample covers the nominal interval, so the duration reaches past the last sample.
+    durations = offsets - onsets + sampling_interval
 
-    return Events(name=name, onsets=onsets, offsets=offsets)
+    return Events(
+        name=name, onsets=onsets, durations=durations,
+        offsets=offsets, offsets_inclusive=True, sampling_rate=sampling_rate,
+    )

@@ -24,6 +24,7 @@ import numpy
 import polars
 
 from pymovements._utils._time import present_duration_columns_to_ms
+from pymovements._utils._time import sampling_interval_ms
 from pymovements._utils._time import timesteps_to_numpy
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
@@ -36,6 +37,8 @@ def fill(
         timesteps: list[int] | numpy.ndarray | polars.Series,
         minimum_duration: int = 1,
         name: str = 'unclassified',
+        *,
+        sampling_rate: float,
 ) -> Events:
     """Classify all previously unclassified timesteps as events.
 
@@ -54,15 +57,26 @@ def fill(
         (default: 1)
     name: str
         Name for detected events in Events. (default: 'unclassified')
+    sampling_rate: float
+        Sampling rate of the signal in Hz. Each sample covers the nominal interval
+        ``1000 / sampling_rate`` milliseconds, which is added to the duration of every event
+        and written to the sampling-rate entry of the events metadata.
 
     Returns
     -------
     Events
         A dataframe with detected fixations as rows.
+
+    Raises
+    ------
+    ValueError
+        If sampling_rate is not positive.
     """
     if isinstance(timesteps, polars.Series):
         timesteps = timesteps_to_numpy(timesteps)
     timesteps = numpy.array(timesteps)
+
+    sampling_interval = sampling_interval_ms(sampling_rate)
 
     # Create binary mask where each existing event is marked.
     events_mask = numpy.zeros(len(timesteps), dtype=bool)
@@ -94,7 +108,10 @@ def fill(
     if len(candidates) == 1 and numpy.array_equal(
             candidates[0], numpy.array([], dtype=numpy.int64),
     ):
-        return Events()
+        return Events(
+            name=name, onsets=[], durations=[],
+            offsets=[], offsets_inclusive=True, sampling_rate=sampling_rate,
+        )
 
     # Filter all candidates by minimum duration.
     candidates = [
@@ -106,7 +123,11 @@ def fill(
     onsets = timesteps[[candidate_indices[0] for candidate_indices in candidates]].flatten()
     # Offset of each event candidate is last event in candidate indices.
     offsets = timesteps[[candidate_indices[-1] for candidate_indices in candidates]].flatten()
+    # Each sample covers the nominal interval, so the duration reaches past the last sample.
+    durations = offsets - onsets + sampling_interval
 
-    # Create event dataframe from onsets and offsets.
-    events = Events(name=name, onsets=onsets, offsets=offsets)
+    events = Events(
+        name=name, onsets=onsets, durations=durations,
+        offsets=offsets, offsets_inclusive=True, sampling_rate=sampling_rate,
+    )
     return events

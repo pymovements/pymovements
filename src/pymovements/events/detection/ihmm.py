@@ -28,6 +28,7 @@ import numpy
 import polars
 
 from pymovements._utils import _checks
+from pymovements._utils._time import sampling_interval_ms
 from pymovements._utils._time import timesteps_to_numpy
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
@@ -1066,6 +1067,8 @@ def ihmm(
         verbose: bool = False,
         hmm_parameters_dict: dict | None = None,
         name: str = 'fixation',
+        *,
+        sampling_rate: float,
 ) -> Events:
     """Detect fixation events from velocity data using a Hidden Markov Model (I-HMM).
 
@@ -1144,6 +1147,10 @@ def ihmm(
     name : str
         Name for the detected events. Appears in the returned Events object.
         (default: 'fixation')
+    sampling_rate : float
+        Sampling rate of the signal in Hz. Each sample covers the nominal interval
+        ``1000 / sampling_rate`` milliseconds, which is added to the duration of every event
+        and written to the sampling-rate entry of the events metadata.
 
     Returns
     -------
@@ -1199,6 +1206,7 @@ def ihmm(
         If timesteps is a polars Series whose dtype is neither numeric nor Duration.
         If minimum_duration is not an integer.
     ValueError
+        If sampling_rate is not positive.
         If velocities does not have shape (T, 2).
         If velocities is a polars Series whose lists don't all have length 2.
         If parameter shapes are incorrect (not (2,) or (2,2)).
@@ -1352,6 +1360,8 @@ def ihmm(
 
     _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
+    sampling_interval = sampling_interval_ms(sampling_rate)
+
     if mu is not None and mu.shape != (2,):
         raise ValueError(
             f'mu'
@@ -1401,7 +1411,10 @@ def ihmm(
     # Without any valid sample there is nothing to decode; return no events instead
     # of failing on the data-driven initialization (matches ivt on all-nan input).
     if not numpy.any(vel_mask):
-        return Events(name=name, onsets=numpy.array([]), offsets=numpy.array([]))
+        return Events(
+            name=name, onsets=numpy.array([]), durations=numpy.array([]),
+            offsets=numpy.array([]), offsets_inclusive=True, sampling_rate=sampling_rate,
+        )
 
     start = numpy.argmax(vel_mask)
     end = len(velocities_1d) - numpy.argmax(vel_mask[::-1])
@@ -1433,8 +1446,12 @@ def ihmm(
         states, timesteps=timesteps_masked, min_duration=minimum_duration,
     )
 
-    # return event frame
+    # Each sample covers the nominal interval, so the duration reaches past the last sample.
+    durations_arr = offsets_arr - onsets_arr + sampling_interval
 
-    events = Events(name=name, onsets=onsets_arr, offsets=offsets_arr)
+    events = Events(
+        name=name, onsets=onsets_arr, durations=durations_arr,
+        offsets=offsets_arr, offsets_inclusive=True, sampling_rate=sampling_rate,
+    )
 
     return events

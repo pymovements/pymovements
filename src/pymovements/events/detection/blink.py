@@ -26,6 +26,7 @@ import numpy
 import polars
 
 from pymovements._utils import _checks
+from pymovements._utils._time import sampling_interval_ms
 from pymovements._utils._time import timesteps_to_numpy
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
@@ -37,6 +38,7 @@ def blink(
         pupil: list[float] | numpy.ndarray | polars.Series,
         *,
         timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
+        sampling_rate: float,
         delta: float | None = None,
         minimum_duration: int = 50,
         maximum_duration: int | None = 500,
@@ -74,6 +76,10 @@ def blink(
         Corresponding continuous 1D timestep time series. If None, sample-based timesteps are
         assumed.
         (default: None)
+    sampling_rate: float
+        Sampling rate of the signal in Hz. Each sample covers the nominal interval
+        ``1000 / sampling_rate`` milliseconds, which is added to the duration of every event
+        and written to the sampling-rate entry of the events metadata.
     delta: float | None
         Threshold on absolute pupil difference for flagging rapid changes. If None, it is
         auto-estimated as ``5 * numpy.nanpercentile(abs_diff, 95)`` from valid absolute
@@ -117,6 +123,7 @@ def blink(
     ValueError
         If pupil is not 1D.
         If pupil and timesteps have different lengths.
+        If sampling_rate is not positive.
         If delta is not positive.
         If minimum_duration is not positive.
         If maximum_duration is not positive or less than minimum_duration.
@@ -142,6 +149,8 @@ def blink(
         timesteps = numpy.arange(len(pupil), dtype=numpy.int64)
     timesteps = numpy.array(timesteps)
     _checks.check_is_length_matching(pupil=pupil, timesteps=timesteps)
+
+    sampling_interval = sampling_interval_ms(sampling_rate)
 
     if delta is not None and delta <= 0:
         raise ValueError(
@@ -186,7 +195,10 @@ def blink(
         )
 
     if len(pupil) == 0:
-        return Events(name=name, onsets=[], offsets=[])
+        return Events(
+            name=name, onsets=[], durations=[],
+            offsets=[], offsets_inclusive=True, sampling_rate=sampling_rate,
+        )
 
     # Stage 1: Flag all samples with pupil loss as blink candidates.
     candidate_mask = numpy.isnan(pupil) | (pupil == 0)
@@ -215,7 +227,10 @@ def blink(
     candidate_indices = numpy.where(candidate_mask)[0]
 
     if len(candidate_indices) == 0:
-        return Events(name=name, onsets=[], offsets=[])
+        return Events(
+            name=name, onsets=[], durations=[],
+            offsets=[], offsets_inclusive=True, sampling_rate=sampling_rate,
+        )
 
     candidates = consecutive(arr=candidate_indices)
 
@@ -232,12 +247,19 @@ def blink(
         ]
 
     if len(candidates) == 0:
-        return Events(name=name, onsets=[], offsets=[])
+        return Events(
+            name=name, onsets=[], durations=[],
+            offsets=[], offsets_inclusive=True, sampling_rate=sampling_rate,
+        )
 
     onsets = timesteps[[c[0] for c in candidates]].flatten()
     offsets = timesteps[[c[-1] for c in candidates]].flatten()
+    durations = offsets - onsets + sampling_interval
 
-    return Events(name=name, onsets=onsets, offsets=offsets)
+    return Events(
+        name=name, onsets=onsets, durations=durations,
+        offsets=offsets, offsets_inclusive=True, sampling_rate=sampling_rate,
+    )
 
 
 def _merge_blink_candidates(
