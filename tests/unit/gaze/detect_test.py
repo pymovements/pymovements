@@ -19,6 +19,7 @@
 # SOFTWARE.
 """Test Gaze detect method."""
 import warnings
+from datetime import timedelta
 
 import numpy as np
 import polars as pl
@@ -1758,3 +1759,112 @@ def test_gaze_detect_unknown_method_leaves_events_metadata_unchanged(gaze_with_s
     with pytest.raises(KeyError):
         gaze_with_sources.detect('unknown_method')
     assert gaze_with_sources.events.metadata == {}
+
+
+def _velocity_gaze(trial=None, **kwargs):
+    """Build a gaze with a resting velocity signal, so 'ivt' finds one fixation per trial."""
+    return pm.gaze.from_numpy(
+        time=np.arange(100),
+        velocity=np.zeros((2, 100)),
+        trial=trial,
+        **kwargs,
+    )
+
+
+def _detected_entries(sampling_rate):
+    return {'offset': {'inclusive': True}, 'sampling_rate': sampling_rate}
+
+
+@pytest.mark.parametrize(
+    'experiment',
+    [
+        pytest.param(None, id='no_experiment'),
+        pytest.param(pm.Experiment(), id='experiment_without_sampling_rate'),
+    ],
+)
+def test_gaze_detect_without_sampling_rate_raises_naming_experiment(experiment):
+    gaze = _velocity_gaze(experiment=experiment)
+
+    with pytest.raises(ValueError, match=r'Experiment\(sampling_rate=\.\.\.\)'):
+        gaze.detect('ivt', minimum_duration=1)
+
+
+def test_gaze_detect_explicit_sampling_rate_wins_over_experiment():
+    gaze = _velocity_gaze(experiment=pm.Experiment(sampling_rate=1000))
+
+    gaze.detect('ivt', minimum_duration=1, sampling_rate=500)
+
+    assert gaze.events.metadata == _detected_entries(500)
+    assert gaze.events.frame['duration'].to_list() == [timedelta(milliseconds=101)]
+
+
+@pytest.mark.parametrize(
+    'trial',
+    [
+        pytest.param(None, id='trial_less'),
+        pytest.param(np.array(['A'] * 50 + ['B'] * 50), id='grouped'),
+    ],
+)
+def test_gaze_detect_carries_entries_and_keeps_them_at_the_same_rate(trial):
+    gaze = _velocity_gaze(trial=trial, experiment=pm.Experiment(sampling_rate=1000))
+
+    gaze.detect('ivt', minimum_duration=1)
+    assert gaze.events.metadata == _detected_entries(1000)
+
+    gaze.detect('ivt', minimum_duration=1, name='fixation_again')
+    assert gaze.events.metadata == _detected_entries(1000)
+    assert gaze.events.frame['name'].n_unique() == 2
+
+
+@pytest.mark.parametrize(
+    'trial',
+    [
+        pytest.param(None, id='trial_less'),
+        pytest.param(np.array(['A'] * 50 + ['B'] * 50), id='grouped'),
+    ],
+)
+def test_gaze_detect_differing_sampling_rate_raises_naming_clear(trial):
+    gaze = _velocity_gaze(trial=trial, experiment=pm.Experiment(sampling_rate=1000))
+    gaze.detect('ivt', minimum_duration=1)
+    height = gaze.events.frame.height
+
+    with pytest.raises(ValueError, match=r'detect\(clear=True\)'):
+        gaze.detect('ivt', minimum_duration=1, sampling_rate=500)
+
+    assert gaze.events.frame.height == height
+    assert gaze.events.metadata == _detected_entries(1000)
+
+
+def test_gaze_detect_existing_exclusive_events_raise_naming_clear():
+    gaze = _velocity_gaze(
+        experiment=pm.Experiment(sampling_rate=1000),
+        events=pm.Events(name='fixation', onsets=[0], offsets=[10], offsets_inclusive=False),
+    )
+
+    with pytest.raises(ValueError, match=r'detect\(clear=True\)'):
+        gaze.detect('ivt', minimum_duration=1)
+
+
+def test_gaze_detect_clear_replaces_the_sampling_rate_entry():
+    gaze = _velocity_gaze(experiment=pm.Experiment(sampling_rate=1000))
+    gaze.detect('ivt', minimum_duration=1)
+
+    gaze.detect('ivt', minimum_duration=1, sampling_rate=500, clear=True)
+
+    assert gaze.events.metadata == _detected_entries(500)
+    assert gaze.events.frame.height == 1
+
+
+def test_gaze_detect_keeps_sources_beside_the_entries():
+    gaze = pm.Gaze(
+        samples=pl.DataFrame({'time': [0, 1, 2], 'vx': [0.0, 0.0, 0.0], 'vy': [0.0, 0.0, 0.0]}),
+        time_column='time',
+        velocity_columns=['vx', 'vy'],
+        metadata={'Sources': ['raw/sub_1.csv']},
+    )
+
+    gaze.detect('ivt', minimum_duration=1, sampling_rate=1000)
+
+    assert gaze.events.metadata == {
+        'Sources': ['raw/sub_1.csv'], **_detected_entries(1000),
+    }
