@@ -439,7 +439,7 @@ class Events:
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. A ``Sources`` entry lists the files the
         event data was generated from. The offset convention and sampling-rate entries are
-        described in the notes below. The dictionary is copied, the entries written by the
+        described in the notes below. The dictionary is copied, so the entries written by the
         constructor never reach the passed one. (default: None)
     time_unit: str | None
         The unit of the numeric ``onset``, ``offset`` and ``duration`` input: ``'s'`` for
@@ -478,10 +478,10 @@ class Events:
     ValueError
         If ``durations`` or ``offsets`` are passed without ``onsets``, if their lengths do not
         match the length of ``onsets``, if ``time_unit`` is not one of ``'s'``, ``'ms'`` or
-        ``'us'``, if ``sampling_rate`` is not positive, if durations are derived from
-        inclusive offsets without a sampling rate, if every row contradicts the declared
-        offset convention, or if ``offsets_inclusive`` or ``sampling_rate`` differs from its
-        entry in ``metadata``.
+        ``'us'``, if ``sampling_rate`` is not positive, if the sampling-rate entry in
+        ``metadata`` is not a positive number, if durations are derived from inclusive offsets
+        without a sampling rate, if every row contradicts the declared offset convention, or if
+        ``offsets_inclusive`` or ``sampling_rate`` differs from its entry in ``metadata``.
 
     Notes
     -----
@@ -835,9 +835,26 @@ class Events:
             offsets_inclusive: bool | None,
             sampling_rate: float | None,
     ) -> tuple[bool | None, float | None]:
-        """Return the convention of ``offset`` and the sampling rate of the entries.
+        """Read the convention of ``offset`` and the sampling rate from the metadata entries.
 
-        Raises if a keyword differs from its entry.
+        Parameters
+        ----------
+        offsets_inclusive: bool | None
+            The ``offsets_inclusive`` keyword, compared against the ``offset`` entry.
+        sampling_rate: float | None
+            The ``sampling_rate`` keyword, compared against the sampling-rate entry.
+
+        Returns
+        -------
+        tuple[bool | None, float | None]
+            The convention of the ``offset`` entry and the rate of the sampling-rate entry,
+            ``None`` each for an absent entry.
+
+        Raises
+        ------
+        ValueError
+            If a keyword differs from its entry, or if the sampling-rate entry is not a positive
+            number.
         """
         # The convention of 'offset' and the sampling rate are declared by keyword or entry.
         entry_inclusive = _entry_convention(self.metadata.get('offset'))
@@ -875,7 +892,18 @@ class Events:
             sampling_rate: float | None,
             warn_missing_columns: bool,
     ) -> None:
-        """Write the entries of the keywords and warn about entries without their column."""
+        """Write the entries of the keywords and warn about entries without their column.
+
+        Parameters
+        ----------
+        offsets_inclusive: bool | None
+            The ``offsets_inclusive`` keyword, written to the ``offset`` entry when the frame has
+            that column.
+        sampling_rate: float | None
+            The ``sampling_rate`` keyword, written to the sampling-rate entry.
+        warn_missing_columns: bool
+            Whether to warn once about convention entries whose column the frame does not have.
+        """
         # Entries are written only for what the frame has.
         if offsets_inclusive is not None and 'offset' in self.frame.columns:
             entry = self.metadata.get('offset')
