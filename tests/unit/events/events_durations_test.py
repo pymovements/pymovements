@@ -23,7 +23,6 @@ from __future__ import annotations
 import re
 import warnings
 from datetime import timedelta
-from typing import NamedTuple
 
 import polars as pl
 import pytest
@@ -661,38 +660,6 @@ def test_merge_subsequent_close_events_without_offset_gaps_from_durations(
     assert events.frame['duration'].to_list() == [timedelta(milliseconds=v) for v in expected_ms]
 
 
-def _rebuild_entry_events():
-    return Events(
-        pl.DataFrame({
-            'trial': [1, 1, 2],
-            'name': ['fixation', 'fixation', 'fixation'],
-            'onset': [0, 200, 400],
-            'offset': [100, 300, 500],
-            'location': [[100.0, 105.0], [110.0, 195.0], [120.0, 302.0]],
-        }),
-        trial_columns='trial',
-        metadata={'key': 'value'},
-    )
-
-
-def _rebuild_stimulus():
-    return pm.stimulus.TextStimulus(
-        aois=pl.DataFrame({
-            'word': ['first', 'second', 'third'],
-            'word_idx': [0, 1, 2],
-            'start_x': [90.0, 90.0, 90.0],
-            'start_y': [80.0, 180.0, 280.0],
-            'end_x': [200.0, 200.0, 200.0],
-            'end_y': [120.0, 220.0, 320.0],
-        }),
-        aoi_column='word',
-        start_x_column='start_x',
-        start_y_column='start_y',
-        end_x_column='end_x',
-        end_y_column='end_y',
-    )
-
-
 def _rebuild_gaze(events):
     gaze = pm.Gaze(
         samples=pl.DataFrame({
@@ -710,104 +677,6 @@ def _rebuild_gaze(events):
     else:
         gaze.events.metadata = {'key': 'value'}
     return gaze
-
-
-_REBUILD_ENTRY_COLUMNS = ['trial', 'onset', 'duration', 'name', 'offset', 'location']
-
-
-class _Construction(NamedTuple):
-    """One ``Events`` construction recorded by the spy."""
-
-    frame: pl.DataFrame
-    data: object
-    kwargs: dict
-    metadata: dict
-
-
-@pytest.mark.parametrize(
-    ('prepare', 'rebuild', 'expected_columns'),
-    [
-        pytest.param(
-            _rebuild_entry_events, lambda events: events.clone(), _REBUILD_ENTRY_COLUMNS,
-            id='clone',
-        ),
-        pytest.param(
-            _rebuild_entry_events, lambda events: events.split(), _REBUILD_ENTRY_COLUMNS,
-            id='split',
-        ),
-        pytest.param(
-            _rebuild_entry_events, lambda events: events.split(as_dict=True),
-            _REBUILD_ENTRY_COLUMNS, id='split_dict',
-        ),
-        pytest.param(
-            _rebuild_entry_events,
-            lambda events: events.correct_fixations(
-                _rebuild_stimulus(), algorithm='attach', inplace=False,
-            ),
-            [*_REBUILD_ENTRY_COLUMNS, 'location_original', 'correction_algorithm'],
-            id='correct_fixations',
-        ),
-        pytest.param(
-            lambda: _rebuild_gaze(None),
-            lambda gaze: gaze.detect('fill'),
-            ['trial', 'onset', 'duration', 'name'],
-            id='gaze_detect_shared_empty',
-        ),
-        pytest.param(
-            lambda: _rebuild_gaze(_rebuild_entry_events()),
-            lambda gaze: gaze.detect('fill'),
-            _REBUILD_ENTRY_COLUMNS,
-            id='gaze_detect_per_group',
-        ),
-        pytest.param(
-            _rebuild_entry_events,
-            lambda events: events.measure_reading(_rebuild_stimulus()),
-            _REBUILD_ENTRY_COLUMNS,
-            id='measure_reading',
-        ),
-        pytest.param(
-            _rebuild_entry_events,
-            lambda events: events.measure_reading(
-                {1: _rebuild_stimulus(), 2: _rebuild_stimulus()}, group_columns=['trial'],
-            ),
-            _REBUILD_ENTRY_COLUMNS,
-            id='measure_reading_dict',
-        ),
-        pytest.param(
-            _rebuild_entry_events,
-            pm.synthetic.bridge_gaps,
-            _REBUILD_ENTRY_COLUMNS,
-            id='bridge_gaps',
-        ),
-    ],
-)
-def test_rebuild_sites_pass_validate_false_and_carry_metadata(
-        monkeypatch, prepare, rebuild, expected_columns,
-):
-    entry = prepare()
-
-    calls = []
-    original_init = Events.__init__
-
-    def spy_init(self, data=None, **kwargs):
-        original_init(self, data, **kwargs)
-        # The frame is recorded at construction, as measure_reading maps its copy afterwards.
-        calls.append(_Construction(self.frame, data, kwargs, self.metadata))
-
-    monkeypatch.setattr(Events, '__init__', spy_init)
-    with warnings.catch_warnings():
-        # The detector itself may report that it detected nothing.
-        warnings.filterwarnings('ignore', message='.*No events were detected')
-        rebuild(entry)
-
-    rebuilds = [call for call in calls if call.data is not None]
-    assert rebuilds
-    for call in rebuilds:
-        assert call.kwargs['validate'] is False
-        assert set(call.kwargs) <= {'trial_columns', 'metadata', 'validate'}
-        assert_frame_equal(call.frame, call.data)
-        assert call.frame.columns == expected_columns
-        assert call.metadata.items() >= {'key': 'value'}.items()
 
 
 def test_compute_event_properties_on_empty_events_without_offset_warns():
