@@ -165,7 +165,7 @@ def test_events_map_to_aois_merges_stimulus_sources(simple_stimulus: TextStimulu
     assert events.metadata['Sources'] == ['raw/sub_1.csv', 'stimuli/text_1_aoi.csv']
 
 
-_REBUILD_METADATA = {'key': 'value', 'offset': {'inclusive': False}, 'sampling_rate': 1000.0}
+_REBUILD_METADATA = {'key': 'value', 'offset': {'inclusive': True}, 'sampling_rate': 1000.0}
 _REBUILD_ENTRY_COLUMNS = ['trial', 'onset', 'duration', 'name', 'offset', 'location']
 
 
@@ -176,11 +176,11 @@ def make_entry_events():
             'name': ['fixation', 'fixation', 'fixation'],
             'onset': [0, 200, 400],
             'duration': [100, None, 100],
-            'offset': [100, 300, 500],
+            'offset': [99, 299, 499],
             'location': [[100.0, 105.0], [110.0, 195.0], [120.0, 302.0]],
         }),
         trial_columns='trial',
-        offsets_inclusive=False,
+        offsets_inclusive=True,
         sampling_rate=1000,
         metadata={'key': 'value'},
     )
@@ -225,6 +225,7 @@ def make_gaze():
         time_column='time',
         pixel_columns=['x', 'y'],
         trial_columns='trial',
+        experiment=pm.Experiment(sampling_rate=1000),
     )
 
 

@@ -506,7 +506,7 @@ def test_collapse_states_extracts_fixation_segments():
     states = np.array([1, 0, 0, 1, 0, 0, 0, 1])
     timesteps = np.array([0, 1, 2, 3, 4, 5, 6, 7])
 
-    onsets, offsets = _collapse_states(states, timesteps)
+    onsets, offsets = _collapse_states(states, timesteps, sampling_interval=1)
 
     np.testing.assert_array_equal(onsets, np.array([1, 4]))
     np.testing.assert_array_equal(offsets, np.array([2, 6]))
@@ -516,7 +516,7 @@ def test_collapse_states_handles_full_fixation_sequence():
     states = np.array([0, 0, 0, 0])
     timesteps = np.array([0, 1, 2, 3])
 
-    onsets, offsets = _collapse_states(states, timesteps)
+    onsets, offsets = _collapse_states(states, timesteps, sampling_interval=1)
 
     np.testing.assert_array_equal(onsets, np.array([0]))
     np.testing.assert_array_equal(offsets, np.array([3]))
@@ -526,7 +526,7 @@ def test_collapse_states_handles_no_fixations():
     states = np.array([1, 1, 1, 1])
     timesteps = np.array([0, 1, 2, 3])
 
-    onsets, offsets = _collapse_states(states, timesteps)
+    onsets, offsets = _collapse_states(states, timesteps, sampling_interval=1)
 
     assert len(onsets) == 0
     assert len(offsets) == 0
@@ -538,7 +538,7 @@ def test_collapse_states_respects_min_duration():
 
     timesteps = np.array([0, 10, 20, 30, 40, 50, 60, 70, 80])
 
-    onsets, offsets = _collapse_states(states, timesteps, min_duration=20)
+    onsets, offsets = _collapse_states(states, timesteps, min_duration=20, sampling_interval=1)
 
     np.testing.assert_array_equal(onsets, np.array([40]))
     np.testing.assert_array_equal(offsets, np.array([60]))
@@ -546,7 +546,7 @@ def test_collapse_states_respects_min_duration():
 
 def test_collapse_states_handles_empty_input():
     """Empty arrays should return empty arrays."""
-    onsets, offsets = _collapse_states(np.array([]), np.array([]))
+    onsets, offsets = _collapse_states(np.array([]), np.array([]), sampling_interval=1)
 
     assert len(onsets) == 0
     assert len(offsets) == 0
@@ -813,6 +813,7 @@ def test_ihmm_detects_fixation_event_on_synthetic_data():
     events = ihmm(
         velocities=velocities,
         minimum_duration=1,
+        sampling_rate=1000,
     )
 
     assert len(events.frame) >= 1
@@ -840,6 +841,7 @@ def test_ihmm_accepts_integer_timesteps():
         velocities=velocities,
         timesteps=timesteps,
         minimum_duration=1,
+        sampling_rate=1000,
     )
 
     assert events is not None
@@ -856,7 +858,9 @@ def test_ihmm_accepts_float_timesteps():
     velocities = pos2vel(positions, sampling_rate=sampling_rate)
     timesteps = np.arange(len(velocities), dtype=float) * 0.5
 
-    events = ihmm(velocities, timesteps=timesteps, minimum_duration=1, reestimation=True)
+    events = ihmm(
+        velocities, timesteps=timesteps, minimum_duration=1, reestimation=True, sampling_rate=1000,
+    )
 
     assert len(events.frame) >= 1
     assert events.frame['onset'].dtype == pl.Duration('us')
@@ -873,7 +877,9 @@ def test_ihmm_accepts_polars_series_timesteps():
     velocities = pos2vel(positions, sampling_rate=sampling_rate)
     timesteps = pl.Series('time', np.arange(len(velocities)))
 
-    events = ihmm(velocities, timesteps=timesteps, minimum_duration=1, reestimation=True)
+    events = ihmm(
+        velocities, timesteps=timesteps, minimum_duration=1, reestimation=True, sampling_rate=1000,
+    )
 
     assert len(events.frame) >= 1
 
@@ -884,8 +890,12 @@ def test_ihmm_accepts_duration_timesteps():
     velocities = pos2vel(positions, sampling_rate=sampling_rate)
     numeric = np.arange(len(velocities))
     duration = pl.Series('time', numeric).cast(pl.Duration('ms'))
-    numeric_events = ihmm(velocities, timesteps=numeric, minimum_duration=1, reestimation=True)
-    duration_events = ihmm(velocities, timesteps=duration, minimum_duration=1, reestimation=True)
+    numeric_events = ihmm(
+        velocities, timesteps=numeric, minimum_duration=1, reestimation=True, sampling_rate=1000,
+    )
+    duration_events = ihmm(
+        velocities, timesteps=duration, minimum_duration=1, reestimation=True, sampling_rate=1000,
+    )
 
     assert len(duration_events.frame) >= 1
     assert duration_events.frame.equals(numeric_events.frame)
@@ -901,6 +911,7 @@ def test_ihmm_rejects_non_numeric_polars_timesteps():
             velocities=velocities,
             timesteps=timesteps,
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -917,6 +928,7 @@ def test_ihmm_rejects_invalid_mu_shape():
             velocities=velocities,
             mu=[1.0, 2.0, 3.0],
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -933,6 +945,7 @@ def test_ihmm_rejects_invalid_transition_shape():
             velocities=velocities,
             transition_probabilities=[[0.5, 0.5]],
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -955,6 +968,7 @@ def test_ihmm_rejects_transition_probabilities_not_summing_to_one(
             velocities=velocities,
             transition_probabilities=bad_transition_probabilities,
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -973,6 +987,7 @@ def test_ihmm_accepts_transition_probabilities_summing_to_one():
         velocities=velocities,
         transition_probabilities=[[0.95, 0.05], [0.05, 0.95]],
         minimum_duration=1,
+        sampling_rate=1000,
     )
 
     assert events is not None
@@ -1000,6 +1015,7 @@ def test_ihmm_accepts_zero_probabilities_without_log_warning():
         init_state=[1.0, 0.0],
         transition_probabilities=[[1.0, 0.0], [0.0, 1.0]],
         minimum_duration=1,
+        sampling_rate=1000,
     )
 
     assert events is not None
@@ -1021,6 +1037,7 @@ def test_ihmm_rejects_hmm_parameters_dict_transition_not_summing_to_one():
             velocities=velocities,
             hmm_parameters_dict=hmm_params,
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -1033,6 +1050,7 @@ def test_ihmm_rejects_init_state_not_summing_to_one():
             velocities=velocities,
             init_state=[0.3, 0.3],
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -1052,6 +1070,7 @@ def test_ihmm_rejects_hmm_parameters_dict_init_not_summing_to_one():
             velocities=velocities,
             hmm_parameters_dict=hmm_params,
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -1076,6 +1095,7 @@ def test_ihmm_rejects_transition_probabilities_outside_unit_interval(
             velocities=velocities,
             transition_probabilities=bad_transition_probabilities,
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -1091,6 +1111,7 @@ def test_ihmm_rejects_init_state_outside_unit_interval():
             velocities=velocities,
             init_state=[1.5, -0.5],
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -1113,6 +1134,7 @@ def test_ihmm_rejects_hmm_parameters_dict_transition_outside_unit_interval():
             velocities=velocities,
             hmm_parameters_dict=hmm_params,
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -1135,6 +1157,7 @@ def test_ihmm_rejects_hmm_parameters_dict_init_outside_unit_interval():
             velocities=velocities,
             hmm_parameters_dict=hmm_params,
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -1151,6 +1174,7 @@ def test_ihmm_handles_nan_velocities():
     events = ihmm(
         velocities=velocities,
         minimum_duration=1,
+        sampling_rate=1000,
     )
 
     # the low-velocity segment spans the interior NaN and yields a single fixation.
@@ -1165,14 +1189,14 @@ def test_ihmm_returns_no_events_for_all_nan_velocities():
     """A recording without a single valid sample must yield no events, not crash."""
     velocities = np.full((300, 2), np.nan)
 
-    events = ihmm(velocities=velocities, minimum_duration=1)
+    events = ihmm(velocities=velocities, minimum_duration=1, sampling_rate=1000)
 
     assert len(events.frame) == 0
 
 
 def test_ihmm_returns_no_events_for_empty_velocities():
     """Empty input must yield no events, not crash on the initialization."""
-    events = ihmm(velocities=np.empty((0, 2)), minimum_duration=1)
+    events = ihmm(velocities=np.empty((0, 2)), minimum_duration=1, sampling_rate=1000)
 
     assert len(events.frame) == 0
 
@@ -1184,6 +1208,7 @@ def test_ihmm_rejects_non_integer_minimum_duration():
         ihmm(
             velocities=velocities,
             minimum_duration=1.5,
+            sampling_rate=1000,
         )
 
 
@@ -1194,6 +1219,7 @@ def test_ihmm_rejects_zero_or_negative_minimum_duration():
         ihmm(
             velocities=velocities,
             minimum_duration=0,
+            sampling_rate=1000,
         )
 
 
@@ -1205,6 +1231,7 @@ def test_ihmm_rejects_negative_fractional_minimum_duration_as_type_error():
         ihmm(
             velocities=velocities,
             minimum_duration=-1.5,
+            sampling_rate=1000,
         )
 
 
@@ -1218,7 +1245,7 @@ def test_ihmm_accepts_numpy_integer_minimum_duration():
     )
     velocities = pos2vel(positions, sampling_rate=sampling_rate)
 
-    events = ihmm(velocities, minimum_duration=np.int64(50), reestimation=True)
+    events = ihmm(velocities, minimum_duration=np.int64(50), reestimation=True, sampling_rate=1000)
 
     assert len(events.frame) == 1
 
@@ -1240,6 +1267,7 @@ def test_ihmm_state_order_independent_of_parameter_order_without_reestimation():
         init_state=[0.9, 0.1],
         transition_probabilities=[[0.95, 0.05], [0.05, 0.95]],
         minimum_duration=1,
+        sampling_rate=1000,
     )
     # Same two states, relabeled: high-velocity state first.
     saccade_first = ihmm(
@@ -1249,6 +1277,7 @@ def test_ihmm_state_order_independent_of_parameter_order_without_reestimation():
         init_state=[0.1, 0.9],
         transition_probabilities=[[0.95, 0.05], [0.05, 0.95]],
         minimum_duration=1,
+        sampling_rate=1000,
     )
 
     assert len(fixation_first.frame) >= 1
@@ -1278,6 +1307,7 @@ def test_ihmm_accepts_hmm_parameters_dict():
         velocities=velocities,
         hmm_parameters_dict=hmm_params,
         minimum_duration=1,
+        sampling_rate=1000,
     )
 
     assert events is not None
@@ -1306,6 +1336,7 @@ def test_ihmm_accepts_hmm_parameters_dict_with_keys_in_any_order():
         velocities=velocities,
         hmm_parameters_dict=hmm_params,
         minimum_duration=1,
+        sampling_rate=1000,
     )
 
     assert events is not None
@@ -1335,6 +1366,7 @@ def test_ihmm_does_not_mutate_hmm_parameters_dict():
         reestimation=True,
         reestimation_max_iters=5,
         minimum_duration=1,
+        sampling_rate=1000,
     )
 
     assert hmm_params == hmm_params_before
@@ -1355,6 +1387,7 @@ def test_ihmm_rejects_invalid_hmm_parameters_dict_keys():
             velocities=velocities,
             hmm_parameters_dict=hmm_params,
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -1373,6 +1406,7 @@ def test_ihmm_removes_leading_trailing_nans():
     events = ihmm(
         velocities=velocities,
         minimum_duration=1,
+        sampling_rate=1000,
     )
 
     # the fixation must be confined to the non-nan region (indices 1..3), never
@@ -1400,6 +1434,7 @@ def test_ihmm_runs_with_reestimation_enabled():
         reestimation=True,
         reestimation_max_iters=5,
         minimum_duration=1,
+        sampling_rate=1000,
     )
 
     assert events is not None
@@ -1519,15 +1554,19 @@ def _spans(events):
 def test_ihmm_detects_no_fixations_for_saccade_only_signal():
     """A signal that is all high-velocity motion should yield no fixations."""
     # Continuous constant-velocity motion: every sample is a high-velocity saccade,
-    # so there is no low-velocity cluster to label as a fixation. minimum_duration=1
-    # ensures the empty result comes from state classification, not duration filtering.
+    # so there is no low-velocity cluster to label as a fixation. The first and last
+    # sample get a lower velocity from pos2vel and are labelled as single-sample
+    # fixations, which minimum_duration=2 filters.
     length_no_fix = 200
     positions_no_fix = np.cumsum(np.full((length_no_fix, 2), 50.0), axis=0)
 
     velocities_no_fix = pos2vel(positions_no_fix, sampling_rate=sampling_rate)
 
-    ihmm_events = ihmm(velocities_no_fix, reestimation=True, minimum_duration=1, name='ihmm_fix')
-    idt_events = idt(positions_no_fix, name='idt_fix')
+    ihmm_events = ihmm(
+        velocities_no_fix, reestimation=True, minimum_duration=2, name='ihmm_fix',
+        sampling_rate=1000,
+    )
+    idt_events = idt(positions_no_fix, name='idt_fix', sampling_rate=1000)
 
     assert len(ihmm_events.frame) == 0
     assert len(idt_events.frame) == 0
@@ -1545,8 +1584,8 @@ def test_ihmm_detects_single_fixation():
 
     velocities_one_fix = pos2vel(positions_one_fix, sampling_rate=sampling_rate)
 
-    ihmm_events = ihmm(velocities_one_fix, reestimation=True, name='ihmm_fix')
-    idt_events = idt(positions_one_fix, name='idt_fix')
+    ihmm_events = ihmm(velocities_one_fix, reestimation=True, name='ihmm_fix', sampling_rate=1000)
+    idt_events = idt(positions_one_fix, name='idt_fix', sampling_rate=1000)
 
     assert len(ihmm_events.frame) == 1
     assert len(idt_events.frame) == 1
@@ -1559,8 +1598,8 @@ def test_ihmm_detects_fixation_spanning_whole_recording():
 
     velocities_big_fix = pos2vel(positions_big_fix, sampling_rate=sampling_rate)
 
-    ihmm_events = ihmm(velocities_big_fix, reestimation=True, name='ihmm_fix')
-    idt_events = idt(positions_big_fix, name='idt_fix')
+    ihmm_events = ihmm(velocities_big_fix, reestimation=True, name='ihmm_fix', sampling_rate=1000)
+    idt_events = idt(positions_big_fix, name='idt_fix', sampling_rate=1000)
 
     assert len(ihmm_events.frame) == 1
     assert len(idt_events.frame) == 1
@@ -1585,8 +1624,11 @@ def test_ihmm_detects_fixations_at_recording_start_and_end():
 
     velocities_edges = pos2vel(positions_edges, sampling_rate=sampling_rate)
 
-    ihmm_events = ihmm(velocities_edges, reestimation=True, name='ihmm_fix', minimum_duration=2)
-    idt_events = idt(positions_edges, name='idt_fix', minimum_duration=2)
+    ihmm_events = ihmm(
+        velocities_edges, reestimation=True, name='ihmm_fix', minimum_duration=2,
+        sampling_rate=1000,
+    )
+    idt_events = idt(positions_edges, name='idt_fix', minimum_duration=2, sampling_rate=1000)
 
     assert len(ihmm_events.frame) == 2
     assert len(idt_events.frame) == 2
@@ -1617,8 +1659,8 @@ def test_ihmm_fixation_count_comparable_to_idt_on_toy_dataset(tmp_path):
 
     toy_velocities = [[np.nan, np.nan] if v == [None, None] else v for v in toy_velocities]
 
-    ihmm_events = ihmm(toy_velocities, reestimation=True, name='ihmm_fix')
-    idt_events = idt(np.array(toy_positions), name='idt_fix')
+    ihmm_events = ihmm(toy_velocities, reestimation=True, name='ihmm_fix', sampling_rate=1000)
+    idt_events = idt(np.array(toy_positions), name='idt_fix', sampling_rate=1000)
 
     ihmm_count, idt_count = len(ihmm_events.frame), len(idt_events.frame)
     larger = max(ihmm_count, idt_count)
@@ -1653,8 +1695,8 @@ def test_ihmm_detects_expected_fixation_count_on_synthetic_scanpath():
 
     velocities_realistic = pos2vel(positions_realistic, sampling_rate=sampling_rate)
 
-    ihmm_events = ihmm(velocities_realistic, reestimation=True, name='ihmm_fix')
-    idt_events = idt(positions_realistic, name='idt_fix')
+    ihmm_events = ihmm(velocities_realistic, reestimation=True, name='ihmm_fix', sampling_rate=1000)
+    idt_events = idt(positions_realistic, name='idt_fix', sampling_rate=1000)
 
     expected_fixations = len(fixation_targets)
 
@@ -1681,6 +1723,7 @@ def test_ihmm_rejects_hmm_parameters_dict_with_invalid_mu_shape():
             velocities=velocities,
             hmm_parameters_dict=hmm_params,
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -1700,6 +1743,7 @@ def test_ihmm_rejects_hmm_parameters_dict_with_invalid_sigma_shape():
             velocities=velocities,
             hmm_parameters_dict=hmm_params,
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -1719,6 +1763,7 @@ def test_ihmm_rejects_hmm_parameters_dict_with_invalid_init_shape():
             velocities=velocities,
             hmm_parameters_dict=hmm_params,
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -1739,6 +1784,7 @@ def test_ihmm_rejects_hmm_parameters_dict_with_invalid_trans_shape():
             velocities=velocities,
             hmm_parameters_dict=hmm_params,
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -1758,6 +1804,7 @@ def test_ihmm_rejects_hmm_parameters_dict_with_mu_none_and_invalid_shape():
             velocities=velocities,
             hmm_parameters_dict=hmm_params,
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -1772,6 +1819,7 @@ def test_ihmm_rejects_transition_probabilities_row_sums_greater_than_one():
             velocities=velocities,
             transition_probabilities=transition_probabilities,
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -1786,6 +1834,7 @@ def test_ihmm_rejects_sigma_with_invalid_shape():
             velocities=velocities,
             sigma=sigma,
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -1800,6 +1849,7 @@ def test_ihmm_rejects_init_state_with_invalid_shape():
             velocities=velocities,
             init_state=init_state,
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -1812,6 +1862,7 @@ def test_ihmm_handles_polars_series_with_correct_structure():
     events = ihmm(
         velocities=series,
         minimum_duration=1,
+        sampling_rate=1000,
     )
 
     assert events is not None
@@ -1826,6 +1877,7 @@ def test_ihmm_rejects_polars_series_with_non_list_dtype():
         ihmm(
             velocities=series,
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -1839,6 +1891,7 @@ def test_ihmm_rejects_polars_series_with_inconsistent_list_lengths():
         ihmm(
             velocities=series,
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -1852,6 +1905,7 @@ def test_ihmm_warns_when_verbose_true_without_reestimation():
             verbose=True,
             reestimation=False,
             minimum_duration=1,
+            sampling_rate=1000,
         )
 
 
@@ -1872,6 +1926,7 @@ def test_ihmm_verbose_output_with_reestimation(capsys):
         reestimation_max_iters=5,
         verbose=True,
         minimum_duration=1,
+        sampling_rate=1000,
     )
 
     captured = capsys.readouterr()

@@ -45,7 +45,10 @@ from pymovements.synthetic import step_function
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.Events(name='fixation', onsets=[0], offsets=[99]),
+            pm.Events(
+                name='fixation', onsets=[0], offsets=[99],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='idt_constant_position_single_fixation',
         ),
 
@@ -61,7 +64,10 @@ from pymovements.synthetic import step_function
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.Events(name='custom_fixation', onsets=[0], offsets=[99]),
+            pm.Events(
+                name='custom_fixation', onsets=[0], offsets=[99],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='idt_constant_position_single_fixation_custom_name',
         ),
 
@@ -77,7 +83,10 @@ from pymovements.synthetic import step_function
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 2000),
             ),
-            pm.Events(name='fixation', onsets=[0], offsets=[49.5]),
+            pm.Events(
+                name='fixation', onsets=[0], offsets=[49.5],
+                offsets_inclusive=True, sampling_rate=2000,
+            ),
             id='idt_2khz_half_millisecond_timesteps_single_fixation',
         ),
 
@@ -94,7 +103,10 @@ from pymovements.synthetic import step_function
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.events.Events(name='fixation', onsets=[0, 50], offsets=[49, 99]),
+            pm.events.Events(
+                name='fixation', onsets=[0, 50], offsets=[49, 99],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='idt_three_steps_two_fixations',
         ),
 
@@ -112,7 +124,10 @@ from pymovements.synthetic import step_function
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.events.Events(name='fixation', onsets=[0, 20], offsets=[9, 89]),
+            pm.events.Events(
+                name='fixation', onsets=[0, 20], offsets=[9, 89],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='idt_two_fixations_interrupted_by_nan',
         ),
 
@@ -131,7 +146,10 @@ from pymovements.synthetic import step_function
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.events.Events(name='fixation', onsets=[0], offsets=[89]),
+            pm.events.Events(
+                name='fixation', onsets=[0], offsets=[89],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='idt_one_fixation_including_nan',
         ),
 
@@ -151,6 +169,8 @@ from pymovements.synthetic import step_function
                 name='fixation',
                 onsets=[1000],
                 offsets=[1099],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='idt_constant_position_single_fixation_with_timesteps_int',
         ),
@@ -171,6 +191,8 @@ from pymovements.synthetic import step_function
                 name='fixation',
                 onsets=[1000],
                 offsets=[1009.9],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='idt_constant_position_single_fixation_with_timesteps_float',
         ),
@@ -191,6 +213,8 @@ from pymovements.synthetic import step_function
                 name='fixation',
                 onsets=[1000],
                 offsets=[1099],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='idt_constant_position_single_fixation_with_timesteps_int_extra_dim',
         ),
@@ -207,7 +231,10 @@ from pymovements.synthetic import step_function
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.Events(name='fixation', onsets=[0, 50], offsets=[49, 99], trials=['A', 'B']),
+            pm.Events(
+                name='fixation', onsets=[0, 50], offsets=[49, 99], trials=['A', 'B'],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='idt_constant_position_single_fixation_per_trial',
         ),
 
@@ -235,6 +262,8 @@ from pymovements.synthetic import step_function
                     'offset': [24, 49, 74, 99],
                 }),
                 trial_columns=['trial', 'screen'],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='idt_constant_position_single_fixation_per_trial_multiple_trial_columns',
         ),
@@ -264,7 +293,10 @@ from pymovements.synthetic import step_function
                 velocity=np.zeros((2, 100)),
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.Events(name='fixation', onsets=[0], offsets=[99]),
+            pm.Events(
+                name='fixation', onsets=[0], offsets=[99],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='ivt_constant_position_single_fixation',
         ),
 
@@ -279,7 +311,10 @@ from pymovements.synthetic import step_function
                 velocity=np.zeros((2, 100)),
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.Events(name='custom_fixation', onsets=[0], offsets=[99]),
+            pm.Events(
+                name='custom_fixation', onsets=[0], offsets=[99],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='ivt_constant_position_single_fixation_custom_name',
         ),
 
@@ -296,7 +331,10 @@ from pymovements.synthetic import step_function
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.events.Events(name='fixation', onsets=[0, 51], offsets=[48, 99]),
+            pm.events.Events(
+                name='fixation', onsets=[0, 51], offsets=[48, 99],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='ivt_three_steps_two_fixations',
         ),
 
@@ -314,7 +352,10 @@ from pymovements.synthetic import step_function
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 2000),
             ),
-            pm.events.Events(name='fixation', onsets=[0], offsets=[24.5]),
+            pm.events.Events(
+                name='fixation', onsets=[0], offsets=[24.5],
+                offsets_inclusive=True, sampling_rate=2000,
+            ),
             id='ivt_2khz_half_millisecond_timesteps_fixation_ends_between_milliseconds',
         ),
 
@@ -332,7 +373,10 @@ from pymovements.synthetic import step_function
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.events.Events(name='fixation', onsets=[0, 20], offsets=[9, 89]),
+            pm.events.Events(
+                name='fixation', onsets=[0, 20], offsets=[9, 89],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='ivt_two_fixations_interrupted_by_nan',
         ),
 
@@ -351,7 +395,10 @@ from pymovements.synthetic import step_function
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.events.Events(name='fixation', onsets=[0], offsets=[89]),
+            pm.events.Events(
+                name='fixation', onsets=[0], offsets=[89],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='ivt_one_fixation_including_nan',
         ),
 
@@ -371,6 +418,8 @@ from pymovements.synthetic import step_function
                 name='fixation',
                 onsets=[1000],
                 offsets=[1099],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='ivt_constant_position_single_fixation_with_timesteps_int',
         ),
@@ -391,6 +440,8 @@ from pymovements.synthetic import step_function
                 name='fixation',
                 onsets=[1000],
                 offsets=[1099.9],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='ivt_constant_position_single_fixation_with_timesteps_float',
         ),
@@ -411,6 +462,8 @@ from pymovements.synthetic import step_function
                 name='fixation',
                 onsets=[1000],
                 offsets=[1099],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='ivt_constant_position_single_fixation_with_timesteps_int_extra_dim',
         ),
@@ -431,6 +484,8 @@ from pymovements.synthetic import step_function
                 name='fixation',
                 onsets=[0],
                 offsets=[99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='ivt_constant_position_binocular_fixation_two_components_eye_auto',
         ),
@@ -451,6 +506,8 @@ from pymovements.synthetic import step_function
                 name='fixation',
                 onsets=[0],
                 offsets=[99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='ivt_constant_position_binocular_fixation_four_components_eye_auto',
         ),
@@ -471,6 +528,8 @@ from pymovements.synthetic import step_function
                 name='fixation',
                 onsets=[0],
                 offsets=[99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='ivt_constant_position_binocular_fixation_six_components_eye_auto',
         ),
@@ -493,6 +552,8 @@ from pymovements.synthetic import step_function
                 name='fixation',
                 onsets=[0],
                 offsets=[99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='ivt_constant_position_monocular_fixation_six_components_eye_left',
         ),
@@ -515,6 +576,8 @@ from pymovements.synthetic import step_function
                 name='fixation',
                 onsets=[0],
                 offsets=[99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='ivt_constant_position_monocular_fixation_six_components_eye_right',
         ),
@@ -537,6 +600,8 @@ from pymovements.synthetic import step_function
                 name='fixation',
                 onsets=[0],
                 offsets=[99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='ivt_constant_position_monocular_fixation_six_components_eye_cyclops',
         ),
@@ -552,7 +617,10 @@ from pymovements.synthetic import step_function
                 velocity=np.zeros((2, 100)),
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.Events(name='fixation', onsets=[0, 50], offsets=[49, 99], trials=['A', 'B']),
+            pm.Events(
+                name='fixation', onsets=[0, 50], offsets=[49, 99], trials=['A', 'B'],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='ivt_constant_position_single_fixation_per_trial',
         ),
 
@@ -591,7 +659,10 @@ from pymovements.synthetic import step_function
                 velocity=np.zeros((2, 100)),
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.Events(name='fixation', onsets=[0], offsets=[99]),
+            pm.Events(
+                name='fixation', onsets=[0], offsets=[99],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='ihmm_constant_position_single_fixation',
         ),
 
@@ -611,7 +682,10 @@ from pymovements.synthetic import step_function
                 velocity=np.zeros((2, 100)),
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.Events(name='custom_fixation', onsets=[0], offsets=[99]),
+            pm.Events(
+                name='custom_fixation', onsets=[0], offsets=[99],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='ihmm_constant_position_single_fixation_custom_name',
         ),
 
@@ -633,7 +707,10 @@ from pymovements.synthetic import step_function
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.events.Events(name='fixation', onsets=[0, 51], offsets=[48, 99]),
+            pm.events.Events(
+                name='fixation', onsets=[0, 51], offsets=[48, 99],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='ihmm_three_steps_two_fixations',
         ),
 
@@ -658,7 +735,10 @@ from pymovements.synthetic import step_function
             ),
             # unlike idt/ivt, ihmm does not split on interior NaNs: the short gap
             # is bridged by the fixation state's high self-transition probability.
-            pm.events.Events(name='fixation', onsets=[0], offsets=[89]),
+            pm.events.Events(
+                name='fixation', onsets=[0], offsets=[89],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='ihmm_interior_nan_does_not_split_fixation',
         ),
 
@@ -683,6 +763,8 @@ from pymovements.synthetic import step_function
                 name='fixation',
                 onsets=[1000],
                 offsets=[1099],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='ihmm_constant_position_single_fixation_with_timesteps_int',
         ),
@@ -703,7 +785,10 @@ from pymovements.synthetic import step_function
                 velocity=np.zeros((2, 100)),
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.Events(name='fixation', onsets=[0, 50], offsets=[49, 99], trials=['A', 'B']),
+            pm.Events(
+                name='fixation', onsets=[0, 50], offsets=[49, 99], trials=['A', 'B'],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='ihmm_constant_position_single_fixation_per_trial',
         ),
 
@@ -721,6 +806,8 @@ from pymovements.synthetic import step_function
                 name='saccade',
                 onsets=[40],
                 offsets=[49],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='microsaccades_two_steps_one_saccade',
         ),
@@ -740,6 +827,8 @@ from pymovements.synthetic import step_function
                 name='custom_saccade',
                 onsets=[40],
                 offsets=[49],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='microsaccades_two_steps_one_saccade_custom_name',
         ),
@@ -763,6 +852,8 @@ from pymovements.synthetic import step_function
                 name='saccade',
                 onsets=[20, 70],
                 offsets=[29, 79],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='microsaccades_four_steps_two_saccades',
         ),
@@ -787,6 +878,8 @@ from pymovements.synthetic import step_function
                 name='saccade',
                 onsets=[20, 70],
                 offsets=[29, 79],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='microsaccades_four_steps_two_saccades_nan_delete_ending_leading_nan',
         ),
@@ -811,6 +904,8 @@ from pymovements.synthetic import step_function
                 name='saccade',
                 onsets=[20, 28, 70],
                 offsets=[24, 29, 79],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='microsaccades_three_saccades_nan_delete_ending_leading_nan',
         ),
@@ -836,6 +931,8 @@ from pymovements.synthetic import step_function
                 name='saccade',
                 onsets=[1040],
                 offsets=[1049],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='microsaccades_two_steps_one_saccade_timesteps',
         ),
@@ -853,13 +950,18 @@ from pymovements.synthetic import step_function
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.Events(name='saccade', onsets=[40, 50], offsets=[49, 59], trials=['A', 'B']),
+            pm.Events(
+                name='saccade', onsets=[40, 50], offsets=[49, 59], trials=['A', 'B'],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='microsaccades_two_steps_one_saccade_per_trial',
         ),
 
+        # fill: the gaze's own events are undeclared and keep their durations of
+        # offset - onset, the filled rows count the nominal interval.
         pytest.param(
             'fill',
-            {},
+            {'sampling_rate': 1000},
             pm.gaze.from_numpy(
                 time=np.arange(0, 100),
                 position=np.zeros((2, 100)),
@@ -871,7 +973,7 @@ from pymovements.synthetic import step_function
 
         pytest.param(
             'fill',
-            {},
+            {'sampling_rate': 1000},
             pm.gaze.from_numpy(
                 time=np.arange(0, 100),
                 position=np.zeros((2, 100)),
@@ -880,6 +982,7 @@ from pymovements.synthetic import step_function
             pm.Events(
                 name=['fixation', 'unclassified'],
                 onsets=[10, 0],
+                durations=[90, 10],
                 offsets=[100, 9],
             ),
             id='fill_fixation_10_ms_after_start_to_end_single_fill',
@@ -887,7 +990,7 @@ from pymovements.synthetic import step_function
 
         pytest.param(
             'fill',
-            {},
+            {'sampling_rate': 1000},
             pm.gaze.from_numpy(
                 time=np.arange(0, 100),
                 position=np.zeros((2, 100)),
@@ -896,6 +999,7 @@ from pymovements.synthetic import step_function
             pm.Events(
                 name=['fixation', 'unclassified'],
                 onsets=[0, 90],
+                durations=[90, 10],
                 offsets=[90, 99],
             ),
             id='fill_fixation_from_start_to_10_ms_before_end_single_fill',
@@ -903,7 +1007,7 @@ from pymovements.synthetic import step_function
 
         pytest.param(
             'fill',
-            {},
+            {'sampling_rate': 1000},
             pm.gaze.from_numpy(
                 time=np.arange(0, 100),
                 position=np.zeros((2, 100)),
@@ -912,6 +1016,7 @@ from pymovements.synthetic import step_function
             pm.Events(
                 name=['fixation', 'fixation', 'unclassified'],
                 onsets=[0, 50, 40],
+                durations=[40, 50, 10],
                 offsets=[40, 100, 49],
             ),
             id='fill_fixation_10_ms_break_at_40ms_single_fill',
@@ -919,7 +1024,7 @@ from pymovements.synthetic import step_function
 
         pytest.param(
             'fill',
-            {},
+            {'sampling_rate': 1000},
             pm.gaze.from_numpy(
                 time=np.arange(0, 100),
                 position=np.zeros((2, 100)),
@@ -930,6 +1035,7 @@ from pymovements.synthetic import step_function
             pm.Events(
                 name=['fixation', 'saccade', 'unclassified'],
                 onsets=[0, 50, 40],
+                durations=[40, 50, 10],
                 offsets=[40, 100, 49],
             ),
             id='fill_fixation_10_ms_break_then_saccade_until_end_single_fill',
@@ -937,7 +1043,7 @@ from pymovements.synthetic import step_function
 
         pytest.param(
             'fill',
-            {},
+            {'sampling_rate': 1000},
             pm.gaze.from_numpy(
                 trial=np.array([1] * 50 + [2] * 50),
                 time=np.arange(0, 100),
@@ -949,6 +1055,7 @@ from pymovements.synthetic import step_function
             pm.Events(
                 name=['fixation', 'unclassified', 'unclassified', 'fixation'],
                 onsets=[0, 10, 50, 90],
+                durations=[10, 40, 40, 10],
                 offsets=[10, 49, 89, 100],
                 trials=[1, 1, 2, 2],
             ),
@@ -957,7 +1064,7 @@ from pymovements.synthetic import step_function
 
         pytest.param(
             'fill',
-            {},
+            {'sampling_rate': 1000},
             pm.gaze.from_numpy(
                 trial=np.array([1] * 50 + [2] * 50),
                 time=np.concatenate((np.arange(0, 50), np.arange(0, 50))),
@@ -972,6 +1079,7 @@ from pymovements.synthetic import step_function
                         'trial': [1, 1, 2, 2],
                         'name': ['fixation', 'unclassified', 'unclassified', 'fixation'],
                         'onset': [0, 10, 0, 40],
+                        'duration': [10, 40, 40, 10],
                         'offset': [10, 49, 39, 50],
                     },
                 ),
@@ -983,7 +1091,7 @@ from pymovements.synthetic import step_function
 
         pytest.param(
             'fill',
-            {},
+            {'sampling_rate': 1000},
             pm.gaze.from_numpy(
                 time=np.arange(100, 200),
                 position=np.zeros((2, 100)),
@@ -994,6 +1102,7 @@ from pymovements.synthetic import step_function
             pm.Events(
                 name=['fixation', 'saccade', 'unclassified'],
                 onsets=[0, 50, 100],
+                durations=[40, 50, 100],
                 offsets=[40, 100, 199],
             ),
             id='fill_fixation_events_before_timesteps',
@@ -1001,7 +1110,7 @@ from pymovements.synthetic import step_function
 
         pytest.param(
             'fill',
-            {},
+            {'sampling_rate': 1000},
             pm.gaze.from_numpy(
                 time=np.arange(0, 200),
                 position=np.zeros((2, 100)),
@@ -1012,6 +1121,7 @@ from pymovements.synthetic import step_function
             pm.Events(
                 name=['fixation', 'saccade', 'unclassified'],
                 onsets=[210, 250, 0],
+                durations=[30, 50, 200],
                 offsets=[240, 300, 199],
             ),
             id='fill_fixation_events_after_timesteps',
@@ -1019,7 +1129,7 @@ from pymovements.synthetic import step_function
 
         pytest.param(
             'fill',
-            {},
+            {'sampling_rate': 1000},
             pm.gaze.from_numpy(
                 time=np.arange(100, 200),
                 position=np.zeros((2, 100)),
@@ -1030,6 +1140,7 @@ from pymovements.synthetic import step_function
             pm.Events(
                 name=['fixation', 'fixation', 'unclassified'],
                 onsets=[0, 120, 110],
+                durations=[110, 100, 10],
                 offsets=[110, 220, 119],
             ),
             id='fill_fixation_events_exceed_time_boundaries',
@@ -1044,7 +1155,10 @@ from pymovements.synthetic import step_function
                 orient='row',
                 experiment=pm.Experiment(1920, 1080, 38, 30, 60, 'center', 1000),
             ),
-            pm.Events(name='out_of_screen', onsets=[2], offsets=[2]),
+            pm.Events(
+                name='out_of_screen', onsets=[2], offsets=[2],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='out_of_screen_auto_fill_screen_boundaries',
         ),
 
@@ -1069,7 +1183,10 @@ from pymovements.synthetic import step_function
                 orient='row',
                 experiment=pm.Experiment(1920, 1080, 38, 30, 60, 'center', 1000),
             ),
-            pm.Events(name='out_of_screen', onsets=[1000, 1002], offsets=[1000, 1002]),
+            pm.Events(
+                name='out_of_screen', onsets=[1000, 1002], offsets=[1000, 1002],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='out_of_screen_with_timesteps',
         ),
 
@@ -1086,13 +1203,17 @@ from pymovements.synthetic import step_function
                 orient='row',
                 experiment=pm.Experiment(1920, 1080, 38, 30, 60, 'center', 1000),
             ),
-            pm.Events(name='out_of_screen', onsets=[0], offsets=[0]),
+            pm.Events(
+                name='out_of_screen', onsets=[0], offsets=[0],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='out_of_screen_explicit_boundaries_override_auto_fill',
         ),
 
         pytest.param(
             'blink',
             {
+                'sampling_rate': 1000,
                 'minimum_gap': 0,
                 'minimum_duration': 1,
                 'maximum_duration': None,
@@ -1111,13 +1232,17 @@ from pymovements.synthetic import step_function
                 time_column='time',
                 position_columns=['x', 'y'],
             ),
-            pm.Events(name='blink', onsets=[10], offsets=[89]),
+            pm.Events(
+                name='blink', onsets=[10], offsets=[89],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='blink_scalar_pupil_auto_fill',
         ),
 
         pytest.param(
             'blink',
             {
+                'sampling_rate': 1000,
                 'minimum_gap': 0,
                 'minimum_duration': 1,
                 'maximum_duration': None,
@@ -1141,7 +1266,10 @@ from pymovements.synthetic import step_function
                 time_column='time',
                 position_columns=['x', 'y'],
             ),
-            pm.Events(name='blink', onsets=[10], offsets=[89]),
+            pm.Events(
+                name='blink', onsets=[10], offsets=[89],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
             id='blink_list_pupil_binocular_auto_fill',
         ),
 
@@ -1521,6 +1649,7 @@ def test_detect_after_clear_events_with_trial_columns():
 
     expected_events = pm.Events(
         name='fixation', onsets=[0, 50], offsets=[49, 99], trials=['A', 'B'],
+        offsets_inclusive=True, sampling_rate=1000,
     )
     assert_frame_equal(gaze.events.frame, expected_events.frame, check_row_order=False)
 
