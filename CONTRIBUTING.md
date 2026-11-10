@@ -14,6 +14,7 @@ https://github.com/pymovements/pymovements/issues/new/choose) or write to us at
 ## Table of Contents
 
 - [Code of Conduct](#code-of-conduct)
+- [Use of Generative AI](#use-of-generative-ai)
 - [Reporting Bugs](#reporting-bugs)
 - [First-time Contributors](#first-time-contributors)
 - [Getting Started](#getting-started)
@@ -36,6 +37,29 @@ discussions, and any other community spaces, is expected to treat others with re
 and to contribute to an open, welcoming, and inclusive environment.
 
 Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md) for full details.
+
+## Use of Generative AI
+
+Generative AI tools may help you with any contribution to pymovements. What you submit is still
+your work: you are its author and accountable for it. This holds for pull requests, issues, PMEPs,
+review replies and comments alike.
+
+Submitting AI-generated work is not acceptable when you:
+
+- were not in the loop while it was produced
+- have not checked it with care yourself
+- do not have reason to believe you understand it
+- cannot explain it to a reviewer in your own words
+- feed reviewer questions into an AI tool and relay its output back instead of responding yourself
+
+The list is adapted from [Rust RFC 3950, "Contribution policy for AI-generated
+work"](https://github.com/rust-lang/rfcs/pull/3950).
+
+Disclosure is not required. If a tool did part of the work, naming the tool and what it did in
+the pull request description helps the reviewer. A contribution that falls short of this policy
+may be declined with a link to this section.
+
+Reviewing a contribution costs maintainer time, and a contribution has to be worth that time.
 
 ## Reporting Bugs
 

@@ -112,6 +112,9 @@ Every change to the codebase requires an approving review from at least one main
 merging, and the maintainer team takes responsibility for the correctness and quality of all code
 and documentation in this package.
 
+Contributions made with such tools follow the
+[contributor policy](CONTRIBUTING.md#use-of-generative-ai) in our contributing guide.
+
 ## Citing
 
 If you use pymovements for a scientific publication, we would appreciate citations to the published

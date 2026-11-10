@@ -11,6 +11,32 @@ experience for everyone.
 It is important to us that all participants treat one another’s person and contributions with
 respect and dignity. Please read and follow our :ref:`code-of-conduct` for full details.
 
+.. _use-of-generative-ai:
+
+Use of Generative AI
+--------------------
+
+Generative AI tools may help you with any contribution to pymovements. What you submit is still
+your work: you are its author and accountable for it. This holds for pull requests, issues, PMEPs,
+review replies and comments alike.
+
+Submitting AI-generated work is not acceptable when you:
+
+- were not in the loop while it was produced
+- have not checked it with care yourself
+- do not have reason to believe you understand it
+- cannot explain it to a reviewer in your own words
+- feed reviewer questions into an AI tool and relay its output back instead of responding yourself
+
+The list is adapted from `Rust RFC 3950, "Contribution policy for AI-generated work"
+<https://github.com/rust-lang/rfcs/pull/3950>`_.
+
+Disclosure is not required. If a tool did part of the work, naming the tool and what it did in
+the pull request description helps the reviewer. A contribution that falls short of this policy
+may be declined with a link to this section.
+
+Reviewing a contribution costs maintainer time, and a contribution has to be worth that time.
+
 First-time Contributors
 -----------------------
 

@@ -15,6 +15,8 @@ https://pymovements.readthedocs.io/en/latest/contributing/contributing-code.html
 
 <!-- What does this change do, and why? Write "Resolves #N" if it fixes an issue. -->
 
+<!-- If a generative AI tool did part of the work, name the tool and what it did here. It helps the reviewer. -->
+
 ## Changes
 
 <!-- A short bullet list that maps the diff, one bullet per change. -->
@@ -31,6 +33,7 @@ https://pymovements.readthedocs.io/en/latest/contributing/contributing-code.html
 
 ## Checklist
 
+- [ ] If I used generative AI, I was in the loop, I checked the output with care, and I can explain every change in my own words (see [Use of Generative AI](https://pymovements.readthedocs.io/en/latest/contributing/contributing-code.html#use-of-generative-ai))
 - [ ] My code follows the style guidelines of this project
 - [ ] I have performed a self-review of my own code
 - [ ] I have commented my code, particularly in hard-to-understand areas
