@@ -662,10 +662,11 @@ def test_merge_subsequent_close_events_without_offset_gaps_from_durations(
     assert events.frame['duration'].to_list() == [timedelta(milliseconds=v) for v in expected_ms]
 
 
-_REBUILD_METADATA = {'key': 'value', 'offset': {'inclusive': True}, 'sampling_rate': 1000.0}
+def _rebuild_metadata(inclusive):
+    return {'key': 'value', 'offset': {'inclusive': inclusive}, 'sampling_rate': 1000.0}
 
 
-def _rebuild_entry_events():
+def _rebuild_entry_events(inclusive):
     # A null duration beside a declared offset warns once, at entry, and never on a rebuild.
     with pytest.warns(UserWarning, match='1 row has a null duration') as record:
         events = Events(
@@ -674,11 +675,11 @@ def _rebuild_entry_events():
                 'name': ['fixation', 'fixation', 'fixation'],
                 'onset': [0, 200, 400],
                 'duration': [100, None, 100],
-                'offset': [99, 299, 499],
+                'offset': [99, 299, 499] if inclusive else [100, 300, 500],
                 'location': [[100.0, 105.0], [110.0, 195.0], [120.0, 302.0]],
             }),
             trial_columns='trial',
-            offsets_inclusive=True,
+            offsets_inclusive=inclusive,
             sampling_rate=1000,
             metadata={'key': 'value'},
         )
@@ -704,7 +705,7 @@ def _rebuild_stimulus():
     )
 
 
-def _rebuild_gaze(events):
+def _rebuild_gaze(events, inclusive=True):
     gaze = pm.Gaze(
         samples=pl.DataFrame({
             'time': list(range(0, 600)) * 2,
@@ -722,74 +723,70 @@ def _rebuild_gaze(events):
     else:
         # A convention entry without its column. The rebuild sites pass validate=False, which
         # already skips the orphan-entry warning, so this case checks the silence flag alone.
-        gaze.events.metadata = deepcopy(_REBUILD_METADATA)
+        gaze.events.metadata = deepcopy(_rebuild_metadata(inclusive))
     return gaze
 
 
 _REBUILD_ENTRY_COLUMNS = ['trial', 'onset', 'duration', 'name', 'offset', 'location']
 
+# The rebuild sites of Events, run on both conventions. Gaze.detect follows below: the
+# detectors declare inclusive offsets, so existing exclusive events raise there by design.
+_EVENTS_REBUILD_SITES = [
+    ('clone', lambda events: events.clone(), _REBUILD_ENTRY_COLUMNS),
+    ('split', lambda events: events.split(), _REBUILD_ENTRY_COLUMNS),
+    ('split_dict', lambda events: events.split(as_dict=True), _REBUILD_ENTRY_COLUMNS),
+    (
+        'correct_fixations',
+        lambda events: events.correct_fixations(
+            _rebuild_stimulus(), algorithm='attach', inplace=False,
+        ),
+        [*_REBUILD_ENTRY_COLUMNS, 'location_original', 'correction_algorithm'],
+    ),
+    (
+        'measure_reading',
+        lambda events: events.measure_reading(_rebuild_stimulus()),
+        _REBUILD_ENTRY_COLUMNS,
+    ),
+    (
+        'measure_reading_dict',
+        lambda events: events.measure_reading(
+            {1: _rebuild_stimulus(), 2: _rebuild_stimulus()}, group_columns=['trial'],
+        ),
+        _REBUILD_ENTRY_COLUMNS,
+    ),
+    ('bridge_gaps', pm.synthetic.bridge_gaps, _REBUILD_ENTRY_COLUMNS),
+]
 
-@pytest.mark.parametrize(
-    ('prepare', 'rebuild', 'expected_columns'),
-    [
-        pytest.param(
-            _rebuild_entry_events, lambda events: events.clone(), _REBUILD_ENTRY_COLUMNS,
-            id='clone',
-        ),
-        pytest.param(
-            _rebuild_entry_events, lambda events: events.split(), _REBUILD_ENTRY_COLUMNS,
-            id='split',
-        ),
-        pytest.param(
-            _rebuild_entry_events, lambda events: events.split(as_dict=True),
-            _REBUILD_ENTRY_COLUMNS, id='split_dict',
-        ),
-        pytest.param(
-            _rebuild_entry_events,
-            lambda events: events.correct_fixations(
-                _rebuild_stimulus(), algorithm='attach', inplace=False,
-            ),
-            [*_REBUILD_ENTRY_COLUMNS, 'location_original', 'correction_algorithm'],
-            id='correct_fixations',
-        ),
-        pytest.param(
-            lambda: _rebuild_gaze(None),
-            lambda gaze: gaze.detect('fill'),
-            ['trial', 'onset', 'duration', 'name'],
-            id='gaze_detect_shared_empty',
-        ),
-        pytest.param(
-            lambda: _rebuild_gaze(_rebuild_entry_events()),
-            lambda gaze: gaze.detect('fill'),
-            _REBUILD_ENTRY_COLUMNS,
-            id='gaze_detect_per_group',
-        ),
-        pytest.param(
-            _rebuild_entry_events,
-            lambda events: events.measure_reading(_rebuild_stimulus()),
-            _REBUILD_ENTRY_COLUMNS,
-            id='measure_reading',
-        ),
-        pytest.param(
-            _rebuild_entry_events,
-            lambda events: events.measure_reading(
-                {1: _rebuild_stimulus(), 2: _rebuild_stimulus()}, group_columns=['trial'],
-            ),
-            _REBUILD_ENTRY_COLUMNS,
-            id='measure_reading_dict',
-        ),
-        pytest.param(
-            _rebuild_entry_events,
-            pm.synthetic.bridge_gaps,
-            _REBUILD_ENTRY_COLUMNS,
-            id='bridge_gaps',
-        ),
-    ],
-)
+_REBUILD_CASES = [
+    pytest.param(
+        inclusive, _rebuild_entry_events, rebuild, expected_columns,
+        id=f"{site}_{'inclusive' if inclusive else 'exclusive'}",
+    )
+    for inclusive in (True, False)
+    for site, rebuild, expected_columns in _EVENTS_REBUILD_SITES
+] + [
+    pytest.param(
+        True,
+        lambda inclusive: _rebuild_gaze(None, inclusive),
+        lambda gaze: gaze.detect('fill'),
+        ['trial', 'onset', 'duration', 'name'],
+        id='gaze_detect_shared_empty',
+    ),
+    pytest.param(
+        True,
+        lambda inclusive: _rebuild_gaze(_rebuild_entry_events(inclusive), inclusive),
+        lambda gaze: gaze.detect('fill'),
+        _REBUILD_ENTRY_COLUMNS,
+        id='gaze_detect_per_group',
+    ),
+]
+
+
+@pytest.mark.parametrize(('inclusive', 'prepare', 'rebuild', 'expected_columns'), _REBUILD_CASES)
 def test_rebuild_sites_carry_metadata_and_do_not_warn(
-        monkeypatch, prepare, rebuild, expected_columns,
+        monkeypatch, inclusive, prepare, rebuild, expected_columns,
 ):
-    entry = prepare()
+    entry = prepare(inclusive)
 
     calls = []
     original_init = Events.__init__
@@ -815,7 +812,7 @@ def test_rebuild_sites_carry_metadata_and_do_not_warn(
         assert set(kwargs) <= {'trial_columns', 'metadata', 'validate'}
         assert_frame_equal(frame, data)
         assert frame.columns == expected_columns
-        assert rebuilt.metadata.items() >= _REBUILD_METADATA.items()
+        assert rebuilt.metadata.items() >= _rebuild_metadata(inclusive).items()
 
 
 def test_compute_event_properties_on_empty_events_without_offset_warns():
