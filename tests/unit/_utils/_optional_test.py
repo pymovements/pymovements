@@ -17,63 +17,17 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test optional dependency imports."""
+"""Test optional dependency imports.
+
+The missing and outdated cases are covered through the public loaders in the dataset tests.
+Only the ``ValueError`` for a name outside the extra needs the helper directly.
+"""
 import importlib.metadata
 import re
-import sys
 
 import pytest
 
 from pymovements._utils._optional import import_optional_dependency
-
-
-def test_import_optional_dependency_returns_module():
-    assert import_optional_dependency('pyreadr', extra='datasets') is sys.modules['pyreadr']
-
-
-def test_import_optional_dependency_missing_raises_install_hint(monkeypatch):
-    monkeypatch.setitem(sys.modules, 'pyreadr', None)
-
-    expected_message = (
-        "Missing optional dependency 'pyreadr'. "
-        "Install it with: pip install 'pymovements[datasets]'"
-    )
-    with pytest.raises(ImportError, match=re.escape(expected_message)):
-        import_optional_dependency('pyreadr', extra='datasets')
-
-
-@pytest.mark.parametrize(
-    'installed_version',
-    [
-        pytest.param('0.4.9', id='older_minor'),
-        pytest.param('0.5.1', id='older_patch'),
-        pytest.param('0.5.1.post1', id='older_patch_with_suffix'),
-    ],
-)
-def test_import_optional_dependency_too_old_raises_upgrade_hint(monkeypatch, installed_version):
-    monkeypatch.setattr(importlib.metadata, 'version', lambda name: installed_version)
-
-    expected_message = (
-        "pymovements requires 'pyreadr>=0.5.2' "
-        f"(version '{installed_version}' is installed). "
-        "Upgrade it with: pip install --upgrade 'pymovements[datasets]'"
-    )
-    with pytest.raises(ImportError, match=re.escape(expected_message)):
-        import_optional_dependency('pyreadr', extra='datasets')
-
-
-@pytest.mark.parametrize(
-    'installed_version',
-    [
-        pytest.param('0.5.2', id='equal'),
-        pytest.param('0.5.10', id='newer_patch_two_digits'),
-        pytest.param('1.0.0rc1', id='newer_major_prerelease'),
-    ],
-)
-def test_import_optional_dependency_new_enough_returns_module(monkeypatch, installed_version):
-    monkeypatch.setattr(importlib.metadata, 'version', lambda name: installed_version)
-
-    assert import_optional_dependency('pyreadr', extra='datasets') is sys.modules['pyreadr']
 
 
 @pytest.mark.parametrize(
