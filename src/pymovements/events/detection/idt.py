@@ -23,10 +23,10 @@ from __future__ import annotations
 import numpy
 import polars
 
-from pymovements._utils import _checks
-from pymovements._utils._time import normalize_timesteps
-from pymovements.events._utils._filters import events_split_nans
-from pymovements.events._utils._filters import filter_candidates_remove_nans
+from pymovements._utils import checks
+from pymovements._utils.time import normalize_timesteps
+from pymovements.events._utils.filters import events_split_nans
+from pymovements.events._utils.filters import filter_candidates_remove_nans
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 
@@ -250,10 +250,10 @@ def idt(
             raise ValueError(f'positions must be 2D list but list lengths are: {list_lengths}')
         positions = numpy.vstack([positions.list.get(0), positions.list.get(1)]).transpose()
     positions = numpy.array(positions)
-    _checks.check_shapes(positions=positions)
+    checks.check_shapes(positions=positions)
 
     timesteps = normalize_timesteps(timesteps, length=len(positions))
-    _checks.check_is_length_matching(positions=positions, timesteps=timesteps)
+    checks.check_is_length_matching(positions=positions, timesteps=timesteps)
 
     if dispersion_threshold <= 0:
         raise ValueError('dispersion_threshold must be greater than 0')

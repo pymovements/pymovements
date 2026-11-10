@@ -26,7 +26,7 @@ from typing import Any
 import polars as pl
 import scipy
 
-from pymovements._utils import _checks
+from pymovements._utils import checks
 from pymovements.transforms._utils import _check_padding
 from pymovements.transforms._utils import _check_window_length
 from pymovements.transforms.library import register_transform
@@ -165,9 +165,9 @@ def _check_degree(degree: Any, window_length: int) -> None:
     window_length: int
         The window length to check against.
     """
-    _checks.check_is_not_none(degree=degree)
-    _checks.check_is_int(degree=degree)
-    _checks.check_is_greater_than_zero(degree=degree)
+    checks.check_is_not_none(degree=degree)
+    checks.check_is_int(degree=degree)
+    checks.check_is_greater_than_zero(degree=degree)
 
     if degree >= window_length:
         raise ValueError("'degree' must be less than 'window_length'")
@@ -181,5 +181,5 @@ def _check_derivative(derivative: Any) -> None:
     derivative: Any
         The derivative to check.
     """
-    _checks.check_is_int(derivative=derivative)
-    _checks.check_is_positive_value(derivative=derivative)
+    checks.check_is_int(derivative=derivative)
+    checks.check_is_positive_value(derivative=derivative)

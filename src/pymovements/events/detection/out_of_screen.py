@@ -23,8 +23,8 @@ from __future__ import annotations
 import numpy
 import polars
 
-from pymovements._utils import _checks
-from pymovements._utils._time import timesteps_to_numpy
+from pymovements._utils import checks
+from pymovements._utils.time import timesteps_to_numpy
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.transforms.numpy import consecutive
@@ -90,7 +90,7 @@ def out_of_screen(
             raise ValueError(f'pixels must be 2D list but list lengths are: {list_lengths}')
         pixels = numpy.vstack([pixels.list.get(0), pixels.list.get(1)]).transpose()
     pixels = numpy.array(pixels)
-    _checks.check_shapes(pixels=pixels)
+    checks.check_shapes(pixels=pixels)
 
     if x_min >= x_max:
         raise ValueError(
@@ -108,7 +108,7 @@ def out_of_screen(
     else:
         timesteps = numpy.arange(len(pixels), dtype=numpy.int64)
     timesteps = numpy.array(timesteps)
-    _checks.check_is_length_matching(pixels=pixels, timesteps=timesteps)
+    checks.check_is_length_matching(pixels=pixels, timesteps=timesteps)
 
     # A sample is out-of-screen if x or y is outside the screen boundaries.
     x = pixels[:, 0]
