@@ -282,11 +282,12 @@ def microsaccades(
     if include_nan:
         candidates = filter_candidates_remove_nans(candidates=candidates, values=velocities)
 
-    # Filter all candidates by minimum duration.
+    # Filter all candidates by minimum duration, each sample covering the nominal interval.
     candidates = [
         candidate for candidate in candidates
         if len(candidate) > 0
-        and timesteps[candidate[-1]] - timesteps[candidate[0]] >= minimum_duration
+        and timesteps[candidate[-1]] - timesteps[candidate[0]] + sampling_interval
+        >= minimum_duration
     ]
 
     # Onset of each event candidate is first index in candidate indices.
