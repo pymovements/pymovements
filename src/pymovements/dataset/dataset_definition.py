@@ -31,11 +31,11 @@ from warnings import warn
 
 import yaml
 
-from pymovements._utils._html import repr_html
-from pymovements.dataset._utils._yaml import FastSafeLoader
-from pymovements.dataset._utils._yaml import reverse_substitute_types
-from pymovements.dataset._utils._yaml import substitute_types
-from pymovements.dataset._utils._yaml import type_constructor
+from pymovements._utils.html import repr_html
+from pymovements.dataset._utils.yaml import FastSafeLoader
+from pymovements.dataset._utils.yaml import reverse_substitute_types
+from pymovements.dataset._utils.yaml import substitute_types
+from pymovements.dataset._utils.yaml import type_constructor
 from pymovements.dataset.resources import ResourceDefinition
 from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.dataset.websource import WebSource

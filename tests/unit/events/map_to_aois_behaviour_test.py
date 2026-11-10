@@ -20,6 +20,9 @@
 """Several tests about specific Events.map_to_aois behaviours."""
 from __future__ import annotations
 
+import math
+from typing import Any
+
 import polars as pl
 import pytest
 
@@ -120,6 +123,24 @@ def test_map_to_aois_with_trial_page(
     assert labels == expected_labels
 
 
+def test_map_to_aois_null_key_uses_per_row_lookup(stimulus_with_trials: TextStimulus) -> None:
+    """A null key routes the row through the per-row lookup and still matches by the other key."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+            'location': [[5.0, 5.0]],
+            'trial': [None],
+        },
+    )
+    events = Events(data=df, trial_columns=['trial'])
+
+    events.map_to_aois(stimulus_with_trials)
+
+    assert events.frame.get_column('label').to_list() == ['A']
+
+
 def test_map_to_aois_uses_first_overlapping_aoi_without_misalignment() -> None:
     """Map only the first overlapping AOI row and keep event/AOI rows aligned."""
     stimulus = TextStimulus(
@@ -150,7 +171,7 @@ def test_map_to_aois_uses_first_overlapping_aoi_without_misalignment() -> None:
     )
 
     with pytest.warns(UserWarning, match='Multiple AOIs matched this point'):
-        events.map_to_aois(stimulus, verbose=False)
+        events.map_to_aois(stimulus)
 
     assert events.frame.height == 4
     assert events.frame.get_column('content').to_list() == ['AOI1', 'AOI1', 'AOI2', None]
@@ -167,12 +188,13 @@ def test_map_to_aois_fixation_missing_coordinates(simple_stimulus: TextStimulus)
         },
     )
     events = Events(data=df)
-    events.map_to_aois(simple_stimulus)
+    with pytest.warns(UserWarning, match='Invalid eye coordinates'):
+        events.map_to_aois(simple_stimulus)
     assert events.frame.get_column('label').to_list() == [None]
 
 
 def test_map_to_aois_get_aoi_exception_sets_none_without_crash(
-    simple_stimulus: TextStimulus, monkeypatch: pytest.MonkeyPatch,
+    stimulus_with_trial_page: TextStimulus, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Simulate a recoverable exception in get_aoi and assert mapping continues with None AOI.
 
@@ -184,7 +206,8 @@ def test_map_to_aois_get_aoi_exception_sets_none_without_crash(
     def _boom(*args, **kwargs):  # noqa: ANN001, ANN002 - test helper
         raise TypeError('simulated get_aoi type error')
 
-    # Patch TextStimulus.get_aoi to raise on call for a fixation row
+    # Patch TextStimulus.get_aoi to raise. It is only invoked for rows with a null
+    # trial/page key; the exception must be tolerated and the AOI values set to None.
     monkeypatch.setattr(TextStimulus, 'get_aoi', _boom, raising=True)
 
     df = pl.DataFrame(
@@ -193,12 +216,14 @@ def test_map_to_aois_get_aoi_exception_sets_none_without_crash(
             'onset': [0],
             'offset': [1],
             'location': [[5, 5]],
+            'trial': [1],
+            'page': [None],
         },
     )
-    events = Events(data=df)
+    events = Events(data=df, trial_columns=['trial', 'page'])
 
     # Should not raise - AOI columns get None
-    events.map_to_aois(simple_stimulus)
+    events.map_to_aois(stimulus_with_trial_page)
 
     assert events.frame.get_column('label').to_list() == [None]
 
@@ -406,7 +431,7 @@ def test_events_map_to_aois_no_new_columns_when_all_aoi_columns_present(
     # Keep a copy of original columns to verify no new columns are appended.
     original_cols = ev.frame.columns.copy()
 
-    ev.map_to_aois(simple_stimulus_w_h, preserve_structure=preserve_structure, verbose=False)
+    ev.map_to_aois(simple_stimulus_w_h, preserve_structure=preserve_structure)
 
     # The set and order of columns should remain unchanged (no new AOI columns appended),
     # exercising the `if aoi_columns:` no-branch.
@@ -498,3 +523,369 @@ def test_map_to_aois_preserves_saccades_without_structure(
         assert row_after['offset'] == row_before['offset']
         assert row_after['location'] == row_before['location']
         assert row_after['label'] is None
+
+
+@pytest.mark.parametrize(
+    'trial_value',
+    ['x', 1.5],
+    ids=['non-numeric-string', 'non-integral-float'],
+)
+def test_map_to_aois_key_that_changes_on_cast_gets_no_aoi(
+    stimulus_with_trials: TextStimulus,
+    trial_value: object,
+) -> None:
+    """A non-null key that cannot be cast to the AOI dtype unchanged matches no AOI."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+            'location': [[5.0, 5.0]],
+            'trial': [trial_value],
+        },
+    )
+    events = Events(data=df, trial_columns=['trial'])
+
+    events.map_to_aois(stimulus_with_trials)
+
+    assert events.frame.get_column('label').to_list() == [None]
+
+
+@pytest.mark.parametrize(
+    ('trial_value', 'location', 'expected_label'),
+    [
+        pytest.param('1', [5.0, 5.0], 'A', id='plain'),
+        pytest.param('02', [25.0, 25.0], 'B', id='leading-zero'),
+    ],
+)
+def test_map_to_aois_numeric_string_key_matches_integer_key(
+    stimulus_with_trials: TextStimulus,
+    trial_value: str,
+    location: list[float],
+    expected_label: str,
+) -> None:
+    """A string key that parses to the integer AOI key matches that trial's AOIs."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+            'location': [location],
+            'trial': [trial_value],
+        },
+    )
+    events = Events(data=df, trial_columns=['trial'])
+
+    events.map_to_aois(stimulus_with_trials)
+
+    assert events.frame.get_column('label').to_list() == [expected_label]
+
+
+def test_map_to_aois_integer_key_matches_string_key() -> None:
+    """An integer key matches a string AOI key with the same textual value."""
+    stimulus = TextStimulus(
+        pl.DataFrame(
+            {
+                'label': ['A', 'B'],
+                'sx': [0, 20],
+                'sy': [0, 20],
+                'ex': [10, 30],
+                'ey': [10, 30],
+                'trial': ['1', '02'],
+            },
+        ),
+        aoi_column='label',
+        start_x_column='sx',
+        start_y_column='sy',
+        end_x_column='ex',
+        end_y_column='ey',
+        trial_column='trial',
+    )
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'fixation'],
+            'onset': [0, 1],
+            'offset': [1, 2],
+            'location': [[5.0, 5.0], [25.0, 25.0]],
+            'trial': [1, 2],
+        },
+    )
+    events = Events(data=df, trial_columns=['trial'])
+
+    events.map_to_aois(stimulus)
+
+    assert events.frame.get_column('label').to_list() == ['A', None]
+
+
+def test_map_to_aois_valid_key_still_matches(stimulus_with_trials: TextStimulus) -> None:
+    """A key that casts to the AOI dtype unchanged still matches its AOIs."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+            'location': [[5.0, 5.0]],
+            'trial': [1],
+        },
+    )
+    events = Events(data=df, trial_columns=['trial'])
+
+    events.map_to_aois(stimulus_with_trials)
+
+    assert events.frame.get_column('label').to_list() == ['A']
+
+
+def test_map_to_aois_non_numeric_coordinates_get_no_match_and_warn(
+    simple_stimulus: TextStimulus,
+) -> None:
+    """String coordinates are not numeric, so they get no match and are reported once."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'fixation'],
+            'onset': [0, 1],
+            'offset': [1, 2],
+            'location_x': ['5', '5'],
+            'location_y': ['5', '5'],
+        },
+    )
+    events = Events(data=df)
+
+    with pytest.warns(UserWarning, match='Invalid eye coordinates in 2 of 2 fixations'):
+        events.map_to_aois(simple_stimulus)
+
+    assert events.frame.get_column('label').to_list() == [None, None]
+
+
+def test_map_to_aois_nan_coordinates_warn_once(simple_stimulus: TextStimulus) -> None:
+    """A NaN coordinate counts as invalid, matches nothing, and is reported once."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'fixation'],
+            'onset': [0, 1],
+            'offset': [1, 2],
+            'location_x': [5.0, math.nan],
+            'location_y': [5.0, 5.0],
+        },
+    )
+    events = Events(data=df)
+
+    with pytest.warns(UserWarning, match='Invalid eye coordinates in 1 of 2 fixations'):
+        events.map_to_aois(simple_stimulus)
+
+    assert events.frame.get_column('label').to_list() == ['A', None]
+
+
+def test_map_to_aois_no_matches_returns_all_none(simple_stimulus: TextStimulus) -> None:
+    """A frame without any spatial match fills every AOI column with nulls."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'fixation'],
+            'onset': [0, 1],
+            'offset': [1, 2],
+            'location': [[50.0, 50.0], [60.0, 60.0]],
+        },
+    )
+    events = Events(data=df)
+
+    events.map_to_aois(simple_stimulus)
+
+    assert events.frame.get_column('label').to_list() == [None, None]
+
+
+def test_map_to_aois_overlap_with_keyed_null_key_and_unmatched_rows() -> None:
+    """Overlapping AOIs keep first-match order for keyed and null-key rows, others get none."""
+    stimulus = TextStimulus(
+        pl.DataFrame(
+            {
+                'content': ['L1', 'L2', 'Y'],
+                'left': [0, 5, 100],
+                'right': [10, 15, 110],
+                'top': [0, 5, 0],
+                'bottom': [10, 15, 10],
+                'trial': [1, 1, 1],
+                'page': ['X', 'X', 'Y'],
+            },
+        ),
+        aoi_column='content',
+        start_x_column='left',
+        end_x_column='right',
+        start_y_column='top',
+        end_y_column='bottom',
+        trial_column='trial',
+        page_column='page',
+    )
+    df = pl.DataFrame(
+        [
+            {
+                'name': 'fixation', 'onset': 0, 'offset': 1,
+                'location': [7.0, 7.0], 'trial': 1, 'page': 'X',
+            },
+            {
+                'name': 'fixation', 'onset': 1, 'offset': 2,
+                'location': [7.0, 7.0], 'trial': 1, 'page': None,
+            },
+            {
+                'name': 'fixation', 'onset': 2, 'offset': 3,
+                'location': [50.0, 50.0], 'trial': 1, 'page': 'X',
+            },
+        ],
+    )
+    events = Events(data=df, trial_columns=['trial', 'page'])
+
+    with pytest.warns(UserWarning, match='Multiple AOIs matched this point'):
+        events.map_to_aois(stimulus)
+
+    assert events.frame.get_column('content').to_list() == ['L1', 'L1', None]
+
+
+@pytest.mark.parametrize(
+    'bounds_kwargs',
+    [
+        pytest.param({'width_column': 'w', 'height_column': None}, id='width-without-height'),
+        pytest.param({'end_x_column': 'ex', 'end_y_column': None}, id='end-x-without-end-y'),
+    ],
+)
+def test_map_to_aois_raises_for_mismatched_bounds(
+    bounds_kwargs: dict[str, Any],
+) -> None:
+    """A bounds pair that is only half defined raises the mutual-none check."""
+    columns: dict[str, list[object]] = {'content': ['A'], 'left': [0], 'top': [0]}
+    if 'width_column' in bounds_kwargs:
+        columns['w'] = [10]
+    else:
+        columns['ex'] = [10]
+    stimulus = TextStimulus(
+        pl.DataFrame(columns),
+        aoi_column='content',
+        start_x_column='left',
+        start_y_column='top',
+        **bounds_kwargs,
+    )
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation'],
+                'onset': [0],
+                'offset': [1],
+                'location': [[5, 5]],
+            },
+        ),
+    )
+
+    with pytest.raises(ValueError, match='must be either both None or both not None'):
+        events.map_to_aois(stimulus)
+
+
+def test_map_to_aois_numeric_string_list_coordinates_get_no_match(
+    simple_stimulus: TextStimulus,
+) -> None:
+    """Numeric strings in a location list are not numeric coordinates and match nothing."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+            'location': [['5', '5']],
+        },
+    )
+    events = Events(data=df)
+
+    with pytest.warns(UserWarning, match='Invalid eye coordinates in 1 of 1 fixations'):
+        events.map_to_aois(simple_stimulus)
+
+    assert events.frame.get_column('label').to_list() == [None]
+
+
+def test_map_to_aois_categorical_key_matches_string_key() -> None:
+    """String-like keys with different dtypes are still castable and match."""
+    stimulus = TextStimulus(
+        pl.DataFrame(
+            {
+                'label': ['A'],
+                'sx': [0],
+                'sy': [0],
+                'ex': [10],
+                'ey': [10],
+                'trial': ['1'],
+            },
+        ),
+        aoi_column='label',
+        start_x_column='sx',
+        start_y_column='sy',
+        end_x_column='ex',
+        end_y_column='ey',
+        trial_column='trial',
+    )
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+            'location': [[5.0, 5.0]],
+            'trial': pl.Series(['1'], dtype=pl.Categorical),
+        },
+    )
+    events = Events(data=df, trial_columns=['trial'])
+
+    events.map_to_aois(stimulus)
+
+    assert events.frame.get_column('label').to_list() == ['A']
+
+
+def test_map_to_aois_non_numeric_list_without_structure_gets_no_match(
+    simple_stimulus: TextStimulus,
+) -> None:
+    """A non-numeric location list is rejected when it is read directly."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+            'location': [['5', '5']],
+        },
+    )
+    events = Events(data=df)
+
+    with pytest.warns(UserWarning, match='Invalid eye coordinates in 1 of 1 fixations'):
+        events.map_to_aois(simple_stimulus, preserve_structure=False)
+
+    assert events.frame.get_column('label').to_list() == [None]
+
+
+def test_map_to_aois_missing_coordinate_columns_get_no_match(
+    simple_stimulus: TextStimulus,
+) -> None:
+    """A fixation frame without any coordinate column gets no match and warns."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+        },
+    )
+    events = Events(data=df)
+
+    with pytest.warns(UserWarning, match='Invalid eye coordinates in 1 of 1 fixations'):
+        events.map_to_aois(simple_stimulus)
+
+    assert events.frame.get_column('label').to_list() == [None]
+
+
+@pytest.mark.parametrize('verbose', [True, False])
+def test_map_to_aois_verbose_is_deprecated(
+        verbose, simple_stimulus, assert_deprecation_is_removed,
+):
+    events = Events(
+        data=pl.DataFrame(
+            {'name': ['fixation'], 'onset': [0], 'offset': [1], 'location': [[5.0, 5.0]]},
+        ),
+    )
+
+    with pytest.raises(DeprecationWarning) as info:
+        events.map_to_aois(simple_stimulus, verbose=verbose)
+
+    assert_deprecation_is_removed(
+        function_name="Events.map_to_aois argument 'verbose'",
+        warning_message=info.value.args[0],
+        scheduled_version='0.34.0',
+    )

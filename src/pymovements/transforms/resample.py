@@ -26,7 +26,7 @@ import numpy as np
 import polars as pl
 from polars.datatypes.classes import NumericType
 
-from pymovements._utils import _checks
+from pymovements._utils import checks
 from pymovements.transforms.library import register_transform
 
 
@@ -92,7 +92,7 @@ def resample(
     elif isinstance(columns, str):
         columns = [columns]
 
-    _checks.check_is_greater_than_zero(resampling_rate=resampling_rate)
+    checks.check_is_greater_than_zero(resampling_rate=resampling_rate)
 
     # Return samples if empty
     if samples.is_empty():

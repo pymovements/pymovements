@@ -24,8 +24,8 @@ from dataclasses import asdict
 from dataclasses import dataclass
 from typing import Any
 
-from pymovements._utils import _checks
-from pymovements._utils._html import repr_html
+from pymovements._utils import checks
+from pymovements._utils.html import repr_html
 
 
 @repr_html()
@@ -78,7 +78,7 @@ class EyeTracker:
     def __post_init__(self) -> None:
         """Check that the sampling rate is a positive number."""
         if self.sampling_rate is not None:
-            _checks.check_is_greater_than_zero(sampling_rate=self.sampling_rate)
+            checks.check_is_greater_than_zero(sampling_rate=self.sampling_rate)
 
     def to_dict(self, *, exclude_none: bool = True) -> dict[str, Any]:
         """Convert the EyeTracker instance into a dictionary.

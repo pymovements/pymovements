@@ -85,7 +85,7 @@ resources:
   source:
     url: https://osf.io/download/3ywhz/
     filename: reading_measures_merged.zip
-    md5: b7ada7ca91f3a807d873598b821de88d
+    md5: fdf7a71509970f4b9d95ce1e84a22779
   filename_pattern: reader{subject_id:d}_{text_id}_merged.tsv
   filename_pattern_schema_overrides:
     subject_id: '!int'

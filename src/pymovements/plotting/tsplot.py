@@ -28,9 +28,9 @@ from warnings import warn
 import numpy as np
 import polars as pl
 
-from pymovements._utils._column_nesting import get_nested_columns
-from pymovements._utils._column_nesting import unnest_list_columns
-from pymovements._utils._time import duration_to_ms
+from pymovements._utils.column_nesting import get_nested_columns
+from pymovements._utils.column_nesting import unnest_list_columns
+from pymovements._utils.time import duration_to_ms
 from pymovements.plotting._matplotlib import prepare_figure
 
 if TYPE_CHECKING:

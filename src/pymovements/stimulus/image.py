@@ -27,10 +27,10 @@ from typing import TYPE_CHECKING
 
 from deprecated.sphinx import deprecated
 
-from pymovements._utils._html import repr_html
-from pymovements._utils._paths import get_filepaths
-from pymovements._utils._sources import add_source
-from pymovements._utils._strings import curly_to_regex
+from pymovements._utils.html import repr_html
+from pymovements._utils.paths import get_filepaths
+from pymovements._utils.sources import add_source
+from pymovements._utils.strings import curly_to_regex
 
 if TYPE_CHECKING:
     import matplotlib.pyplot as plt

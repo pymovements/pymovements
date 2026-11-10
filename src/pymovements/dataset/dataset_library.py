@@ -27,7 +27,7 @@ from typing import TypeVar
 
 import yaml
 
-from pymovements.dataset._utils._yaml import FastSafeLoader
+from pymovements.dataset._utils.yaml import FastSafeLoader
 from pymovements.dataset.dataset_definition import DatasetDefinition
 
 

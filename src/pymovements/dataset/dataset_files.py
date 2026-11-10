@@ -33,11 +33,11 @@ import polars as pl
 from tqdm.auto import tqdm
 
 from pymovements._utils._optional import import_optional_dependency
-from pymovements._utils._paths import match_filepaths
-from pymovements._utils._sources import add_source
-from pymovements._utils._sources import relativize_sources
-from pymovements._utils._strings import curly_to_regex
-from pymovements._utils._time import durations_to_ms
+from pymovements._utils.paths import match_filepaths
+from pymovements._utils.sources import add_source
+from pymovements._utils.sources import relativize_sources
+from pymovements._utils.strings import curly_to_regex
+from pymovements._utils.time import durations_to_ms
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_paths import DatasetPaths
 from pymovements.dataset.resources import ResourceDefinition

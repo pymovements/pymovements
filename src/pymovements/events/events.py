@@ -20,6 +20,7 @@
 """Provides the Events class."""
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from copy import deepcopy
 from typing import Any
@@ -30,15 +31,17 @@ import numpy as np
 import polars
 from tqdm import tqdm
 
-from pymovements._utils import _checks
-from pymovements._utils._column_nesting import unnest_list_columns
-from pymovements._utils._html import repr_html
-from pymovements._utils._nulls import row_is_null
-from pymovements._utils._sources import merge_sources
-from pymovements._utils._time import normalize_duration_to_us
-from pymovements._utils._time import numeric_to_duration_us
+from pymovements._utils import checks
+from pymovements._utils.column_nesting import unnest_list_columns
+from pymovements._utils.html import repr_html
+from pymovements._utils.nulls import row_is_null
+from pymovements._utils.sources import merge_sources
+from pymovements._utils.time import normalize_duration_to_us
+from pymovements._utils.time import numeric_to_duration_us
 from pymovements.events.correction import fixation_correction
 from pymovements.measure.events.measures import duration
+from pymovements.measure.reading import compute_reading_measures
+from pymovements.measure.reading import ReadingMeasures
 from pymovements.stimulus.text import TextStimulus
 
 
@@ -84,6 +87,269 @@ def _build_time_series(values: list[int | float] | np.ndarray) -> polars.Series:
     if series.dtype == polars.Null:
         series = series.cast(polars.Float64)
     return series
+
+
+_AOI_ROW_ID = '__pymovements_aoi_row_id'
+_AOI_MATCH_ORDER = '__pymovements_aoi_match_order'
+_AOI_X = '__pymovements_aoi_x'
+_AOI_Y = '__pymovements_aoi_y'
+_AOI_NAME = '__pymovements_aoi_name'
+_AOI_JOIN_KEY_PREFIX = '__pymovements_aoi_join_key_'
+
+
+def _aoi_join_key_name(column: str) -> str:
+    """Return the reserved name of the cast join-key column for ``column``."""
+    return f'{_AOI_JOIN_KEY_PREFIX}{column}'
+
+
+def _is_numeric_like(dtype: polars.PolarsDataType) -> bool:
+    """Return whether ``dtype`` holds numeric values (booleans compare like integers)."""
+    return dtype.is_numeric() or dtype == polars.Boolean
+
+
+def _is_string_like(dtype: polars.PolarsDataType) -> bool:
+    """Return whether ``dtype`` holds string-like values."""
+    return (
+        dtype == polars.String
+        or dtype == polars.Categorical
+        or isinstance(dtype, polars.Enum)
+    )
+
+
+def _key_cast_is_valid(
+        original: polars.Expr,
+        source_dtype: polars.PolarsDataType,
+        target_dtype: polars.PolarsDataType,
+) -> polars.Expr:
+    """Return whether a key value survives casting to the AOI key dtype unchanged.
+
+    Nulls are wildcards and stay valid. A value that cannot be cast, like the string ``'x'``
+    against an integer column, matches no AOI, as in the per-row lookup. A numeric value must
+    also survive the cast back, so precision loss (for example ``1.5`` against an integer
+    column) matches no AOI either.
+    """
+    if source_dtype == target_dtype:
+        return polars.lit(True)
+    if _is_string_like(source_dtype) and _is_string_like(target_dtype):
+        return polars.lit(True)
+    cast = original.cast(target_dtype, strict=False)
+    is_valid = cast.is_not_null()
+    if _is_numeric_like(source_dtype):
+        round_trip = cast.cast(source_dtype, strict=False)
+        is_valid = is_valid & (round_trip == original)
+    return original.is_null() | is_valid
+
+
+def _event_coordinate_expr(
+        frame: polars.DataFrame,
+        component: Literal['x', 'y'],
+) -> tuple[polars.Expr, bool]:
+    """Resolve one fixation coordinate and report whether its source is numeric.
+
+    Only numeric component columns or numeric ``location`` list entries count as coordinates.
+    Anything else resolves to null so it receives no match, as in the per-row lookup.
+    """
+    index = 0 if component == 'x' else 1
+    component_column = f'location_{component}'
+    if component_column in frame.columns:
+        source_dtype = frame.schema[component_column]
+        if _is_numeric_like(source_dtype):
+            return polars.col(component_column).cast(polars.Float64), True
+        return polars.lit(None, dtype=polars.Float64), False
+    if 'location' in frame.columns:
+        source_dtype = frame.schema['location']
+        if isinstance(source_dtype, polars.List) and _is_numeric_like(source_dtype.inner):
+            return polars.col('location').list.get(index).cast(polars.Float64), True
+        return polars.lit(None, dtype=polars.Float64), False
+    return polars.lit(None, dtype=polars.Float64), False
+
+
+def _map_fixations_to_aois(
+        frame: polars.DataFrame,
+        aoi_dataframe: TextStimulus,
+        aoi_columns: list[str],
+        aoi_schema: dict[str, polars.PolarsDataType],
+        verbose: bool,
+) -> polars.DataFrame:
+    """Return the AOI columns for all fixations in ``frame``, aligned to its row order.
+
+    Non-fixation rows, rows with invalid coordinates and rows without a matching AOI receive
+    null values. Fixation-to-AOI matching is done with a single vectorized join and spatial
+    filter instead of a per-row Python loop.
+    """
+    key_columns = [
+        column
+        for column in (aoi_dataframe.trial_column, aoi_dataframe.page_column)
+        if column is not None and column in frame.columns
+    ]
+
+    x_expr, x_is_numeric = _event_coordinate_expr(frame, 'x')
+    y_expr, y_is_numeric = _event_coordinate_expr(frame, 'y')
+
+    candidates = frame.select(
+        polars.int_range(polars.len()).alias(_AOI_ROW_ID),
+        polars.col('name').alias(_AOI_NAME),
+        x_expr.alias(_AOI_X),
+        y_expr.alias(_AOI_Y),
+        # Keep the original key values for the null-wildcard lookup below.
+        *[polars.col(column) for column in key_columns],
+        # Cast to the AOI key dtypes so the join keys always share a common dtype.
+        *[
+            polars.col(column)
+            .cast(aoi_dataframe.aois.schema[column], strict=False)
+            .alias(_aoi_join_key_name(column))
+            for column in key_columns
+        ],
+    )
+    is_fixation = (
+        polars.col(_AOI_NAME).is_not_null()
+        & polars.col(_AOI_NAME).str.starts_with('fixation')
+    )
+    has_valid_xy = (
+        polars.col(_AOI_X).is_not_null()
+        & polars.col(_AOI_Y).is_not_null()
+        & polars.col(_AOI_X).is_not_nan()
+        & polars.col(_AOI_Y).is_not_nan()
+    )
+
+    n_fixations = candidates.filter(is_fixation).height
+    if x_is_numeric and y_is_numeric:
+        n_invalid = candidates.filter(is_fixation & ~has_valid_xy).height
+    else:
+        n_invalid = n_fixations
+    if n_invalid:
+        warnings.warn(
+            f'Invalid eye coordinates in {n_invalid} of {n_fixations} fixations for AOI '
+            'lookup. Returning no match for these fixations.',
+            UserWarning,
+        )
+
+    candidates = candidates.filter(is_fixation & has_valid_xy)
+
+    # Rows whose configured key columns contain null are matched against all AOIs of the
+    # respective other key (legacy behavior); handle them via the per-row lookup below.
+    # Non-null keys that do not survive the cast match no AOI, as in the per-row lookup.
+    if key_columns:
+        keys_present = polars.all_horizontal(
+            [polars.col(column).is_not_null() for column in key_columns],
+        )
+        keys_valid = polars.all_horizontal(
+            [
+                _key_cast_is_valid(
+                    polars.col(column),
+                    frame.schema[column],
+                    aoi_dataframe.aois.schema[column],
+                )
+                for column in key_columns
+            ],
+        )
+        constrained = candidates.filter(keys_present & keys_valid)
+        wildcard = candidates.filter(~keys_present)
+    else:
+        constrained = candidates
+        wildcard = candidates.head(0)
+
+    aois = aoi_dataframe.aois.with_columns(
+        polars.int_range(polars.len()).alias(_AOI_MATCH_ORDER),
+    )
+    if key_columns:
+        matches = constrained.join(
+            aois,
+            left_on=[_aoi_join_key_name(column) for column in key_columns],
+            right_on=key_columns,
+            how='inner',
+            suffix='_aoi',
+        )
+    else:
+        matches = constrained.join(aois, how='cross', suffix='_aoi')
+
+    if aoi_dataframe.width_column is not None:
+        spatial = (
+            (polars.col(aoi_dataframe.start_x_column) <= polars.col(_AOI_X))
+            & (
+                polars.col(_AOI_X)
+                < polars.col(aoi_dataframe.start_x_column) + polars.col(aoi_dataframe.width_column)
+            )
+            & (polars.col(aoi_dataframe.start_y_column) <= polars.col(_AOI_Y))
+            & (
+                polars.col(_AOI_Y)
+                < polars.col(aoi_dataframe.start_y_column) + polars.col(aoi_dataframe.height_column)
+            )
+        )
+    else:
+        spatial = (
+            (polars.col(aoi_dataframe.start_x_column) <= polars.col(_AOI_X))
+            & (polars.col(_AOI_X) < polars.col(aoi_dataframe.end_x_column))
+            & (polars.col(aoi_dataframe.start_y_column) <= polars.col(_AOI_Y))
+            & (polars.col(_AOI_Y) < polars.col(aoi_dataframe.end_y_column))
+        )
+    matches = matches.filter(spatial)
+
+    multiple = (
+        matches.group_by(_AOI_ROW_ID).len().filter(polars.col('len') > 1)
+        .join(candidates.select(_AOI_ROW_ID, _AOI_X, _AOI_Y), on=_AOI_ROW_ID, how='left')
+        .sort(_AOI_ROW_ID)
+    )
+    for candidate in multiple.iter_rows(named=True):
+        warnings.warn(
+            f'Multiple AOIs matched this point (x={candidate[_AOI_X]}, y={candidate[_AOI_Y]}).',
+            UserWarning,
+        )
+
+    matched = (
+        matches.sort([_AOI_ROW_ID, _AOI_MATCH_ORDER])
+        .group_by(_AOI_ROW_ID)
+        .agg([polars.col(column).first() for column in aoi_columns])
+    )
+
+    if wildcard.height:
+        fallback_records = [
+            _aoi_lookup_record(aoi_dataframe, row, key_columns, aoi_columns)
+            for row in tqdm(
+                wildcard.iter_rows(named=True),
+                desc='Mapping events to AOIs',
+                unit='event',
+                ncols=80,
+                disable=not verbose,
+            )
+        ]
+        fallback_records = [record for record in fallback_records if record is not None]
+        if fallback_records:
+            fallback = polars.DataFrame(
+                fallback_records,
+                schema={_AOI_ROW_ID: candidates.schema[_AOI_ROW_ID], **aoi_schema},
+            )
+            matched = polars.concat([matched, fallback])
+
+    result = frame.with_row_index(_AOI_ROW_ID)
+    if matched.height:
+        result = result.join(matched, on=_AOI_ROW_ID, how='left')
+    else:
+        result = result.with_columns(
+            [polars.lit(None).cast(aoi_schema[column]).alias(column) for column in aoi_columns],
+        )
+    return result.sort(_AOI_ROW_ID).select(aoi_columns).cast(aoi_schema)
+
+
+def _aoi_lookup_record(
+        aoi_dataframe: TextStimulus,
+        row: dict[str, Any],
+        key_columns: list[str],
+        aoi_columns: list[str],
+) -> dict[str, Any] | None:
+    """Look up a single wildcard (null key) event row via the per-row AOI lookup."""
+    lookup = {column: row[column] for column in key_columns}
+    lookup[_AOI_X] = row[_AOI_X]
+    lookup[_AOI_Y] = row[_AOI_Y]
+    try:
+        aoi_row = aoi_dataframe.get_aoi(
+            row=lookup, x_eye=_AOI_X, y_eye=_AOI_Y, max_matches=1,
+        )
+    except (KeyError, TypeError):
+        return None
+    record: dict[str, Any] = {_AOI_ROW_ID: row[_AOI_ROW_ID]}
+    record.update({column: aoi_row[column][0] for column in aoi_columns})
+    return record
 
 
 @repr_html(['frame', 'trial_columns'])
@@ -219,10 +485,10 @@ class Events:
             )
 
         if data is not None:
-            _checks.check_is_mutual_exclusive(data=data, onsets=onsets)
-            _checks.check_is_mutual_exclusive(data=data, offsets=offsets)
-            _checks.check_is_mutual_exclusive(data=data, name=name)
-            _checks.check_is_mutual_exclusive(data=data, name=trials)
+            checks.check_is_mutual_exclusive(data=data, onsets=onsets)
+            checks.check_is_mutual_exclusive(data=data, offsets=offsets)
+            checks.check_is_mutual_exclusive(data=data, name=name)
+            checks.check_is_mutual_exclusive(data=data, name=trials)
 
             data = data.clone()
             data = self._add_minimal_schema_columns(data)
@@ -240,7 +506,7 @@ class Events:
 
         else:
             # Make sure that if either onsets or offsets is None, the other one is None too.
-            _checks.check_is_none_is_mutual(onsets=onsets, offsets=offsets)
+            checks.check_is_none_is_mutual(onsets=onsets, offsets=offsets)
 
             # Make sure lengths of onsets and offsets are equal.
             if onsets is not None:
@@ -248,10 +514,10 @@ class Events:
                 # mypy does not get that offsets cannot be None (l. 87)
                 assert offsets is not None
 
-                _checks.check_is_length_matching(onsets=onsets, offsets=offsets)
+                checks.check_is_length_matching(onsets=onsets, offsets=offsets)
                 # In case name is given as a list, check that too.
                 if isinstance(name, Sequence) and not isinstance(name, str):
-                    _checks.check_is_length_matching(onsets=onsets, name=name)
+                    checks.check_is_length_matching(onsets=onsets, name=name)
 
                 # These reassignments are necessary for a correct conversion into a dataframe.
                 if len(onsets) == 0:
@@ -449,7 +715,7 @@ class Events:
                 raise TypeError(
                     'data must be passed as a list of values in case of providing multiple columns',
                 )
-            _checks.check_is_length_matching(column=column, data=data)
+            checks.check_is_length_matching(column=column, data=data)
 
             trial_columns = dict(zip(column, data))
 
@@ -893,14 +1159,38 @@ class Events:
             aoi_dataframe: TextStimulus,
             *,
             preserve_structure: bool = True,
-            verbose: bool = True,
+            verbose: bool | None = None,
     ) -> None:
         """Map events to AOIs, ignoring non-fixations.
 
         This function computes AOI membership only for rows whose ``name`` starts with
-        ``"fixation"`` (e.g., ``"fixation"``, ``"fixation_ivt"``). Rows that are not fixations
-        are left unchanged and receive ``None`` values for all AOI columns. The original order
-        and number of rows are preserved.
+        ``"fixation"`` (e.g., ``"fixation"``, ``"fixation_ivt"``). Non-fixation rows,
+        fixations with invalid coordinates and fixations without a matching AOI receive
+        ``None`` values for all appended AOI columns. The original order and number of rows
+        are preserved.
+
+        Fixations are matched against the AOI rectangles with a vectorised join and
+        half-open rectangle test (``start <= coordinate < end``) instead of one lookup per
+        row. Coordinates are taken from numeric ``location_x``/``location_y`` columns, or
+        from a numeric ``location`` list column when the component columns are absent.
+        Fixations whose coordinates are missing, ``NaN`` or non-numeric receive no match,
+        and one ``UserWarning`` reports the number of such fixations per call.
+
+        Trial and page keys:
+
+        - If the stimulus defines ``trial_column``/``page_column`` and the events frame has
+          the same columns, matching is restricted to AOIs with equal key values.
+        - A null value in a configured key column is a wildcard: that fixation is matched
+          against all AOIs for the other key(s), using the per-row
+          :meth:`~pymovements.stimulus.TextStimulus.get_aoi` lookup.
+        - A non-null key is cast to the AOI key dtype, so the string ``'02'`` matches the
+          integer key ``2``. A key that cannot be cast without changing its value (for
+          example ``'x'`` or ``1.5`` against an integer column) matches no AOI.
+
+        Overlapping AOIs:
+
+        - If multiple AOIs contain a fixation, the first AOI in stimulus order is selected
+          and a ``UserWarning`` is emitted.
 
         Schema handling:
 
@@ -908,12 +1198,11 @@ class Events:
           ``location`` column exists: derive ``location_x``/``location_y`` and drop ``location``.
           This keeps downstream expectations about flat component columns.
         - If ``preserve_structure=False``, no unnesting/derivation occurs and the original
-          ``location`` list column is preserved. Coordinates are extracted per-row without
-          altering the frame.
+          ``location`` list column is preserved. Matching reads coordinates without altering
+          the frame.
 
-        AOI columns used for trial/page keys in the stimulus (``trial_column``/``page_column``)
-        are not appended to the events, as they are dropped by ``TextStimulus.get_aoi`` to avoid
-        duplicate columns during concatenation.
+        AOI columns used as trial/page keys are only appended when the events frame does not
+        already contain a column with that name; existing event columns are never overwritten.
 
         Parameters
         ----------
@@ -922,20 +1211,47 @@ class Events:
         preserve_structure: bool
             Control whether to derive component columns and drop the list column as described
             above. Default: True.
-        verbose : bool
-            If ``True``, show a progress bar. (default: True)
+        verbose: bool | None
+            If ``True``, show a progress bar over the fixations with a null trial or page value,
+            the only ones that are still looked up one by one. (default: None)
+
+            .. deprecated:: v0.29.0
+                The mapping no longer loops over all events.
+                This argument will be removed in v0.34.0.
 
         Raises
         ------
         ValueError
             If ``aoi_dataframe`` does not have either ``width_column`` or ``end_x_column`` defined.
         ValueError
+            If ``width_column`` and ``height_column`` or ``end_x_column`` and ``end_y_column``
+            are not both defined or both ``None``.
+        ValueError
             If the events frame is empty.
         """
+        if verbose is not None:
+            warnings.warn(
+                DeprecationWarning(
+                    "Events.map_to_aois argument 'verbose' is deprecated since version v0.29.0. "
+                    'The mapping no longer loops over all events. '
+                    'This argument will be removed in v0.34.0.',
+                ),
+            )
+
         # Validate AOI configuration early
         if aoi_dataframe.width_column is None and aoi_dataframe.end_x_column is None:
             raise ValueError(
                 'either TextStimulus.width or TextStimulus.end_x_column must be defined',
+            )
+        if aoi_dataframe.width_column is not None:
+            checks.check_is_none_is_mutual(
+                height_column=aoi_dataframe.width_column,
+                width_column=aoi_dataframe.height_column,
+            )
+        else:
+            checks.check_is_none_is_mutual(
+                end_x_column=aoi_dataframe.end_x_column,
+                end_y_column=aoi_dataframe.end_y_column,
             )
         # Raise when no rows to concat
         if self.frame.height == 0:
@@ -964,67 +1280,11 @@ class Events:
             if aoi_columns else {}
         )
 
-        def _empty_aoi_row() -> polars.DataFrame:
-            # Create one row of all-None cast to expected AOI dtypes
-            return polars.DataFrame({col: [None] for col in aoi_columns}).cast(aoi_schema)
-
-        out_rows: list[polars.DataFrame] = []
-        for row in tqdm(
-                self.frame.iter_rows(named=True),
-                total=len(self.frame),
-                desc='Mapping events to AOIs',
-                unit='event',
-                ncols=80,
-                disable=not verbose,
-        ):
-            name_val = row.get('name')
-            is_fix = isinstance(name_val, str) and name_val.startswith('fixation')
-            if not is_fix:
-                out_rows.append(_empty_aoi_row())
-                continue
-
-            # Extract coordinates - support either pre-existing component columns or list column
-            x = row.get('location_x')
-            y = row.get('location_y')
-            if x is None or y is None:
-                loc = row.get('location')
-                if isinstance(loc, (list, tuple)) and len(loc) >= 2:
-                    x, y = loc[0], loc[1]
-
-            if x is None or y is None:
-                out_rows.append(_empty_aoi_row())
-                continue
-
-            # Create a shallow copy with temporary keys for AOI lookup
-            tmp_row = dict(row)
-            tmp_row['__x'] = x
-            tmp_row['__y'] = y
-
-            try:
-                aoi_row = aoi_dataframe.get_aoi(
-                    row=tmp_row, x_eye='__x', y_eye='__y', max_matches=1,
-                )
-            except (KeyError, TypeError):  # tolerate common lookup/type errors per row
-                aoi_row = _empty_aoi_row()
-            else:
-                # Project to the selected AOI columns and fill any missing ones with None
-                if aoi_columns:
-                    present = [c for c in aoi_columns if c in aoi_row.columns]
-                    missing = [c for c in aoi_columns if c not in aoi_row.columns]
-                    aoi_row = aoi_row.select(
-                        [polars.col(c) for c in present]
-                        + [polars.lit(None).alias(c) for c in missing],
-                    )
-                    # Cast to the stable AOI schema to ensure consistent dtypes across rows
-                    aoi_row = aoi_row.cast(aoi_schema)
-                else:
-                    # No AOI columns are to be appended (all already exist in the Events frame).
-                    # Keep row count but contribute zero columns to avoid duplicate-column errors.
-                    aoi_row = aoi_row.select([])
-            out_rows.append(aoi_row)
-
-        aoi_df = polars.concat(out_rows)
-        self.frame = polars.concat([self.frame, aoi_df], how='horizontal_extend')
+        if aoi_columns:
+            aoi_df = _map_fixations_to_aois(
+                self.frame, aoi_dataframe, aoi_columns, aoi_schema, verbose is True,
+            )
+            self.frame = polars.concat([self.frame, aoi_df], how='horizontal_extend')
 
         # Backward-compatibility: some pipelines expect that a prior unnest removed the
         # original 'location' list column and kept only component columns. We avoid unnesting,
@@ -1207,6 +1467,243 @@ class Events:
             trial_columns=self.trial_columns,
             metadata=merge_sources(deepcopy(self.metadata), aois.metadata),
         )
+
+    def measure_reading(
+            self,
+            stimulus: TextStimulus | dict[Any, TextStimulus],
+            *,
+            group_columns: list[str] | None = None,
+            word_index_column: str = 'word_idx',
+            word_column: str = 'word',
+            event_name: str = 'fixation',
+    ) -> ReadingMeasures:
+        """Compute word-level reading measures from the fixation events.
+
+        The fixations are mapped onto the AOIs of ``stimulus`` (see
+        :py:meth:`~pymovements.Events.map_to_aois`) and word-level reading measures are computed
+        from the resulting word indices (see
+        :func:`~pymovements.measure.reading.compute_reading_measures`). The events are not
+        modified. The mapping happens on an internal copy, and index columns from an earlier
+        mapping are replaced on that copy. The ``Sources`` entry of the returned measures lists
+        the sources of the events followed by those of the stimuli. Empty events return only
+        their own sources.
+
+        Parameters
+        ----------
+        stimulus : TextStimulus | dict[Any, TextStimulus]
+            Text stimulus defining the AOIs. Pass a dict mapping values of the first group column
+            to a separate stimulus per value when the events span several stimuli.
+        group_columns : list[str] | None
+            Column names used to partition the data into independent reading sequences. The first
+            column takes the trial role, the remaining columns take the page role. If ``None`` or
+            empty, the whole input is treated as a single reading sequence. Required if
+            ``stimulus`` is a dict, whose keys are the values of the first group column.
+            (default: None)
+        word_index_column : str
+            Shared column name in the mapped fixations and the stimulus AOIs that corresponds to
+            the word index of the text.
+            (default: ``'word_idx'``)
+        word_column : str
+            Column in the stimulus AOIs with the content within each AOI.
+            (default: ``'word'``)
+        event_name : str
+            Name of the fixation events to compute measures from. Rows with a different ``name``
+            are dropped. The name must start with ``fixation``, because the AOI mapping only maps
+            fixation rows (see :py:meth:`~pymovements.Events.map_to_aois`).
+            (default: ``'fixation'``)
+
+        Returns
+        -------
+        ReadingMeasures
+            Reading measures container with one row per word.
+
+        Raises
+        ------
+        ValueError
+            If ``stimulus`` is a dict and ``group_columns`` is empty, the dict is empty, the
+            events have no first group column, the keys cannot be cast to that column's dtype,
+            an entry's own sequence column differs from its key, or a sequence of the events has
+            no entry.
+
+        Warns
+        -----
+        UserWarning
+            If ``stimulus`` is a dict with a key that matches no fixation. Its words are kept in
+            the output with all measures zero and ``skipped`` set to 1. Also if a single
+            ``stimulus`` has no first group column while the events do, in which case its AOIs
+            are broadcast to every value of that column. Also if no fixation row carries
+            ``event_name``, for example a name without the ``fixation`` prefix, in which case all
+            measures are zero.
+
+        Examples
+        --------
+        Two fixations on a three-word stimulus, where the third word is never looked at:
+
+        >>> import polars
+        >>> import pymovements as pm
+        >>> events = pm.Events(
+        ...     polars.DataFrame({
+        ...         'name': ['fixation', 'fixation'],
+        ...         'onset': [0, 200],
+        ...         'offset': [200, 400],
+        ...         'location': [[15.0, 15.0], [25.0, 15.0]],
+        ...     }),
+        ... )
+        >>> stimulus = pm.stimulus.TextStimulus(
+        ...     aois=polars.DataFrame({
+        ...         'word': ['The', 'quick', 'brown'],
+        ...         'word_idx': [0, 1, 2],
+        ...         'start_x': [10.0, 20.0, 30.0],
+        ...         'start_y': [10.0, 10.0, 10.0],
+        ...         'end_x': [20.0, 30.0, 40.0],
+        ...         'end_y': [30.0, 30.0, 30.0],
+        ...     }),
+        ...     aoi_column='word',
+        ...     start_x_column='start_x',
+        ...     start_y_column='start_y',
+        ...     end_x_column='end_x',
+        ...     end_y_column='end_y',
+        ... )
+
+        The measures hold one row per word. The skipped word has a total fixation time of 0:
+
+        >>> measures = events.measure_reading(stimulus)
+        >>> measures.frame.select(['word_index', 'word', 'TFT', 'TFC', 'skipped'])
+        shape: (3, 5)
+        ┌────────────┬───────┬─────┬─────┬─────────┐
+        │ word_index ┆ word  ┆ TFT ┆ TFC ┆ skipped │
+        │ ---        ┆ ---   ┆ --- ┆ --- ┆ ---     │
+        │ i64        ┆ str   ┆ i64 ┆ u64 ┆ i64     │
+        ╞════════════╪═══════╪═════╪═════╪═════════╡
+        │ 0          ┆ The   ┆ 200 ┆ 1   ┆ 0       │
+        │ 1          ┆ quick ┆ 200 ┆ 1   ┆ 0       │
+        │ 2          ┆ brown ┆ 0   ┆ 0   ┆ 1       │
+        └────────────┴───────┴─────┴─────┴─────────┘
+        """
+        if self.frame.is_empty():
+            return ReadingMeasures(metadata=deepcopy(self.metadata))
+
+        # map_to_aois keeps columns the events already have, so a previous mapping would be
+        # reused. The index columns the measures consume are dropped from the working copy.
+        stale_columns = [
+            column for column in (word_index_column, 'char_idx') if column in self.frame.columns
+        ]
+        working_frame = self.frame.drop(stale_columns)
+
+        if isinstance(stimulus, dict):
+            stimuli = list(stimulus.values())
+            fixations, aois = self._map_to_reading_stimuli(
+                working_frame, stimulus, group_columns, word_index_column,
+            )
+        else:
+            stimuli = [stimulus]
+            mapped = Events(working_frame, trial_columns=self.trial_columns)
+            mapped.map_to_aois(stimulus)
+            fixations, aois = mapped.frame, stimulus.aois
+
+        # The measures are derived from the events and the stimulus files.
+        metadata = deepcopy(self.metadata)
+        for stim in stimuli:
+            metadata = merge_sources(metadata, stim.metadata)
+
+        return ReadingMeasures(
+            compute_reading_measures(
+                fixations,
+                aois,
+                word_index_column=word_index_column,
+                word_column=word_column,
+                event_name=event_name,
+                group_columns=group_columns,
+            ),
+            metadata=metadata,
+        )
+
+    def _map_to_reading_stimuli(
+            self,
+            frame: polars.DataFrame,
+            stimuli: dict[Any, TextStimulus],
+            group_columns: list[str] | None,
+            word_index_column: str,
+    ) -> tuple[polars.DataFrame, dict[Any, polars.DataFrame]]:
+        """Map each reading sequence to its own stimulus and collect the per-key AOI tables.
+
+        The events in ``frame`` are split by the first group column and the subset for each key
+        is mapped to the matching stimulus. Rows whose key has no stimulus entry pass through
+        unmapped. Returns the concatenated fixations and a dict of the per-key AOI tables for
+        :func:`~pymovements.measure.reading.compute_reading_measures`.
+        """
+        # The dict is keyed by the first group column (the trial role), matching
+        # compute_reading_measures.
+        if not group_columns:
+            raise ValueError(
+                'stimulus given as dict requires at least one group column for its keys, e.g. '
+                "group_columns=['trial'] when the dict is keyed by the trial column.",
+            )
+        sequence_column = group_columns[0]
+        if sequence_column not in frame.columns:
+            raise ValueError(
+                f'stimulus is a dict keyed by {sequence_column!r}, but the events have no '
+                f'{sequence_column!r} column.',
+            )
+
+        # The keys are compared with the column, so they are cast to its dtype once, the same
+        # way compute_reading_measures does it.
+        sequence_dtype = frame.schema[sequence_column]
+        try:
+            keys = polars.Series(sequence_column, list(stimuli)).cast(sequence_dtype)
+        except polars.exceptions.PolarsError as exception:
+            raise ValueError(
+                f'stimulus dict keys are not compatible with the fixation {sequence_column} '
+                f'dtype {sequence_dtype}: {exception}',
+            ) from exception
+
+        mapped_frames = []
+        aois = {}
+        for key, (original_key, stim) in zip(keys, stimuli.items()):
+            aois[original_key] = stim.aois
+            if sequence_column in stim.aois.columns:
+                # map_to_aois still filters the entry's AOIs by this column, so values other
+                # than the key would leave every fixation of the sequence unmatched. AOI rows
+                # with a null value are ignored by the mapping and by this check.
+                values = (
+                    stim.aois[sequence_column].drop_nulls().cast(sequence_dtype, strict=False)
+                    .unique().to_list()
+                )
+                if values != [key]:
+                    raise ValueError(
+                        f'stimulus for key {original_key!r} has {sequence_column} values '
+                        f'{values} that differ from its dict key.',
+                    )
+                # The dict key defines the sequence column, so it must not also live in the
+                # entry handed to compute_reading_measures.
+                aois[original_key] = stim.aois.drop(sequence_column)
+            subset = Events(
+                frame.filter(polars.col(sequence_column) == key),
+                trial_columns=self.trial_columns,
+            )
+            if subset.frame.is_empty():
+                continue
+            subset.map_to_aois(stim)
+            mapped_frames.append(subset.frame)
+
+        # Rows whose key has no stimulus entry pass through unmapped, so that
+        # compute_reading_measures raises its missing-key error instead of silently dropping them.
+        # is_in is null for a null key, which filter would drop. A null key is unmatched too.
+        unmatched = frame.filter(
+            ~polars.col(sequence_column).is_in(keys.implode()).fill_null(False),
+        )
+        if not unmatched.is_empty():
+            mapped_frames.append(unmatched)
+
+        # Different stimuli may contribute different AOI columns, so align on the column union.
+        fixations = polars.concat(mapped_frames, how='diagonal_relaxed')
+        if word_index_column not in fixations.columns:
+            # No key matched any row, so no mapping added the index column that
+            # compute_reading_measures reads before it raises its own error.
+            fixations = fixations.with_columns(
+                polars.lit(None, dtype=polars.Int64).alias(word_index_column),
+            )
+        return fixations, aois
 
     def __eq__(self, other: Events) -> bool:
         """Check equality between this and another :py:class:`~pymovements.Events` object."""
