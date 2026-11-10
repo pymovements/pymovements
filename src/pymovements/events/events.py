@@ -888,8 +888,8 @@ class Events:
                 )
         if sampling_rate is not None and rate is not None and sampling_rate != rate:
             raise ValueError(
-                f'sampling_rate={sampling_rate:g} differs from the metadata entry '
-                f"metadata['{_SAMPLING_RATE_KEY}'] = {entry_rate:g}. "
+                f'sampling_rate={sampling_rate!r} differs from the metadata entry '
+                f"metadata['{_SAMPLING_RATE_KEY}'] = {entry_rate!r}. "
                 'Correct the entry or drop the keyword.',
             )
         return entry_inclusive, rate
