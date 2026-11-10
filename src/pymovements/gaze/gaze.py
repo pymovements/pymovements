@@ -1360,9 +1360,9 @@ class Gaze:
         """Detect events by applying a specific event detection method.
 
         A method that takes a ``sampling_rate`` keyword receives the sampling rate of the
-        experiment unless ``sampling_rate`` is passed in ``kwargs``. The entries of the detected
-        events, the sampling rate and the offset convention, are carried into the metadata of
-        :py:attr:`~.Gaze.events`.
+        experiment unless ``sampling_rate`` is passed in ``kwargs``, where ``None`` counts as
+        not passed. The entries of the detected events, the sampling rate and the offset
+        convention, are carried into the metadata of :py:attr:`~.Gaze.events`.
 
         Parameters
         ----------
@@ -2882,7 +2882,7 @@ class Gaze:
             else:
                 kwargs['timesteps'] = timesteps_series
 
-        if 'sampling_rate' in method_args and 'sampling_rate' not in kwargs:
+        if 'sampling_rate' in method_args and kwargs.get('sampling_rate') is None:
             if self.experiment is None or self.experiment.sampling_rate is None:
                 raise ValueError(
                     f"{getattr(method, '__name__', method)} requires a sampling_rate, but the "
