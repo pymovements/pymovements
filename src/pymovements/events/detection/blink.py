@@ -38,13 +38,13 @@ def blink(
         pupil: list[float] | numpy.ndarray | polars.Series,
         *,
         timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
-        sampling_rate: float,
         delta: float | None = None,
         minimum_duration: int = 50,
         maximum_duration: int | None = 500,
         minimum_gap: int = 5,
         minimum_candidates_around_gap: tuple[int, int] | int = 2,
         name: str = 'blink',
+        sampling_rate: float,
 ) -> Events:
     """Detect blinks from the pupil signal.
 
@@ -76,10 +76,6 @@ def blink(
         Corresponding continuous 1D timestep time series. If None, sample-based timesteps are
         assumed.
         (default: None)
-    sampling_rate: float
-        Sampling rate of the signal in Hz. Each sample covers the nominal interval
-        ``1000 / sampling_rate`` milliseconds, which is added to the duration of every event
-        and written to the sampling-rate entry of the events metadata.
     delta: float | None
         Threshold on absolute pupil difference for flagging rapid changes. If None, it is
         auto-estimated as ``5 * numpy.nanpercentile(abs_diff, 95)`` from valid absolute
@@ -110,6 +106,10 @@ def blink(
         (default: (2, 2))
     name: str
         Name for detected events in Events. (default: 'blink')
+    sampling_rate: float
+        Sampling rate of the signal in Hz. Each sample covers the nominal interval
+        ``1000 / sampling_rate`` milliseconds, which is added to the duration of every event
+        and written to the sampling-rate entry of the events metadata.
 
     Returns
     -------
