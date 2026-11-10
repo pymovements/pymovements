@@ -46,7 +46,7 @@ def duration_to_ms(column: str | pl.Series | pl.Expr) -> pl.Series | pl.Expr:
     return expr.dt.total_microseconds() / 1000
 
 
-def present_duration_columns_to_ms(frame: pl.DataFrame) -> pl.DataFrame:
+def event_times_to_ms(frame: pl.DataFrame) -> pl.DataFrame:
     """Convert the ``onset`` and ``offset`` columns that ``frame`` has to fractional milliseconds.
 
     A missing column is skipped, so an events frame without an ``offset`` column converts only
