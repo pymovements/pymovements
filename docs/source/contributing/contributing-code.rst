@@ -159,37 +159,21 @@ For running a specific hook on all git repository files use
 Dependencies
 ^^^^^^^^^^^^
 
-``pyproject.toml`` is the only place that declares a dependency and its version. Every requirement
-carries a lower bound and no upper bound. The lower bound is the oldest version the code works
-with, and the minimum-requirements job in CI runs the tests against it. A breaking upstream release
-is caught by the daily build and fixed forward.
+Every dependency in ``pyproject.toml`` has a lower bound and no upper bound. A new required
+dependency needs a justification in the pull request description.
 
-A new required dependency needs a justification in the pull request description. Prefer what
-pymovements already depends on.
+A package that only a few features need goes into an extra. Import it with
+``import_optional_dependency`` from ``pymovements._utils.optional`` on the code path that needs it.
+The helper raises an ``ImportError`` that names the extra to install.
 
-A package that only a few features need goes into an extra instead of the required dependencies.
-Code imports it through ``import_optional_dependency`` from ``pymovements._utils.optional``, which
-raises an ``ImportError`` with the install hint when the package is missing or older than the extra
-requires. Place the call on the code path that needs the package, not on a branch that works
-without it. A change to the extras updates the Optional Dependencies section of the
-:doc:`installation guide </user-guide/getting-started/installation>`.
-
-Heavy packages are imported inside the function that uses them, so that ``import pymovements``
-stays fast. Today these are scipy, matplotlib, pandas, scikit-learn and PIL. Import the module
-with ``importlib.import_module`` and bind it to an alias, which keeps pylint's
-``import-outside-toplevel`` check on. Imports needed only for type annotations go under
-``TYPE_CHECKING``.
+Heavy packages (scipy, matplotlib, pandas, scikit-learn, PIL) are imported inside the function that
+uses them, so that ``import pymovements`` stays fast. Bind the module to an alias with
+``importlib.import_module``, which keeps pylint's ``import-outside-toplevel`` check on. Imports
+needed only for type annotations go under ``TYPE_CHECKING``.
 
 .. code:: python
 
     plt = importlib.import_module('matplotlib.pyplot')
-
-``tests/unit/import_test.py`` checks which packages ``import pymovements`` loads. Add a new heavy
-package to its list.
-
-Tests for code behind an extra go through the public function and mock the boundary: set
-``sys.modules[name]`` to ``None`` for a missing package, patch ``importlib.metadata.version`` for
-the version check.
 
 .. _testing:
 
