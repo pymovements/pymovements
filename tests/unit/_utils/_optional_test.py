@@ -88,3 +88,15 @@ def test_import_optional_dependency_not_in_extra_raises_value_error(name, extra)
     expected_message = f"'{name}' is not a requirement of the pymovements extra '{extra}'"
     with pytest.raises(ValueError, match=re.escape(expected_message)):
         import_optional_dependency(name, extra=extra)
+
+
+def test_import_optional_dependency_conditional_core_requirement_raises_value_error(monkeypatch):
+    requirements = [
+        'pyreadr>=0.5.2; python_version >= "3.9"',
+        'fastexcel>=0.13.0; extra == "datasets"',
+    ]
+    monkeypatch.setattr(importlib.metadata, 'requires', lambda name: requirements)
+
+    expected_message = "'pyreadr' is not a requirement of the pymovements extra 'datasets'"
+    with pytest.raises(ValueError, match=re.escape(expected_message)):
+        import_optional_dependency('pyreadr', extra='datasets')

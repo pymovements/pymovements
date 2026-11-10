@@ -73,11 +73,18 @@ def import_optional_dependency(name: str, extra: str) -> ModuleType:
 
 
 def _requirement(name: str, extra: str) -> Requirement:
-    """Return the requirement for ``name`` that the pymovements ``extra`` declares."""
+    """Return the requirement for ``name`` that the pymovements ``extra`` declares.
+
+    A requirement belongs to the extra if its marker is true for the extra and false without
+    it. A core requirement with an environment marker evaluates the same either way.
+    """
     for requirement_string in importlib.metadata.requires('pymovements') or []:
         requirement = Requirement(requirement_string)
         if requirement.name != name or requirement.marker is None:
             continue
-        if requirement.marker.evaluate({'extra': extra}):
+        if (
+            requirement.marker.evaluate({'extra': extra})
+            and not requirement.marker.evaluate({'extra': ''})
+        ):
             return requirement
     raise ValueError(f"'{name}' is not a requirement of the pymovements extra '{extra}'")
