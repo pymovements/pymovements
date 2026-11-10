@@ -1914,6 +1914,23 @@ def test_gaze_detect_clear_replaces_the_sampling_rate_entry():
     assert gaze.events.frame.height == 1
 
 
+def test_gaze_detect_at_600_hz_passes_the_consistency_check_and_rebuilds_clean():
+    # Twelve samples on a true 600 Hz grid: the microsecond residual of a row is 1666 or 1667.
+    gaze = pm.gaze.from_numpy(
+        time=np.arange(12) * 1000 / 600,
+        velocity=np.zeros((2, 12)),
+        experiment=pm.Experiment(sampling_rate=600),
+    )
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        gaze.detect('ivt', minimum_duration=1)
+        rebuilt = pm.Events(gaze.events.frame, metadata=gaze.events.metadata)
+
+    assert gaze.events.metadata == _detected_entries(600)
+    assert rebuilt.frame['duration'].to_list() == [timedelta(milliseconds=20)]
+
+
 def test_gaze_detect_keeps_sources_beside_the_entries():
     gaze = pm.Gaze(
         samples=pl.DataFrame({'time': [0, 1, 2], 'vx': [0.0, 0.0, 0.0], 'vy': [0.0, 0.0, 0.0]}),
