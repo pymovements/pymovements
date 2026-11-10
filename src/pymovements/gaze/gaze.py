@@ -1839,7 +1839,7 @@ class Gaze:
             eye: str = 'auto',
             gaze_type: str = 'pixel',
             preserve_structure: bool = True,
-            verbose: bool = True,
+            verbose: bool | None = None,
     ) -> None:
         """Map gaze samples to AOIs.
 
@@ -1866,10 +1866,23 @@ class Gaze:
             - If False, no unnesting is attempted. Coordinates are selected from the list
               column and passed to the AOI lookup without altering the samples' schema.
 
-        verbose : bool
-            If ``True``, show a progress bar. (default: True)
+        verbose: bool | None
+            Has no effect. (default: None)
+
+            .. deprecated:: v0.29.0
+                The mapping no longer loops over all samples.
+                This argument will be removed in v0.34.0.
         """
-        # pylint: disable=unused-argument, too-many-statements
+        # pylint: disable=too-many-statements
+        if verbose is not None:
+            warn(
+                DeprecationWarning(
+                    "Gaze.map_to_aois argument 'verbose' is deprecated since version v0.29.0. "
+                    'The mapping no longer loops over all samples. '
+                    'This argument will be removed in v0.34.0.',
+                ),
+            )
+
         component_suffixes = ['x', 'y', 'xl', 'yl', 'xr', 'yr', 'xa', 'ya']
         # Schema handling: preserve_structure controls whether we alter the samples schema
         # (by unnesting) or keep list columns intact and select from them. By default,
