@@ -234,16 +234,19 @@ def blink(
 
     candidates = consecutive(arr=candidate_indices)
 
-    # Filter all candidates by duration (in unit of timesteps array).
+    # Filter all candidates by duration (in unit of timesteps array), each sample covering
+    # the nominal interval.
     if minimum_duration:
         candidates = [
             c_indices for c_indices in candidates
-            if minimum_duration <= timesteps[c_indices[-1]] - timesteps[c_indices[0]]
+            if minimum_duration
+            <= timesteps[c_indices[-1]] - timesteps[c_indices[0]] + sampling_interval
         ]
     if maximum_duration:
         candidates = [
             c_indices for c_indices in candidates
-            if timesteps[c_indices[-1]] - timesteps[c_indices[0]] <= maximum_duration
+            if timesteps[c_indices[-1]] - timesteps[c_indices[0]] + sampling_interval
+            <= maximum_duration
         ]
 
     if len(candidates) == 0:

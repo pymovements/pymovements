@@ -265,10 +265,11 @@ def ivt(
     # Remove empty candidates.
     candidates = [candidate for candidate in candidates if len(candidate) > 0]
 
-    # Filter all candidates by minimum duration.
+    # Filter all candidates by minimum duration, each sample covering the nominal interval.
     candidates = [
         candidate for candidate in candidates
-        if timesteps[candidate[-1]] - timesteps[candidate[0]] >= minimum_duration
+        if timesteps[candidate[-1]] - timesteps[candidate[0]] + sampling_interval
+        >= minimum_duration
     ]
 
     # Onset of each event candidate is first index in candidate indices.

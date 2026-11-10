@@ -87,8 +87,8 @@ def idt(
     minimum_duration: float
         Minimum fixation duration. Each sample covers the interval to its successor, so a
         fixation is measured from its first sample to the sample after its last one. The last
-        sample's interval is taken as the last observed one. The duration is specified in the
-        units used in ``timesteps``; for a ``polars.Duration`` timesteps series the unit is
+        sample covers the nominal interval of ``sampling_rate``. The duration is specified in
+        the units used in ``timesteps``; for a ``polars.Duration`` timesteps series the unit is
         milliseconds. If ``timesteps`` is None, then ``minimum_duration`` is specified in
         numbers of samples. (default: 100)
     dispersion_threshold: float
@@ -271,16 +271,15 @@ def idt(
         raise ValueError('minimum_duration must be greater than 0')
 
     # Each sample covers the interval to its successor, so a window [win_start, win_end) covers
-    # end_times[win_end] - timesteps[win_start]. The last sample has no successor, its interval
-    # is taken as the last observed one (PMEP 1 replaces it with the nominal interval from the
-    # sampling rate). A window must hold at least two samples, so a single sample never forms
-    # a fixation.
+    # end_times[win_end] - timesteps[win_start]. The last sample has no successor, it covers
+    # the nominal interval of the sampling rate. A window must hold at least two samples, so a
+    # single sample never forms a fixation.
     if len(timesteps) < 2:
         return Events(
             name=name, onsets=[], durations=[],
             offsets=[], offsets_inclusive=True, sampling_rate=sampling_rate,
         )
-    end_times = numpy.append(timesteps, 2 * timesteps[-1] - timesteps[-2])
+    end_times = numpy.append(timesteps, timesteps[-1] + sampling_interval)
 
     onsets = []
     offsets = []
