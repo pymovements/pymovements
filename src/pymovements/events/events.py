@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides the Events class."""
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
 import warnings
@@ -1921,7 +1922,12 @@ class Events:
             )
         else:
             stimuli = [stimulus]
-            mapped = Events(working_frame, trial_columns=self.trial_columns)
+            mapped = Events(
+                working_frame,
+                trial_columns=self.trial_columns,
+                metadata=deepcopy(self.metadata),
+                validate=False,
+            )
             mapped.map_to_aois(stimulus)
             fixations, aois = mapped.frame, stimulus.aois
 
@@ -2004,6 +2010,8 @@ class Events:
             subset = Events(
                 frame.filter(polars.col(sequence_column) == key),
                 trial_columns=self.trial_columns,
+                metadata=deepcopy(self.metadata),
+                validate=False,
             )
             if subset.frame.is_empty():
                 continue

@@ -678,6 +678,7 @@ def _rebuild_stimulus():
     return pm.stimulus.TextStimulus(
         aois=pl.DataFrame({
             'word': ['first', 'second', 'third'],
+            'word_idx': [0, 1, 2],
             'start_x': [90.0, 90.0, 90.0],
             'start_y': [80.0, 180.0, 280.0],
             'end_x': [200.0, 200.0, 200.0],
@@ -748,6 +749,26 @@ _REBUILD_ENTRY_COLUMNS = ['trial', 'onset', 'duration', 'name', 'offset', 'locat
             _REBUILD_ENTRY_COLUMNS,
             id='gaze_detect_per_group',
         ),
+        pytest.param(
+            _rebuild_entry_events,
+            lambda events: events.measure_reading(_rebuild_stimulus()),
+            _REBUILD_ENTRY_COLUMNS,
+            id='measure_reading',
+        ),
+        pytest.param(
+            _rebuild_entry_events,
+            lambda events: events.measure_reading(
+                {1: _rebuild_stimulus(), 2: _rebuild_stimulus()}, group_columns=['trial'],
+            ),
+            _REBUILD_ENTRY_COLUMNS,
+            id='measure_reading_dict',
+        ),
+        pytest.param(
+            _rebuild_entry_events,
+            pm.synthetic.bridge_gaps,
+            _REBUILD_ENTRY_COLUMNS,
+            id='bridge_gaps',
+        ),
     ],
 )
 def test_rebuild_sites_pass_validate_false_and_carry_metadata(
@@ -760,7 +781,8 @@ def test_rebuild_sites_pass_validate_false_and_carry_metadata(
 
     def spy_init(self, data=None, **kwargs):
         original_init(self, data, **kwargs)
-        calls.append((self, data, kwargs))
+        # The frame is recorded at construction, as measure_reading maps its copy afterwards.
+        calls.append((self, self.frame, data, kwargs))
 
     monkeypatch.setattr(Events, '__init__', spy_init)
     with warnings.catch_warnings():
@@ -768,13 +790,13 @@ def test_rebuild_sites_pass_validate_false_and_carry_metadata(
         warnings.filterwarnings('ignore', message='.*No events were detected')
         rebuild(entry)
 
-    rebuilds = [call for call in calls if call[1] is not None]
+    rebuilds = [call for call in calls if call[2] is not None]
     assert rebuilds
-    for rebuilt, data, kwargs in rebuilds:
+    for rebuilt, frame, data, kwargs in rebuilds:
         assert kwargs['validate'] is False
         assert set(kwargs) <= {'trial_columns', 'metadata', 'validate'}
-        assert_frame_equal(rebuilt.frame, data)
-        assert rebuilt.columns == expected_columns
+        assert_frame_equal(frame, data)
+        assert frame.columns == expected_columns
         assert rebuilt.metadata.items() >= {'key': 'value'}.items()
 
 
