@@ -1073,6 +1073,26 @@ def test_load_precomputed_file_missing_optional_dependency_raises_install_hint(
         load_function(file, dataset_definition=DatasetDefinition())
 
 
+def test_load_precomputed_rm_file_xlsx_other_engine_does_not_require_fastexcel(
+        make_example_file, monkeypatch,
+):
+    filepath = make_example_file('Sentences.xlsx')
+    resource_definition = ResourceDefinition(
+        content='precomputed_reading_measures',
+        load_kwargs={'read_excel_kwargs': {'engine': 'openpyxl'}},
+    )
+    file = DatasetFile(path=filepath, definition=resource_definition)
+    monkeypatch.setitem(sys.modules, 'fastexcel', None)
+    expected_df = pl.DataFrame({'a': [1]})
+    monkeypatch.setattr(pl, 'read_excel', lambda path, **kwargs: expected_df)
+
+    reading_measure = load_precomputed_reading_measure_file(
+        file, dataset_definition=DatasetDefinition(),
+    )
+
+    assert_frame_equal(reading_measure.frame, expected_df)
+
+
 def test_load_precomputed_rm_file_unsupported_file_format(make_example_file):
     filepath = make_example_file('binocular_example.feather')
     resource_definition = ResourceDefinition(content='precomputed_events')

@@ -542,9 +542,10 @@ def load_precomputed_reading_measure_file(
         else:
             raise ValueError('please specify r_dataframe_key in ResourceDefinition.load_kwargs')
     elif file_path_suffix in excel_extensions:
-        # polars imports fastexcel itself, this call only checks that it is installed.
-        import_optional_dependency('fastexcel', extra='datasets')
         read_kwargs = load_kwargs.pop('read_excel_kwargs', {})
+        if read_kwargs.get('engine', 'calamine') == 'calamine':
+            # polars imports fastexcel itself, this call only checks that it is installed.
+            import_optional_dependency('fastexcel', extra='datasets')
         precomputed_reading_measure_df = pl.read_excel(file.path, **read_kwargs)
     else:
         raise ValueError(
