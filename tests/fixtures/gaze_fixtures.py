@@ -31,6 +31,7 @@ from pymovements import Experiment
 from pymovements import EyeTracker
 from pymovements import Gaze
 from pymovements import Screen
+from pymovements._utils.time import time_column_to_duration_us
 
 
 @pytest.fixture(name='gaze_all', scope='function')
@@ -118,7 +119,8 @@ def fixture_make_unvalidated_gaze() -> Callable[..., Gaze]:
 
     A numeric ``time`` column is interpreted as milliseconds and converted to
     ``Duration('us')`` to mirror real Gaze construction, unless ``convert_time``
-    is False.
+    is False. The gaze gets an empty ``Events()``, as ``Gaze.__init__`` does, and
+    no messages, calibrations or validations.
 
     Returns
     -------
@@ -135,9 +137,7 @@ def fixture_make_unvalidated_gaze() -> Callable[..., Gaze]:
             metadata: dict[str, Any] | None = None,
     ) -> Gaze:
         if convert_time and 'time' in samples.columns and samples['time'].dtype.is_numeric():
-            samples = samples.with_columns(
-                (pl.col('time').cast(pl.Float64) * 1000).round().cast(pl.Duration('us')),
-            )
+            samples = time_column_to_duration_us(samples)
         gaze = Gaze.__new__(Gaze)
         gaze.samples = samples
         gaze.trial_columns = trial_columns

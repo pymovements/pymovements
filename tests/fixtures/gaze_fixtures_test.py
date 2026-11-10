@@ -95,6 +95,12 @@ def test_make_unvalidated_gaze_keeps_numeric_time(make_unvalidated_gaze):
     assert gaze.samples.equals(samples)
 
 
+def test_make_unvalidated_gaze_keeps_string_time(make_unvalidated_gaze):
+    samples = pl.DataFrame({'time': ['t0', 't1']})
+    gaze = make_unvalidated_gaze(samples)
+    assert gaze.samples.equals(samples)
+
+
 def test_make_unvalidated_gaze_stores_samples(make_unvalidated_gaze):
     samples = pl.DataFrame({'x': [0.0, 1.0, 2.0]})
     gaze = make_unvalidated_gaze(samples)
@@ -115,3 +121,10 @@ def test_make_unvalidated_gaze_sets_experiment(make_unvalidated_gaze, make_exper
     experiment = make_experiment()
     gaze = make_unvalidated_gaze(pl.DataFrame({'time': [0]}), experiment=experiment)
     assert gaze.experiment is experiment
+
+
+def test_make_unvalidated_gaze_sets_every_attribute_of_gaze_init(make_unvalidated_gaze):
+    samples = pl.DataFrame({'time': [0, 1], 'x': [0.0, 1.0], 'y': [0.0, 1.0]})
+    unvalidated = make_unvalidated_gaze(samples)
+    validated = Gaze(samples, position_columns=['x', 'y'])
+    assert vars(unvalidated).keys() == vars(validated).keys()
