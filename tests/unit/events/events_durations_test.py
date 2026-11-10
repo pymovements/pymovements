@@ -920,6 +920,18 @@ def test_metadata_non_positive_sampling_rate_entry_raises(sampling_rate):
         Events(onsets=[0], durations=[5], metadata={'sampling_rate': sampling_rate})
 
 
+@pytest.mark.parametrize(
+    ('sampling_rate', 'expected_match'),
+    [
+        pytest.param('1000', r"must be a number, but is '1000'\.", id='str'),
+        pytest.param(True, r'must be a number, but is True\.', id='bool'),
+    ],
+)
+def test_metadata_non_numeric_sampling_rate_entry_raises(sampling_rate, expected_match):
+    with pytest.raises(ValueError, match=expected_match):
+        Events(onsets=[0], durations=[5], metadata={'sampling_rate': sampling_rate})
+
+
 @pytest.mark.parametrize('offsets_inclusive', [True, False])
 def test_metadata_offsets_inclusive_without_offset_column_writes_no_entry(offsets_inclusive):
     with pytest.warns(UserWarning, match="no 'offset' column"):
