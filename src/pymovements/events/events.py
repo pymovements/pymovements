@@ -185,11 +185,11 @@ def _join_within_aois(fixations: polars.DataFrame, aoi_group: polars.DataFrame) 
     )
 
 
-def _aoi_bounds(aoi_dataframe: TextStimulus) -> polars.DataFrame:
+def _aois_with_bounds(aoi_dataframe: TextStimulus) -> polars.DataFrame:
     """Return the AOIs of ``aoi_dataframe`` with their match order and Float64 bound columns.
 
-    The bounds are the half-open rectangle of each AOI in both layouts, from width and height
-    or from the end coordinates.
+    The bound columns are the corners of each AOI's rectangle in both layouts, from width and
+    height or from the end coordinates.
     """
     aois = aoi_dataframe.aois.with_columns(
         polars.int_range(polars.len()).alias(_AOI_MATCH_ORDER),
@@ -222,7 +222,7 @@ def _join_fixations_to_aois(
     equi-join on the keys: key equality stays polars equality and fixations whose key has no AOIs
     drop out there.
     """
-    aois = _aoi_bounds(aoi_dataframe)
+    aois = _aois_with_bounds(aoi_dataframe)
 
     # The original key columns only serve the wildcard lookup in the caller. Without them the
     # AOI key columns keep their names in the join.
