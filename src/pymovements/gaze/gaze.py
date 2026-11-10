@@ -46,6 +46,7 @@ from pymovements._utils.time import durations_to_ms
 from pymovements._utils.time import time_column_to_duration_us
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
+from pymovements.events.events import _carry_detected_entries
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.quality import DataQualityReport
 from pymovements.gaze.quality import run_report
@@ -1416,7 +1417,7 @@ class Gaze:
             )
 
             new_events = method(**method_kwargs)
-            _carry_detected_entries(self.events.metadata, new_events.metadata)
+            _carry_detected_entries(self.events, new_events)
 
             if len(new_events) == 0:
                 warn(
@@ -1496,7 +1497,7 @@ class Gaze:
                 )
 
                 new_events = method(**method_kwargs)
-                _carry_detected_entries(self.events.metadata, new_events.metadata)
+                _carry_detected_entries(self.events, new_events)
                 # add group identifiers as new columns
                 new_events.add_trial_column(self.trial_columns, group_identifier)
 
@@ -3574,46 +3575,3 @@ def _check_messages(messages: polars.DataFrame) -> None:
             raise TypeError(
                 "The `messages` polars DataFrame must contain the columns ['time', 'content'].",
             )
-
-
-def _carry_detected_entries(metadata: dict[str, Any], detected: dict[str, Any]) -> None:
-    """Carry the metadata entries of detected events into the metadata of the gaze's events.
-
-    An entry absent from ``metadata`` is copied, an equal entry is left alone, and a differing
-    sampling-rate entry or offset convention entry raises, since one events frame holds one
-    sampling grid and one convention per offset column. Keys that are no entry, such as the
-    sources, are left untouched on both sides.
-
-    Parameters
-    ----------
-    metadata: dict[str, Any]
-        The metadata of the gaze's events, updated in place.
-    detected: dict[str, Any]
-        The metadata of the detected events.
-
-    Raises
-    ------
-    ValueError
-        If the sampling rate or an offset convention of the detected events differs from the
-        entry stored in ``metadata``.
-    """
-    for key, value in detected.items():
-        if key == 'sampling_rate':
-            if key not in metadata:
-                metadata[key] = value
-            elif metadata[key] != value:
-                raise ValueError(
-                    f'detected events have sampling_rate={value!r}, but the existing events '
-                    f"carry metadata['{key}'] = {metadata[key]!r}. "
-                    'Call detect(clear=True) to replace the existing events.',
-                )
-        elif isinstance(value, dict) and value.get('inclusive') is not None:
-            existing = metadata.get(key)
-            if key not in metadata:
-                metadata[key] = dict(value)
-            elif not isinstance(existing, dict) or existing.get('inclusive') != value['inclusive']:
-                raise ValueError(
-                    f"detected events declare metadata['{key}'] = {value!r}, but the existing "
-                    f"events carry metadata['{key}'] = {metadata[key]!r}. "
-                    'Call detect(clear=True) to replace the existing events.',
-                )
