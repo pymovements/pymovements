@@ -27,7 +27,7 @@ import re
 
 import pytest
 
-from pymovements._utils._optional import import_optional_dependency
+from pymovements._utils.optional import import_optional_dependency
 
 
 @pytest.mark.parametrize(

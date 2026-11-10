@@ -32,7 +32,7 @@ from warnings import warn
 import polars as pl
 from tqdm.auto import tqdm
 
-from pymovements._utils._optional import import_optional_dependency
+from pymovements._utils.optional import import_optional_dependency
 from pymovements._utils.paths import match_filepaths
 from pymovements._utils.sources import add_source
 from pymovements._utils.sources import relativize_sources
