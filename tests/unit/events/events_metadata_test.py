@@ -47,31 +47,6 @@ def test_events_clone_deepcopies_metadata():
     assert events.metadata['Sources'] == ['raw/sub_1.csv']
 
 
-def test_events_with_frame_deepcopies_metadata():
-    events = Events(
-        name=['fixation'], onsets=[0], offsets=[1],
-        metadata={'Sources': ['raw/sub_1.csv']},
-    )
-
-    rebuilt = events.with_frame(events.frame)
-
-    assert rebuilt.metadata == events.metadata
-    rebuilt.metadata['Sources'].append('other.csv')
-    assert events.metadata['Sources'] == ['raw/sub_1.csv']
-
-
-def test_events_with_frame_uses_given_metadata_instead_of_a_copy():
-    events = Events(
-        name=['fixation'], onsets=[0], offsets=[1],
-        metadata={'Sources': ['raw/sub_1.csv']},
-    )
-
-    rebuilt = events.with_frame(events.frame, metadata={'subject_id': 1})
-
-    assert rebuilt.metadata == {'subject_id': 1}
-    assert events.metadata == {'Sources': ['raw/sub_1.csv']}
-
-
 def test_events_split_list_propagates_metadata():
     events = Events(
         name=['fixation', 'fixation'], onsets=[0, 2], offsets=[1, 3], trials=[1, 2],

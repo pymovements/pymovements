@@ -30,7 +30,6 @@ import pytest
 from polars.testing import assert_frame_equal
 
 import pymovements as pm
-import pymovements.events.events as events_module
 from pymovements import Events
 
 
@@ -666,7 +665,7 @@ _REBUILD_METADATA = {'key': 'value', 'offset': {'inclusive': False}, 'sampling_r
 
 
 def _rebuild_entry_events():
-    # A null duration beside a declared offset warns once, at entry, and never on a rebuild.
+    # A null duration beside a declared offset warns once, at construction, never on a rebuild.
     with pytest.warns(UserWarning, match='1 row has a null duration') as record:
         events = Events(
             pl.DataFrame({
@@ -719,91 +718,94 @@ def _rebuild_gaze(events):
     if events is not None:
         gaze.events = events
     else:
-        # A convention entry without its column. The rebuild sites pass validate=False, which
-        # already skips the orphan-entry warning, so this case checks the silence flag alone.
+        # A convention entry without its column: a public construction would warn about the
+        # orphan entry, the rebuild must not.
         gaze.events.metadata = deepcopy(_REBUILD_METADATA)
     return gaze
 
 
 _REBUILD_ENTRY_COLUMNS = ['trial', 'onset', 'duration', 'name', 'offset', 'location']
+_REBUILD_CORRECTED_COLUMNS = [
+    *_REBUILD_ENTRY_COLUMNS, 'location_original', 'correction_algorithm',
+]
+# The fill detector appends its offsets to the empty events.
+_REBUILD_DETECTED_COLUMNS = ['trial', 'onset', 'duration', 'name', 'offset']
+
+
+def _detect_fill_events(gaze):
+    gaze.detect('fill')
+    return [gaze.events]
+
+
+# The rebuild sites whose rebuilt events reach the caller: prepare, rebuild, expected columns.
+_REBUILD_EVENTS_CASES = [
+    pytest.param(
+        _rebuild_entry_events, lambda events: [events.clone()], _REBUILD_ENTRY_COLUMNS,
+        id='clone',
+    ),
+    pytest.param(
+        _rebuild_entry_events, lambda events: events.split(), _REBUILD_ENTRY_COLUMNS,
+        id='split',
+    ),
+    pytest.param(
+        _rebuild_entry_events, lambda events: list(events.split(as_dict=True).values()),
+        _REBUILD_ENTRY_COLUMNS, id='split_dict',
+    ),
+    pytest.param(
+        _rebuild_entry_events,
+        lambda events: [
+            events.correct_fixations(_rebuild_stimulus(), algorithm='attach', inplace=False),
+        ],
+        _REBUILD_CORRECTED_COLUMNS,
+        id='correct_fixations',
+    ),
+    pytest.param(
+        lambda: _rebuild_gaze(None), _detect_fill_events, _REBUILD_DETECTED_COLUMNS,
+        id='gaze_detect_shared_empty',
+    ),
+    pytest.param(
+        lambda: _rebuild_gaze(_rebuild_entry_events()), _detect_fill_events,
+        _REBUILD_ENTRY_COLUMNS, id='gaze_detect_per_group',
+    ),
+    pytest.param(
+        _rebuild_entry_events, lambda events: [pm.synthetic.bridge_gaps(events)],
+        _REBUILD_ENTRY_COLUMNS, id='bridge_gaps',
+    ),
+]
+
+# The rebuild sites whose rebuilt events stay internal: measure_reading maps them to the
+# stimulus and discards them, only the measures reach the caller.
+_REBUILD_INTERNAL_CASES = [
+    pytest.param(
+        _rebuild_entry_events, lambda events: events.measure_reading(_rebuild_stimulus()),
+        id='measure_reading',
+    ),
+    pytest.param(
+        _rebuild_entry_events,
+        lambda events: events.measure_reading(
+            {1: _rebuild_stimulus(), 2: _rebuild_stimulus()}, group_columns=['trial'],
+        ),
+        id='measure_reading_dict',
+    ),
+]
 
 
 @pytest.mark.parametrize(
-    ('prepare', 'rebuild', 'expected_columns'),
+    ('prepare', 'rebuild'),
     [
-        pytest.param(
-            _rebuild_entry_events, lambda events: events.clone(), _REBUILD_ENTRY_COLUMNS,
-            id='clone',
-        ),
-        pytest.param(
-            _rebuild_entry_events, lambda events: events.split(), _REBUILD_ENTRY_COLUMNS,
-            id='split',
-        ),
-        pytest.param(
-            _rebuild_entry_events, lambda events: events.split(as_dict=True),
-            _REBUILD_ENTRY_COLUMNS, id='split_dict',
-        ),
-        pytest.param(
-            _rebuild_entry_events,
-            lambda events: events.correct_fixations(
-                _rebuild_stimulus(), algorithm='attach', inplace=False,
-            ),
-            [*_REBUILD_ENTRY_COLUMNS, 'location_original', 'correction_algorithm'],
-            id='correct_fixations',
-        ),
-        pytest.param(
-            lambda: _rebuild_gaze(None),
-            lambda gaze: gaze.detect('fill'),
-            ['trial', 'onset', 'duration', 'name'],
-            id='gaze_detect_shared_empty',
-        ),
-        pytest.param(
-            lambda: _rebuild_gaze(_rebuild_entry_events()),
-            lambda gaze: gaze.detect('fill'),
-            _REBUILD_ENTRY_COLUMNS,
-            id='gaze_detect_per_group',
-        ),
-        pytest.param(
-            _rebuild_entry_events,
-            lambda events: events.measure_reading(_rebuild_stimulus()),
-            _REBUILD_ENTRY_COLUMNS,
-            id='measure_reading',
-        ),
-        pytest.param(
-            _rebuild_entry_events,
-            lambda events: events.measure_reading(
-                {1: _rebuild_stimulus(), 2: _rebuild_stimulus()}, group_columns=['trial'],
-            ),
-            _REBUILD_ENTRY_COLUMNS,
-            id='measure_reading_dict',
-        ),
-        pytest.param(
-            _rebuild_entry_events,
-            pm.synthetic.bridge_gaps,
-            _REBUILD_ENTRY_COLUMNS,
-            id='bridge_gaps',
-        ),
-        pytest.param(
-            _rebuild_entry_events,
-            lambda events: events.with_frame(events.frame.filter(pl.col('trial') == 1)),
-            _REBUILD_ENTRY_COLUMNS,
-            id='with_frame',
-        ),
+        *(pytest.param(*case.values[:2], id=case.id) for case in _REBUILD_EVENTS_CASES),
+        *_REBUILD_INTERNAL_CASES,
     ],
 )
-def test_rebuild_sites_carry_metadata_and_do_not_warn(
-        monkeypatch, prepare, rebuild, expected_columns,
-):
+def test_rebuild_sites_do_not_construct_or_warn(monkeypatch, prepare, rebuild):
     entry = prepare()
 
-    calls = []
+    constructed_from = []
     original_init = Events.__init__
 
     def spy_init(self, data=None, **kwargs):
-        silent = events_module._SILENT_CONSTRUCTION.get()
+        constructed_from.append(data)
         original_init(self, data, **kwargs)
-        # The frame is recorded at construction, as measure_reading maps its copy afterwards.
-        calls.append((self, self.frame, data, kwargs, silent))
 
     monkeypatch.setattr(Events, '__init__', spy_init)
     with warnings.catch_warnings():
@@ -812,15 +814,18 @@ def test_rebuild_sites_carry_metadata_and_do_not_warn(
         warnings.filterwarnings('ignore', message='.*No events were detected')
         rebuild(entry)
 
-    rebuilds = [call for call in calls if call[2] is not None]
-    assert rebuilds
-    for rebuilt, frame, data, kwargs, silent in rebuilds:
-        assert silent is True
-        assert kwargs['validate'] is False
-        assert set(kwargs) <= {'trial_columns', 'metadata', 'validate'}
-        assert_frame_equal(frame, data)
-        assert frame.columns == expected_columns
-        assert rebuilt.metadata.items() >= _REBUILD_METADATA.items()
+    # A rebuild never hands a frame back to the constructor, so no warning can repeat.
+    assert all(data is None for data in constructed_from)
+
+
+@pytest.mark.parametrize(('prepare', 'rebuild', 'expected_columns'), _REBUILD_EVENTS_CASES)
+def test_rebuild_sites_carry_metadata_and_columns(prepare, rebuild, expected_columns):
+    rebuilt = rebuild(prepare())
+
+    assert rebuilt
+    for events in rebuilt:
+        assert events.frame.columns == expected_columns
+        assert events.metadata.items() >= _REBUILD_METADATA.items()
 
 
 def test_compute_event_properties_on_empty_events_without_offset_warns():
@@ -1132,22 +1137,12 @@ def test_metadata_entries_carried_by_clone_and_split(rebuild, expected_parts):
         assert part.metadata['offset'] is not events.metadata['offset']
 
 
-def test_with_frame_resolves_durations_from_entries():
-    events = Events(onsets=[0], offsets=[120], offsets_inclusive=True, sampling_rate=1000)
-
-    rebuilt = events.with_frame(events.frame.drop('duration'))
-
-    assert rebuilt.frame['duration'].to_list() == [timedelta(milliseconds=121)]
-
-
-def test_with_frame_does_not_repeat_the_entry_warning():
+def test_clone_does_not_repeat_the_null_duration_warning():
     events = _rebuild_entry_events()
 
-    with pytest.warns(UserWarning, match='1 row has a null duration'):
-        Events(events.frame, trial_columns='trial', metadata=events.metadata, validate=False)
-
+    # A clone constructs nothing, so it cannot warn.
     with warnings.catch_warnings():
         warnings.simplefilter('error')
-        rebuilt = events.with_frame(events.frame)
+        cloned = events.clone()
 
-    assert_frame_equal(rebuilt.frame, events.frame)
+    assert_frame_equal(cloned.frame, events.frame)
