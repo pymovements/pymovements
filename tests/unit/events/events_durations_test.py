@@ -556,15 +556,25 @@ def test_check_null_rows_neither_contradict_nor_pass():
             )
 
 
-@pytest.mark.parametrize('validate', [True, False])
-def test_check_null_duration_beside_offset_warns_once_and_is_not_filled(validate):
+def test_check_null_duration_beside_offset_warns_once_and_is_not_filled():
     with pytest.warns(UserWarning, match='null duration') as record:
         events = Events(
             onsets=[0, 0], offsets=[5, 5], durations=[6, None],
-            offsets_inclusive=True, sampling_rate=1000, validate=validate,
+            offsets_inclusive=True, sampling_rate=1000,
         )
 
     assert len([w for w in record if 'null duration' in str(w.message)]) == 1
+    assert events.frame['duration'].to_list() == [timedelta(milliseconds=6), None]
+
+
+def test_check_null_duration_beside_offset_not_reported_with_validate_false():
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        events = Events(
+            onsets=[0, 0], offsets=[5, 5], durations=[6, None],
+            offsets_inclusive=True, sampling_rate=1000, validate=False,
+        )
+
     assert events.frame['duration'].to_list() == [timedelta(milliseconds=6), None]
 
 
@@ -665,7 +675,8 @@ _REBUILD_METADATA = {'key': 'value', 'offset': {'inclusive': False}, 'sampling_r
 
 
 def _rebuild_entry_events():
-    # A null duration beside a declared offset warns once, at construction, never on a rebuild.
+    # A null duration beside a declared offset warns once, at construction. The rebuild sites
+    # construct with validate=False, so it never repeats.
     with pytest.warns(UserWarning, match='1 row has a null duration') as record:
         events = Events(
             pl.DataFrame({
@@ -718,8 +729,8 @@ def _rebuild_gaze(events):
     if events is not None:
         gaze.events = events
     else:
-        # A convention entry without its column: a public construction would warn about the
-        # orphan entry, the rebuild must not.
+        # A convention entry without its column: a validating construction would warn about
+        # the orphan entry, the rebuild must not.
         gaze.events.metadata = deepcopy(_REBUILD_METADATA)
     return gaze
 
@@ -797,25 +808,14 @@ _REBUILD_INTERNAL_CASES = [
         *_REBUILD_INTERNAL_CASES,
     ],
 )
-def test_rebuild_sites_do_not_construct_or_warn(monkeypatch, prepare, rebuild):
+def test_rebuild_sites_do_not_warn(prepare, rebuild):
     entry = prepare()
 
-    constructed_from = []
-    original_init = Events.__init__
-
-    def spy_init(self, data=None, **kwargs):
-        constructed_from.append(data)
-        original_init(self, data, **kwargs)
-
-    monkeypatch.setattr(Events, '__init__', spy_init)
     with warnings.catch_warnings():
         warnings.simplefilter('error')
         # The detector itself may report that it detected nothing.
         warnings.filterwarnings('ignore', message='.*No events were detected')
         rebuild(entry)
-
-    # A rebuild never hands a frame back to the constructor, so no warning can repeat.
-    assert all(data is None for data in constructed_from)
 
 
 @pytest.mark.parametrize(('prepare', 'rebuild', 'expected_columns'), _REBUILD_EVENTS_CASES)
@@ -1140,7 +1140,7 @@ def test_metadata_entries_carried_by_clone_and_split(rebuild, expected_parts):
 def test_clone_does_not_repeat_the_null_duration_warning():
     events = _rebuild_entry_events()
 
-    # A clone constructs nothing, so it cannot warn.
+    # A clone constructs with validate=False, so the construction warning does not repeat.
     with warnings.catch_warnings():
         warnings.simplefilter('error')
         cloned = events.clone()

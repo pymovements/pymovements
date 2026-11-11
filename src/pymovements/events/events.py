@@ -53,11 +53,6 @@ _TIME_COLUMNS = ('onset', 'duration', 'offset')
 _RESIDUAL_TOLERANCE_US = 1
 
 
-def _source_description(source: Literal['keyword', 'entry'], keyword: str) -> str:
-    """Return the source of a declaration as named in messages."""
-    return f'the {keyword} keyword' if source == 'keyword' else 'the metadata entry'
-
-
 def _entry_offsets_inclusive(entry: Any) -> bool | None:
     """Return the offsets_inclusive flag of a metadata entry, None if it has none."""
     if isinstance(entry, dict) and 'inclusive' in entry:
@@ -426,8 +421,9 @@ class Events:
         offset. Required to derive durations from inclusive offsets. If None, the sampling-rate
         entry in ``metadata`` is used. (default: None)
     validate: bool
-        If False, supplied durations are kept unchecked beside declared offsets, and a
-        convention entry without its column is kept without a warning. (default: True)
+        If False, supplied durations are kept unchecked beside declared offsets, a null
+        ``duration`` beside a non-null ``offset`` is not reported, and a convention entry
+        without its column is kept without a warning. (default: True)
     trials: list[int | float | str | None] | np.ndarray | None
         List of trial identifiers. (default: None)
     trial_columns: list[str] | str | None
@@ -761,8 +757,9 @@ class Events:
                 *[column for column in self.frame.columns if column not in leading_columns],
             ],
         )
-        # Every instance attribute set here is set by _rebuild as well.
-        self._additional_columns = self._additional_columns_of(self.frame)
+        self._additional_columns = [
+            column for column in self.frame.columns if column not in self._minimal_schema
+        ]
 
         # Convert onset, offset, and duration to Duration('us').
         # Numeric input values are interpreted according to time_unit (milliseconds by default).
@@ -991,6 +988,9 @@ class Events:
             self.frame = self.frame.with_columns(derived.alias('duration'))
             return
 
+        if not validate:
+            return
+
         # A null duration beside a non-null offset is reported, never filled.
         null_durations = self.frame.select(
             (polars.col('duration').is_null() & polars.col('offset').is_not_null()).sum(),
@@ -1004,14 +1004,13 @@ class Events:
                 stacklevel=3,
             )
 
-        if validate:
-            self._check_durations_against_offsets(
-                offsets_inclusive=offsets_inclusive,
-                offsets_inclusive_source=offsets_inclusive_source,
-                sampling_rate=sampling_rate,
-                sampling_interval=sampling_interval,
-                sampling_rate_source=sampling_rate_source,
-            )
+        self._check_durations_against_offsets(
+            offsets_inclusive=offsets_inclusive,
+            offsets_inclusive_source=offsets_inclusive_source,
+            sampling_rate=sampling_rate,
+            sampling_interval=sampling_interval,
+            sampling_rate_source=sampling_rate_source,
+        )
 
     def _check_durations_against_offsets(
             self,
@@ -1104,10 +1103,13 @@ class Events:
             raise ValueError(message)
 
         if sampling_interval is not None and offsets_inclusive:
+            rate_source = (
+                'the sampling_rate keyword' if sampling_rate_source == 'keyword'
+                else 'the metadata entry'
+            )
             expected_description = (
                 f'{_format_microseconds(sampling_interval)} '
-                f'(sampling_rate={sampling_rate:g} from '
-                f"{_source_description(sampling_rate_source, 'sampling_rate')})"
+                f'(sampling_rate={sampling_rate:g} from {rate_source})'
             )
         message = (
             f'{len(contradicting)} of {len(residuals)} rows contradict {declaration}: '
@@ -1453,62 +1455,12 @@ class Events:
         Events
             A copy of an Events object.
         """
-        return self._rebuild(self.frame.clone())
-
-    def _rebuild(
-            self,
-            frame: polars.DataFrame,
-            *,
-            metadata: dict[str, Any] | None = None,
-    ) -> Events:
-        """Return new events that hold ``frame`` with this object's trial columns and metadata.
-
-        The frame is one derived from :py:attr:`frame`, so it already passed through the
-        constructor. The constructor is bypassed: nothing is re-resolved, checked or warned about,
-        and the frame is taken as it is. The trial columns are copied and, unless ``metadata`` is
-        given, the metadata is deep-copied, so the offset convention and the sampling rate carry
-        over and the new object shares nothing with this one.
-
-        Parameters
-        ----------
-        frame: polars.DataFrame
-            The events frame.
-        metadata: dict[str, Any] | None
-            Metadata for the new events instead of a copy of this object's metadata.
-            (default: None)
-
-        Returns
-        -------
-        Events
-            The new events.
-        """
-        # The attributes __init__ sets, nothing else: a new instance attribute there is set here.
-        events = Events.__new__(Events)
-        events.frame = frame
-        events.trial_columns = (
-            list(self.trial_columns) if self.trial_columns is not None else None
+        return Events(
+            self.frame.clone(),
+            trial_columns=self.trial_columns,
+            metadata=deepcopy(self.metadata),
+            validate=False,
         )
-        events.metadata = deepcopy(self.metadata) if metadata is None else metadata
-        events._additional_columns = (  # pylint: disable=protected-access
-            self._additional_columns_of(frame)
-        )
-        return events
-
-    @classmethod
-    def _additional_columns_of(cls, frame: polars.DataFrame) -> list[str]:
-        """Return the columns of ``frame`` beyond the minimal schema.
-
-        Parameters
-        ----------
-        frame: polars.DataFrame
-            An events frame.
-
-        Returns
-        -------
-        list[str]
-            The column names that are not part of the minimal schema, in frame order.
-        """
-        return [column for column in frame.columns if column not in cls._minimal_schema]
 
     @overload
     def split(
@@ -1555,13 +1507,19 @@ class Events:
 
         event_dfs = self.frame.partition_by(by=by, as_dict=as_dict)
 
+        def rebuild(frame: polars.DataFrame) -> Events:
+            return Events(
+                frame,
+                trial_columns=self.trial_columns,
+                metadata=deepcopy(self.metadata),
+                validate=False,
+            )
+
         if as_dict:
             # keys are tuples of the unique values of the columns specified in `by`.
-            return {
-                key: self._rebuild(frame) for key, frame in event_dfs.items()
-            }
+            return {key: rebuild(frame) for key, frame in event_dfs.items()}
 
-        return [self._rebuild(frame) for frame in event_dfs]
+        return [rebuild(frame) for frame in event_dfs]
 
     def drop_nulls(
         self,
@@ -2018,9 +1976,11 @@ class Events:
             self.frame = corrected_frame
             self.metadata = merge_sources(self.metadata, aois.metadata)
             return None
-        return self._rebuild(
+        return Events(
             corrected_frame,
+            trial_columns=self.trial_columns,
             metadata=merge_sources(deepcopy(self.metadata), aois.metadata),
+            validate=False,
         )
 
     def measure_reading(
@@ -2152,7 +2112,12 @@ class Events:
             )
         else:
             stimuli = [stimulus]
-            mapped = self._rebuild(working_frame)
+            mapped = Events(
+                working_frame,
+                trial_columns=self.trial_columns,
+                metadata=deepcopy(self.metadata),
+                validate=False,
+            )
             mapped.map_to_aois(stimulus)
             fixations, aois = mapped.frame, stimulus.aois
 
@@ -2232,7 +2197,12 @@ class Events:
                 # The dict key defines the sequence column, so it must not also live in the
                 # entry handed to compute_reading_measures.
                 aois[original_key] = stim.aois.drop(sequence_column)
-            subset = self._rebuild(frame.filter(polars.col(sequence_column) == key))
+            subset = Events(
+                frame.filter(polars.col(sequence_column) == key),
+                trial_columns=self.trial_columns,
+                metadata=deepcopy(self.metadata),
+                validate=False,
+            )
             if subset.frame.is_empty():
                 continue
             subset.map_to_aois(stim)

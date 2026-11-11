@@ -1435,7 +1435,12 @@ class Gaze:
             # events frame can be shared across trials instead of being filtered once per trial.
             needs_events = 'events' in method_args
             shared_empty_events = (
-                self.events._rebuild(self.events.frame)  # pylint: disable=protected-access
+                Events(
+                    self.events.frame,
+                    trial_columns=self.events.trial_columns,
+                    metadata=deepcopy(self.events.metadata),
+                    validate=False,
+                )
                 if needs_events and self.events.frame.height == 0
                 else None
             )
@@ -1458,8 +1463,11 @@ class Gaze:
                         )
 
                     # Select group events.
-                    group_events = self.events._rebuild(  # pylint: disable=protected-access
+                    group_events = Events(
                         self.events.frame.filter(group_filter_expression),
+                        trial_columns=self.events.trial_columns,
+                        metadata=deepcopy(self.events.metadata),
+                        validate=False,
                     )
 
                 method_kwargs = self._fill_event_detection_kwargs(
