@@ -25,6 +25,8 @@ from functools import partial
 
 import polars as pl
 
+from pymovements.events.correction._utils import woc_core
+
 
 def wisdom_of_the_crowd(assignment_columns: Sequence[str]) -> pl.Expr:
     """Ensemble correction choosing line assignment with most votes across algorithms.
@@ -48,29 +50,6 @@ def wisdom_of_the_crowd(assignment_columns: Sequence[str]) -> pl.Expr:
     column_priority = {column: priority for priority, column in enumerate(assignment_columns)}
     return (
         pl.struct(list(assignment_columns))
-        .map_batches(partial(_woc_core, column_priority=column_priority))
+        .map_batches(partial(woc_core, column_priority=column_priority))
         .alias('y_wisdom_of_the_crowd')
-    )
-
-
-def _woc_core(votes: pl.Series, *, column_priority: dict[str, int]) -> pl.Series:
-    """Choose the majority vote per fixation, breaking ties by column priority."""
-    counted = (
-        votes.rename('vote').to_frame()
-        .unnest('vote')
-        .with_row_index('fixation_index')
-        .unpivot(index='fixation_index', variable_name='algorithm', value_name='y')
-        .with_columns(
-            pl.col('algorithm')
-            .replace_strict(column_priority, return_dtype=pl.UInt32)
-            .alias('priority'),
-            pl.len().over(['fixation_index', 'y']).alias('votes'),
-        )
-    )
-    return (
-        counted
-        .filter(pl.col('votes') == pl.col('votes').max().over('fixation_index'))
-        .group_by('fixation_index', maintain_order=False)
-        .agg(pl.col('y').sort_by('priority').first())
-        .sort('fixation_index')['y']
     )

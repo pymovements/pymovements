@@ -26,6 +26,7 @@ from collections.abc import Sequence
 import polars as pl
 
 from pymovements._utils._expressions import as_expr
+from pymovements.events.correction._aoi import get_lines_of_text_from_aois
 
 
 def location_expr(location: str | pl.Expr) -> pl.Expr:
@@ -129,3 +130,48 @@ def is_right_to_left(directionality: str) -> bool:
             "Valid values are: 'left-to-right', 'right-to-left'.",
         )
     return directionality == 'right-to-left'
+
+
+def resolve_line_values(aois: pl.DataFrame, word_locations: pl.Series | None) -> list[float]:
+    """Resolve the text line y-coordinates from the AOIs or the word locations."""
+    has_line_info = (
+        ('start_y' in aois.columns or 'top_left_y' in aois.columns)
+        and 'height' in aois.columns
+    )
+    if has_line_info:
+        return get_lines_of_text_from_aois(aois)
+    if word_locations is not None:
+        return (
+            word_locations.cast(pl.List(pl.Float64))
+            .list.get(1).unique().sort().to_list()
+        )
+    # Neither complete line information nor word locations are available: derive from
+    # the AOIs anyway so the resulting ValueError names the missing columns.
+    return get_lines_of_text_from_aois(aois)
+
+
+def woc_core(votes: pl.Series, *, column_priority: dict[str, int]) -> pl.Series:
+    """Choose the majority vote per fixation, breaking ties by column priority."""
+    counted = (
+        votes.rename('vote').to_frame()
+        .unnest('vote')
+        .with_row_index('fixation_index')
+        .unpivot(
+            index='fixation_index',
+            variable_name='candidate_algorithm',
+            value_name='y',
+        )
+        .with_columns(
+            pl.col('candidate_algorithm')
+            .replace_strict(column_priority, return_dtype=pl.UInt32)
+            .alias('priority'),
+            pl.len().over(['fixation_index', 'y']).alias('votes'),
+        )
+    )
+    return (
+        counted
+        .filter(pl.col('votes') == pl.col('votes').max().over('fixation_index'))
+        .group_by('fixation_index', maintain_order=False)
+        .agg(pl.col('y').sort_by('priority').first())
+        .sort('fixation_index')['y']
+    )
