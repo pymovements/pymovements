@@ -49,7 +49,7 @@ from pymovements.events.correction.fixation_correction import correct_fixation_l
 from pymovements.events.correction.fixation_correction import correct_fixations
 from pymovements.events.correction.merge import merge
 from pymovements.events.correction.metrics import ensemble_agreement
-from pymovements.events.correction.metrics import imp_transitions
+from pymovements.events.correction.metrics import implausible_transitions
 from pymovements.events.correction.metrics import mean_vertical_distance
 from pymovements.events.correction.metrics import reassignment_rate
 from pymovements.events.correction.regress import regress
@@ -65,7 +65,7 @@ __all__ = [
     'correct_fixation_locations',
     'reassignment_rate',
     'mean_vertical_distance',
-    'imp_transitions',
+    'implausible_transitions',
     'ensemble_agreement',
     'attach',
     'chain',

@@ -1231,8 +1231,11 @@ class Dataset:
         with their corrected values. Original locations are preserved in a
         ``location_original`` column and the applied algorithm is recorded in a
         ``correction_algorithm`` column. Trials with too few fixations for the requested
-        algorithms are skipped with a UserWarning and stay uncorrected. See
-        :py:meth:`~pymovements.Events.correct_fixations` for details.
+        algorithms are skipped with a UserWarning and stay uncorrected. Ensemble corrections
+        also add a 'correction_agreement' bookkeeping column containing
+        the per-fixation vote agreement. Low-agreement fixations can be selected by filtering
+        this column, for example with ``pl.col('correction_agreement') >= 0.5``.
+        See :py:meth:`~pymovements.Events.correct_fixations` for details.
 
         Parameters
         ----------

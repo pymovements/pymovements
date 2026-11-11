@@ -18,35 +18,46 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests for fixation correction metrics."""
-import math
-
 import polars as pl
 import pytest
 
 from pymovements.events.correction.metrics import ensemble_agreement
-from pymovements.events.correction.metrics import imp_transitions
+from pymovements.events.correction.metrics import implausible_transitions
 from pymovements.events.correction.metrics import mean_vertical_distance
 from pymovements.events.correction.metrics import reassignment_rate
 
 
 def test_reassignment_rate_compares_line_assignments():
-    assert reassignment_rate(pl.Series([0, 1, 2]), pl.Series([0, 2, 2])) == pytest.approx(1 / 3)
+    events = pl.DataFrame({
+        'name': ['fixation'] * 3,
+        'location_original': [(0.0, y) for y in (0.0, 1.0, 2.0)],
+        'location': [(0.0, y) for y in (0.0, 2.0, 2.0)],
+    })
+    aois = pl.DataFrame({
+        'start_y': [0.0, 1.0, 2.0],
+        'height': [1.0, 1.0, 1.0],
+    })
+    assert reassignment_rate(events, aois) == pytest.approx(1 / 3)
 
 
 def test_reassignment_rate_empty_inputs():
-    assert reassignment_rate(pl.Series([], dtype=pl.Int64), pl.Series([], dtype=pl.Int64)) == 0.0
+    events = pl.DataFrame({'name': ['saccade']})
+    assert reassignment_rate(events, pl.DataFrame()) == 0.0
 
 
 @pytest.mark.parametrize(
-    'first, second',
-    [
-        (pl.Series([0, 1]), pl.Series([0])),
-        (pl.Series([0, None]), pl.Series([0, 1])),
+    'events', [
+        pl.DataFrame({'name': ['fixation']}),
+        pl.DataFrame({
+            'name': ['fixation'],
+            'location_original': [[0.0, 0.0]],
+            'location': [None],
+        }),
     ],
 )
-def test_reassignment_rate_rejects_invalid_inputs(first, second):
-    with pytest.raises(ValueError):
-        reassignment_rate(first, second)
+def test_reassignment_rate_rejects_invalid_inputs(events):
+    with pytest.raises(ValueError, match=r'.+'):
+        reassignment_rate(events, pl.DataFrame({'start_y': [0.0], 'height': [1.0]}))
 
 
 def test_mean_vertical_distance_uses_physical_coordinates():
@@ -65,30 +76,56 @@ def test_mean_vertical_distance_empty_inputs():
 
 
 def test_mean_vertical_distance_rejects_mismatched_inputs():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r'.+'):
         mean_vertical_distance(pl.Series([100.0]), pl.Series([100.0, 200.0]))
 
 
-def test_imp_transitions_uses_threshold_and_includes_backward_jumps():
-    corrected_ys = pl.Series([100.0, 140.0, 240.0, 170.0])
-    assert imp_transitions(corrected_ys, max_line_distance=50.0) == 2
-    assert imp_transitions(corrected_ys, max_line_distance=100.0) == 0
+def test_implausible_transitions_uses_threshold_and_includes_backward_jumps():
+    events = pl.DataFrame({
+        'trial': ['trial'] * 3,
+        'location': [(0.0, y) for y in (100.0, 300.0, 100.0)],
+    })
+    lines = {('trial',): [100.0, 200.0, 300.0]}
+    assert implausible_transitions(
+        events, lines, trial_columns=('trial',),
+    ) == 2
+    assert implausible_transitions(
+        events, lines, trial_columns=('trial',), max_forward_line_distance=2,
+        max_backward_line_distance=2,
+    ) == 0
 
 
-def test_imp_transitions_empty_and_single_value_inputs():
-    assert imp_transitions(pl.Series([], dtype=pl.Float64), max_line_distance=50.0) == 0
-    assert imp_transitions(pl.Series([100.0]), max_line_distance=50.0) == 0
+def test_implausible_transitions_empty_and_single_value_inputs():
+    schema = {
+        'trial': pl.String,
+        'location': pl.List(pl.Float64),
+    }
+    empty = pl.DataFrame(schema=schema)
+    single = pl.DataFrame({'trial': ['trial'], 'location': [[0.0, 100.0]]})
+    lines = {('trial',): [100.0]}
+    assert implausible_transitions(empty, lines, trial_columns=('trial',)) == 0
+    assert implausible_transitions(single, lines, trial_columns=('trial',)) == 0
 
 
-@pytest.mark.parametrize('threshold', [-1.0, math.inf, math.nan])
-def test_imp_transitions_rejects_invalid_threshold(threshold):
-    with pytest.raises(ValueError):
-        imp_transitions(pl.Series([100.0, 200.0]), max_line_distance=threshold)
+@pytest.mark.parametrize('forward', [-1])
+def test_implausible_transitions_rejects_invalid_threshold(forward):
+    events = pl.DataFrame({'trial': ['trial'], 'location': [[0.0, 100.0]]})
+    with pytest.raises(ValueError, match=r'.+'):
+        implausible_transitions(
+            events, {('trial',): [100.0]}, trial_columns=('trial',),
+            max_forward_line_distance=forward,
+        )
 
 
-def test_imp_transitions_rejects_nulls():
-    with pytest.raises(ValueError):
-        imp_transitions(pl.Series([100.0, None]), max_line_distance=50.0)
+def test_implausible_transitions_rejects_nulls():
+    events = pl.DataFrame({
+        'trial': ['trial', 'trial'],
+        'location': [[0.0, 100.0], [0.0, None]],
+    })
+    with pytest.raises(ValueError, match=r'.+'):
+        implausible_transitions(
+            events, {('trial',): [100.0]}, trial_columns=('trial',),
+        )
 
 
 def test_ensemble_agreement_counts_votes_per_fixation():
@@ -115,7 +152,7 @@ def test_ensemble_agreement_empty_rows_and_one_algorithm():
 
 
 def test_ensemble_agreement_rejects_empty_columns_and_null_votes():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r'.+'):
         ensemble_agreement(pl.DataFrame())
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r'.+'):
         ensemble_agreement(pl.DataFrame({'algorithm': [1, None]}))
