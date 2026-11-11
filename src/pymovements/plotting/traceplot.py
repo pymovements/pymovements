@@ -23,8 +23,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from warnings import warn
 
-import matplotlib.pyplot as plt
-import matplotlib.scale
 import numpy as np
 
 from pymovements.plotting._matplotlib import _draw_line_data
@@ -33,6 +31,9 @@ from pymovements.plotting._matplotlib import _setup_axes_and_colormap
 from pymovements.plotting._matplotlib import LinearSegmentedColormapType
 
 if TYPE_CHECKING:
+    import matplotlib.colors
+    import matplotlib.pyplot as plt
+
     from pymovements.gaze.gaze import Gaze
 
 
