@@ -625,6 +625,7 @@ What changes from v0.30.0, by where it shows:
 | files | a `Format` value pymovements does not map, such as `date` or `uri` | raised | sets no dtype, the column keeps the dtype inferred from the data |
 | files | the default sidecar path of `Participants.save` | `participants.json` | `<stem>.json` |
 | files | the `pymovements` entry and `Sources` in the sidecar | absent | written, two additional top-level keys for readers of these files |
+| files | a `pymovements` key in the metadata dict | written as it is | dropped with a warning, save writes the stamp |
 | files | a file written before v0.30.0 | carries no pymovements stamp | loads as the oldest schema version, silently |
 | files | a data file at `path` on save | overwritten | save raises, `overwrite=True` writes over it |
 | files | a sidecar at the sidecar path on save | overwritten | save raises, `overwrite=True` writes over it |
