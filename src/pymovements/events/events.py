@@ -104,13 +104,13 @@ def _resolve_offset_convention(
             offsets_inclusive is not None and entry_inclusive is not None
             and offsets_inclusive != entry_inclusive
     ):
-        missing = (
+        no_column_note = (
             '' if 'offset' in columns
             else ", and the events frame has no 'offset' column"
         )
         raise ValueError(
             f'offsets_inclusive={offsets_inclusive} differs from the metadata entry '
-            f"metadata['offset'] = {{'inclusive': {entry_inclusive}}}{missing}. "
+            f"metadata['offset'] = {{'inclusive': {entry_inclusive}}}{no_column_note}. "
             'Correct the entry or drop the keyword.',
         )
     if offsets_inclusive is not None:
@@ -147,6 +147,7 @@ def _resolve_sampling_rate(
     entry_rate = metadata.get('sampling_rate')
     rate = None
     if entry_rate is not None:
+        # bool is a Real, so True would pass as a sampling rate of 1 Hz.
         if isinstance(entry_rate, bool) or not isinstance(entry_rate, Real):
             raise ValueError(
                 "the metadata entry metadata['sampling_rate'] must be a number, "
@@ -890,24 +891,28 @@ class Events:
                 normalize_duration_to_us(polars.col(wrong_unit_cols)),
             )
 
-        convention, convention_source = _resolve_offset_convention(
+        offsets_inclusive, offsets_inclusive_source = _resolve_offset_convention(
             offsets_inclusive, metadata=self.metadata, columns=self.frame.columns,
         )
-        rate, rate_source = _resolve_sampling_rate(sampling_rate, metadata=self.metadata)
+        sampling_rate, sampling_rate_source = _resolve_sampling_rate(
+            sampling_rate, metadata=self.metadata,
+        )
 
         self._resolve_durations(
             durations_supplied=durations_supplied,
-            offsets_inclusive=convention,
-            offsets_inclusive_source=convention_source,
+            offsets_inclusive=offsets_inclusive,
+            offsets_inclusive_source=offsets_inclusive_source,
             durations_from_offsets=durations_from_offsets,
-            sampling_rate=rate,
-            sampling_rate_source=rate_source,
+            sampling_rate=sampling_rate,
+            sampling_rate_source=sampling_rate_source,
             validate=validate,
         )
 
         self._write_entries(
             offsets_inclusive=offsets_inclusive,
+            offsets_inclusive_source=offsets_inclusive_source,
             sampling_rate=sampling_rate,
+            sampling_rate_source=sampling_rate_source,
             warn_missing_columns=validate,
         )
 
@@ -915,30 +920,40 @@ class Events:
             self,
             *,
             offsets_inclusive: bool | None,
+            offsets_inclusive_source: Literal['keyword', 'entry'],
             sampling_rate: float | None,
+            sampling_rate_source: Literal['keyword', 'entry'],
             warn_missing_columns: bool,
     ) -> None:
-        """Write the entries of the keywords and warn about entries without their column.
+        """Write the keyword declarations as entries and warn about entries without a column.
 
         Parameters
         ----------
         offsets_inclusive: bool | None
-            The ``offsets_inclusive`` keyword, written to the ``offset`` entry when the frame has
-            that column.
+            The resolved convention, written to the ``offset`` entry when it comes from the
+            keyword and the frame has that column.
+        offsets_inclusive_source: Literal['keyword', 'entry']
+            Where the convention comes from.
         sampling_rate: float | None
-            The ``sampling_rate`` keyword, written to the sampling-rate entry.
+            The resolved sampling rate, written to the sampling-rate entry when it comes from
+            the keyword.
+        sampling_rate_source: Literal['keyword', 'entry']
+            Where the sampling rate comes from.
         warn_missing_columns: bool
             Whether to warn once about convention entries whose column the frame does not have.
         """
         # Entries are written only for what the frame has.
-        if offsets_inclusive is not None and 'offset' in self.frame.columns:
+        if offsets_inclusive_source == 'keyword' and 'offset' in self.frame.columns:
             entry = self.metadata.get('offset')
             self.metadata['offset'] = {
                 **(entry if isinstance(entry, dict) else {}),
                 'inclusive': offsets_inclusive,
             }
-        if sampling_rate is not None:
+        if sampling_rate_source == 'keyword' and sampling_rate is not None:
             self.metadata['sampling_rate'] = float(sampling_rate)
+
+        if not warn_missing_columns:
+            return
 
         # A convention entry without its column is kept, never removed on construction.
         missing_columns = [
@@ -946,19 +961,20 @@ class Events:
             if isinstance(entry, dict) and 'inclusive' in entry
             and column not in self.frame.columns
         ]
-        if warn_missing_columns and missing_columns:
-            if len(missing_columns) == 1:
-                described = f"entry for the column '{missing_columns[0]}'"
-            else:
-                described = 'entries for the columns ' + ', '.join(
-                    f"'{column}'" for column in missing_columns
-                )
-            warn(
-                f'metadata holds offset convention {described}, '
-                'which the events frame does not have. The metadata is kept.',
-                UserWarning,
-                stacklevel=3,
+        if not missing_columns:
+            return
+        if len(missing_columns) == 1:
+            described = f"entry for the column '{missing_columns[0]}'"
+        else:
+            described = 'entries for the columns ' + ', '.join(
+                f"'{column}'" for column in missing_columns
             )
+        warn(
+            f'metadata holds offset convention {described}, '
+            'which the events frame does not have. The metadata is kept.',
+            UserWarning,
+            stacklevel=3,
+        )
 
     def _resolve_durations(
             self,
@@ -1029,9 +1045,9 @@ class Events:
             (polars.col('duration').is_null() & polars.col('offset').is_not_null()).sum(),
         ).item()
         if null_durations:
-            row_s = 'row has' if null_durations == 1 else 'rows have'
+            rows_have = 'row has' if null_durations == 1 else 'rows have'
             warn(
-                f"{null_durations} {row_s} a null duration beside a non-null offset. "
+                f"{null_durations} {rows_have} a null duration beside a non-null offset. "
                 'The durations stay null.',
                 UserWarning,
                 stacklevel=3,
@@ -1068,6 +1084,7 @@ class Events:
         if residuals.is_empty():
             return
 
+        # The descriptions name the metadata entry as the source, the keyword is the default.
         declaration = f'offsets_inclusive={offsets_inclusive}'
         if offsets_inclusive_source == 'entry':
             declaration += ' from the metadata entry'
@@ -1076,9 +1093,10 @@ class Events:
             expected_description = '0'
         elif sampling_interval is not None:
             expected = sampling_interval
-            expected_description = (
-                f'{_format_microseconds(expected)} (sampling_rate={sampling_rate:g})'
-            )
+            rate_description = f'sampling_rate={sampling_rate:g}'
+            if sampling_rate_source == 'entry':
+                rate_description += ' from the metadata entry'
+            expected_description = f'{_format_microseconds(expected)} ({rate_description})'
         else:
             # Without a sampling rate the positive residuals must agree on one interval.
             positive = residuals.filter(residuals > _RESIDUAL_TOLERANCE_US)
@@ -1091,8 +1109,8 @@ class Events:
                     polars.col('count') == counts['count'].max(),
                 )[residuals.name].min()
                 expected_description = (
-                    'no sampling rate, common positive residual '
-                    f'{_format_microseconds(expected)}'
+                    f'common positive residual {_format_microseconds(expected)} '
+                    '(no sampling rate)'
                 )
 
         contradicting = residuals if expected is None else residuals.filter(
@@ -1102,9 +1120,6 @@ class Events:
             return
 
         distinct = sorted(contradicting.unique().to_list())
-        legacy_rows = (
-            (contradicting.abs() <= _RESIDUAL_TOLERANCE_US).sum() if offsets_inclusive else 0
-        )
 
         if len(contradicting) == len(residuals):
             if len(distinct) == 1:
@@ -1121,40 +1136,33 @@ class Events:
             if offsets_inclusive_source == 'keyword':
                 correction = f'offsets_inclusive={not offsets_inclusive}'
             else:
-                correction = (
-                    f"metadata['offset'] = {{'inclusive': {not offsets_inclusive}}}"
-                )
-            recipes = []
+                correction = f"metadata['offset'] = {{'inclusive': {not offsets_inclusive}}}"
             if offsets_inclusive:
-                recipes.append(
-                    'durations_from_offsets=True to derive the durations from the offsets',
+                message += (
+                    '. Pass durations_from_offsets=True to derive the durations from the '
+                    f'offsets, {correction} if the offsets are exclusive, '
+                    'or validate=False to keep the durations unchecked.'
                 )
-            other = 'exclusive' if offsets_inclusive else 'inclusive'
-            recipes.append(f'{correction} if the offsets are {other}')
-            recipes.append('validate=False to keep the durations unchecked')
-            message += f". Pass {', '.join(recipes[:-1])}, or {recipes[-1]}."
+            else:
+                message += (
+                    f'. Pass {correction} if the offsets are inclusive, '
+                    'or validate=False to keep the durations unchecked.'
+                )
             raise ValueError(message)
 
-        if sampling_interval is not None and offsets_inclusive:
-            rate_source = (
-                'the sampling_rate keyword' if sampling_rate_source == 'keyword'
-                else 'the metadata entry'
-            )
-            expected_description = (
-                f'{_format_microseconds(sampling_interval)} '
-                f'(sampling_rate={sampling_rate:g} from {rate_source})'
-            )
         message = (
             f'{len(contradicting)} of {len(residuals)} rows contradict {declaration}: '
             f'expected duration - (offset - onset) to be {expected_description}, '
             f'residuals seen: {_format_residuals(sorted(residuals.unique().to_list()))}.'
         )
-        if legacy_rows:
-            row_s = 'row looks' if legacy_rows == 1 else 'rows look'
-            message += (
-                f' {legacy_rows} {row_s} like pre-v0.29.0 durations. Pass '
-                'durations_from_offsets=True to derive the durations from the offsets.'
-            )
+        if offsets_inclusive:
+            legacy_rows = (contradicting.abs() <= _RESIDUAL_TOLERANCE_US).sum()
+            if legacy_rows:
+                rows_look = 'row looks' if legacy_rows == 1 else 'rows look'
+                message += (
+                    f' {legacy_rows} {rows_look} like pre-v0.29.0 durations. Pass '
+                    'durations_from_offsets=True to derive the durations from the offsets.'
+                )
         warn(message, UserWarning, stacklevel=4)
 
     @property

@@ -492,7 +492,7 @@ def test_check_every_row_contradicting_raises_with_recipes(
             [6, 0, 2], [5, 0, 1], {'offsets_inclusive': True, 'sampling_rate': 1000},
             [
                 r'1 of 3 rows contradict offsets_inclusive=True',
-                r'to be 1ms \(sampling_rate=1000 from the sampling_rate keyword\)',
+                r'to be 1ms \(sampling_rate=1000\)',
                 r'residuals seen: \[0, 1ms\]',
                 r'1 row looks like pre-v0\.29\.0 durations',
                 r'durations_from_offsets=True',
