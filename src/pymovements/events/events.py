@@ -70,6 +70,105 @@ def _format_residuals(values: list[int]) -> str:
     return f'[{shown}]'
 
 
+def _resolve_offset_convention(
+        offsets_inclusive: bool | None,
+        *,
+        metadata: dict[str, Any],
+        columns: Sequence[str],
+) -> tuple[bool | None, Literal['keyword', 'entry']]:
+    """Resolve the convention of ``offset`` from the keyword or the metadata entry.
+
+    Parameters
+    ----------
+    offsets_inclusive: bool | None
+        The ``offsets_inclusive`` keyword, compared against the ``offset`` entry.
+    metadata: dict[str, Any]
+        The metadata holding the ``offset`` entry, if any.
+    columns: Sequence[str]
+        The columns of the events frame, to say whether ``offset`` is among them.
+
+    Returns
+    -------
+    tuple[bool | None, Literal['keyword', 'entry']]
+        The convention and where it comes from: the keyword when given, else the ``offset``
+        entry, whose convention is ``None`` when the entry is absent.
+
+    Raises
+    ------
+    ValueError
+        If the keyword differs from the ``offset`` entry.
+    """
+    entry = metadata.get('offset')
+    entry_inclusive = entry.get('inclusive') if isinstance(entry, dict) else None
+    if (
+            offsets_inclusive is not None and entry_inclusive is not None
+            and offsets_inclusive != entry_inclusive
+    ):
+        missing = (
+            '' if 'offset' in columns
+            else ", and the events frame has no 'offset' column"
+        )
+        raise ValueError(
+            f'offsets_inclusive={offsets_inclusive} differs from the metadata entry '
+            f"metadata['offset'] = {{'inclusive': {entry_inclusive}}}{missing}. "
+            'Correct the entry or drop the keyword.',
+        )
+    if offsets_inclusive is not None:
+        return offsets_inclusive, 'keyword'
+    return entry_inclusive, 'entry'
+
+
+def _resolve_sampling_rate(
+        sampling_rate: float | None,
+        *,
+        metadata: dict[str, Any],
+) -> tuple[float | None, Literal['keyword', 'entry']]:
+    """Resolve the sampling rate from the keyword or the metadata entry.
+
+    Parameters
+    ----------
+    sampling_rate: float | None
+        The ``sampling_rate`` keyword, compared against the sampling-rate entry.
+    metadata: dict[str, Any]
+        The metadata holding the sampling-rate entry, if any.
+
+    Returns
+    -------
+    tuple[float | None, Literal['keyword', 'entry']]
+        The sampling rate and where it comes from: the keyword when given, else the
+        sampling-rate entry, whose rate is ``None`` when the entry is absent.
+
+    Raises
+    ------
+    ValueError
+        If the sampling-rate entry is not a positive number, or if the keyword differs from
+        it.
+    """
+    entry_rate = metadata.get('sampling_rate')
+    rate = None
+    if entry_rate is not None:
+        if isinstance(entry_rate, bool) or not isinstance(entry_rate, Real):
+            raise ValueError(
+                "the metadata entry metadata['sampling_rate'] must be a number, "
+                f'but is {entry_rate!r}.',
+            )
+        rate = float(entry_rate)
+        if rate <= 0:
+            raise ValueError(
+                "the metadata entry metadata['sampling_rate'] must be positive, "
+                f'but is {entry_rate}.',
+            )
+    if sampling_rate is not None and rate is not None and sampling_rate != rate:
+        raise ValueError(
+            f'sampling_rate={sampling_rate!r} differs from the metadata entry '
+            f"metadata['sampling_rate'] = {entry_rate!r}. "
+            'Correct the entry or drop the keyword.',
+        )
+    if sampling_rate is not None:
+        return sampling_rate, 'keyword'
+    return rate, 'entry'
+
+
 def _aois_frame_from_text_stimulus(stimulus: TextStimulus) -> polars.DataFrame:
     """Map the configured column names of a TextStimulus to drift correction column names.
 
@@ -791,8 +890,10 @@ class Events:
                 normalize_duration_to_us(polars.col(wrong_unit_cols)),
             )
 
-        convention, convention_source = self._resolve_offset_convention(offsets_inclusive)
-        rate, rate_source = self._resolve_sampling_rate(sampling_rate)
+        convention, convention_source = _resolve_offset_convention(
+            offsets_inclusive, metadata=self.metadata, columns=self.frame.columns,
+        )
+        rate, rate_source = _resolve_sampling_rate(sampling_rate, metadata=self.metadata)
 
         self._resolve_durations(
             durations_supplied=durations_supplied,
@@ -809,94 +910,6 @@ class Events:
             sampling_rate=sampling_rate,
             warn_missing_columns=validate,
         )
-
-    def _resolve_offset_convention(
-            self,
-            offsets_inclusive: bool | None,
-    ) -> tuple[bool | None, Literal['keyword', 'entry']]:
-        """Resolve the convention of ``offset`` from the keyword or the metadata entry.
-
-        Parameters
-        ----------
-        offsets_inclusive: bool | None
-            The ``offsets_inclusive`` keyword, compared against the ``offset`` entry.
-
-        Returns
-        -------
-        tuple[bool | None, Literal['keyword', 'entry']]
-            The convention and where it comes from: the keyword when given, else the ``offset``
-            entry, whose convention is ``None`` when the entry is absent.
-
-        Raises
-        ------
-        ValueError
-            If the keyword differs from the ``offset`` entry.
-        """
-        entry = self.metadata.get('offset')
-        entry_inclusive = entry.get('inclusive') if isinstance(entry, dict) else None
-        if (
-                offsets_inclusive is not None and entry_inclusive is not None
-                and offsets_inclusive != entry_inclusive
-        ):
-            missing = (
-                '' if 'offset' in self.frame.columns
-                else ", and the events frame has no 'offset' column"
-            )
-            raise ValueError(
-                f'offsets_inclusive={offsets_inclusive} differs from the metadata entry '
-                f"metadata['offset'] = {{'inclusive': {entry_inclusive}}}{missing}. "
-                'Correct the entry or drop the keyword.',
-            )
-        if offsets_inclusive is not None:
-            return offsets_inclusive, 'keyword'
-        return entry_inclusive, 'entry'
-
-    def _resolve_sampling_rate(
-            self,
-            sampling_rate: float | None,
-    ) -> tuple[float | None, Literal['keyword', 'entry']]:
-        """Resolve the sampling rate from the keyword or the metadata entry.
-
-        Parameters
-        ----------
-        sampling_rate: float | None
-            The ``sampling_rate`` keyword, compared against the sampling-rate entry.
-
-        Returns
-        -------
-        tuple[float | None, Literal['keyword', 'entry']]
-            The sampling rate and where it comes from: the keyword when given, else the
-            sampling-rate entry, whose rate is ``None`` when the entry is absent.
-
-        Raises
-        ------
-        ValueError
-            If the sampling-rate entry is not a positive number, or if the keyword differs from
-            it.
-        """
-        entry_rate = self.metadata.get('sampling_rate')
-        rate = None
-        if entry_rate is not None:
-            if isinstance(entry_rate, bool) or not isinstance(entry_rate, Real):
-                raise ValueError(
-                    "the metadata entry metadata['sampling_rate'] must be a number, "
-                    f'but is {entry_rate!r}.',
-                )
-            rate = float(entry_rate)
-            if rate <= 0:
-                raise ValueError(
-                    "the metadata entry metadata['sampling_rate'] must be positive, "
-                    f'but is {entry_rate}.',
-                )
-        if sampling_rate is not None and rate is not None and sampling_rate != rate:
-            raise ValueError(
-                f'sampling_rate={sampling_rate!r} differs from the metadata entry '
-                f"metadata['sampling_rate'] = {entry_rate!r}. "
-                'Correct the entry or drop the keyword.',
-            )
-        if sampling_rate is not None:
-            return sampling_rate, 'keyword'
-        return rate, 'entry'
 
     def _write_entries(
             self,
