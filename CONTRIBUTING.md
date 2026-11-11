@@ -229,16 +229,16 @@ functionality. Our code coverage is at 100% and stays there, so every changed li
 that runs it.
 
 It is possible to limit the scope of testing to specific environments and files. For example, to
-only test event-related functionality using the Python 3.10 environment use:
+only test event-related functionality using the Python 3.11 environment use:
 
 ```bash
-tox -e py310 -- tests/unit/events
+tox -e py311 -- tests/unit/events
 ```
 
 In case you only want to run tests locally that do not require any network access, you can use:
 
 ```bash
-tox -e py310 -- -m "not network"
+tox -e py311 -- -m "not network"
 ```
 
 ### Documentation

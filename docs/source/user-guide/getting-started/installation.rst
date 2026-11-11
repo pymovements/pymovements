@@ -7,8 +7,9 @@
 
     .. grid-item-card::
 
-        **Install pymovements**
-        ^^^^^^^^^^^^^^^^^^^^^^^
+        .. card-header::
+
+            **Install pymovements**
 
         Choose your preferred way:
 
