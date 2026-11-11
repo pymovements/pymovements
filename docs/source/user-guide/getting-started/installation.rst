@@ -66,12 +66,14 @@
 Optional Dependencies
 ---------------------
 
-Some features need packages that a plain installation does not include.
-Install them through an extra:
+A plain installation reads every file format that pymovements ships readers for, except two that
+need an additional package. If you do not want to think about it, install everything:
 
 .. code-block:: bash
 
-    pip install 'pymovements[datasets]'
+    pip install 'pymovements[all]'
+
+If you want to keep your environment small, install only the extra you need:
 
 .. list-table::
     :header-rows: 1
@@ -79,11 +81,13 @@ Install them through an extra:
     * - Extra
       - Packages
       - Needed for
-    * - ``datasets``
-      - ``pyreadr``, ``fastexcel``
-      - Loading R data files (``.rda``), as used by :ref:`MECOL1W1`, :ref:`MECOL1W2`,
-        :ref:`MECOL2W1` and :ref:`MECOL2W2`, and Excel files (``.xlsx``),
-        as used by :ref:`ChineseReading`.
+    * - ``rdata``
+      - ``pyreadr``
+      - R data files (``.rda``), as used by :ref:`MECOL1W1`, :ref:`MECOL1W2`, :ref:`MECOL2W1`
+        and :ref:`MECOL2W2`.
+    * - ``excel``
+      - ``fastexcel``
+      - Excel files (``.xlsx``), as used by :ref:`ChineseReading`.
     * - ``all``
       - all of the above
       - Every optional feature.
