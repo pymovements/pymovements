@@ -299,8 +299,10 @@ def test_tsplot_events_duration_only_frame():
     _, ax = tsplot(gaze=gaze, show_events=True)
 
     assert len(ax.patches) == 1
-    assert ax.patches[0].get_x() == 0
-    assert ax.patches[0].get_width() == 2
+    patch = ax.patches[0]
+    xs = patch.get_path().transformed(patch.get_patch_transform()).vertices[:, 0]
+    assert xs.min() == 0
+    assert xs.max() == 2
 
 
 @pytest.mark.parametrize(
