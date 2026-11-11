@@ -784,28 +784,24 @@ _REBUILD_EVENTS_CASES = [
     ),
 ]
 
-# The rebuild sites whose rebuilt events stay internal: measure_reading maps them to the
-# stimulus and discards them, only the measures reach the caller.
-_REBUILD_INTERNAL_CASES = [
-    pytest.param(
-        _rebuild_entry_events, lambda events: events.measure_reading(_rebuild_stimulus()),
-        id='measure_reading',
-    ),
-    pytest.param(
-        _rebuild_entry_events,
-        lambda events: events.measure_reading(
-            {1: _rebuild_stimulus(), 2: _rebuild_stimulus()}, group_columns=['trial'],
-        ),
-        id='measure_reading_dict',
-    ),
-]
-
 
 @pytest.mark.parametrize(
     ('prepare', 'rebuild'),
     [
         *(pytest.param(*case.values[:2], id=case.id) for case in _REBUILD_EVENTS_CASES),
-        *_REBUILD_INTERNAL_CASES,
+        # The rebuild sites whose rebuilt events stay internal: measure_reading maps them to
+        # the stimulus and discards them, only the measures reach the caller.
+        pytest.param(
+            _rebuild_entry_events, lambda events: events.measure_reading(_rebuild_stimulus()),
+            id='measure_reading',
+        ),
+        pytest.param(
+            _rebuild_entry_events,
+            lambda events: events.measure_reading(
+                {1: _rebuild_stimulus(), 2: _rebuild_stimulus()}, group_columns=['trial'],
+            ),
+            id='measure_reading_dict',
+        ),
     ],
 )
 def test_rebuild_sites_do_not_warn(prepare, rebuild):
