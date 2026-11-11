@@ -20,8 +20,6 @@
 """Provides gap bridging for event sequences."""
 from __future__ import annotations
 
-from copy import deepcopy
-
 import polars as pl
 
 from pymovements.events.events import Events
@@ -97,6 +95,6 @@ def bridge_gaps(events: Events, *, max_gap: float | None = None) -> Events:
     return Events(
         combined,
         trial_columns=events.trial_columns,
-        metadata=deepcopy(events.metadata),
+        metadata=events.metadata,
         validate=False,
     )

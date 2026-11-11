@@ -829,6 +829,15 @@ def test_clones_trial_columns():
     assert events.trial_columns == events_copy.trial_columns
 
 
+def test_split_keeps_trial_columns():
+    events = Events(onsets=[0, 2], offsets=[1, 3], trials=[1, 2])
+
+    parts = events.split()
+
+    assert [part.frame.height for part in parts] == [1, 1]
+    assert all(part.trial_columns == ['trial'] for part in parts)
+
+
 @pytest.mark.parametrize(
     ('events', 'kwargs', 'expected_df'),
     [

@@ -24,6 +24,7 @@ from __future__ import annotations
 import warnings
 from collections.abc import Sequence
 from copy import deepcopy
+from numbers import Real
 from typing import Any
 from typing import Literal
 from typing import overload
@@ -67,6 +68,106 @@ def _format_residuals(values: list[int]) -> str:
     if len(values) > 10:
         shown += f', ... ({len(values) - 10} more)'
     return f'[{shown}]'
+
+
+def _resolve_offset_convention(
+        offsets_inclusive: bool | None,
+        *,
+        metadata: dict[str, Any],
+        columns: Sequence[str],
+) -> tuple[bool | None, Literal['keyword', 'entry']]:
+    """Resolve the convention of ``offset`` from the keyword or the metadata entry.
+
+    Parameters
+    ----------
+    offsets_inclusive: bool | None
+        The ``offsets_inclusive`` keyword, compared against the ``offset`` entry.
+    metadata: dict[str, Any]
+        The metadata holding the ``offset`` entry, if any.
+    columns: Sequence[str]
+        The columns of the events frame, to say whether ``offset`` is among them.
+
+    Returns
+    -------
+    tuple[bool | None, Literal['keyword', 'entry']]
+        The convention and where it comes from: the keyword when given, else the ``offset``
+        entry, whose convention is ``None`` when the entry is absent.
+
+    Raises
+    ------
+    ValueError
+        If the keyword differs from the ``offset`` entry.
+    """
+    entry = metadata.get('offset')
+    entry_inclusive = entry.get('inclusive') if isinstance(entry, dict) else None
+    if (
+            offsets_inclusive is not None and entry_inclusive is not None
+            and offsets_inclusive != entry_inclusive
+    ):
+        no_column_note = (
+            '' if 'offset' in columns
+            else ", and the events frame has no 'offset' column"
+        )
+        raise ValueError(
+            f'offsets_inclusive={offsets_inclusive} differs from the metadata entry '
+            f"metadata['offset'] = {{'inclusive': {entry_inclusive}}}{no_column_note}. "
+            'Correct the entry or drop the keyword.',
+        )
+    if offsets_inclusive is not None:
+        return offsets_inclusive, 'keyword'
+    return entry_inclusive, 'entry'
+
+
+def _resolve_sampling_rate(
+        sampling_rate: float | None,
+        *,
+        metadata: dict[str, Any],
+) -> tuple[float | None, Literal['keyword', 'entry']]:
+    """Resolve the sampling rate from the keyword or the metadata entry.
+
+    Parameters
+    ----------
+    sampling_rate: float | None
+        The ``sampling_rate`` keyword, compared against the sampling-rate entry.
+    metadata: dict[str, Any]
+        The metadata holding the sampling-rate entry, if any.
+
+    Returns
+    -------
+    tuple[float | None, Literal['keyword', 'entry']]
+        The sampling rate and where it comes from: the keyword when given, else the
+        sampling-rate entry, whose rate is ``None`` when the entry is absent.
+
+    Raises
+    ------
+    ValueError
+        If the sampling-rate entry is not a positive number, or if the keyword differs from
+        it.
+    """
+    entry_rate = metadata.get('sampling_rate')
+    rate = None
+    if entry_rate is not None:
+        # bool is a Real, so True would pass as a sampling rate of 1 Hz.
+        if isinstance(entry_rate, bool) or not isinstance(entry_rate, Real):
+            raise ValueError(
+                "the metadata entry metadata['sampling_rate'] must be a number, "
+                f'but is {entry_rate!r}.',
+            )
+        rate = float(entry_rate)
+        if rate <= 0:
+            raise ValueError(
+                "the metadata entry metadata['sampling_rate'] must be positive, "
+                f'but is {entry_rate}.',
+            )
+    if sampling_rate is not None and rate is not None and sampling_rate != rate:
+        raise ValueError(
+            f'sampling_rate={sampling_rate!r} differs from the metadata entry '
+            f"metadata['sampling_rate'] = {entry_rate!r}. "
+            'Correct the entry or drop the keyword.',
+        )
+    if sampling_rate is not None:
+        return sampling_rate, 'keyword'
+    return rate, 'entry'
 
 
 def _aois_frame_from_text_stimulus(stimulus: TextStimulus) -> polars.DataFrame:
@@ -403,23 +504,28 @@ class Events:
         length. An ``offset`` column is stored only if offsets are supplied. (default: None)
     offsets_inclusive: bool | None
         The convention of the offsets. True if an offset is the last sample of the event, False
-        if it is the first sample after the event. None leaves the convention undeclared, see
-        the notes below. (default: None)
+        if it is the first sample after the event. None leaves the convention to the convention
+        entry in ``metadata``, see the notes below. (default: None)
     durations_from_offsets: bool
         If True, durations are derived from declared offsets and replace supplied durations.
         (default: False)
     sampling_rate: float | None
         The sampling rate in Hz. Its interval is the duration of the last sample of an inclusive
-        offset. Required to derive durations from inclusive offsets. (default: None)
+        offset. Required to derive durations from inclusive offsets. If None, the sampling-rate
+        entry in ``metadata`` is used. (default: None)
     validate: bool
-        If False, supplied durations are kept unchecked beside declared offsets. (default: True)
+        If False, supplied durations are kept unchecked beside declared offsets, a null
+        ``duration`` beside a non-null ``offset`` is not reported, and a convention entry
+        without its column is kept without a warning. (default: True)
     trials: list[int | float | str | None] | np.ndarray | None
         List of trial identifiers. (default: None)
     trial_columns: list[str] | str | None
         List of trial columns in the passed dataframe. (default: None)
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. A ``Sources`` entry lists the files the
-        event data was generated from. (default: None)
+        event data was generated from. The offset convention and sampling-rate entries are
+        described in the notes below. The dictionary is deep-copied, so the events share
+        nothing with the passed one. (default: None)
     time_unit: str | None
         The unit of the numeric ``onset``, ``offset`` and ``duration`` input: ``'s'`` for
         seconds, ``'ms'`` for milliseconds or ``'us'`` for microseconds. Ignored for
@@ -457,9 +563,10 @@ class Events:
     ValueError
         If ``durations`` or ``offsets`` are passed without ``onsets``, if their lengths do not
         match the length of ``onsets``, if ``time_unit`` is not one of ``'s'``, ``'ms'`` or
-        ``'us'``, if ``sampling_rate`` is not positive, if durations are derived from
-        inclusive offsets without a sampling rate, or if every row contradicts the declared
-        offset convention.
+        ``'us'``, if ``sampling_rate`` is not positive, if the sampling-rate entry in
+        ``metadata`` is not a positive number, if durations are derived from inclusive offsets
+        without a sampling rate, if every row contradicts the declared offset convention, or if
+        ``offsets_inclusive`` or ``sampling_rate`` differs from its entry in ``metadata``.
 
     Notes
     -----
@@ -505,6 +612,31 @@ class Events:
     Without a sampling rate the durations of inclusive offsets must exceed ``offset - onset`` by
     one common positive interval. If every row contradicts the declaration, a ``ValueError``
     names the ways to fix it. If some rows do, one warning names them.
+
+    ``metadata`` carries the convention and the sampling rate, so a frame rebuilt from
+    ``frame`` and ``metadata`` needs neither keyword:
+
+    .. list-table::
+        :header-rows: 1
+        :widths: 30 35 35
+
+        * - entry
+          - written by
+          - shape
+        * - offset convention
+          - ``offsets_inclusive``, only if the frame has an ``offset`` column
+          - ``metadata['offset'] = {'inclusive': True}``, keyed by the column name
+        * - sampling rate
+          - ``sampling_rate``
+          - ``metadata['sampling_rate'] = 1000``, the number as passed
+
+    The convention of ``offset`` is declared by ``offsets_inclusive``, by its entry, or by both
+    when they agree. The sampling rate resolves from ``sampling_rate`` first, then from its
+    entry. A keyword that differs from its entry raises a ``ValueError``, also on a frame without
+    an ``offset`` column. Several offset columns may carry their own convention entries. A
+    convention entry for a column the frame does not have is kept, and with ``validate=True``
+    one warning names the column. :py:meth:`~pymovements.Events.drop` removes the convention
+    entry together with its column.
 
     Modifying ``frame`` directly is not supported: ``metadata`` is not kept consistent with it.
 
@@ -568,6 +700,16 @@ class Events:
     Traceback (most recent call last):
     ...
     ValueError: every row contradicts offsets_inclusive=True: ...
+
+    The convention and the sampling rate are kept in ``metadata``. A frame rebuilt with this
+    metadata is declared and rated without any keyword:
+
+    >>> events = Events(onsets=[0], offsets=[120], offsets_inclusive=True, sampling_rate=1000)
+    >>> events.metadata
+    {'offset': {'inclusive': True}, 'sampling_rate': 1000}
+    >>> rebuilt = Events(events.frame.drop('duration'), metadata=events.metadata)
+    >>> rebuilt.frame['duration'].to_list()
+    [datetime.timedelta(microseconds=121000)]
     """
 
     frame: polars.DataFrame
@@ -600,7 +742,9 @@ class Events:
             time_unit: str | None = None,
     ):
         self.trial_columns: list[str] | None  # otherwise mypy gets confused.
-        self.metadata = metadata if metadata is not None else {}
+        # A deep copy: neither the entries written below nor later changes to nested values
+        # reach the caller's dict, and changes to the caller's dict never reach these events.
+        self.metadata = deepcopy(metadata) if metadata is not None else {}
 
         # Numeric onset/offset/duration input is interpreted in this unit; None means
         # milliseconds. Duration input carries its own unit, so time_unit is ignored for it.
@@ -747,12 +891,89 @@ class Events:
                 normalize_duration_to_us(polars.col(wrong_unit_cols)),
             )
 
+        offsets_inclusive, offsets_inclusive_source = _resolve_offset_convention(
+            offsets_inclusive, metadata=self.metadata, columns=self.frame.columns,
+        )
+        sampling_rate, sampling_rate_source = _resolve_sampling_rate(
+            sampling_rate, metadata=self.metadata,
+        )
+
         self._resolve_durations(
             durations_supplied=durations_supplied,
             offsets_inclusive=offsets_inclusive,
+            offsets_inclusive_source=offsets_inclusive_source,
             durations_from_offsets=durations_from_offsets,
             sampling_rate=sampling_rate,
+            sampling_rate_source=sampling_rate_source,
             validate=validate,
+        )
+
+        self._write_entries(
+            offsets_inclusive=offsets_inclusive,
+            offsets_inclusive_source=offsets_inclusive_source,
+            sampling_rate=sampling_rate,
+            sampling_rate_source=sampling_rate_source,
+            warn_missing_columns=validate,
+        )
+
+    def _write_entries(
+            self,
+            *,
+            offsets_inclusive: bool | None,
+            offsets_inclusive_source: Literal['keyword', 'entry'],
+            sampling_rate: float | None,
+            sampling_rate_source: Literal['keyword', 'entry'],
+            warn_missing_columns: bool,
+    ) -> None:
+        """Write the keyword declarations as entries and warn about entries without a column.
+
+        Parameters
+        ----------
+        offsets_inclusive: bool | None
+            The resolved convention, written to the ``offset`` entry when it comes from the
+            keyword and the frame has that column.
+        offsets_inclusive_source: Literal['keyword', 'entry']
+            Where the convention comes from.
+        sampling_rate: float | None
+            The resolved sampling rate, written as passed to the sampling-rate entry when it
+            comes from the keyword.
+        sampling_rate_source: Literal['keyword', 'entry']
+            Where the sampling rate comes from.
+        warn_missing_columns: bool
+            Whether to warn once about convention entries whose column the frame does not have.
+        """
+        # Entries are written only for what the frame has.
+        if offsets_inclusive_source == 'keyword' and 'offset' in self.frame.columns:
+            entry = self.metadata.get('offset')
+            self.metadata['offset'] = {
+                **(entry if isinstance(entry, dict) else {}),
+                'inclusive': offsets_inclusive,
+            }
+        if sampling_rate_source == 'keyword':
+            self.metadata['sampling_rate'] = sampling_rate
+
+        if not warn_missing_columns:
+            return
+
+        # A convention entry without its column is kept, never removed on construction.
+        missing_columns = [
+            column for column, entry in self.metadata.items()
+            if isinstance(entry, dict) and 'inclusive' in entry
+            and column not in self.frame.columns
+        ]
+        if not missing_columns:
+            return
+        if len(missing_columns) == 1:
+            described = f"entry for the column '{missing_columns[0]}'"
+        else:
+            described = 'entries for the columns ' + ', '.join(
+                f"'{column}'" for column in missing_columns
+            )
+        warn(
+            f'metadata holds offset convention {described}, '
+            'which the events frame does not have. The metadata is kept.',
+            UserWarning,
+            stacklevel=3,
         )
 
     def _resolve_durations(
@@ -760,8 +981,10 @@ class Events:
             *,
             durations_supplied: bool,
             offsets_inclusive: bool | None,
+            offsets_inclusive_source: Literal['keyword', 'entry'],
             durations_from_offsets: bool,
             sampling_rate: float | None,
+            sampling_rate_source: Literal['keyword', 'entry'],
             validate: bool,
     ) -> None:
         """Fill or check the ``duration`` column against the ``offset`` column.
@@ -770,7 +993,7 @@ class Events:
         """
         if 'offset' not in self.frame.columns:
             ignored = []
-            if offsets_inclusive is not None:
+            if offsets_inclusive_source == 'keyword':
                 ignored.append(f'offsets_inclusive={offsets_inclusive}')
             if durations_from_offsets:
                 ignored.append('durations_from_offsets=True')
@@ -814,32 +1037,38 @@ class Events:
             self.frame = self.frame.with_columns(derived.alias('duration'))
             return
 
+        if not validate:
+            return
+
         # A null duration beside a non-null offset is reported, never filled.
         null_durations = self.frame.select(
             (polars.col('duration').is_null() & polars.col('offset').is_not_null()).sum(),
         ).item()
         if null_durations:
-            row_s = 'row has' if null_durations == 1 else 'rows have'
+            rows_have = 'row has' if null_durations == 1 else 'rows have'
             warn(
-                f"{null_durations} {row_s} a null duration beside a non-null offset. "
+                f"{null_durations} {rows_have} a null duration beside a non-null offset. "
                 'The durations stay null.',
                 UserWarning,
                 stacklevel=3,
             )
 
-        if validate:
-            self._check_durations_against_offsets(
-                offsets_inclusive=offsets_inclusive,
-                sampling_rate=sampling_rate,
-                sampling_interval=sampling_interval,
-            )
+        self._check_durations_against_offsets(
+            offsets_inclusive=offsets_inclusive,
+            offsets_inclusive_source=offsets_inclusive_source,
+            sampling_rate=sampling_rate,
+            sampling_interval=sampling_interval,
+            sampling_rate_source=sampling_rate_source,
+        )
 
     def _check_durations_against_offsets(
             self,
             *,
             offsets_inclusive: bool,
+            offsets_inclusive_source: Literal['keyword', 'entry'],
             sampling_rate: float | None,
             sampling_interval: int | None,
+            sampling_rate_source: Literal['keyword', 'entry'],
     ) -> None:
         """Check the stored durations against the declared offsets.
 
@@ -855,29 +1084,33 @@ class Events:
         if residuals.is_empty():
             return
 
+        # The texts name the metadata entry as the source, the keyword is the default.
         declaration = f'offsets_inclusive={offsets_inclusive}'
+        if offsets_inclusive_source == 'entry':
+            declaration += ' from the metadata entry'
         if not offsets_inclusive:
             expected = 0
-            expected_description = '0'
+            expected_text = '0'
         elif sampling_interval is not None:
             expected = sampling_interval
-            expected_description = (
-                f'{_format_microseconds(expected)} (sampling_rate={sampling_rate:g})'
-            )
+            rate_text = f'sampling_rate={sampling_rate:g}'
+            if sampling_rate_source == 'entry':
+                rate_text += ' from the metadata entry'
+            expected_text = f'{_format_microseconds(expected)} ({rate_text})'
         else:
             # Without a sampling rate the positive residuals must agree on one interval.
             positive = residuals.filter(residuals > _RESIDUAL_TOLERANCE_US)
             if positive.is_empty():
                 expected = None
-                expected_description = 'a common positive residual (no sampling rate)'
+                expected_text = 'a common positive residual (no sampling rate)'
             else:
                 counts = positive.value_counts(sort=True)
                 expected = counts.filter(
                     polars.col('count') == counts['count'].max(),
                 )[residuals.name].min()
-                expected_description = (
-                    'no sampling rate, common positive residual '
-                    f'{_format_microseconds(expected)}'
+                expected_text = (
+                    f'common positive residual {_format_microseconds(expected)} '
+                    '(no sampling rate)'
                 )
 
         contradicting = residuals if expected is None else residuals.filter(
@@ -887,9 +1120,6 @@ class Events:
             return
 
         distinct = sorted(contradicting.unique().to_list())
-        legacy_rows = (
-            (contradicting.abs() <= _RESIDUAL_TOLERANCE_US).sum() if offsets_inclusive else 0
-        )
 
         if len(contradicting) == len(residuals):
             if len(distinct) == 1:
@@ -898,39 +1128,41 @@ class Events:
                 seen = f'takes the values {_format_residuals(distinct)}'
             message = (
                 f'every row contradicts {declaration}: duration - (offset - onset) {seen}, '
-                f'expected {expected_description}'
+                f'expected {expected_text}'
             )
             if offsets_inclusive and all(abs(r) <= _RESIDUAL_TOLERANCE_US for r in distinct):
                 message += ', the durations look like pre-v0.29.0 values'
+            # The correction is offered where the convention was declared.
+            if offsets_inclusive_source == 'keyword':
+                correction = f'offsets_inclusive={not offsets_inclusive}'
+            else:
+                correction = f"metadata['offset'] = {{'inclusive': {not offsets_inclusive}}}"
             if offsets_inclusive:
                 message += (
                     '. Pass durations_from_offsets=True to derive the durations from the '
-                    'offsets, offsets_inclusive=False if the offsets are exclusive, or '
-                    'validate=False to keep the durations unchecked.'
+                    f'offsets, {correction} if the offsets are exclusive, '
+                    'or validate=False to keep the durations unchecked.'
                 )
             else:
                 message += (
-                    '. Pass offsets_inclusive=True if the offsets are inclusive, or '
-                    'validate=False to keep the durations unchecked.'
+                    f'. Pass {correction} if the offsets are inclusive, '
+                    'or validate=False to keep the durations unchecked.'
                 )
             raise ValueError(message)
 
-        if sampling_interval is not None and offsets_inclusive:
-            expected_description = (
-                f'{_format_microseconds(sampling_interval)} '
-                f'(sampling_rate={sampling_rate:g} from the sampling_rate keyword)'
-            )
         message = (
             f'{len(contradicting)} of {len(residuals)} rows contradict {declaration}: '
-            f'expected duration - (offset - onset) to be {expected_description}, '
+            f'expected duration - (offset - onset) to be {expected_text}, '
             f'residuals seen: {_format_residuals(sorted(residuals.unique().to_list()))}.'
         )
-        if legacy_rows:
-            row_s = 'row looks' if legacy_rows == 1 else 'rows look'
-            message += (
-                f' {legacy_rows} {row_s} like pre-v0.29.0 durations. Pass '
-                'durations_from_offsets=True to derive the durations from the offsets.'
-            )
+        if offsets_inclusive:
+            legacy_rows = (contradicting.abs() <= _RESIDUAL_TOLERANCE_US).sum()
+            if legacy_rows:
+                rows_look = 'row looks' if legacy_rows == 1 else 'rows look'
+                message += (
+                    f' {legacy_rows} {rows_look} like pre-v0.29.0 durations. Pass '
+                    'durations_from_offsets=True to derive the durations from the offsets.'
+                )
         warn(message, UserWarning, stacklevel=4)
 
     @property
@@ -976,6 +1208,8 @@ class Events:
         Notes
         -----
         The minimal schema columns ``onset``, ``duration`` and ``name`` cannot be removed.
+        Dropping a column also removes the ``metadata`` entry keyed by its name, such as the
+        convention entry of an offset column.
 
         Parameters
         ----------
@@ -1006,6 +1240,8 @@ class Events:
                 )
         for column in columns:
             self.frame = self.frame.drop(column)
+            # A metadata entry keyed by the dropped column describes it and goes with it.
+            self.metadata.pop(column, None)
 
     def add_trial_column(
             self,
@@ -1263,7 +1499,7 @@ class Events:
         return Events(
             data=self.frame.clone(),
             trial_columns=self.trial_columns,
-            metadata=deepcopy(self.metadata),
+            metadata=self.metadata,
             validate=False,
         )
 
@@ -1318,7 +1554,7 @@ class Events:
                 key: Events(
                     frame,
                     trial_columns=self.trial_columns,
-                    metadata=deepcopy(self.metadata),
+                    metadata=self.metadata,
                     validate=False,
                 )
                 for key, frame in event_dfs.items()
@@ -1328,7 +1564,7 @@ class Events:
             Events(
                 frame,
                 trial_columns=self.trial_columns,
-                metadata=deepcopy(self.metadata),
+                metadata=self.metadata,
                 validate=False,
             )
             for frame in event_dfs
@@ -1792,7 +2028,7 @@ class Events:
         return Events(
             corrected_frame,
             trial_columns=self.trial_columns,
-            metadata=merge_sources(deepcopy(self.metadata), aois.metadata),
+            metadata=merge_sources(self.metadata, aois.metadata),
             validate=False,
         )
 
@@ -1928,7 +2164,7 @@ class Events:
             mapped = Events(
                 working_frame,
                 trial_columns=self.trial_columns,
-                metadata=deepcopy(self.metadata),
+                metadata=self.metadata,
                 validate=False,
             )
             mapped.map_to_aois(stimulus)
@@ -2013,7 +2249,7 @@ class Events:
             subset = Events(
                 frame.filter(polars.col(sequence_column) == key),
                 trial_columns=self.trial_columns,
-                metadata=deepcopy(self.metadata),
+                metadata=self.metadata,
                 validate=False,
             )
             if subset.frame.is_empty():

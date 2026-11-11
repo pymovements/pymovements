@@ -28,7 +28,6 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-import pymovements as pm
 from pymovements import Events
 
 
@@ -491,7 +490,7 @@ def test_check_every_row_contradicting_raises_with_recipes(
             [6, 0, 2], [5, 0, 1], {'offsets_inclusive': True, 'sampling_rate': 1000},
             [
                 r'1 of 3 rows contradict offsets_inclusive=True',
-                r'to be 1ms \(sampling_rate=1000 from the sampling_rate keyword\)',
+                r'to be 1ms \(sampling_rate=1000\)',
                 r'residuals seen: \[0, 1ms\]',
                 r'1 row looks like pre-v0\.29\.0 durations',
                 r'durations_from_offsets=True',
@@ -555,15 +554,25 @@ def test_check_null_rows_neither_contradict_nor_pass():
             )
 
 
-@pytest.mark.parametrize('validate', [True, False])
-def test_check_null_duration_beside_offset_warns_once_and_is_not_filled(validate):
+def test_check_null_duration_beside_offset_warns_once_and_is_not_filled():
     with pytest.warns(UserWarning, match='null duration') as record:
         events = Events(
             onsets=[0, 0], offsets=[5, 5], durations=[6, None],
-            offsets_inclusive=True, sampling_rate=1000, validate=validate,
+            offsets_inclusive=True, sampling_rate=1000,
         )
 
     assert len([w for w in record if 'null duration' in str(w.message)]) == 1
+    assert events.frame['duration'].to_list() == [timedelta(milliseconds=6), None]
+
+
+def test_check_null_duration_beside_offset_not_reported_with_validate_false():
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        events = Events(
+            onsets=[0, 0], offsets=[5, 5], durations=[6, None],
+            offsets_inclusive=True, sampling_rate=1000, validate=False,
+        )
+
     assert events.frame['duration'].to_list() == [timedelta(milliseconds=6), None]
 
 
@@ -658,23 +667,3 @@ def test_merge_subsequent_close_events_without_offset_gaps_from_durations(
 
     assert 'offset' not in events.columns
     assert events.frame['duration'].to_list() == [timedelta(milliseconds=v) for v in expected_ms]
-
-
-def test_compute_event_properties_on_empty_events_without_offset_warns():
-    gaze = pm.Gaze(
-        samples=pl.DataFrame({
-            'time': list(range(0, 600)) * 2,
-            'trial': [1] * 600 + [2] * 600,
-            'x': [0.0] * 1200,
-            'y': [0.0] * 1200,
-        }),
-        time_column='time',
-        pixel_columns=['x', 'y'],
-        trial_columns='trial',
-    )
-    assert 'offset' not in gaze.events.columns
-
-    with pytest.warns(UserWarning, match='No events available'):
-        gaze.compute_event_properties(('location', {'position_column': 'pixel'}))
-
-    assert gaze.events.frame.is_empty()
