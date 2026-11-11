@@ -693,11 +693,12 @@ def test_from_asc_example_file_has_expected_metadata(
 
 
 @pytest.mark.parametrize(
-    'filename', [
-        pytest.param('eyelink_monocular_example.asc', id='mono'),
+    ('filename', 'expected_grade'), [
+        pytest.param('eyelink_monocular_example.asc', ['GOOD'], id='mono'),
+        pytest.param('eyelink_binocular_example.asc', ['GOOD', 'GOOD'], id='bino'),
     ],
 )
-def test_from_asc_sets_public_cal_interfaces(filename, make_example_file):
+def test_from_asc_sets_public_cal_interfaces(filename, expected_grade, make_example_file):
     filepath = make_example_file(filename)
     gaze = from_asc(filepath)
 
@@ -708,10 +709,100 @@ def test_from_asc_sets_public_cal_interfaces(filename, make_example_file):
         'num_points': pl.Int64,
         'eye': pl.Utf8,
         'tracking_mode': pl.Utf8,
+        'grade': pl.Utf8,
     }
 
     # Example file should contain at least one calibration
     assert gaze.calibrations.height >= 1
+    assert gaze.calibrations['grade'].to_list() == expected_grade
+
+
+@pytest.mark.parametrize(
+    ('body', 'expected_eye', 'expected_grade'),
+    [
+        pytest.param(
+            'MSG	524874 !CAL\n'
+            '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+            'MSG	524879 !CAL CALIBRATION HV9 L LEFT    FAILED\n',
+            ['left'],
+            ['FAILED'],
+            id='header_match',
+        ),
+        pytest.param(
+            'MSG	524874 !CAL\n'
+            '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+            'MSG	524879 !CAL CALIBRATION HV9 LR RIGHT    FAILED\n',
+            ['left'],
+            [None],
+            id='eye_mismatch',
+        ),
+        pytest.param(
+            'MSG	524874 !CAL\n'
+            'MSG	524879 !CAL CALIBRATION HV9 R RIGHT    FAILED\n',
+            [None],
+            ['FAILED'],
+            id='header_missing',
+        ),
+    ],
+)
+@pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No sampling rate found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No tracked eye information found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
+def test_from_asc_attaches_calibration_grade_only_with_matching_header(
+        body, expected_eye, expected_grade, make_text_file,
+):
+    filepath = make_text_file(
+        filename='cal_grade.asc',
+        body=(
+            'MSG	524874 RECCFG CR 1000 2 1 L\n'
+            'MSG	524874 GAZE_COORDS 0 0 1919 1079\n'
+            f'{body}'
+        ),
+    )
+
+    gaze = from_asc(filepath)
+
+    assert gaze.calibrations['eye'].to_list() == expected_eye
+    assert gaze.calibrations['grade'].to_list() == expected_grade
+
+
+@pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No sampling rate found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No tracked eye information found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
+def test_from_asc_parses_validation_grades_and_full_scores(make_text_file):
+    body = (
+        'MSG	524874 RECCFG CR 1000 2 1 L\n'
+        'MSG	524874 GAZE_COORDS 0 0 1919 1079\n'
+        'MSG	524879 !CAL VALIDATION HV9 R RIGHT GOOD ERROR 0.5 avg. 0.9 max  '
+        'OFFSET 0.19 deg. 4.2,6.3 pix.\n'
+        'MSG	524880 !CAL VALIDATION L ABORTED\n'
+        'MSG	524881 !CAL VALIDATION HV9 R RIGHT POOR ERROR 12.37 avg. 25.25 max  '
+        'OFFSET 0.19 deg. 4.2,6.3 pix.\n'
+    )
+    filepath = make_text_file(filename='val_grades.asc', body=body)
+
+    gaze = from_asc(filepath)
+
+    assert gaze.validations.select(['eye', 'grade', 'accuracy_avg', 'accuracy_max']).rows() == [
+        ('right', 'GOOD', 0.5, 0.9),
+        ('left', 'ABORTED', None, None),
+        ('right', 'POOR', 12.37, 25.25),
+    ]
+    assert gaze.validations['num_points'].to_list() == [9, None, 9]
 
 
 @pytest.mark.parametrize(
@@ -731,10 +822,12 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
         'eye': pl.Utf8,
         'accuracy_avg': pl.Float64,
         'accuracy_max': pl.Float64,
+        'grade': pl.Utf8,
     }
 
     # Example file should contain at least one validation
     assert gaze.validations.height >= 1
+    assert gaze.validations['grade'].to_list() == ['GOOD']
 
 
 @pytest.mark.parametrize(
@@ -1030,6 +1123,52 @@ def test_from_asc_orphaned_event_end_marker_with_custom_patterns_does_not_raise_
     )
 
     assert_frame_equal(gaze.events.frame, expected_events, check_column_order=False)
+
+
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
+def test_from_asc_tracked_eye_change_yields_binocular_gaze(make_text_file):
+    """A file that switches the tracked eye loads as a binocular recording (#1401).
+
+    Each sample carries its own eye, the non-tracked eye is null, and the experiment reports
+    both eyes as tracked.
+    """
+    asc_text = (
+        '** VERSION: EYELINK II 1\n'
+        '** DATE: Wed Mar 10 12:00:00 2021\n'
+        'MSG\t1 ELCLCFG BTABLER\n'
+        'MSG\t1000 RECCFG CR 1000 2 1 R\n'
+        'START\t1000 \tRIGHT\tSAMPLES\tEVENTS\n'
+        'SAMPLES\tGAZE\tRIGHT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2\n'
+        '1000\t500.0\t400.0\t600.0\t0.0\t.....\n'
+        'END\t1000 \tSAMPLES\tEVENTS\tRES\t38.54\t31.12\n'
+        'MSG\t2000 RECCFG CR 1000 2 1 L\n'
+        'START\t2000 \tLEFT\tSAMPLES\tEVENTS\n'
+        'SAMPLES\tGAZE\tLEFT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2\n'
+        '2000\t138.1\t131.0\t778.0\t0.0\t.....\n'
+        'END\t2000 \tSAMPLES\tEVENTS\tRES\t38.54\t31.12\n'
+    )
+    filepath = make_text_file(filename='sub_eye_change.asc', body=asc_text)
+
+    gaze = from_asc(filepath)
+
+    expected_samples = pl.DataFrame(
+        {
+            'time': [1_000_000, 2_000_000],
+            'pixel': [[None, None, 500.0, 400.0], [138.1, 131.0, None, None]],
+            'pupil': [[None, 600.0], [778.0, None]],
+        },
+        schema={
+            'time': pl.Duration('us'),
+            'pixel': pl.List(pl.Float64),
+            'pupil': pl.List(pl.Float64),
+        },
+    )
+    assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
+    assert gaze.experiment.eyetracker.left is True
+    assert gaze.experiment.eyetracker.right is True
 
 
 @pytest.mark.parametrize(

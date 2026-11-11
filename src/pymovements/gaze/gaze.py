@@ -36,14 +36,14 @@ import polars
 import yaml
 
 from pymovements import transforms
-from pymovements._utils._column_nesting import get_nested_columns
-from pymovements._utils._column_nesting import unnest_list_columns
-from pymovements._utils._html import repr_html
-from pymovements._utils._nulls import row_is_null
-from pymovements._utils._sources import merge_sources
-from pymovements._utils._time import duration_to_ms
-from pymovements._utils._time import durations_to_ms
-from pymovements._utils._time import time_column_to_duration_us
+from pymovements._utils.column_nesting import get_nested_columns
+from pymovements._utils.column_nesting import unnest_list_columns
+from pymovements._utils.html import repr_html
+from pymovements._utils.nulls import row_is_null
+from pymovements._utils.sources import merge_sources
+from pymovements._utils.time import duration_to_ms
+from pymovements._utils.time import durations_to_ms
+from pymovements._utils.time import time_column_to_duration_us
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
 from pymovements.gaze.experiment import Experiment
@@ -59,6 +59,7 @@ from pymovements.gaze.validation import check_trial_columns_dtype
 from pymovements.gaze.validation import check_trial_columns_exist
 from pymovements.gaze.validation import CheckResult
 from pymovements.measure.events.processing import EventSamplesProcessor
+from pymovements.measure.reading import ReadingMeasures
 from pymovements.measure.samples.library import SampleMeasureLibrary
 from pymovements.stimulus import TextStimulus
 
@@ -240,14 +241,18 @@ class Gaze:
         the input data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
     calibrations: polars.DataFrame | None
-        The calibrations from the data: time, num_points, eye, tracking_mode.
-        A ``time`` column, if present, is converted to a ``polars.Duration`` column with
-        microsecond precision. Numeric input is interpreted as milliseconds.
+        The calibrations from the data: time, num_points, eye, tracking_mode, grade.
+        The ``grade`` column holds the EyeLink flag ``GOOD`` or ``FAILED``, or null when the
+        file carries none. A ``time`` column, if present, is converted to a ``polars.Duration``
+        column with microsecond precision. Numeric input is interpreted as milliseconds.
         None by default, to be populated by I/O helpers (e.g. from_asc). (default: None)
     validations: polars.DataFrame | None
-        The validations from the data: time, num_points, eye, accuracy_avg,
-        accuracy_max. A ``time`` column, if present, is converted to a ``polars.Duration``
-        column with microsecond precision. Numeric input is interpreted as milliseconds.
+        The validations from the data: time, num_points, eye, accuracy_avg, accuracy_max,
+        grade. The ``grade`` column holds the EyeLink flag ``GOOD``, ``FAIR``, ``POOR`` or
+        ``ABORTED``, or null when the file carries none. Rows graded ``ABORTED`` carry null
+        ``num_points``, ``accuracy_avg`` and ``accuracy_max``. A ``time`` column, if present,
+        is converted to a ``polars.Duration`` column with microsecond precision. Numeric input
+        is interpreted as milliseconds.
         None by default, to be populated by I/O helpers (e.g. from_asc).
         (default: None)
     time_column: str | None
@@ -305,14 +310,17 @@ class Gaze:
     n_components: int | None
         The number of components in the pixel, position, velocity and acceleration columns.
     calibrations: polars.DataFrame | None
-        The calibrations from the data: time, num_points, eye, tracking_mode.
-        A ``time`` column, if present, is stored as a ``polars.Duration`` column with
-        microsecond precision.
+        The calibrations from the data: time, num_points, eye, tracking_mode, grade.
+        The ``grade`` column holds the EyeLink flag ``GOOD`` or ``FAILED``, or null when the
+        file carries none. A ``time`` column, if present, is stored as a ``polars.Duration``
+        column with microsecond precision.
         None by default, to be populated by I/O helpers (e.g. from_asc).
     validations: polars.DataFrame | None
-        The validations from the data: time, num_points, eye, accuracy_avg,
-        accuracy_max. A ``time`` column, if present, is stored as a ``polars.Duration``
-        column with microsecond precision.
+        The validations from the data: time, num_points, eye, accuracy_avg, accuracy_max,
+        grade. The ``grade`` column holds the EyeLink flag ``GOOD``, ``FAIR``, ``POOR`` or
+        ``ABORTED``, or null when the file carries none. Rows graded ``ABORTED`` carry null
+        ``num_points``, ``accuracy_avg`` and ``accuracy_max``. A ``time`` column, if present,
+        is stored as a ``polars.Duration`` column with microsecond precision.
         None by default, to be populated by I/O helpers (e.g. from_asc).
     schema: polars.type_aliases.SchemaDict
         Schema of the samples dataframe.
@@ -1266,12 +1274,7 @@ class Gaze:
         >>> gaze.samples['pixel'].to_list()
         [[1.0, 2.0], [1.0, 2.0], None, None, [1.0, 2.0], [1.0, 2.0]]
         """
-        if self.events is None:
-            raise AttributeError(
-                'Gaze object has no events. Use detect() to detect events first.',
-            )
-
-        events_frame = self.events.frame
+        events_frame = self._require_events().frame
         has_matching = events_frame.filter(polars.col('name') == name).height > 0
 
         if not has_matching:
@@ -1836,7 +1839,7 @@ class Gaze:
             eye: str = 'auto',
             gaze_type: str = 'pixel',
             preserve_structure: bool = True,
-            verbose: bool = True,
+            verbose: bool | None = None,
     ) -> None:
         """Map gaze samples to AOIs.
 
@@ -1863,10 +1866,23 @@ class Gaze:
             - If False, no unnesting is attempted. Coordinates are selected from the list
               column and passed to the AOI lookup without altering the samples' schema.
 
-        verbose : bool
-            If ``True``, show a progress bar. (default: True)
+        verbose: bool | None
+            Has no effect. (default: None)
+
+            .. deprecated:: v0.29.0
+                The mapping no longer loops over all samples.
+                This argument will be removed in v0.34.0.
         """
-        # pylint: disable=unused-argument, too-many-statements
+        # pylint: disable=too-many-statements
+        if verbose is not None:
+            warn(
+                DeprecationWarning(
+                    "Gaze.map_to_aois argument 'verbose' is deprecated since version v0.29.0. "
+                    'The mapping no longer loops over all samples. '
+                    'This argument will be removed in v0.34.0.',
+                ),
+            )
+
         component_suffixes = ['x', 'y', 'xl', 'yl', 'xr', 'yr', 'xa', 'ya']
         # Schema handling: preserve_structure controls whether we alter the samples schema
         # (by unnesting) or keep list columns intact and select from them. By default,
@@ -2070,6 +2086,94 @@ class Gaze:
 
         # The AOI-mapped samples are derived from the stimulus file as well.
         self.metadata = merge_sources(self.metadata, aoi_dataframe.metadata)
+
+    def measure_reading(
+            self,
+            stimulus: TextStimulus | dict[Any, TextStimulus],
+            *,
+            group_columns: list[str] | None = None,
+            word_index_column: str = 'word_idx',
+            word_column: str = 'word',
+            event_name: str = 'fixation',
+    ) -> ReadingMeasures:
+        """Compute word-level reading measures from the detected fixation events.
+
+        This is a convenience wrapper that forwards to
+        :py:meth:`~pymovements.Events.measure_reading` on this gaze's events. Fixation events must
+        have been detected first (see :py:meth:`~pymovements.Gaze.detect`). Reading measures are
+        computed from the events, not from the raw samples.
+
+        Parameters
+        ----------
+        stimulus : TextStimulus | dict[Any, TextStimulus]
+            Text stimulus defining the AOIs. Pass a dict mapping values of the first group column
+            to a separate stimulus per value when the events span several stimuli.
+        group_columns : list[str] | None
+            Column names used to partition the data into independent reading sequences. The first
+            column takes the trial role, the remaining columns take the page role. If ``None`` or
+            empty, the whole input is treated as a single reading sequence. Required if
+            ``stimulus`` is a dict, whose keys are the values of the first group column.
+            (default: None)
+        word_index_column : str
+            Shared column name in the mapped fixations and the stimulus AOIs that corresponds to
+            the word index of the text.
+            (default: ``'word_idx'``)
+        word_column : str
+            Column in the stimulus AOIs with the content within each AOI.
+            (default: ``'word'``)
+        event_name : str
+            Name of the fixation events to compute measures from. Rows with a different ``name``
+            are dropped. The name must start with ``fixation``, because the AOI mapping only maps
+            fixation rows (see :py:meth:`~pymovements.Events.map_to_aois`).
+            (default: ``'fixation'``)
+
+        Returns
+        -------
+        ReadingMeasures
+            Reading measures container with one row per word.
+
+        Raises
+        ------
+        AttributeError
+            If the gaze has no events or no detected events. Use
+            :py:meth:`~pymovements.Gaze.detect` first.
+        """
+        return self._require_events(allow_empty=False).measure_reading(
+            stimulus,
+            word_index_column=word_index_column,
+            word_column=word_column,
+            event_name=event_name,
+            group_columns=group_columns,
+        )
+
+    def _require_events(self, *, allow_empty: bool = True) -> Events:
+        """Return the events of this gaze, raising if there are none to work on.
+
+        Parameters
+        ----------
+        allow_empty : bool
+            Whether an events object without any detected events counts as events.
+            (default: True)
+
+        Returns
+        -------
+        Events
+            The events of this gaze.
+
+        Raises
+        ------
+        AttributeError
+            If the gaze has no events, or no detected events and ``allow_empty`` is ``False``.
+        """
+        if self.events is None:
+            raise AttributeError(
+                'Gaze object has no events. Use detect() to detect events first.',
+            )
+        if not allow_empty and self.events.frame.is_empty():
+            raise AttributeError(
+                'Gaze object has no detected events. Use detect() to detect events first.',
+            )
+        return self.events
 
     def nest(
             self,
