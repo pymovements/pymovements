@@ -94,4 +94,13 @@ If you want to keep your environment small, install only the extra you need:
 
 If a feature needs a package that is not installed, pymovements raises an ``ImportError`` that
 names the extra to install.
-With conda, install the packages listed for the extra directly.
+
+Conda has no extras. The conda-forge package ``pymovements-all`` is the counterpart of the
+``all`` extra:
+
+.. code-block:: bash
+
+    conda install -c conda-forge pymovements-all
+
+For a single extra, install its packages from the table next to pymovements, for example
+``conda install -c conda-forge pymovements pyreadr`` for R data files.
