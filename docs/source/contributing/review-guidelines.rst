@@ -136,8 +136,8 @@ Dependencies
 - A new entry in ``dependencies`` of ``pyproject.toml`` has a justification in the pull request
   description. Check whether the package belongs in an extra instead, whether the lower bound is
   the oldest version the code works with, and that there is no upper bound.
-- A heavy package (scipy, matplotlib, pandas, scikit-learn, PIL) imported at the top of a module
-  that ``import pymovements`` loads fails ``tests/unit/import_test.py``. Ask for the import to move
+- A heavy package (scipy, matplotlib, scikit-learn, PIL) imported at the top of a module that
+  ``import pymovements`` loads fails ``tests/unit/import_test.py``. Ask for the import to move
   into the function that uses it. A new heavy package is added to the test's list.
 - A package from an extra is imported through ``import_optional_dependency``, and the call sits on
   the code path that needs the package. A check on a branch that works without the package breaks

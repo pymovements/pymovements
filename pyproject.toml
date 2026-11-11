@@ -35,7 +35,6 @@ dependencies = [
   "matplotlib>=3.8.0",
   "packaging>=23.2",
   "numpy>=1.23.2",
-  "pandas>=2.1.4",
   "polars>=2.0.0",
   "pyarrow>=14.0.0",
   "pyopenssl>=22.0.0",
@@ -50,10 +49,13 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 all = [
-  "pymovements[excel,rdata]"
+  "pymovements[excel,pandas,rdata]"
 ]
 excel = [
   "fastexcel>=0.13.0"
+]
+pandas = [
+  "pandas>=2.1.4"
 ]
 rdata = [
   "pyreadr>=0.5.2"

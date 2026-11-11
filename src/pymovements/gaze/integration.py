@@ -28,6 +28,7 @@ import numpy as np
 import polars as pl
 
 from pymovements._utils import checks
+from pymovements._utils.optional import import_optional_dependency
 from pymovements.events.events import Events
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
@@ -477,6 +478,7 @@ def from_pandas(
     Gaze
         Returns initialized gaze object with data read from pandas data frame.
     """
+    import_optional_dependency('pandas', extra='pandas')
     return Gaze(
         samples=pl.from_pandas(data=samples),
         experiment=experiment,
