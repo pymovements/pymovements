@@ -18,6 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test from gaze.from_pandas."""
+import importlib.metadata
+import re
+import sys
+
 import pandas as pd
 import polars as pl
 import pytest
@@ -157,3 +161,52 @@ def test_from_pandas_events(samples, events):
     assert_frame_equal(gaze.events.frame, expected_events)
     # We don't want the events point to the same reference.
     assert gaze.events.frame is not expected_events
+
+
+def test_from_pandas_missing_pandas_raises_install_hint(monkeypatch):
+    samples = pd.DataFrame({'x_pix': [0, 1], 'y_pix': [0, 1]})
+    monkeypatch.setitem(sys.modules, 'pandas', None)
+
+    expected_message = (
+        "Missing optional dependency 'pandas'. Install it with: pip install 'pymovements[pandas]'"
+    )
+    with pytest.raises(ImportError, match=re.escape(expected_message)):
+        from_pandas(samples=samples)
+
+
+@pytest.mark.parametrize(
+    'installed_version',
+    [
+        pytest.param('1.5.3', id='older_major'),
+        pytest.param('2.0.3', id='older_minor'),
+        pytest.param('2.1.3', id='older_patch'),
+    ],
+)
+def test_from_pandas_outdated_pandas_raises_upgrade_hint(installed_version, monkeypatch):
+    samples = pd.DataFrame({'x_pix': [0, 1], 'y_pix': [0, 1]})
+    monkeypatch.setattr(importlib.metadata, 'version', lambda name: installed_version)
+
+    expected_message = (
+        "pymovements requires 'pandas>=2.1.4' "
+        f"(version '{installed_version}' is installed). "
+        "Upgrade it with: pip install --upgrade 'pymovements[pandas]'"
+    )
+    with pytest.raises(ImportError, match=re.escape(expected_message)):
+        from_pandas(samples=samples)
+
+
+@pytest.mark.parametrize(
+    'installed_version',
+    [
+        pytest.param('2.1.4', id='equal'),
+        pytest.param('2.1.10', id='newer_patch_two_digits'),
+        pytest.param('3.0.0rc1', id='newer_major_prerelease'),
+    ],
+)
+def test_from_pandas_recent_pandas_loads(installed_version, monkeypatch):
+    samples = pd.DataFrame({'x_pix': [0, 1], 'y_pix': [0, 1]})
+    monkeypatch.setattr(importlib.metadata, 'version', lambda name: installed_version)
+
+    gaze = from_pandas(samples=samples, pixel_columns=['x_pix', 'y_pix'])
+
+    assert gaze.samples.shape == (2, 1)

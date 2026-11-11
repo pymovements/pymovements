@@ -66,8 +66,9 @@
 Optional Dependencies
 ---------------------
 
-A plain installation covers most of pymovements. A few file formats need an additional package.
-If you do not want to think about it, install everything:
+A plain installation covers most of pymovements. A few file formats and the pandas
+interoperability need an additional package. If you do not want to think about it, install
+everything:
 
 .. code-block:: bash
 
@@ -88,6 +89,9 @@ If you want to keep your environment small, install only the extra you need:
     * - ``excel``
       - ``fastexcel``
       - Excel files (``.xlsx``), as used by :ref:`ChineseReading`.
+    * - ``pandas``
+      - ``pandas``
+      - pandas DataFrames, as read by :py:func:`~pymovements.gaze.from_pandas`.
     * - ``all``
       - all of the above
       - Every optional feature.
