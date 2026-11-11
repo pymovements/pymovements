@@ -838,10 +838,14 @@ def test_compute_event_properties_on_empty_events_without_offset_warns():
     assert gaze.events.frame.is_empty()
 
 
-def test_metadata_entries_written_by_keywords():
-    events = Events(onsets=[0], offsets=[120], offsets_inclusive=True, sampling_rate=1000)
+@pytest.mark.parametrize('sampling_rate', [1000, 1000.0], ids=['int', 'float'])
+def test_metadata_entries_written_by_keywords(sampling_rate):
+    events = Events(
+        onsets=[0], offsets=[120], offsets_inclusive=True, sampling_rate=sampling_rate,
+    )
 
-    assert events.metadata == {'offset': {'inclusive': True}, 'sampling_rate': 1000.0}
+    assert events.metadata == {'offset': {'inclusive': True}, 'sampling_rate': sampling_rate}
+    assert type(events.metadata['sampling_rate']) is type(sampling_rate)
 
 
 @pytest.mark.parametrize(
@@ -863,7 +867,7 @@ def test_metadata_entries_declare_and_rate_rebuild_without_keywords(
 
     assert rebuilt.frame['duration'].to_list() == [timedelta(milliseconds=v) for v in expected_ms]
     assert rebuilt.metadata == {
-        'offset': {'inclusive': offsets_inclusive}, 'sampling_rate': 1000.0,
+        'offset': {'inclusive': offsets_inclusive}, 'sampling_rate': 1000,
     }
 
 
@@ -1143,7 +1147,7 @@ def test_metadata_entries_carried_by_clone_and_split(rebuild, expected_parts):
 
     assert len(rebuilt) == expected_parts
     for part in rebuilt:
-        assert part.metadata == {'offset': {'inclusive': True}, 'sampling_rate': 1000.0}
+        assert part.metadata == {'offset': {'inclusive': True}, 'sampling_rate': 1000}
         assert part.metadata['offset'] is not events.metadata['offset']
 
 

@@ -628,7 +628,7 @@ class Events:
           - ``metadata['offset'] = {'inclusive': True}``, keyed by the column name
         * - sampling rate
           - ``sampling_rate``
-          - ``metadata['sampling_rate'] = 1000.0``
+          - ``metadata['sampling_rate'] = 1000``, the number as passed
 
     The convention of ``offset`` is declared by ``offsets_inclusive``, by its entry, or by both
     when they agree. The sampling rate resolves from ``sampling_rate`` first, then from its
@@ -706,7 +706,7 @@ class Events:
 
     >>> events = Events(onsets=[0], offsets=[120], offsets_inclusive=True, sampling_rate=1000)
     >>> events.metadata
-    {'offset': {'inclusive': True}, 'sampling_rate': 1000.0}
+    {'offset': {'inclusive': True}, 'sampling_rate': 1000}
     >>> rebuilt = Events(events.frame.drop('duration'), metadata=events.metadata)
     >>> rebuilt.frame['duration'].to_list()
     [datetime.timedelta(microseconds=121000)]
@@ -935,8 +935,8 @@ class Events:
         offsets_inclusive_source: Literal['keyword', 'entry']
             Where the convention comes from.
         sampling_rate: float | None
-            The resolved sampling rate, written to the sampling-rate entry when it comes from
-            the keyword.
+            The resolved sampling rate, written as passed to the sampling-rate entry when it
+            comes from the keyword.
         sampling_rate_source: Literal['keyword', 'entry']
             Where the sampling rate comes from.
         warn_missing_columns: bool
@@ -949,8 +949,8 @@ class Events:
                 **(entry if isinstance(entry, dict) else {}),
                 'inclusive': offsets_inclusive,
             }
-        if sampling_rate_source == 'keyword' and sampling_rate is not None:
-            self.metadata['sampling_rate'] = float(sampling_rate)
+        if sampling_rate_source == 'keyword':
+            self.metadata['sampling_rate'] = sampling_rate
 
         if not warn_missing_columns:
             return
