@@ -644,8 +644,9 @@ Target release is v0.30.0. One issue per line, drafted once the PMEP is accepted
 private, so every issue is tested through the public methods of the class that has adopted:
 
 - [ ] the shared private module, adopted by `Participants`: the sidecar file shape and style, the
-      pymovements stamp and the version rules, the read-only `sidecar` attribute, whose mechanism
-      is that issue's, `schema` `participants`, `Sources`, the `<stem>.json` save default.
+      pymovements stamp and the version rules, a user `pymovements` key dropped with a warning,
+      the read-only `sidecar` attribute, whose mechanism is that issue's, `schema`
+      `participants`, `Sources`, the `<stem>.json` save default.
       Acceptance: a BIDS participants file loads with `Participants.load(path)` alone, with and
       without its sidecar
 - [ ] the metadata dict rules and the correction rule: what load builds from `sidecar` once the
