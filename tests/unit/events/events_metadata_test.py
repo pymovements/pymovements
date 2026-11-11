@@ -37,7 +37,7 @@ def test_events_metadata_is_stored():
 def test_events_metadata_is_deepcopied_on_construction():
     metadata = {'Sources': ['raw/sub_1.csv'], 'offset': {'inclusive': True}}
 
-    events = Events(onsets=[0], offsets=[1], metadata=metadata)
+    events = Events(onsets=[0], offsets=[1], sampling_rate=1000, metadata=metadata)
 
     # Neither side reaches the other, nested values included.
     events.metadata['Sources'].append('other.csv')
