@@ -52,24 +52,16 @@ _TIME_COLUMNS = ('onset', 'duration', 'offset')
 # onset, offset and duration are rounded to microseconds one by one
 _RESIDUAL_TOLERANCE_US = 1
 
-# Events.metadata entries. A convention entry is keyed by its offset column's name and holds
-# {_INCLUSIVE_KEY: bool}. The sampling-rate entry is keyed by _SAMPLING_RATE_KEY.
-_INCLUSIVE_KEY = 'inclusive'
-_SAMPLING_RATE_KEY = 'sampling_rate'
 
-# Where a declaration comes from: the constructor keyword or the metadata entry.
-_DeclarationSource = Literal['keyword', 'entry']
-
-
-def _source_description(source: _DeclarationSource, keyword: str) -> str:
+def _source_description(source: Literal['keyword', 'entry'], keyword: str) -> str:
     """Return the source of a declaration as named in messages."""
     return f'the {keyword} keyword' if source == 'keyword' else 'the metadata entry'
 
 
-def _entry_convention(entry: Any) -> bool | None:
-    """Return the convention of a metadata entry, None if it is no convention entry."""
-    if isinstance(entry, dict) and _INCLUSIVE_KEY in entry:
-        return entry[_INCLUSIVE_KEY]
+def _entry_offsets_inclusive(entry: Any) -> bool | None:
+    """Return the offsets_inclusive flag of a metadata entry, None if it has none."""
+    if isinstance(entry, dict) and 'inclusive' in entry:
+        return entry['inclusive']
     return None
 
 
@@ -854,7 +846,7 @@ class Events:
             number.
         """
         # The convention of 'offset' and the sampling rate are declared by keyword or entry.
-        entry_inclusive = _entry_convention(self.metadata.get('offset'))
+        entry_inclusive = _entry_offsets_inclusive(self.metadata.get('offset'))
         if (
                 offsets_inclusive is not None and entry_inclusive is not None
                 and offsets_inclusive != entry_inclusive
@@ -865,27 +857,27 @@ class Events:
             )
             raise ValueError(
                 f'offsets_inclusive={offsets_inclusive} differs from the metadata entry '
-                f"metadata['offset'] = {{'{_INCLUSIVE_KEY}': {entry_inclusive}}}{missing}. "
+                f"metadata['offset'] = {{'inclusive': {entry_inclusive}}}{missing}. "
                 'Correct the entry or drop the keyword.',
             )
-        entry_rate = self.metadata.get(_SAMPLING_RATE_KEY)
+        entry_rate = self.metadata.get('sampling_rate')
         rate = None
         if entry_rate is not None:
             if isinstance(entry_rate, bool) or not isinstance(entry_rate, Real):
                 raise ValueError(
-                    f"the metadata entry metadata['{_SAMPLING_RATE_KEY}'] must be a number, "
+                    "the metadata entry metadata['sampling_rate'] must be a number, "
                     f'but is {entry_rate!r}.',
                 )
             rate = float(entry_rate)
             if rate <= 0:
                 raise ValueError(
-                    f"the metadata entry metadata['{_SAMPLING_RATE_KEY}'] must be positive, "
+                    "the metadata entry metadata['sampling_rate'] must be positive, "
                     f'but is {entry_rate}.',
                 )
         if sampling_rate is not None and rate is not None and sampling_rate != rate:
             raise ValueError(
                 f'sampling_rate={sampling_rate!r} differs from the metadata entry '
-                f"metadata['{_SAMPLING_RATE_KEY}'] = {entry_rate!r}. "
+                f"metadata['sampling_rate'] = {entry_rate!r}. "
                 'Correct the entry or drop the keyword.',
             )
         return entry_inclusive, rate
@@ -914,15 +906,15 @@ class Events:
             entry = self.metadata.get('offset')
             self.metadata['offset'] = {
                 **(entry if isinstance(entry, dict) else {}),
-                _INCLUSIVE_KEY: offsets_inclusive,
+                'inclusive': offsets_inclusive,
             }
         if sampling_rate is not None:
-            self.metadata[_SAMPLING_RATE_KEY] = float(sampling_rate)
+            self.metadata['sampling_rate'] = float(sampling_rate)
 
         # A convention entry without its column is kept, never removed on construction.
         missing_columns = [
             column for column, entry in self.metadata.items()
-            if _entry_convention(entry) is not None and column not in self.frame.columns
+            if _entry_offsets_inclusive(entry) is not None and column not in self.frame.columns
         ]
         if warn_missing_columns and missing_columns:
             if len(missing_columns) == 1:
@@ -943,10 +935,10 @@ class Events:
             *,
             durations_supplied: bool,
             offsets_inclusive: bool | None,
-            offsets_inclusive_source: _DeclarationSource,
+            offsets_inclusive_source: Literal['keyword', 'entry'],
             durations_from_offsets: bool,
             sampling_rate: float | None,
-            sampling_rate_source: _DeclarationSource,
+            sampling_rate_source: Literal['keyword', 'entry'],
             validate: bool,
     ) -> None:
         """Fill or check the ``duration`` column against the ``offset`` column.
@@ -1025,10 +1017,10 @@ class Events:
             self,
             *,
             offsets_inclusive: bool,
-            offsets_inclusive_source: _DeclarationSource,
+            offsets_inclusive_source: Literal['keyword', 'entry'],
             sampling_rate: float | None,
             sampling_interval: int | None,
-            sampling_rate_source: _DeclarationSource,
+            sampling_rate_source: Literal['keyword', 'entry'],
     ) -> None:
         """Check the stored durations against the declared offsets.
 
@@ -1098,7 +1090,7 @@ class Events:
                 correction = f'offsets_inclusive={not offsets_inclusive}'
             else:
                 correction = (
-                    f"metadata['offset'] = {{'{_INCLUSIVE_KEY}': {not offsets_inclusive}}}"
+                    f"metadata['offset'] = {{'inclusive': {not offsets_inclusive}}}"
                 )
             recipes = []
             if offsets_inclusive:
@@ -1205,7 +1197,7 @@ class Events:
         for column in columns:
             self.frame = self.frame.drop(column)
             # The convention entry of a dropped offset column goes with it.
-            if _entry_convention(self.metadata.get(column)) is not None:
+            if _entry_offsets_inclusive(self.metadata.get(column)) is not None:
                 del self.metadata[column]
 
     def add_trial_column(
