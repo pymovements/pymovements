@@ -18,7 +18,7 @@
   with a warning.
 - A top-level `pymovements` entry, written at save, carries the stamp in the sidecar, never in
   `metadata`. `schema` labels the writing class, `schema_version` starts at `0.1.0`, `version`
-  names the package.
+  is the pymovements version that wrote the file.
 - A BIDS-conformant file loads with the class's `load(path)` alone, sidecar or not.
 - `verify_bids` reports nonconformities and is off by default: `'REQUIRED'` and
   `'RECOMMENDED'` warn, `True` raises, `False` is silent.
