@@ -66,8 +66,8 @@
 Optional Dependencies
 ---------------------
 
-A plain installation reads every file format that pymovements ships readers for, except two that
-need an additional package. If you do not want to think about it, install everything:
+A plain installation covers most of pymovements. A few file formats need an additional package.
+If you do not want to think about it, install everything:
 
 .. code-block:: bash
 

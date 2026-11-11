@@ -64,9 +64,9 @@ need it, or when it is heavy. The extras are named by what they enable, not by t
       - every extra above, no exceptions
       -
 
-A new extra appears in four places: ``[project.optional-dependencies]`` in ``pyproject.toml``,
-the ``all`` extra, ``extras`` in ``[testenv]`` of ``tox.ini``, and the Optional Dependencies
-section of the installation guide. The code imports the package through
+A new extra appears in three places: ``[project.optional-dependencies]`` in ``pyproject.toml``,
+the ``all`` extra, and the Optional Dependencies section of the installation guide. The test
+environments in ``tox.ini`` install ``all``. The code imports the package through
 ``import_optional_dependency``, which reads the minimum version from ``pyproject.toml`` and names
 the extra in its error message.
 
