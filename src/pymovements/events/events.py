@@ -424,8 +424,8 @@ class Events:
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. A ``Sources`` entry lists the files the
         event data was generated from. The offset convention and sampling-rate entries are
-        described in the notes below. The dictionary is copied, so the entries written by the
-        constructor never reach the passed one. (default: None)
+        described in the notes below. The dictionary is deep-copied, so the events share
+        nothing with the passed one. (default: None)
     time_unit: str | None
         The unit of the numeric ``onset``, ``offset`` and ``duration`` input: ``'s'`` for
         seconds, ``'ms'`` for milliseconds or ``'us'`` for microseconds. Ignored for
@@ -642,8 +642,9 @@ class Events:
             time_unit: str | None = None,
     ):
         self.trial_columns: list[str] | None  # otherwise mypy gets confused.
-        # A shallow copy: the entries written below never reach the caller's dict.
-        self.metadata = dict(metadata) if metadata is not None else {}
+        # A deep copy: neither the entries written below nor later changes to nested values
+        # reach the caller's dict, and changes to the caller's dict never reach these events.
+        self.metadata = deepcopy(metadata) if metadata is not None else {}
 
         # Numeric onset/offset/duration input is interpreted in this unit; None means
         # milliseconds. Duration input carries its own unit, so time_unit is ignored for it.
@@ -1453,7 +1454,7 @@ class Events:
         return Events(
             data=self.frame.clone(),
             trial_columns=self.trial_columns,
-            metadata=deepcopy(self.metadata),
+            metadata=self.metadata,
             validate=False,
         )
 
@@ -1508,7 +1509,7 @@ class Events:
                 key: Events(
                     frame,
                     trial_columns=self.trial_columns,
-                    metadata=deepcopy(self.metadata),
+                    metadata=self.metadata,
                     validate=False,
                 )
                 for key, frame in event_dfs.items()
@@ -1518,7 +1519,7 @@ class Events:
             Events(
                 frame,
                 trial_columns=self.trial_columns,
-                metadata=deepcopy(self.metadata),
+                metadata=self.metadata,
                 validate=False,
             )
             for frame in event_dfs
@@ -1982,7 +1983,7 @@ class Events:
         return Events(
             corrected_frame,
             trial_columns=self.trial_columns,
-            metadata=merge_sources(deepcopy(self.metadata), aois.metadata),
+            metadata=merge_sources(self.metadata, aois.metadata),
             validate=False,
         )
 
@@ -2118,7 +2119,7 @@ class Events:
             mapped = Events(
                 working_frame,
                 trial_columns=self.trial_columns,
-                metadata=deepcopy(self.metadata),
+                metadata=self.metadata,
                 validate=False,
             )
             mapped.map_to_aois(stimulus)
@@ -2203,7 +2204,7 @@ class Events:
             subset = Events(
                 frame.filter(polars.col(sequence_column) == key),
                 trial_columns=self.trial_columns,
-                metadata=deepcopy(self.metadata),
+                metadata=self.metadata,
                 validate=False,
             )
             if subset.frame.is_empty():

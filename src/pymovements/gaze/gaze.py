@@ -1438,7 +1438,7 @@ class Gaze:
                 Events(
                     self.events.frame,
                     trial_columns=self.events.trial_columns,
-                    metadata=deepcopy(self.events.metadata),
+                    metadata=self.events.metadata,
                     validate=False,
                 )
                 if needs_events and self.events.frame.height == 0
@@ -1466,7 +1466,7 @@ class Gaze:
                     group_events = Events(
                         self.events.frame.filter(group_filter_expression),
                         trial_columns=self.events.trial_columns,
-                        metadata=deepcopy(self.events.metadata),
+                        metadata=self.events.metadata,
                         validate=False,
                     )
 
