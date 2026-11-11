@@ -325,10 +325,11 @@ each other and to the frame:
 2. For text files the loader builds the dtype of a column from `Format`. A column loads as a
    Duration when `Format` is `number` or `integer` and `Units` is a time unit, or when BIDS fixes
    its unit, see [Duration columns](#duration-columns).
-3. Save writes the metadata dict to the sidecar path after the corrections below, as indented JSON
-   with one key per line at every depth, then sets `sidecar` to what it wrote. A Duration column is
-   written as `number`, see [Duration columns](#duration-columns). After save `sidecar`
-   is the file as written and equals the metadata dict plus the pymovements stamp.
+3. Save applies the corrections below to the metadata dict, writes it to the sidecar path as
+   indented JSON with one key per line at every depth, then sets `sidecar` to what it wrote. The
+   `Format` of a Duration column is set to `number` on the way, see
+   [Duration columns](#duration-columns). After save `sidecar` is the file as written and equals
+   the metadata dict plus the pymovements stamp.
 
 One rule covers every correction pymovements makes to a metadata entry: it fills a missing
 entry silently, replaces an entry that contradicts the frame or the file with a warning that
@@ -341,6 +342,7 @@ at save:
 | construction | `Format` missing | filled from the dtype of its column, silently |
 | save | `Format` missing | filled from the dtype of its column, silently |
 | save | `Units` missing on a Duration column | filled from the unit save writes, silently |
+| save | `Format` `integer` on a Duration column | set to `number`, silently |
 | construction and save | `Format` does not fit the dtype of its column | replaced, the warning names both values |
 | construction and save | `Format` missing and the dtype of its column maps to no value, such as Date, Datetime, List or Struct | raises, as today, the message names the column and its dtype |
 | construction and save | a `pymovements` key in the metadata dict | dropped, the warning says that save writes the running stamp |
