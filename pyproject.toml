@@ -33,7 +33,7 @@ dependencies = [
   "deprecated>=1.2.18",
   "fastexcel>=0.13.0",
   "matplotlib>=3.8.0",
-  "numpy>=1.22.4",
+  "numpy>=1.23.2",
   "pandas>=2.1.4",
   "polars>=2.0.0",
   "pyarrow>=14.0.0",
@@ -42,7 +42,7 @@ dependencies = [
   "pyreadr>=0.5.2",
   "pyyaml>=6.0.2",
   "scikit-learn>=1.2",
-  "scipy>=1.8.0",
+  "scipy>=1.9.2",
   "tqdm>=4.63.0",
   "typing_extensions>=4.0.0"
 ]
