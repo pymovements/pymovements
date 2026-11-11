@@ -1113,6 +1113,16 @@ def test_drop_offset_column_removes_its_convention_entry(column):
     assert events.metadata == expected_metadata
 
 
+def test_drop_column_removes_the_entry_keyed_by_its_name():
+    data = pl.DataFrame({'onset': [0], 'pupil': [3.0]})
+    events = Events(data, metadata={'pupil': {'Units': 'mm'}, 'key': 'value'})
+
+    events.drop('pupil')
+
+    assert 'pupil' not in events.columns
+    assert events.metadata == {'key': 'value'}
+
+
 @pytest.mark.parametrize(
     ('rebuild', 'expected_parts'),
     [

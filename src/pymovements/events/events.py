@@ -54,7 +54,7 @@ _TIME_COLUMNS = ('onset', 'duration', 'offset')
 _RESIDUAL_TOLERANCE_US = 1
 
 
-def _is_convention_entry(entry: Any) -> TypeGuard[dict[str, Any]]:
+def _is_offset_convention_entry(entry: Any) -> TypeGuard[dict[str, Any]]:
     """Return whether a metadata entry declares an offset convention."""
     return isinstance(entry, dict) and 'inclusive' in entry
 
@@ -843,7 +843,7 @@ class Events:
         """
         # The convention of 'offset' and the sampling rate are declared by keyword or entry.
         entry = self.metadata.get('offset')
-        entry_inclusive = entry['inclusive'] if _is_convention_entry(entry) else None
+        entry_inclusive = entry['inclusive'] if _is_offset_convention_entry(entry) else None
         if (
                 offsets_inclusive is not None and entry_inclusive is not None
                 and offsets_inclusive != entry_inclusive
@@ -911,7 +911,7 @@ class Events:
         # A convention entry without its column is kept, never removed on construction.
         missing_columns = [
             column for column, entry in self.metadata.items()
-            if _is_convention_entry(entry) and column not in self.frame.columns
+            if _is_offset_convention_entry(entry) and column not in self.frame.columns
         ]
         if warn_missing_columns and missing_columns:
             if len(missing_columns) == 1:
@@ -1167,7 +1167,8 @@ class Events:
         Notes
         -----
         The minimal schema columns ``onset``, ``duration`` and ``name`` cannot be removed.
-        Dropping an offset column also removes its convention entry from ``metadata``.
+        Dropping a column also removes the ``metadata`` entry keyed by its name, such as the
+        convention entry of an offset column.
 
         Parameters
         ----------
@@ -1198,9 +1199,8 @@ class Events:
                 )
         for column in columns:
             self.frame = self.frame.drop(column)
-            # The convention entry of a dropped offset column goes with it.
-            if _is_convention_entry(self.metadata.get(column)):
-                del self.metadata[column]
+            # A metadata entry keyed by the dropped column describes it and goes with it.
+            self.metadata.pop(column, None)
 
     def add_trial_column(
             self,
