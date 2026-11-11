@@ -204,6 +204,16 @@ def test_fill_with_numeric_event_frame():
     assert_frame_equal(filled.frame, expected.frame)
 
 
+def test_fill_with_duration_only_events():
+    # A frame built from durations has no offset column. The event ends at onset + duration.
+    events = Events(name='fixation', onsets=[0], durations=[49])
+
+    filled = fill(events, timesteps=np.arange(0, 100))
+
+    expected = Events(name='unclassified', onsets=[49], offsets=[99])
+    assert_frame_equal(filled.frame, expected.frame)
+
+
 def test_fill_matches_float_timesteps_not_representable_in_microseconds():
     # Event boundaries taken from float timesteps that do not land on whole microseconds
     # must still be matched by interval membership instead of exact equality.

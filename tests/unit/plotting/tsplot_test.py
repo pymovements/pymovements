@@ -288,6 +288,21 @@ def test_tsplot_events_empty_events_frame():
     assert len(ax.patches) == 0
 
 
+def test_tsplot_events_duration_only_frame():
+    gaze = Gaze(
+        samples=pl.DataFrame({'x': [0.0, 1.0, 2.0], 'y': [3.0, 4.0, 5.0]}),
+        events=Events(name='fixation', onsets=[0], durations=[2]),
+        pixel_columns=['x', 'y'],
+    )
+    gaze.unnest('pixel', output_columns=['x', 'y'])
+
+    _, ax = tsplot(gaze=gaze, show_events=True)
+
+    assert len(ax.patches) == 1
+    assert ax.patches[0].get_x() == 0
+    assert ax.patches[0].get_width() == 2
+
+
 @pytest.mark.parametrize(
     ('show_events', 'expected_n_patches'),
     [
