@@ -1308,6 +1308,7 @@ class Events:
             algorithm_kwargs: dict[str, Any] | None = None,
             fixation_name: str = 'fixation',
             character_level: bool = False,
+            word_column: str = 'word',
             inplace: bool = True,
     ) -> Events | None:
         """Correct vertical drift of fixation locations.
@@ -1353,7 +1354,10 @@ class Events:
         character_level: bool
             Set to True when the stimulus AOIs are finer than words, e.g. one row per
             character. The AOIs are then aggregated to one location per word via the
-            'word' column, which must be present. (default: False)
+            ``word_column`` column, which must be present. (default: False)
+        word_column: str
+            Name of the AOI column identifying the words to aggregate character-level AOIs
+            by. Only used when ``character_level`` is True. (default: 'word')
         inplace: bool
             If ``True``, mutate this object and return None. If ``False``, return a new
             :py:class:`~pymovements.Events` object with corrected fixation locations,
@@ -1456,6 +1460,7 @@ class Events:
             algorithm_kwargs=algorithm_kwargs,
             fixation_name=fixation_name,
             character_level=character_level,
+            word_column=word_column,
         )
         # The corrected fixations are derived from the stimulus file as well.
         if inplace:

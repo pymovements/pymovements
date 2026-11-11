@@ -101,6 +101,7 @@ def get_lines_of_text_from_aois(aois: pl.DataFrame) -> list[float]:
 def get_word_locations_from_aois(
     aois: pl.DataFrame,
     character_level: bool = False,
+    word_column: str = 'word',
 ) -> pl.Series:
     """Calculate word center locations from AOIs for DTW-based drift algorithms.
 
@@ -110,7 +111,7 @@ def get_word_locations_from_aois(
     line positions returned by get_lines_of_text_from_aois.
 
     With ``character_level=True``, the AOIs are aggregated to one location per word via
-    the 'word' column, spanning from the first to the last character of the word.
+    the ``word_column`` column, spanning from the first to the last character of the word.
     Directly adjacent repetitions of the same word within a line cannot be distinguished
     and are aggregated into a single word location.
 
@@ -120,9 +121,12 @@ def get_word_locations_from_aois(
         AOIs dataframe to calculate word locations from.
     character_level: bool
         Set to True when the AOIs are finer than words, e.g. one row per character. The
-        AOIs are then aggregated to one location per word via the 'word' column, which
-        must be present. If False, each AOI row yields its own location.
+        AOIs are then aggregated to one location per word via the ``word_column`` column,
+        which must be present. If False, each AOI row yields its own location.
         (default: False)
+    word_column: str
+        Name of the column identifying the words to aggregate character-level AOIs by.
+        Only used when ``character_level`` is True. (default: 'word')
 
     Returns
     -------
@@ -132,18 +136,19 @@ def get_word_locations_from_aois(
     Raises
     ------
     ValueError
-        If ``character_level`` is True but the AOIs dataframe has no 'word' column.
+        If ``character_level`` is True but the AOIs dataframe has no ``word_column``
+        column.
     """
-    if character_level and 'word' not in aois.columns:
+    if character_level and word_column not in aois.columns:
         raise ValueError(
-            "character_level is True, but the AOIs dataframe has no 'word' column to "
-            'aggregate the character-level AOIs by.',
+            f"character_level is True, but the AOIs dataframe has no '{word_column}' "
+            'column to aggregate the character-level AOIs by.',
         )
 
     aois_with_line_centers, line_key = with_line_centers(aois)
 
     if character_level:
-        word_run = pl.struct([pl.col(line_key), pl.col('word')]).rle_id()
+        word_run = pl.struct([pl.col(line_key), pl.col(word_column)]).rle_id()
         return (
             aois_with_line_centers
             .group_by(word_run.alias('word_run'), maintain_order=True)

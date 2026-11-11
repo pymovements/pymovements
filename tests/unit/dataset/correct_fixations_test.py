@@ -100,7 +100,8 @@ def test_dataset_correct_fixations_corrected_locations(dummy_dataset, text_stimu
     assert corrected_y == [100.0, 100.0, 200.0, 200.0, 300.0, 300.0]
 
 
-def test_dataset_correct_fixations_character_level(tmp_path):
+@pytest.mark.parametrize('word_column', ['word', 'unit_of_analysis'])
+def test_dataset_correct_fixations_character_level(tmp_path, word_column):
     definition = DatasetDefinition(name='dummy')
     dataset = Dataset(definition, path=tmp_path)
 
@@ -120,7 +121,7 @@ def test_dataset_correct_fixations_character_level(tmp_path):
     start_x = [100.0, 120.0, 140.0] * 2
     aois_df = pl.DataFrame({
         'char': ['T', 'h', 'e', 'c', 'a', 't'],
-        'word': ['The'] * 3 + ['cat'] * 3,
+        word_column: ['The'] * 3 + ['cat'] * 3,
         'start_x': start_x,
         'end_x': [x + 20.0 for x in start_x],
         'start_y': [80.0] * 3 + [180.0] * 3,
@@ -136,7 +137,11 @@ def test_dataset_correct_fixations_character_level(tmp_path):
     )
 
     dataset.correct_fixations(
-        stimulus, algorithm='warp', character_level=True, verbose=False,
+        stimulus,
+        algorithm='warp',
+        character_level=True,
+        word_column=word_column,
+        verbose=False,
     )
 
     corrected_y = [
