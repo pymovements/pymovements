@@ -80,7 +80,7 @@ participants.metadata
 # {
 #     'participant_id': {'Format': 'string'},
 #     'age': {'Description': 'age of the participant', 'Units': 'years', 'Format': 'integer'},
-#     'Sources': ['/data/participants.tsv'],
+#     'Sources': ['participants.tsv'],
 # }
 participants.data.schema['age']    # Int64, built from Format
 ```
@@ -403,8 +403,8 @@ adoption's choice.
 |---|---|
 | keyword on `load` differs from its sidecar entry | keyword wins and replaces the entry in the metadata dict, with a warning, see [The metadata dict](#the-metadata-dict) |
 | `metadata=` given on `load` | becomes the metadata dict, with any `pymovements` key dropped with a warning and `Sources` added when absent; the frame's dtypes come from it, `sidecar` is still the file as read |
-| top-level dict that names no column, a free user key or an entry whose column is gone | file-level metadata, kept in both dicts and written, silent |
-| a pymovements operation removes a column, such as `Events.drop` | the column's entry goes with it. A column removed on the frame directly leaves its entry, since pymovements cannot see that removal |
+| top-level dict that names no column, a free user key or an entry whose column was removed on the frame directly | file-level metadata, kept in both dicts and written, silent. pymovements cannot see a removal on the frame |
+| a pymovements operation removes a column | the column's entry goes with it |
 | top-level key equals a column name, value is not a dict | load and save warn, kept as read, the column keeps its inferred dtype |
 | a file exists at `path` or at the sidecar path | save raises unless `overwrite`, the message names the file and the flag |
 | direct change to the metadata dict or the frame | not checked until the next save |
@@ -526,6 +526,8 @@ stays a one-step change and the warning says the sidecar followed.
 
 ### Why an entry without a column is kept, silently
 
+This covers a column removed on the frame directly. A pymovements operation that removes a column
+knows the column and takes its entry with it, see [Conflicts](#conflicts).
 BIDS treats a description for a nonexistent column as other metadata [[2]](#references),
 and the BIDS validator is clean on it. Dropping it would discard something the user wrote, so it
 stays in both dicts and is written. It stays without a warning because no warning could be reliable:
