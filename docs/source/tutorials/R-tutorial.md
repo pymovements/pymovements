@@ -44,7 +44,7 @@ reticulate::conda_create("pymovements_env", packages = pymovements_packages, pip
 If you work with Conda:
 
 ```bash
-conda create -n pymovements_env python=3.11 # supported: 3.11–3.14
+conda create -n pymovements_env python=3.11 # supported: 3.11–3.15
 conda activate pymovements_env
 conda install -c conda-forge pymovements
 ```
