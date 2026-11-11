@@ -1084,31 +1084,31 @@ class Events:
         if residuals.is_empty():
             return
 
-        # The descriptions name the metadata entry as the source, the keyword is the default.
+        # The texts name the metadata entry as the source, the keyword is the default.
         declaration = f'offsets_inclusive={offsets_inclusive}'
         if offsets_inclusive_source == 'entry':
             declaration += ' from the metadata entry'
         if not offsets_inclusive:
             expected = 0
-            expected_description = '0'
+            expected_text = '0'
         elif sampling_interval is not None:
             expected = sampling_interval
-            rate_description = f'sampling_rate={sampling_rate:g}'
+            rate_text = f'sampling_rate={sampling_rate:g}'
             if sampling_rate_source == 'entry':
-                rate_description += ' from the metadata entry'
-            expected_description = f'{_format_microseconds(expected)} ({rate_description})'
+                rate_text += ' from the metadata entry'
+            expected_text = f'{_format_microseconds(expected)} ({rate_text})'
         else:
             # Without a sampling rate the positive residuals must agree on one interval.
             positive = residuals.filter(residuals > _RESIDUAL_TOLERANCE_US)
             if positive.is_empty():
                 expected = None
-                expected_description = 'a common positive residual (no sampling rate)'
+                expected_text = 'a common positive residual (no sampling rate)'
             else:
                 counts = positive.value_counts(sort=True)
                 expected = counts.filter(
                     polars.col('count') == counts['count'].max(),
                 )[residuals.name].min()
-                expected_description = (
+                expected_text = (
                     f'common positive residual {_format_microseconds(expected)} '
                     '(no sampling rate)'
                 )
@@ -1128,7 +1128,7 @@ class Events:
                 seen = f'takes the values {_format_residuals(distinct)}'
             message = (
                 f'every row contradicts {declaration}: duration - (offset - onset) {seen}, '
-                f'expected {expected_description}'
+                f'expected {expected_text}'
             )
             if offsets_inclusive and all(abs(r) <= _RESIDUAL_TOLERANCE_US for r in distinct):
                 message += ', the durations look like pre-v0.29.0 values'
@@ -1152,7 +1152,7 @@ class Events:
 
         message = (
             f'{len(contradicting)} of {len(residuals)} rows contradict {declaration}: '
-            f'expected duration - (offset - onset) to be {expected_description}, '
+            f'expected duration - (offset - onset) to be {expected_text}, '
             f'residuals seen: {_format_residuals(sorted(residuals.unique().to_list()))}.'
         )
         if offsets_inclusive:
