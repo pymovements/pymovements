@@ -8,6 +8,9 @@ description: |
   Each participant is instructed to read several sentences.
   Check the respective paper for details :cite:p:`ChineseReading`.
 
+  .. note:: The reading measures are distributed as Excel files. Loading them needs the
+     ``excel`` extra, install it with ``pip install 'pymovements[excel]'``.
+
 resources:
   - content: precomputed_events
     source:
