@@ -277,6 +277,8 @@ sidecar in `sidecar_encoding`. The `sidecar` attribute holds the file exactly as
 written by save, with no key added or removed, the `metadata` attribute what describes the data
 object, see [The metadata dict](#the-metadata-dict).
 
+.. _the-pymovements-stamp:
+
 ### The pymovements stamp
 
 The top-level `pymovements` entry holds exactly three keys. `schema` is a stable identifier of the
@@ -330,7 +332,9 @@ each other and to the frame:
 
 One rule covers every correction pymovements makes to a metadata entry: it fills a missing
 entry silently, replaces an entry that contradicts the frame or the file with a warning that
-names both values, and raises where it has no value to fill. It runs at construction and at save:
+names both values, raises where it has no value to fill, and drops the reserved `pymovements` key
+with a warning, see [The pymovements stamp](#the-pymovements-stamp). It runs at construction and
+at save:
 
 | when | what | outcome |
 |---|---|---|
@@ -339,6 +343,7 @@ names both values, and raises where it has no value to fill. It runs at construc
 | save | `Units` missing on a Duration column | filled from the unit save writes, silently |
 | construction and save | `Format` does not fit the dtype of its column | replaced, the warning names both values |
 | construction and save | `Format` missing and the dtype of its column maps to no value, such as Date, Datetime, List or Struct | raises, as today, the message names the column and its dtype |
+| construction and save | a `pymovements` key in the metadata dict | dropped, the warning says that save writes the running stamp |
 
 The load keyword in rule 1 is the same rule on the file side: the keyword states what the file
 contains and the entry contradicts it. The save keyword of an adopting class for the time unit is no
