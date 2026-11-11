@@ -59,7 +59,7 @@ _INCLUSIVE_KEY = 'inclusive'
 _SAMPLING_RATE_KEY = 'sampling_rate'
 
 
-# True while pymovements rebuilds events from a frame it already holds, see _rebuild_events.
+# True while pymovements rebuilds events from a frame it already holds, see Events.with_frame.
 _SILENT_CONSTRUCTION: ContextVar[bool] = ContextVar('_SILENT_CONSTRUCTION', default=False)
 
 # Where a declaration comes from: the constructor keyword or the metadata entry.
@@ -665,7 +665,7 @@ class Events:
             metadata: dict[str, Any] | None = None,
             time_unit: str | None = None,
     ):
-        # Set by _rebuild_events: a construction warning is emitted once, at entry.
+        # Set by Events.with_frame: a construction warning is emitted once, at entry.
         silent = _SILENT_CONSTRUCTION.get()
         self.trial_columns: list[str] | None  # otherwise mypy gets confused.
         # A shallow copy: the entries written below never reach the caller's dict.
@@ -1474,11 +1474,57 @@ class Events:
         Events
             A copy of an Events object.
         """
-        return _rebuild_events(
-            data=self.frame.clone(),
-            trial_columns=self.trial_columns,
-            metadata=deepcopy(self.metadata),
-        )
+        return self.with_frame(self.frame.clone())
+
+    def with_frame(
+            self,
+            frame: polars.DataFrame,
+            *,
+            metadata: dict[str, Any] | None = None,
+    ) -> Events:
+        """Return new events that hold ``frame`` with this object's trial columns and metadata.
+
+        The trial columns are kept and the metadata is deep-copied, so the offset convention and
+        the sampling rate carry over and the new object shares nothing with this one. The frame is
+        not validated: it is taken as one that already passed through the constructor, so its
+        durations stay unchecked and no construction warning is repeated.
+
+        Parameters
+        ----------
+        frame: polars.DataFrame
+            The events frame, usually derived from :py:attr:`~pymovements.Events.frame`.
+        metadata: dict[str, Any] | None
+            Metadata for the new events instead of a copy of this object's metadata.
+            (default: None)
+
+        Returns
+        -------
+        Events
+            The new events.
+
+        Examples
+        --------
+        >>> import polars
+        >>> import pymovements as pm
+        >>> events = pm.Events(
+        ...     onsets=[0, 200], offsets=[120, 320], trials=[1, 2],
+        ...     offsets_inclusive=True, sampling_rate=1000,
+        ... )
+        >>> first = events.with_frame(events.frame.filter(polars.col('trial') == 1))
+        >>> first.frame['onset'].to_list()
+        [datetime.timedelta(0)]
+        >>> first.metadata
+        {'offset': {'inclusive': True}, 'sampling_rate': 1000.0}
+        """
+        if metadata is None:
+            metadata = deepcopy(self.metadata)
+        token = _SILENT_CONSTRUCTION.set(True)
+        try:
+            return Events(
+                frame, trial_columns=self.trial_columns, metadata=metadata, validate=False,
+            )
+        finally:
+            _SILENT_CONSTRUCTION.reset(token)
 
     @overload
     def split(
@@ -1528,22 +1574,10 @@ class Events:
         if as_dict:
             # keys are tuples of the unique values of the columns specified in `by`.
             return {
-                key: _rebuild_events(
-                    frame,
-                    trial_columns=self.trial_columns,
-                    metadata=deepcopy(self.metadata),
-                )
-                for key, frame in event_dfs.items()
+                key: self.with_frame(frame) for key, frame in event_dfs.items()
             }
 
-        return [
-            _rebuild_events(
-                frame,
-                trial_columns=self.trial_columns,
-                metadata=deepcopy(self.metadata),
-            )
-            for frame in event_dfs
-        ]
+        return [self.with_frame(frame) for frame in event_dfs]
 
     def drop_nulls(
         self,
@@ -2000,9 +2034,8 @@ class Events:
             self.frame = corrected_frame
             self.metadata = merge_sources(self.metadata, aois.metadata)
             return None
-        return _rebuild_events(
+        return self.with_frame(
             corrected_frame,
-            trial_columns=self.trial_columns,
             metadata=merge_sources(deepcopy(self.metadata), aois.metadata),
         )
 
@@ -2135,11 +2168,7 @@ class Events:
             )
         else:
             stimuli = [stimulus]
-            mapped = _rebuild_events(
-                working_frame,
-                trial_columns=self.trial_columns,
-                metadata=deepcopy(self.metadata),
-            )
+            mapped = self.with_frame(working_frame)
             mapped.map_to_aois(stimulus)
             fixations, aois = mapped.frame, stimulus.aois
 
@@ -2219,11 +2248,7 @@ class Events:
                 # The dict key defines the sequence column, so it must not also live in the
                 # entry handed to compute_reading_measures.
                 aois[original_key] = stim.aois.drop(sequence_column)
-            subset = _rebuild_events(
-                frame.filter(polars.col(sequence_column) == key),
-                trial_columns=self.trial_columns,
-                metadata=deepcopy(self.metadata),
-            )
+            subset = self.with_frame(frame.filter(polars.col(sequence_column) == key))
             if subset.frame.is_empty():
                 continue
             subset.map_to_aois(stim)
@@ -2392,36 +2417,3 @@ class Events:
                 f"Merged {number_of_events} '{name}' events "
                 f'into {len(events)} events with max_gap={max_gap} ms.',
             )
-
-
-def _rebuild_events(
-        data: polars.DataFrame,
-        *,
-        trial_columns: list[str] | None,
-        metadata: dict[str, Any],
-) -> Events:
-    """Rebuild events from a frame that pymovements already holds.
-
-    The durations stay unchecked and the constructor emits no warnings, so a warning about the
-    frame is emitted once, when it enters pymovements. ``validate=False`` keeps its meaning for
-    callers.
-
-    Parameters
-    ----------
-    data: polars.DataFrame
-        The events frame.
-    trial_columns: list[str] | None
-        The trial columns of the frame.
-    metadata: dict[str, Any]
-        The metadata of the events, entries included.
-
-    Returns
-    -------
-    Events
-        The rebuilt events.
-    """
-    token = _SILENT_CONSTRUCTION.set(True)
-    try:
-        return Events(data, trial_columns=trial_columns, metadata=metadata, validate=False)
-    finally:
-        _SILENT_CONSTRUCTION.reset(token)
