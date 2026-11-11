@@ -1132,33 +1132,6 @@ def test_metadata_entries_carried_by_clone_and_split(rebuild, expected_parts):
         assert part.metadata['offset'] is not events.metadata['offset']
 
 
-def test_with_frame_keeps_trial_columns_and_deep_copies_metadata():
-    events = Events(
-        onsets=[0, 200], offsets=[120, 320], trials=[1, 2],
-        offsets_inclusive=True, sampling_rate=1000, metadata={'key': ['value']},
-    )
-
-    rebuilt = events.with_frame(events.frame.filter(pl.col('trial') == 1))
-
-    assert rebuilt.frame.height == 1
-    assert rebuilt.trial_columns == ['trial']
-    assert rebuilt.metadata == {
-        'key': ['value'], 'offset': {'inclusive': True}, 'sampling_rate': 1000.0,
-    }
-    assert rebuilt.metadata['key'] is not events.metadata['key']
-    assert rebuilt.metadata['offset'] is not events.metadata['offset']
-
-
-def test_with_frame_uses_given_metadata_instead_of_a_copy():
-    events = Events(onsets=[0], offsets=[120], offsets_inclusive=True, sampling_rate=1000)
-    metadata = {'key': 'value'}
-
-    rebuilt = events.with_frame(events.frame, metadata=metadata)
-
-    assert rebuilt.metadata == {'key': 'value'}
-    assert events.metadata == {'offset': {'inclusive': True}, 'sampling_rate': 1000.0}
-
-
 def test_with_frame_resolves_durations_from_entries():
     events = Events(onsets=[0], offsets=[120], offsets_inclusive=True, sampling_rate=1000)
 

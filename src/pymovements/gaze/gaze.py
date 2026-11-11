@@ -1435,7 +1435,9 @@ class Gaze:
             # events frame can be shared across trials instead of being filtered once per trial.
             needs_events = 'events' in method_args
             shared_empty_events = (
-                self.events.clone() if needs_events and self.events.frame.height == 0 else None
+                self.events.with_frame(self.events.frame)
+                if needs_events and self.events.frame.height == 0
+                else None
             )
 
             new_events_grouped: list[polars.DataFrame] = []
