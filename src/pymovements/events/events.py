@@ -1456,7 +1456,7 @@ class Events:
             A copy of an Events object.
         """
         return Events(
-            self.frame.clone(),
+            data=self.frame.clone(),
             trial_columns=self.trial_columns,
             metadata=deepcopy(self.metadata),
             validate=False,
