@@ -1507,19 +1507,27 @@ class Events:
 
         event_dfs = self.frame.partition_by(by=by, as_dict=as_dict)
 
-        def rebuild(frame: polars.DataFrame) -> Events:
-            return Events(
+        if as_dict:
+            # keys are tuples of the unique values of the columns specified in `by`.
+            return {
+                key: Events(
+                    frame,
+                    trial_columns=self.trial_columns,
+                    metadata=deepcopy(self.metadata),
+                    validate=False,
+                )
+                for key, frame in event_dfs.items()
+            }
+
+        return [
+            Events(
                 frame,
                 trial_columns=self.trial_columns,
                 metadata=deepcopy(self.metadata),
                 validate=False,
             )
-
-        if as_dict:
-            # keys are tuples of the unique values of the columns specified in `by`.
-            return {key: rebuild(frame) for key, frame in event_dfs.items()}
-
-        return [rebuild(frame) for frame in event_dfs]
+            for frame in event_dfs
+        ]
 
     def drop_nulls(
         self,
