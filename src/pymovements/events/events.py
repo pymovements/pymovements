@@ -28,6 +28,7 @@ from numbers import Real
 from typing import Any
 from typing import Literal
 from typing import overload
+from typing import TypeGuard
 from warnings import warn
 
 import numpy as np
@@ -53,11 +54,9 @@ _TIME_COLUMNS = ('onset', 'duration', 'offset')
 _RESIDUAL_TOLERANCE_US = 1
 
 
-def _entry_offsets_inclusive(entry: Any) -> bool | None:
-    """Return the offsets_inclusive flag of a metadata entry, None if it has none."""
-    if isinstance(entry, dict) and 'inclusive' in entry:
-        return entry['inclusive']
-    return None
+def _is_convention_entry(entry: Any) -> TypeGuard[dict[str, Any]]:
+    """Return whether a metadata entry declares an offset convention."""
+    return isinstance(entry, dict) and 'inclusive' in entry
 
 
 def _format_microseconds(value: int) -> str:
@@ -843,7 +842,8 @@ class Events:
             number.
         """
         # The convention of 'offset' and the sampling rate are declared by keyword or entry.
-        entry_inclusive = _entry_offsets_inclusive(self.metadata.get('offset'))
+        entry = self.metadata.get('offset')
+        entry_inclusive = entry['inclusive'] if _is_convention_entry(entry) else None
         if (
                 offsets_inclusive is not None and entry_inclusive is not None
                 and offsets_inclusive != entry_inclusive
@@ -911,7 +911,7 @@ class Events:
         # A convention entry without its column is kept, never removed on construction.
         missing_columns = [
             column for column, entry in self.metadata.items()
-            if _entry_offsets_inclusive(entry) is not None and column not in self.frame.columns
+            if _is_convention_entry(entry) and column not in self.frame.columns
         ]
         if warn_missing_columns and missing_columns:
             if len(missing_columns) == 1:
@@ -1199,7 +1199,7 @@ class Events:
         for column in columns:
             self.frame = self.frame.drop(column)
             # The convention entry of a dropped offset column goes with it.
-            if _entry_offsets_inclusive(self.metadata.get(column)) is not None:
+            if _is_convention_entry(self.metadata.get(column)):
                 del self.metadata[column]
 
     def add_trial_column(
