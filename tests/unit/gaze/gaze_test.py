@@ -1686,24 +1686,14 @@ def test_gaze_compute_event_properties_no_events():
         position_columns=['x', 'y'],
         trial_columns=['trial_id'],
     )
+    # The default events have no offset column.
+    assert 'offset' not in gaze.events.columns
 
     with pytest.warns(
         UserWarning,
         match='No events available to compute event properties. Did you forget to use detect()?',
     ):
-        gaze.compute_event_properties('amplitude')
-
-
-def test_gaze_compute_event_properties_no_events_without_offset_column():
-    gaze = Gaze(
-        samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.0, 0.0, 0.0], 'y': [0.0, 0.0, 0.0]}),
-        time_column='time',
-        pixel_columns=['x', 'y'],
-    )
-    assert 'offset' not in gaze.events.columns
-
-    with pytest.warns(UserWarning, match='No events available'):
-        gaze.compute_event_properties(('location', {'position_column': 'pixel'}))
+        gaze.compute_event_properties(('location', {'position_column': 'position'}))
 
     assert gaze.events.frame.is_empty()
 
