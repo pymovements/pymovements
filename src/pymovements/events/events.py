@@ -791,16 +791,16 @@ class Events:
                 normalize_duration_to_us(polars.col(wrong_unit_cols)),
             )
 
-        entry_inclusive, entry_rate = self._read_entries(offsets_inclusive, sampling_rate)
+        convention, convention_source = self._resolve_offset_convention(offsets_inclusive)
+        rate, rate_source = self._resolve_sampling_rate(sampling_rate)
 
         self._resolve_durations(
             durations_supplied=durations_supplied,
-            offsets_inclusive=offsets_inclusive if offsets_inclusive is not None
-            else entry_inclusive,
-            offsets_inclusive_source='keyword' if offsets_inclusive is not None else 'entry',
+            offsets_inclusive=convention,
+            offsets_inclusive_source=convention_source,
             durations_from_offsets=durations_from_offsets,
-            sampling_rate=sampling_rate if sampling_rate is not None else entry_rate,
-            sampling_rate_source='keyword' if sampling_rate is not None else 'entry',
+            sampling_rate=rate,
+            sampling_rate_source=rate_source,
             validate=validate,
         )
 
@@ -810,33 +810,28 @@ class Events:
             warn_missing_columns=validate,
         )
 
-    def _read_entries(
+    def _resolve_offset_convention(
             self,
             offsets_inclusive: bool | None,
-            sampling_rate: float | None,
-    ) -> tuple[bool | None, float | None]:
-        """Read the convention of ``offset`` and the sampling rate from the metadata entries.
+    ) -> tuple[bool | None, Literal['keyword', 'entry']]:
+        """Resolve the convention of ``offset`` from the keyword or the metadata entry.
 
         Parameters
         ----------
         offsets_inclusive: bool | None
             The ``offsets_inclusive`` keyword, compared against the ``offset`` entry.
-        sampling_rate: float | None
-            The ``sampling_rate`` keyword, compared against the sampling-rate entry.
 
         Returns
         -------
-        tuple[bool | None, float | None]
-            The convention of the ``offset`` entry and the rate of the sampling-rate entry,
-            ``None`` each for an absent entry.
+        tuple[bool | None, Literal['keyword', 'entry']]
+            The convention and where it comes from: the keyword when given, else the ``offset``
+            entry, whose convention is ``None`` when the entry is absent.
 
         Raises
         ------
         ValueError
-            If a keyword differs from its entry, or if the sampling-rate entry is not a positive
-            number.
+            If the keyword differs from the ``offset`` entry.
         """
-        # The convention of 'offset' and the sampling rate are declared by keyword or entry.
         entry = self.metadata.get('offset')
         entry_inclusive = entry.get('inclusive') if isinstance(entry, dict) else None
         if (
@@ -852,6 +847,33 @@ class Events:
                 f"metadata['offset'] = {{'inclusive': {entry_inclusive}}}{missing}. "
                 'Correct the entry or drop the keyword.',
             )
+        if offsets_inclusive is not None:
+            return offsets_inclusive, 'keyword'
+        return entry_inclusive, 'entry'
+
+    def _resolve_sampling_rate(
+            self,
+            sampling_rate: float | None,
+    ) -> tuple[float | None, Literal['keyword', 'entry']]:
+        """Resolve the sampling rate from the keyword or the metadata entry.
+
+        Parameters
+        ----------
+        sampling_rate: float | None
+            The ``sampling_rate`` keyword, compared against the sampling-rate entry.
+
+        Returns
+        -------
+        tuple[float | None, Literal['keyword', 'entry']]
+            The sampling rate and where it comes from: the keyword when given, else the
+            sampling-rate entry, whose rate is ``None`` when the entry is absent.
+
+        Raises
+        ------
+        ValueError
+            If the sampling-rate entry is not a positive number, or if the keyword differs from
+            it.
+        """
         entry_rate = self.metadata.get('sampling_rate')
         rate = None
         if entry_rate is not None:
@@ -872,7 +894,9 @@ class Events:
                 f"metadata['sampling_rate'] = {entry_rate!r}. "
                 'Correct the entry or drop the keyword.',
             )
-        return entry_inclusive, rate
+        if sampling_rate is not None:
+            return sampling_rate, 'keyword'
+        return rate, 'entry'
 
     def _write_entries(
             self,
