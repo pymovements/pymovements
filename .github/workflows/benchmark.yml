@@ -153,3 +153,5 @@ jobs:
           benchmark-data-dir-path: benchmarks
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true
+          # About a year of merges. Older points stay in the gh-pages history.
+          max-items-in-chart: 300
