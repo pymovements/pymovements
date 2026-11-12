@@ -572,9 +572,9 @@ def test_run_is_replayed_from_a_record_with_a_range(ranged_noise_sample_generato
     gaze = generator_class(sampling_rate=500.0, shift=(2.0, 3.0)).generate(seed=42)
     record = gaze.metadata['synthetic']
 
-    replayed = pm.synthetic.generate_samples(
-        record['generator'], seed=record['seed'], **record['hyperparameters'],
-    )
+    replayed = pm.synthetic.SampleGeneratorRegistry.create(
+        record['generator'], **record['hyperparameters'],
+    ).generate(seed=record['seed'])
 
     assert_frame_equal(replayed.samples, gaze.samples)
     assert replayed.metadata == gaze.metadata
