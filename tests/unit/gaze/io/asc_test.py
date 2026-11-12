@@ -805,6 +805,33 @@ def test_from_asc_parses_validation_grades_and_full_scores(make_text_file):
     assert gaze.validations['num_points'].to_list() == [9, None, 9]
 
 
+@pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No sampling rate found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No tracked eye information found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
+def test_from_asc_parses_validation_and_calibration_grades_behind_message_offset(make_text_file):
+    body = (
+        'MSG	524874 RECCFG CR 1000 2 1 L\n'
+        'MSG	524874 GAZE_COORDS 0 0 1919 1079\n'
+        'MSG	524875 -2 !CAL\n'
+        '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+        'MSG	524879 -3 !CAL CALIBRATION HV9 L LEFT    GOOD\n'
+        'MSG	524880 -14 !CAL VALIDATION L ABORTED\n'
+    )
+    filepath = make_text_file(filename='offset_grades.asc', body=body)
+
+    gaze = from_asc(filepath)
+
+    assert gaze.calibrations.select(['eye', 'grade']).rows() == [('left', 'GOOD')]
+    assert gaze.validations.select(['eye', 'grade']).rows() == [('left', 'ABORTED')]
+
+
 @pytest.mark.parametrize(
     'filename', [
         pytest.param('eyelink_monocular_example.asc', id='mono'),

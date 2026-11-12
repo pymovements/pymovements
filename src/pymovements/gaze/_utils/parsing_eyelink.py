@@ -923,7 +923,7 @@ def parse_eyelink(
         elif match := _match_regex(VALIDATION_REGEX, line_without_offset):
             validations.append(match.groupdict())
 
-        elif match := _match_regex(VALIDATION_ABORTED_REGEX, line):
+        elif match := _match_regex(VALIDATION_ABORTED_REGEX, line_without_offset):
             validation = match.groupdict()
             validation['tracked_eye'] = (
                 'LEFT' if validation['tracked_eye'] == 'L' else 'RIGHT'
@@ -931,7 +931,7 @@ def parse_eyelink(
             validation['grade'] = 'ABORTED'
             validations.append(validation)
 
-        elif match := _match_regex(CALIBRATION_GRADE_REGEX, line):
+        elif match := _match_regex(CALIBRATION_GRADE_REGEX, line_without_offset):
             # The calibration grade is logged after the calibration points block,
             # so attach it to the most recent calibration entry lacking a grade yet.
             grade_match = match.groupdict()
