@@ -229,6 +229,7 @@ def heatmap(
         gaze.experiment.screen.width_px,
         gaze.experiment.screen.height_px,
         gaze.experiment.screen.origin,
+        position_column=position_column,
         func_name='heatmap',
     )
 
