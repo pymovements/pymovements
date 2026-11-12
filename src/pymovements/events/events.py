@@ -94,6 +94,11 @@ _AOI_MATCH_ORDER = '__pymovements_aoi_match_order'
 _AOI_X = '__pymovements_aoi_x'
 _AOI_Y = '__pymovements_aoi_y'
 _AOI_NAME = '__pymovements_aoi_name'
+_AOI_START_X = '__pymovements_aoi_start_x'
+_AOI_START_Y = '__pymovements_aoi_start_y'
+_AOI_END_X = '__pymovements_aoi_end_x'
+_AOI_END_Y = '__pymovements_aoi_end_y'
+_AOI_GROUP_ID = '__pymovements_aoi_group_id'
 _AOI_JOIN_KEY_PREFIX = '__pymovements_aoi_join_key_'
 
 
@@ -164,6 +169,86 @@ def _event_coordinate_expr(
     return polars.lit(None, dtype=polars.Float64), False
 
 
+def _join_within_aois(fixations: polars.DataFrame, aoi_group: polars.DataFrame) -> polars.DataFrame:
+    """Return the fixations in ``fixations`` joined to the AOIs of ``aoi_group`` they fall into.
+
+    The half-open rectangle test runs as inequality predicates of ``join_where``, so the cross
+    product of fixations and AOIs is never materialised.
+    """
+    return fixations.join_where(
+        aoi_group,
+        polars.col(_AOI_START_X) <= polars.col(_AOI_X),
+        polars.col(_AOI_X) < polars.col(_AOI_END_X),
+        polars.col(_AOI_START_Y) <= polars.col(_AOI_Y),
+        polars.col(_AOI_Y) < polars.col(_AOI_END_Y),
+        suffix='_aoi',
+    )
+
+
+def _aois_with_bounds(aoi_dataframe: TextStimulus) -> polars.DataFrame:
+    """Return the AOIs of ``aoi_dataframe`` with their match order and Float64 bound columns.
+
+    The bound columns are the corners of each AOI's rectangle in both layouts, from width and
+    height or from the end coordinates.
+    """
+    aois = aoi_dataframe.aois.with_columns(
+        polars.int_range(polars.len()).alias(_AOI_MATCH_ORDER),
+    )
+    start_x = polars.col(aoi_dataframe.start_x_column)
+    start_y = polars.col(aoi_dataframe.start_y_column)
+    if aoi_dataframe.width_column is not None:
+        end_x = start_x + polars.col(aoi_dataframe.width_column)
+        end_y = start_y + polars.col(aoi_dataframe.height_column)
+    else:
+        end_x = polars.col(aoi_dataframe.end_x_column)
+        end_y = polars.col(aoi_dataframe.end_y_column)
+    # join_where compares only columns of equal dtype, so the bounds get the coordinate dtype.
+    return aois.with_columns(
+        start_x.cast(polars.Float64).alias(_AOI_START_X),
+        start_y.cast(polars.Float64).alias(_AOI_START_Y),
+        end_x.cast(polars.Float64).alias(_AOI_END_X),
+        end_y.cast(polars.Float64).alias(_AOI_END_Y),
+    )
+
+
+def _join_fixations_to_aois(
+        fixations: polars.DataFrame,
+        aoi_dataframe: TextStimulus,
+        key_columns: list[str],
+) -> polars.DataFrame:
+    """Return the matches of the fixations in ``fixations`` against the AOIs.
+
+    With key columns the join runs once per key group, where the group ids come from one
+    equi-join on the keys: key equality stays polars equality and fixations whose key has no AOIs
+    drop out there.
+    """
+    aois = _aois_with_bounds(aoi_dataframe)
+
+    # The original key columns only serve the wildcard lookup in the caller. Without them the
+    # AOI key columns keep their names in the join.
+    fixations = fixations.drop(key_columns)
+    if not key_columns:
+        return _join_within_aois(fixations, aois)
+
+    # join_where takes no equality keys: it rewrites an equality predicate into an equi-join
+    # with the inequalities as a filter after it, which materialises the per-key product again.
+    # One join_where per key group keeps memory flat.
+    join_keys = [_aoi_join_key_name(column) for column in key_columns]
+    group_ids = aois.select(key_columns).unique().with_row_index(_AOI_GROUP_ID)
+    # The group id stays on the fixation side only, so every part and the empty fallback below
+    # share one schema.
+    aoi_groups = aois.join(group_ids, on=key_columns).partition_by(
+        _AOI_GROUP_ID, as_dict=True, include_key=False,
+    )
+    fixations = fixations.join(group_ids, left_on=join_keys, right_on=key_columns, how='inner')
+    parts = [
+        _join_within_aois(group, aoi_groups[group_id])
+        for group_id, group in fixations.partition_by(_AOI_GROUP_ID, as_dict=True).items()
+    ]
+    # No groups means no fixation rows, so the join of the empty frame is the result.
+    return polars.concat(parts) if parts else _join_within_aois(fixations, aois)
+
+
 def _map_fixations_to_aois(
         frame: polars.DataFrame,
         aoi_dataframe: TextStimulus,
@@ -174,8 +259,7 @@ def _map_fixations_to_aois(
     """Return the AOI columns for all fixations in ``frame``, aligned to its row order.
 
     Non-fixation rows, rows with invalid coordinates and rows without a matching AOI receive
-    null values. Fixation-to-AOI matching is done with a single vectorized join and spatial
-    filter instead of a per-row Python loop.
+    null values. The matching itself is done by ``_join_fixations_to_aois``.
     """
     key_columns = [
         column
@@ -249,41 +333,7 @@ def _map_fixations_to_aois(
         constrained = candidates
         wildcard = candidates.head(0)
 
-    aois = aoi_dataframe.aois.with_columns(
-        polars.int_range(polars.len()).alias(_AOI_MATCH_ORDER),
-    )
-    if key_columns:
-        matches = constrained.join(
-            aois,
-            left_on=[_aoi_join_key_name(column) for column in key_columns],
-            right_on=key_columns,
-            how='inner',
-            suffix='_aoi',
-        )
-    else:
-        matches = constrained.join(aois, how='cross', suffix='_aoi')
-
-    if aoi_dataframe.width_column is not None:
-        spatial = (
-            (polars.col(aoi_dataframe.start_x_column) <= polars.col(_AOI_X))
-            & (
-                polars.col(_AOI_X)
-                < polars.col(aoi_dataframe.start_x_column) + polars.col(aoi_dataframe.width_column)
-            )
-            & (polars.col(aoi_dataframe.start_y_column) <= polars.col(_AOI_Y))
-            & (
-                polars.col(_AOI_Y)
-                < polars.col(aoi_dataframe.start_y_column) + polars.col(aoi_dataframe.height_column)
-            )
-        )
-    else:
-        spatial = (
-            (polars.col(aoi_dataframe.start_x_column) <= polars.col(_AOI_X))
-            & (polars.col(_AOI_X) < polars.col(aoi_dataframe.end_x_column))
-            & (polars.col(aoi_dataframe.start_y_column) <= polars.col(_AOI_Y))
-            & (polars.col(_AOI_Y) < polars.col(aoi_dataframe.end_y_column))
-        )
-    matches = matches.filter(spatial)
+    matches = _join_fixations_to_aois(constrained, aoi_dataframe, key_columns)
 
     multiple = (
         matches.group_by(_AOI_ROW_ID).len().filter(polars.col('len') > 1)
