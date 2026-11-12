@@ -299,15 +299,13 @@ tox -e docs -- -aE
 
 ### Pull Requests
 
-Once you are ready to publish your changes:
+Once you are ready to publish your changes, create a
+[pull request (PR)](https://github.com/pymovements/pymovements/compare). The default template
+fills the body with the required sections. Every instruction in it is an HTML comment, so nothing
+needs to be deleted before posting.
 
-- Create a [pull request (PR)](https://github.com/pymovements/pymovements/compare).
-- Provide a summary of the changes you are introducing, according to the default template.
-- In case you are resolving an issue, remember to add a reference in the description.
-
-The default template is meant as a helper and should guide you through the process of creating a
-pull request. It's also totally fine to submit work in progress, in which case you'll likely be
-asked to make some further changes.
+It's also totally fine to submit work in progress, in which case you'll likely be asked to make
+some further changes.
 
 If your change is a significant amount of work to write, we highly recommend starting by
 opening an issue laying out what you want to do. That lets a conversation happen early in case other
@@ -317,6 +315,63 @@ The best pull requests are focused, clearly describe what they're for and why th
 contain tests for whatever changes they make to the code's behavior. As a bonus, these are easiest
 for someone to review, which helps your pull request get merged quickly. Standard advice about good
 pull requests for open-source projects applies.
+
+#### Title
+
+The title starts with a prefix that names the type of change, followed by a colon, as in
+`fix: handle empty gaze frames`. The prefix sets the label of the pull request and the section of
+the release notes in which it appears. A scope in parentheses is optional, as in
+`feat(events): ...`.
+
+| Prefix | Label | Release notes section |
+|---|---|---|
+| `feat` | `enhancement` | ✨ Enhancements |
+| `fix` | `fix` | 🐞 Bug Fixes |
+| `docs` | `documentation` | 📖 Documentation |
+| `dataset` | `dataset` | 📀 Datasets |
+| `depr` | `deprecation` | ⚠️ Deprecations |
+| `perf` | `performance` | 🚀 Performance improvements |
+| `build` | `build` | 🛠️ Maintenance |
+| `chore`, `ci`, `refactor`, `test` | `internal` | 🛠️ Maintenance |
+| `release` | `release` | no section of its own, used by maintainers for release pull requests |
+
+Add `!` after prefix and scope for a breaking change, as in `feat!: ...` or
+`feat(events)!: ...`. This sets the `breaking` label, lists the pull request under
+💥 Breaking Changes and bumps the minor version of the next release.
+
+#### Body
+
+Three sections are always present, in this order:
+
+- **Description** states what the change does and why. If the pull request fixes an issue, it
+  contains `Resolves #N` so that the issue closes on merge. Issues the pull request relates to
+  without resolving them are mentioned here as well.
+- **Changes** is a short bullet list that maps the diff, one bullet per change.
+- **Testing** states how the change was verified: the tests added or run and any manual checks.
+
+Four sections are added on demand. ⚠️ Deprecation and 💥 Breaking Change open the body in that
+order, before Description, since readers of the release notes look for them first. 🚨 Merge Danger
+and Dependencies follow Testing, in that order.
+
+- **⚠️ Deprecation** has one paragraph per deprecated item, naming the item, the version that
+  deprecates it, its replacement and the removal version. The pull request carries the
+  `deprecation` label. A `depr` title sets it. A `feat` pull request that also deprecates
+  something gets it from a maintainer, next to `enhancement`.
+- **💥 Breaking Change** has one paragraph per break, naming the behavior or signature that
+  changes, the code that stops working and what to use instead. The title carries `!`.
+- **🚨 Merge Danger** marks a change that is hard to reverse after a merge and is not an API break.
+  Most merges are two-way doors, since a revert restores the previous state. A persisted file
+  format, a dataset source or checksum, release tooling, CI tooling or a dependency floor is a
+  one-way door, since a revert does not recall files already written, data already downloaded or a
+  release already published, and does not restore environments already resolved against a floor.
+  The section names the one-way door (what cannot be undone after the merge) and the blast radius
+  (who and what is affected).
+- **Dependencies** lists the pull requests this one requires, the pull requests that require it and
+  the pull requests it conflicts with, so that the merge order is visible.
+
+The body closes with the checklist from the template. It is a self-check for the author before
+requesting a review, not evidence for the reviewer: verification lives in Testing. First-time
+contributors add themselves to `CITATION.cff`.
 
 Do not squash your commits after you have submitted a pull request, as this
 erases context during review. We will squash commits when the pull request is ready to be merged.
