@@ -13,8 +13,13 @@ jobs:
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
+  # Contents write is for the alert commit comment and for publishing the
+  # chart to gh-pages on push to main. Pull request runs reach benchmark.yml
+  # directly, not through this job.
   benchmark:
     uses: ./.github/workflows/benchmark.yml
+    permissions:
+      contents: write
 
   build:
     needs: [tests, benchmark]
@@ -30,7 +35,7 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
-        python-version: "3.14"
+        python-version: "3.15"
 
     - name: Install build dependency
       run: python -m pip install build

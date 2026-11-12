@@ -239,6 +239,9 @@ suppress_warnings = [
     'myst.header',
 ]
 
+# sphinx-design 0.8.0 deprecated the '^^^'/'+++' card separators.
+sd_card_legacy_separators = False
+
 
 copybutton_prompt_text = r'>>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: '
 copybutton_prompt_is_regexp = True

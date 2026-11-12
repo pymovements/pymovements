@@ -154,6 +154,27 @@ For running a specific hook on all git repository files use
 
     pre-commit run mypy -a
 
+.. _dependencies:
+
+Dependencies
+^^^^^^^^^^^^
+
+Every dependency in ``pyproject.toml`` has a lower bound and no upper bound. A new required
+dependency needs a justification in the pull request description.
+
+A package that only a few features need goes into an extra. Import it with
+``import_optional_dependency`` from ``pymovements._utils.optional`` on the code path that needs it.
+The helper raises an ``ImportError`` that names the extra to install.
+
+Heavy packages (scipy, matplotlib, pandas, scikit-learn, PIL) are imported inside the function that
+uses them, so that ``import pymovements`` stays fast. Bind the module to an alias with
+``importlib.import_module``, which keeps pylint's ``import-outside-toplevel`` check on. Imports
+needed only for type annotations go under ``TYPE_CHECKING``.
+
+.. code:: python
+
+    plt = importlib.import_module('matplotlib.pyplot')
+
 .. _testing:
 
 Testing
@@ -184,17 +205,40 @@ functionality. Our code coverage is at 100% and stays there, so every changed li
 that runs it.
 
 It is possible to limit the scope of testing to specific environments and files. For example, to
-only test event-related functionality using the Python 3.10 environment use:
+only test event-related functionality using the Python 3.11 environment use:
 
 .. code:: bash
 
-    tox -e py310 -- tests/unit/events
+    tox -e py311 -- tests/unit/events
 
 In case you only want to run tests locally that do not require any network access you can use:
 
 .. code:: bash
 
-    tox -e py310 -- -m "not network"
+    tox -e py311 -- -m "not network"
+
+.. _benchmarks:
+
+Benchmarks
+^^^^^^^^^^
+
+Performance benchmarks live in ``tests/benchmark`` and use
+`pytest-benchmark <https://pytest-benchmark.readthedocs.io>`_. You can run them locally with
+
+.. code:: bash
+
+    tox -e benchmark
+
+The results are written to ``benchmark-data.json`` in the repository root.
+
+On every pull request, a workflow benchmarks the head of your branch and its merge-base with
+``main`` on the same runner and fails if a benchmark gets more than 1.5 times slower. This
+comparison is the authoritative regression check.
+
+Every push to ``main`` adds the result of its head commit to the
+`benchmark history chart <https://pymovements.github.io/pymovements/benchmarks/>`_. The chart is
+indicative only: its points come from shared GitHub runners of varying speed, so it shows host
+speed as well as code speed.
 
 .. _documentation:
 
