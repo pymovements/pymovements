@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test pymovements utils archives."""
+"""Test pymovements archive utilities."""
 import bz2
 import gzip
 import io
@@ -30,9 +30,9 @@ from collections.abc import Callable
 
 import pytest
 
-from pymovements.dataset._utils._archives import _decompress
-from pymovements.dataset._utils._archives import _ZIP_COMPRESSION_MAP
-from pymovements.dataset._utils._archives import extract_archive
+from pymovements.dataset._utils.archives import _decompress
+from pymovements.dataset._utils.archives import _ZIP_COMPRESSION_MAP
+from pymovements.dataset._utils.archives import extract_archive
 
 
 def test_extract_archive_wrong_suffix():

@@ -22,15 +22,18 @@ from __future__ import annotations
 
 from typing import Literal
 from typing import overload
+from typing import TYPE_CHECKING
 
 import numpy as np
-import pandas as pd
 import polars as pl
 
-from pymovements._utils import _checks
+from pymovements._utils import checks
 from pymovements.events.events import Events
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 @overload
@@ -295,12 +298,12 @@ def from_numpy(
     └──────────────┴────────────┘
     """
     # Either samples or {time, pixel, position, velocity, acceleration} must be None.
-    _checks.check_is_mutual_exclusive(samples=samples, time=time)
-    _checks.check_is_mutual_exclusive(samples=samples, pixel=pixel)
-    _checks.check_is_mutual_exclusive(samples=samples, position=position)
-    _checks.check_is_mutual_exclusive(samples=samples, velocity=velocity)
-    _checks.check_is_mutual_exclusive(samples=samples, acceleration=acceleration)
-    _checks.check_is_mutual_exclusive(samples=samples, distance=distance)
+    checks.check_is_mutual_exclusive(samples=samples, time=time)
+    checks.check_is_mutual_exclusive(samples=samples, pixel=pixel)
+    checks.check_is_mutual_exclusive(samples=samples, position=position)
+    checks.check_is_mutual_exclusive(samples=samples, velocity=velocity)
+    checks.check_is_mutual_exclusive(samples=samples, acceleration=acceleration)
+    checks.check_is_mutual_exclusive(samples=samples, distance=distance)
 
     if samples is None:
         if trial_columns is not None:

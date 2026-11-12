@@ -36,14 +36,14 @@ import polars
 import yaml
 
 from pymovements import transforms
-from pymovements._utils._column_nesting import get_nested_columns
-from pymovements._utils._column_nesting import unnest_list_columns
-from pymovements._utils._html import repr_html
-from pymovements._utils._nulls import row_is_null
-from pymovements._utils._sources import merge_sources
-from pymovements._utils._time import duration_to_ms
-from pymovements._utils._time import durations_to_ms
-from pymovements._utils._time import time_column_to_duration_us
+from pymovements._utils.column_nesting import get_nested_columns
+from pymovements._utils.column_nesting import unnest_list_columns
+from pymovements._utils.html import repr_html
+from pymovements._utils.nulls import row_is_null
+from pymovements._utils.sources import merge_sources
+from pymovements._utils.time import duration_to_ms
+from pymovements._utils.time import durations_to_ms
+from pymovements._utils.time import time_column_to_duration_us
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
 from pymovements.gaze.experiment import Experiment
@@ -1839,7 +1839,7 @@ class Gaze:
             eye: str = 'auto',
             gaze_type: str = 'pixel',
             preserve_structure: bool = True,
-            verbose: bool = True,
+            verbose: bool | None = None,
     ) -> None:
         """Map gaze samples to AOIs.
 
@@ -1866,10 +1866,23 @@ class Gaze:
             - If False, no unnesting is attempted. Coordinates are selected from the list
               column and passed to the AOI lookup without altering the samples' schema.
 
-        verbose : bool
-            If ``True``, show a progress bar. (default: True)
+        verbose: bool | None
+            Has no effect. (default: None)
+
+            .. deprecated:: v0.29.0
+                The mapping no longer loops over all samples.
+                This argument will be removed in v0.34.0.
         """
-        # pylint: disable=unused-argument, too-many-statements
+        # pylint: disable=too-many-statements
+        if verbose is not None:
+            warn(
+                DeprecationWarning(
+                    "Gaze.map_to_aois argument 'verbose' is deprecated since version v0.29.0. "
+                    'The mapping no longer loops over all samples. '
+                    'This argument will be removed in v0.34.0.',
+                ),
+            )
+
         component_suffixes = ['x', 'y', 'xl', 'yl', 'xr', 'yr', 'xa', 'ya']
         # Schema handling: preserve_structure controls whether we alter the samples schema
         # (by unnesting) or keep list columns intact and select from them. By default,

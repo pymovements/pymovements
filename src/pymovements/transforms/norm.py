@@ -24,7 +24,7 @@ from collections.abc import Sequence
 
 import polars as pl
 
-from pymovements._utils import _checks
+from pymovements._utils import checks
 from pymovements.transforms.library import register_transform
 
 
@@ -62,7 +62,7 @@ def norm(
     pl.Expr
         The respective polars expression.
     """
-    _checks.check_is_mutual_exclusive(column=column, columns=columns)
+    checks.check_is_mutual_exclusive(column=column, columns=columns)
 
     if columns is not None:  # norm of two columns
         x = pl.col(columns[0])

@@ -154,6 +154,27 @@ For running a specific hook on all git repository files use
 
     pre-commit run mypy -a
 
+.. _dependencies:
+
+Dependencies
+^^^^^^^^^^^^
+
+Every dependency in ``pyproject.toml`` has a lower bound and no upper bound. A new required
+dependency needs a justification in the pull request description.
+
+A package that only a few features need goes into an extra. Import it with
+``import_optional_dependency`` from ``pymovements._utils.optional`` on the code path that needs it.
+The helper raises an ``ImportError`` that names the extra to install.
+
+Heavy packages (scipy, matplotlib, pandas, scikit-learn, PIL) are imported inside the function that
+uses them, so that ``import pymovements`` stays fast. Bind the module to an alias with
+``importlib.import_module``, which keeps pylint's ``import-outside-toplevel`` check on. Imports
+needed only for type annotations go under ``TYPE_CHECKING``.
+
+.. code:: python
+
+    plt = importlib.import_module('matplotlib.pyplot')
+
 .. _testing:
 
 Testing
@@ -184,17 +205,17 @@ functionality. Our code coverage is at 100% and stays there, so every changed li
 that runs it.
 
 It is possible to limit the scope of testing to specific environments and files. For example, to
-only test event-related functionality using the Python 3.10 environment use:
+only test event-related functionality using the Python 3.11 environment use:
 
 .. code:: bash
 
-    tox -e py310 -- tests/unit/events
+    tox -e py311 -- tests/unit/events
 
 In case you only want to run tests locally that do not require any network access you can use:
 
 .. code:: bash
 
-    tox -e py310 -- -m "not network"
+    tox -e py311 -- -m "not network"
 
 .. _benchmarks:
 

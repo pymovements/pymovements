@@ -27,22 +27,22 @@ jobs:
           - ubuntu-latest
           - windows-latest
         python:
-          - "3.10"
           - "3.11"
           - "3.12"
           - "3.13"
           - "3.14"
+          - "3.15"
         is_main:
           - ${{ contains(github.ref, 'main') }}
         exclude:
-          - is_main: false
-            python: "3.10"
           - is_main: false
             python: "3.11"
           - is_main: false
             python: "3.12"
           - is_main: false
             python: "3.13"
+          - is_main: false
+            python: "3.14"
 
     steps:
       - uses: actions/checkout@v4
@@ -104,7 +104,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           key:
-            pylint-ubuntu-latest-py310-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/tests.yml') }}
+            pylint-ubuntu-latest-py311-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/tests.yml') }}
           path: |
             ~/.cache
             ~/.tox
@@ -112,7 +112,7 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install tox
         run: python -m pip install tox
@@ -147,7 +147,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           key:
-            test-minreq-ubuntu-latest-py310-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/tests.yml') }}
+            test-minreq-ubuntu-latest-py311-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/tests.yml') }}
           path: |
             ~/.cache
             ~/.tox
@@ -155,13 +155,13 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install tox
         run: python -m pip install tox-min-req
 
       - name: Setup test environment
-        run: MIN_REQ=1 tox -vv --notest -e py310
+        run: MIN_REQ=1 tox -vv --notest -e py311
 
       - name: Cache environment
         uses: actions/cache/save@v4
@@ -174,13 +174,13 @@ jobs:
             ~/.tox
 
       - name: Run test
-        run: MIN_REQ=1 tox --skip-pkg-install -e py310
+        run: MIN_REQ=1 tox --skip-pkg-install -e py311
 
       - name: Upload coverage reports to Codecov
         if: success() || failure()
         uses: codecov/codecov-action@v5
         with:
-          flags: minimum-requirements,ubuntu-latest-py3.10
+          flags: minimum-requirements,ubuntu-latest-py3.11
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 

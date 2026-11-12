@@ -1303,7 +1303,6 @@ def test_flat_selector_returns_none_for_incomplete_flat_columns_triggers_fallbac
             eye=eye,
             gaze_type='pixel',
             preserve_structure=True,  # try to unnest (no list cols -> Warning is caught internally)
-            verbose=False,
         )
 
 
@@ -1329,7 +1328,6 @@ def test_list_path_non_list_values_create_empty_aoi_rows(
             eye='auto',
             gaze_type='pixel',
             preserve_structure=False,
-            verbose=False,
         )
 
     # All AOI result columns should be appended and None for each row
@@ -1365,7 +1363,7 @@ def test_map_to_aois_uses_first_overlapping_aoi_without_misalignment() -> None:
     gaze = Gaze(samples=samples)
 
     with pytest.warns(UserWarning, match='Multiple AOIs matched this point'):
-        gaze.map_to_aois(stimulus, verbose=False)
+        gaze.map_to_aois(stimulus)
 
     assert gaze.samples.height == 4
     assert gaze.samples.get_column('content').to_list() == ['AOI1', 'AOI1', 'AOI2', None]
@@ -1476,7 +1474,7 @@ def fixture_text_stimulus_with_sources():
 
 
 def test_gaze_map_to_aois_merges_stimulus_sources(gaze_with_sources, text_stimulus_with_sources):
-    gaze_with_sources.map_to_aois(text_stimulus_with_sources, verbose=False)
+    gaze_with_sources.map_to_aois(text_stimulus_with_sources)
 
     assert gaze_with_sources.metadata['Sources'] == ['raw/sub_1.csv', 'stimuli/text_1_aoi.csv']
 
@@ -1486,6 +1484,22 @@ def test_gaze_map_to_aois_with_none_metadata_adopts_stimulus_sources(
 ):
     gaze_with_sources.metadata = None
 
-    gaze_with_sources.map_to_aois(text_stimulus_with_sources, verbose=False)
+    gaze_with_sources.map_to_aois(text_stimulus_with_sources)
 
     assert gaze_with_sources.metadata == {'Sources': ['stimuli/text_1_aoi.csv']}
+
+
+@pytest.mark.parametrize('verbose', [True, False])
+def test_map_to_aois_verbose_is_deprecated(
+        verbose, simple_stimulus_w_h, assert_deprecation_is_removed,
+):
+    gaze = Gaze(samples=pl.DataFrame({'pixel': [[5.0, 5.0]]}))
+
+    with pytest.raises(DeprecationWarning) as info:
+        gaze.map_to_aois(simple_stimulus_w_h, verbose=verbose)
+
+    assert_deprecation_is_removed(
+        function_name="Gaze.map_to_aois argument 'verbose'",
+        warning_message=info.value.args[0],
+        scheduled_version='0.34.0',
+    )

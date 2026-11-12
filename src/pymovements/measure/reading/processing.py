@@ -25,7 +25,7 @@ from typing import Any
 
 import polars as pl
 
-from pymovements._utils._time import durations_to_ms
+from pymovements._utils.time import durations_to_ms
 from pymovements.measure.reading.annotation import annotate_fixations
 from pymovements.measure.reading.measures import first_duration
 from pymovements.measure.reading.measures import first_fixation_duration
