@@ -20,7 +20,11 @@
 """Provides an empty display-space canvas."""
 from __future__ import annotations
 
-import matplotlib.pyplot as plt
+import importlib
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
 
 SUPPORTED_ORIGINS = ('upper left', 'center')
 
@@ -108,6 +112,8 @@ def make_screen_axes(
         raise ValueError(f'screen origin must be one of {supported}, got "{origin}".')
 
     if ax is None:
+        plt = importlib.import_module('matplotlib.pyplot')
+
         fig, ax = plt.subplots()
     else:
         fig = ax.figure

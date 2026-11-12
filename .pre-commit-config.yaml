@@ -16,12 +16,12 @@ repos:
     rev: v3.22.0
     hooks:
       - id: pyupgrade
-        args: [ --py310-plus ]
+        args: [ --py311-plus ]
   - repo: https://github.com/asottile/reorder-python-imports
     rev: v3.19.0
     hooks:
       - id: reorder-python-imports
-        args: [ --application-directories=src, --py310-plus ]
+        args: [ --application-directories=src, --py311-plus ]
   - repo: https://github.com/asottile/reorder-python-imports
     rev: v3.19.0
     hooks:
@@ -64,7 +64,7 @@ repos:
       - id: pydoclint
         args: [ "--config=pyproject.toml" ]
   - repo: https://github.com/nbQA-dev/nbQA
-    rev: 1.9.1
+    rev: 1.10.0
     hooks:
       - id: nbqa-autopep8
       - id: nbqa-flake8
@@ -72,7 +72,7 @@ repos:
       - id: nbqa-isort
         args: [ "--float-to-top" ]
       - id: nbqa-pyupgrade
-        args: [ "--py310-plus" ]
+        args: [ "--py311-plus" ]
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v2.4.1
     hooks:

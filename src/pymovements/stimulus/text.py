@@ -20,6 +20,7 @@
 """Module for the TextDataFrame."""
 from __future__ import annotations
 
+import importlib
 import math
 import warnings
 from collections.abc import Sequence
@@ -30,14 +31,16 @@ from pathlib import Path
 from typing import Any
 from typing import ClassVar
 from typing import Literal
+from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import polars as pl
-from matplotlib import patches
 
-from pymovements._utils import _checks
-from pymovements._utils._html import repr_html
-from pymovements._utils._sources import add_source
+from pymovements._utils import checks
+from pymovements._utils.html import repr_html
+from pymovements._utils.sources import add_source
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
 
 
 @dataclass(frozen=True)
@@ -694,6 +697,9 @@ class TextStimulus:
             If the configured writing system is not horizontal
             left-to-right.
         """
+        plt = importlib.import_module('matplotlib.pyplot')
+        patches = importlib.import_module('matplotlib.patches')
+
         if (
             self.writing_system.directionality != 'left-to-right'
             or self.writing_system.axis != 'horizontal'
@@ -954,7 +960,7 @@ def _get_aoi(
             )
 
     if aoi_dataframe.width_column is not None:
-        _checks.check_is_none_is_mutual(
+        checks.check_is_none_is_mutual(
             height_column=aoi_dataframe.width_column,
             width_column=aoi_dataframe.height_column,
         )
@@ -992,7 +998,7 @@ def _get_aoi(
         return aoi
 
     if aoi_dataframe.end_x_column is not None:
-        _checks.check_is_none_is_mutual(
+        checks.check_is_none_is_mutual(
             end_x_column=aoi_dataframe.end_x_column,
             end_y_column=aoi_dataframe.end_y_column,
         )

@@ -30,14 +30,14 @@ from typing import Any
 from warnings import warn
 
 import polars as pl
-import pyreadr
 from tqdm.auto import tqdm
 
-from pymovements._utils._paths import match_filepaths
-from pymovements._utils._sources import add_source
-from pymovements._utils._sources import relativize_sources
-from pymovements._utils._strings import curly_to_regex
-from pymovements._utils._time import durations_to_ms
+from pymovements._utils.optional import import_optional_dependency
+from pymovements._utils.paths import match_filepaths
+from pymovements._utils.sources import add_source
+from pymovements._utils.sources import relativize_sources
+from pymovements._utils.strings import curly_to_regex
+from pymovements._utils.time import durations_to_ms
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_paths import DatasetPaths
 from pymovements.dataset.resources import ResourceDefinition
@@ -533,6 +533,7 @@ def load_precomputed_reading_measure_file(
         precomputed_reading_measure_df = pl.read_csv(file.path, **read_kwargs)
     elif file_path_suffix in r_extensions:
         if 'r_dataframe_key' in load_kwargs:
+            pyreadr = import_optional_dependency('pyreadr', extra='datasets')
             precomputed_r = pyreadr.read_r(file.path)
             # convert to polars DataFrame because read_r has no .clone().
             precomputed_reading_measure_df = pl.DataFrame(
@@ -542,6 +543,10 @@ def load_precomputed_reading_measure_file(
             raise ValueError('please specify r_dataframe_key in ResourceDefinition.load_kwargs')
     elif file_path_suffix in excel_extensions:
         read_kwargs = load_kwargs.pop('read_excel_kwargs', {})
+        if read_kwargs.get('engine', 'calamine') == 'calamine':
+            # polars imports fastexcel itself, this call only raises the pymovements install hint
+            # for the datasets extra and enforces its minimum version.
+            import_optional_dependency('fastexcel', extra='datasets')
         precomputed_reading_measure_df = pl.read_excel(file.path, **read_kwargs)
     else:
         raise ValueError(
@@ -637,6 +642,7 @@ def load_precomputed_event_file(
         precomputed_event_df = pl.read_csv(file.path, **read_kwargs)
     elif file_path_suffix in r_extensions:
         if 'r_dataframe_key' in load_kwargs:
+            pyreadr = import_optional_dependency('pyreadr', extra='datasets')
             precomputed_r = pyreadr.read_r(file.path)
             # convert to polars DataFrame because read_r has no .clone().
             precomputed_event_df = pl.DataFrame(

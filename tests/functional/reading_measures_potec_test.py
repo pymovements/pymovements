@@ -35,7 +35,7 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from pymovements.dataset._utils._archives import extract_archive
+from pymovements.dataset._utils.archives import extract_archive
 from pymovements.dataset.websource import WebSource
 from pymovements.measure.reading import compute_reading_measures
 

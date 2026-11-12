@@ -25,9 +25,9 @@ from collections.abc import Sized
 import numpy
 import polars
 
-from pymovements._utils import _checks
-from pymovements._utils._time import normalize_timesteps
-from pymovements.events._utils._filters import filter_candidates_remove_nans
+from pymovements._utils import checks
+from pymovements._utils.time import normalize_timesteps
+from pymovements.events._utils.filters import filter_candidates_remove_nans
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.transforms.numpy import consecutive
@@ -234,10 +234,10 @@ def microsaccades(
             raise ValueError(f'velocities must be 2D list but list lengths are: {list_lengths}')
         velocities = numpy.vstack([velocities.list.get(0), velocities.list.get(1)]).transpose()
     velocities = numpy.array(velocities)
-    _checks.check_shapes(velocities=velocities)
+    checks.check_shapes(velocities=velocities)
 
     timesteps = normalize_timesteps(timesteps, length=len(velocities))
-    _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
+    checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
     if isinstance(threshold, str):
         threshold = compute_threshold(velocities, method=threshold)
