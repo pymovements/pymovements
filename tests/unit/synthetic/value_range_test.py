@@ -19,6 +19,7 @@
 # SOFTWARE.
 """Test the range type that generator hyperparameters are drawn from."""
 import dataclasses
+import math
 
 import numpy as np
 import pytest
@@ -67,6 +68,24 @@ def test_range_returns(kwargs, expected):
             ValueError,
             ('minimum (5.0)', 'maximum (1.0)'),
             id='inverted_range_raises_value_error',
+        ),
+        pytest.param(
+            {'minimum': math.nan, 'maximum': 1.0},
+            ValueError,
+            ('minimum', 'finite', 'nan'),
+            id='nan_minimum_raises_value_error',
+        ),
+        pytest.param(
+            {'minimum': 0.0, 'maximum': math.inf},
+            ValueError,
+            ('maximum', 'finite', 'inf'),
+            id='infinite_maximum_raises_value_error',
+        ),
+        pytest.param(
+            {'minimum': 0.0, 'maximum': 1.0, 'distribution': 'normal', 'std': math.nan},
+            ValueError,
+            ('std', 'finite', 'nan'),
+            id='nan_std_raises_value_error',
         ),
         pytest.param(
             {'minimum': 0.0, 'maximum': 1.0, 'distribution': 'gamma'},
@@ -208,6 +227,26 @@ def test_draw_is_reproducible_under_seed(value_range):
     second = [value_range.draw(second_rng) for _ in range(3)]
 
     assert first == second
+
+
+@pytest.mark.parametrize(
+    'value_range',
+    [
+        pytest.param(Range(300.0, 500.0), id='uniform'),
+        pytest.param(Range(300.0, 500.0, 'normal', std=50.0), id='normal'),
+        pytest.param(Range(300.0, 500.0, 'normal'), id='normal_without_std'),
+        pytest.param(Range(3.0, 3.0), id='single_value'),
+    ],
+)
+def test_draw_many_returns_the_values_of_one_draw_after_another(value_range):
+    """Drawing at once must not change a seeded run, so the values are those of single draws."""
+    one_rng, many_rng = np.random.default_rng(7), np.random.default_rng(7)
+
+    one_by_one = [value_range.draw(one_rng) for _ in range(1000)]
+    many = value_range.draw_many(many_rng, 1000)
+
+    assert many.shape == (1000,)
+    assert many.tolist() == one_by_one
 
 
 def test_normal_draw_without_std_spreads_over_a_quarter_of_the_width():

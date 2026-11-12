@@ -24,6 +24,7 @@ checks of hyperparameters and run parameters.
 """
 from __future__ import annotations
 
+import math
 import numbers
 from collections.abc import Callable
 from typing import Any
@@ -104,9 +105,28 @@ def per_trial(
 
     Each trial is generated as its own continuous signal, so the time between trials is never
     filled. ``synthesize`` receives one trial's events, ordered by onset, and returns its
-    samples.
+    samples. A trial column named like a generated column is rejected, since the join would rename
+    one of them, and so is one named like a column ``Gaze`` keeps for itself, which it would
+    overwrite, fail on or read as the eye-to-screen distance. An event without a known onset
+    is rejected, since it cannot be placed in time.
     """
     trial_columns = events.trial_columns or []
+
+    gaze_columns = {'position', 'pixel', 'velocity', 'acceleration', 'distance'}
+    reserved = sorted(gaze_columns & set(trial_columns))
+    if reserved:
+        raise ValueError(
+            f'{_prefix(generator)}the trial columns {reserved} have the names of Gaze columns; '
+            'rename them',
+        )
+
+    unplaced = events.frame.filter(pl.col('onset').is_null())
+    if unplaced.height:
+        raise ValueError(
+            f"{_prefix(generator)}a {unplaced['name'][0]} has no known onset, so it cannot "
+            'be placed in time; set its onset or drop it',
+        )
+
     frame = ordered_frame(events, generator=generator)
 
     if frame.is_empty():
@@ -117,10 +137,20 @@ def per_trial(
     if not trial_columns:
         return synthesize(frame)
 
-    return pl.concat([
-        trial.select(trial_columns).head(1).join(synthesize(trial), how='cross')
-        for trial in frame.partition_by(trial_columns, maintain_order=True)
-    ])
+    samples = []
+    for trial in frame.partition_by(trial_columns, maintain_order=True):
+        generated = synthesize(trial)
+
+        clashing = sorted(set(trial_columns) & set(generated.columns))
+        if clashing:
+            raise ValueError(
+                f'{_prefix(generator)}the trial columns {clashing} have the names of generated '
+                'columns; rename them',
+            )
+
+        samples.append(trial.select(trial_columns).head(1).join(generated, how='cross'))
+
+    return pl.concat(samples)
 
 
 def sample_times(onset: float, offset: float, sampling_rate: float) -> np.ndarray:
@@ -139,6 +169,16 @@ def check_number(value: Any, name: str) -> float:
     return float(value)
 
 
+def check_finite(value: Any, name: str) -> float:
+    """Return the value as a float, rejecting non-numbers, NaN and infinity."""
+    number = check_number(value, name)
+
+    if not math.isfinite(number):
+        raise ValueError(f'{name} must be finite but is: {number}')
+
+    return number
+
+
 def check_not_negative(value: Any, name: str) -> float:
     """Return the value as a float, rejecting non-numbers and negative values."""
     number = check_number(value, name)
@@ -150,8 +190,8 @@ def check_not_negative(value: Any, name: str) -> float:
 
 
 def check_positive(value: Any, name: str) -> float:
-    """Return the value as a float, rejecting non-numbers and values of zero or less."""
-    number = check_number(value, name)
+    """Return the value as a float, rejecting non-finite numbers and values of zero or less."""
+    number = check_finite(value, name)
 
     if number <= 0:
         raise ValueError(f'{name} must be greater than zero but is: {number}')

@@ -27,9 +27,9 @@ from typing import Any
 
 import numpy as np
 
+from pymovements.synthetic._utils import check_finite
 from pymovements.synthetic._utils import check_name
 from pymovements.synthetic._utils import check_not_negative
-from pymovements.synthetic._utils import check_number
 
 
 @dataclasses.dataclass(frozen=True)
@@ -59,8 +59,9 @@ class Range:
     TypeError
         If a bound or the standard deviation is not a number.
     ValueError
-        If the range is inverted, the distribution is unknown, or the standard deviation is
-        negative or given for a uniform range.
+        If a bound or the standard deviation is not finite, the range is inverted, the
+        distribution is unknown, or the standard deviation is negative or given for a uniform
+        range.
 
     Examples
     --------
@@ -80,8 +81,8 @@ class Range:
 
     def __post_init__(self) -> None:
         """Validate the range and cast its numbers to float."""
-        object.__setattr__(self, 'minimum', check_number(self.minimum, 'minimum'))
-        object.__setattr__(self, 'maximum', check_number(self.maximum, 'maximum'))
+        object.__setattr__(self, 'minimum', check_finite(self.minimum, 'minimum'))
+        object.__setattr__(self, 'maximum', check_finite(self.maximum, 'maximum'))
 
         if self.minimum > self.maximum:
             raise ValueError(
@@ -91,6 +92,7 @@ class Range:
         check_name(self.distribution, 'distribution', ('normal', 'uniform'))
 
         if self.std is not None:
+            check_finite(self.std, 'std')
             object.__setattr__(self, 'std', check_not_negative(self.std, 'std'))
 
             if self.distribution != 'normal':
@@ -156,9 +158,26 @@ class Range:
         float
             The drawn value, within the range.
         """
+        return float(self.draw_many(rng, 1)[0])
+
+    def draw_many(self, rng: np.random.Generator, size: int) -> np.ndarray:
+        """Draw several values at once, the same values as as many single draws.
+
+        Parameters
+        ----------
+        rng: np.random.Generator
+            The random generator to draw from.
+        size: int
+            The number of values to draw.
+
+        Returns
+        -------
+        np.ndarray
+            The drawn values, within the range.
+        """
         if self.distribution == 'uniform':
-            return float(rng.uniform(self.minimum, self.maximum))
+            return rng.uniform(self.minimum, self.maximum, size)
 
         std = (self.maximum - self.minimum) / 4.0 if self.std is None else self.std
         centre = (self.minimum + self.maximum) / 2.0
-        return float(np.clip(rng.normal(centre, std), self.minimum, self.maximum))
+        return np.clip(rng.normal(centre, std, size), self.minimum, self.maximum)
