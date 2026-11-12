@@ -46,6 +46,30 @@ def duration_to_ms(column: str | pl.Series | pl.Expr) -> pl.Series | pl.Expr:
     return expr.dt.total_microseconds() / 1000
 
 
+def event_times_to_ms(frame: pl.DataFrame) -> pl.DataFrame:
+    """Convert the ``onset`` and ``offset`` columns of an events frame to fractional milliseconds.
+
+    A frame without an ``offset`` column gets one derived as ``onset + duration``. Numeric time
+    columns are returned as they are.
+
+    Parameters
+    ----------
+    frame: pl.DataFrame
+        An events frame with ``polars.Duration`` or numeric time columns.
+
+    Returns
+    -------
+    pl.DataFrame
+        The dataframe with ``onset`` and ``offset`` present and, for ``polars.Duration``
+        columns, expressed as fractional milliseconds.
+    """
+    if 'offset' not in frame.columns:
+        frame = frame.with_columns((pl.col('onset') + pl.col('duration')).alias('offset'))
+    if not isinstance(frame.schema['onset'], pl.Duration):
+        return frame
+    return frame.with_columns(duration_to_ms(pl.col('onset', 'offset')))
+
+
 def numeric_to_duration_us(column: str | pl.Expr, time_unit: str) -> pl.Expr:
     """Return an expression converting a numeric time column to ``polars.Duration('us')``.
 
