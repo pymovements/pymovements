@@ -101,7 +101,7 @@ def get_lines_of_text_from_aois(aois: pl.DataFrame) -> list[float]:
 def get_word_locations_from_aois(
     aois: pl.DataFrame,
     character_level: bool = False,
-    word_column: str = 'word',
+    word_column: str | None = None,
 ) -> pl.Series:
     """Calculate word center locations from AOIs for DTW-based drift algorithms.
 
@@ -122,11 +122,11 @@ def get_word_locations_from_aois(
     character_level: bool
         Set to True when the AOIs are finer than words, e.g. one row per character. The
         AOIs are then aggregated to one location per word via the ``word_column`` column,
-        which must be present. If False, each AOI row yields its own location.
-        (default: False)
-    word_column: str
+        which must be provided and present. If False, each AOI row yields its own
+        location. (default: False)
+    word_column: str | None
         Name of the column identifying the words to aggregate character-level AOIs by.
-        Only used when ``character_level`` is True. (default: 'word')
+        Required when ``character_level`` is True, otherwise unused. (default: None)
 
     Returns
     -------
@@ -136,9 +136,14 @@ def get_word_locations_from_aois(
     Raises
     ------
     ValueError
-        If ``character_level`` is True but the AOIs dataframe has no ``word_column``
-        column.
+        If ``character_level`` is True but no ``word_column`` is provided or the AOIs
+        dataframe has no such column.
     """
+    if character_level and word_column is None:
+        raise ValueError(
+            'character_level is True, but no word_column was provided. Pass the name '
+            'of the AOI column that groups sub-word AOIs into words.',
+        )
     if character_level and word_column not in aois.columns:
         raise ValueError(
             f"character_level is True, but the AOIs dataframe has no '{word_column}' "

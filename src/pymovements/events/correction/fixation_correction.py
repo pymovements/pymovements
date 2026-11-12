@@ -319,7 +319,7 @@ def _correct_single(
     algorithm_kwargs: dict[str, Any],
     location: str | pl.Expr,
     character_level: bool,
-    word_column: str,
+    word_column: str | None,
 ) -> pl.Series:
     """Correct fixation locations with a single drift algorithm."""
     if algorithm in {'compare', 'warp'}:
@@ -357,7 +357,7 @@ def _correct_ensemble(
     algorithm_kwargs: dict[str, Any],
     location: str | pl.Expr,
     character_level: bool,
-    word_column: str,
+    word_column: str | None,
 ) -> pl.Series:
     """Correct fixation locations by majority voting across the candidate algorithms."""
     if {'compare', 'warp'} & set(candidate_algos) and word_locations is None:
@@ -434,7 +434,7 @@ def correct_fixation_locations(
     fixation_name: str = 'fixation',
     location_column: str = 'location',
     character_level: bool = False,
-    word_column: str = 'word',
+    word_column: str | None = None,
 ) -> pl.Series:
     """Correct fixations based on the specified drift algorithm and AOIs.
 
@@ -487,10 +487,10 @@ def correct_fixation_locations(
     character_level: bool
         Set to True when the AOIs are finer than words, e.g. one row per character. The
         AOIs are then aggregated to one location per word via the ``word_column`` column,
-        which must be present. (default: False)
-    word_column: str
+        which must be provided and present. (default: False)
+    word_column: str | None
         Name of the AOI column identifying the words to aggregate character-level AOIs by.
-        Only used when ``character_level`` is True. (default: 'word')
+        Required when ``character_level`` is True, otherwise unused. (default: None)
 
     Returns
     -------
@@ -629,7 +629,7 @@ def _correct_trial(
     fixation_name: str,
     location_column: str,
     character_level: bool,
-    word_column: str,
+    word_column: str | None,
 ) -> pl.Series | None:
     """Correct the fixations of a single trial, or return None if the trial is skipped."""
     n_lines = count_text_lines(trial_aois, word_locations)
@@ -753,7 +753,7 @@ def correct_fixations(
     fixation_name: str = 'fixation',
     location_column: str = 'location',
     character_level: bool = False,
-    word_column: str = 'word',
+    word_column: str | None = None,
 ) -> pl.DataFrame:
     """Correct fixation locations per trial using the specified drift algorithm.
 
@@ -822,10 +822,10 @@ def correct_fixations(
     character_level: bool
         Set to True when the AOIs are finer than words, e.g. one row per character. The
         AOIs are then aggregated to one location per word via the ``word_column`` column,
-        which must be present. (default: False)
-    word_column: str
+        which must be provided and present. (default: False)
+    word_column: str | None
         Name of the AOI column identifying the words to aggregate character-level AOIs by.
-        Only used when ``character_level`` is True. (default: 'word')
+        Required when ``character_level`` is True, otherwise unused. (default: None)
 
     Returns
     -------

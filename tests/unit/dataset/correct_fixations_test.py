@@ -130,6 +130,7 @@ def test_dataset_correct_fixations_character_level(tmp_path, word_column):
     stimulus = TextStimulus(
         aois=aois_df,
         aoi_column='char',
+        word_column=word_column,
         start_x_column='start_x',
         start_y_column='start_y',
         end_x_column='end_x',
@@ -140,7 +141,6 @@ def test_dataset_correct_fixations_character_level(tmp_path, word_column):
         stimulus,
         algorithm='warp',
         character_level=True,
-        word_column=word_column,
         verbose=False,
     )
 
