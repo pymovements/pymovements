@@ -17,6 +17,8 @@ Measures
     disposition
     duration
     location
+    location_onset
+    location_offset
     null_ratio
     peak_velocity
     rms_s2s
