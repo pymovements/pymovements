@@ -60,4 +60,34 @@
 
                     git clone https://github.com/pymovements/pymovements.git
                     pip install --upgrade pip
-                    pip install -e .[dev]
+                    pip install -e '.[dev]'
+
+
+Optional Dependencies
+---------------------
+
+Some features need packages that a plain installation does not include.
+Install them through an extra:
+
+.. code-block:: bash
+
+    pip install 'pymovements[datasets]'
+
+.. list-table::
+    :header-rows: 1
+
+    * - Extra
+      - Packages
+      - Needed for
+    * - ``datasets``
+      - ``pyreadr``, ``fastexcel``
+      - Loading R data files (``.rda``), as used by :ref:`MECOL1W1`, :ref:`MECOL1W2`,
+        :ref:`MECOL2W1` and :ref:`MECOL2W2`, and Excel files (``.xlsx``),
+        as used by :ref:`ChineseReading`.
+    * - ``all``
+      - all of the above
+      - Every optional feature.
+
+If a feature needs a package that is not installed, pymovements raises an ``ImportError`` that
+names the extra to install.
+With conda, install the packages listed for the extra directly.

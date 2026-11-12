@@ -26,10 +26,14 @@ from typing import Any
 
 import yaml
 
+# The C loader from libyaml parses the shipped dataset definitions faster. PyYAML only
+# provides it when built with libyaml, so fall back to the pure Python loader otherwise.
+FastSafeLoader = getattr(yaml, 'CSafeLoader', yaml.SafeLoader)
+
 
 # generalized constructor for !* tags
 def type_constructor(
-        loader: yaml.SafeLoader,
+        loader: yaml.SafeLoader | yaml.CSafeLoader,
         prefix: str,
         node: yaml.Node,
 ) -> type:
@@ -42,7 +46,7 @@ def type_constructor(
 
     Parameters
     ----------
-    loader: yaml.SafeLoader
+    loader: yaml.SafeLoader | yaml.CSafeLoader
         The YAML loader being used to parse the YAML document.
     prefix: str
         A string prefix for the custom tag (e.g., '!').

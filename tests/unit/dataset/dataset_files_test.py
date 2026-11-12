@@ -22,8 +22,10 @@
 # pylint: disable=duplicate-code
 from __future__ import annotations
 
+import importlib.metadata
 import re
 import shutil
+import sys
 from pathlib import Path
 
 import polars as pl
@@ -1028,6 +1030,123 @@ def test_load_precomputed_rm_file_xlsx(target_filename, make_example_file):
     expected_df = pl.from_dict({'test': ['foo', 'bar'], 'id': [0, 1]})
 
     assert_frame_equal(reading_measure.frame, expected_df, check_column_order=True)
+
+
+@pytest.mark.parametrize(
+    ('filename', 'content', 'load_kwargs', 'load_function', 'missing_module'),
+    [
+        pytest.param(
+            'rda_test_file.rda',
+            'precomputed_reading_measures',
+            {'r_dataframe_key': 'joint.fix'},
+            load_precomputed_reading_measure_file,
+            'pyreadr',
+            id='reading_measures_rda',
+        ),
+        pytest.param(
+            'Sentences.xlsx',
+            'precomputed_reading_measures',
+            {'sheet_name': 'Sheet 1'},
+            load_precomputed_reading_measure_file,
+            'fastexcel',
+            id='reading_measures_xlsx',
+        ),
+        pytest.param(
+            'rda_test_file.rda',
+            'precomputed_events',
+            {'r_dataframe_key': 'joint.fix'},
+            load_precomputed_event_file,
+            'pyreadr',
+            id='events_rda',
+        ),
+    ],
+)
+def test_load_precomputed_file_missing_optional_dependency_raises_install_hint(
+        filename, content, load_kwargs, load_function, missing_module, make_example_file,
+        monkeypatch,
+):
+    filepath = make_example_file(filename)
+    resource_definition = ResourceDefinition(content=content, load_kwargs=load_kwargs)
+    file = DatasetFile(path=filepath, definition=resource_definition)
+    monkeypatch.setitem(sys.modules, missing_module, None)
+
+    with pytest.raises(ImportError, match=re.escape("pip install 'pymovements[datasets]'")):
+        load_function(file, dataset_definition=DatasetDefinition())
+
+
+@pytest.mark.parametrize(
+    'installed_version',
+    [
+        pytest.param('0.4.9', id='older_minor'),
+        pytest.param('0.5.1', id='older_patch'),
+        pytest.param('0.5.1.post1', id='older_patch_with_suffix'),
+    ],
+)
+def test_load_precomputed_rm_file_rda_outdated_pyreadr_raises_upgrade_hint(
+        installed_version, make_example_file, monkeypatch,
+):
+    filepath = make_example_file('rda_test_file.rda')
+    resource_definition = ResourceDefinition(
+        content='precomputed_reading_measures',
+        load_kwargs={'r_dataframe_key': 'joint.fix'},
+    )
+    file = DatasetFile(path=filepath, definition=resource_definition)
+    monkeypatch.setattr(importlib.metadata, 'version', lambda name: installed_version)
+
+    expected_message = (
+        "pymovements requires 'pyreadr>=0.5.2' "
+        f"(version '{installed_version}' is installed). "
+        "Upgrade it with: pip install --upgrade 'pymovements[datasets]'"
+    )
+    with pytest.raises(ImportError, match=re.escape(expected_message)):
+        load_precomputed_reading_measure_file(file, dataset_definition=DatasetDefinition())
+
+
+@pytest.mark.parametrize(
+    'installed_version',
+    [
+        pytest.param('0.5.2', id='equal'),
+        pytest.param('0.5.10', id='newer_patch_two_digits'),
+        pytest.param('1.0.0rc1', id='newer_major_prerelease'),
+    ],
+)
+def test_load_precomputed_rm_file_rda_recent_pyreadr_loads(
+        installed_version, make_example_file, monkeypatch,
+):
+    filepath = make_example_file('rda_test_file.rda')
+    resource_definition = ResourceDefinition(
+        content='precomputed_reading_measures',
+        load_kwargs={'r_dataframe_key': 'joint.fix'},
+    )
+    file = DatasetFile(path=filepath, definition=resource_definition)
+    monkeypatch.setattr(importlib.metadata, 'version', lambda name: installed_version)
+
+    reading_measure = load_precomputed_reading_measure_file(
+        file, dataset_definition=DatasetDefinition(),
+    )
+
+    expected_df = pl.DataFrame(pyreadr.read_r(filepath)['joint.fix'])
+    assert_frame_equal(reading_measure.frame, expected_df)
+
+
+def test_load_precomputed_rm_file_xlsx_other_engine_does_not_require_fastexcel(
+        make_example_file, monkeypatch,
+):
+    filepath = make_example_file('Sentences.xlsx')
+    resource_definition = ResourceDefinition(
+        content='precomputed_reading_measures',
+        load_kwargs={'read_excel_kwargs': {'engine': 'openpyxl'}},
+    )
+    file = DatasetFile(path=filepath, definition=resource_definition)
+    monkeypatch.setitem(sys.modules, 'fastexcel', None)
+    expected_df = pl.DataFrame({'a': [1]})
+    monkeypatch.setattr(pl, 'read_excel', lambda path, **kwargs: expected_df)
+
+    reading_measure = load_precomputed_reading_measure_file(
+        file, dataset_definition=DatasetDefinition(),
+    )
+
+    assert_frame_equal(reading_measure.frame, expected_df)
 
 
 def test_load_precomputed_rm_file_unsupported_file_format(make_example_file):
