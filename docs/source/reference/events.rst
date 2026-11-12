@@ -63,6 +63,30 @@ The most convenient way to correct fixations is via the
 
 .. currentmodule:: pymovements
 
+.. rubric:: Trial Correctors
+    :name: trial-correctors
+
+The algorithms listed below are functions returning a polars expression over a column. That
+shape carries no state, so a corrector that has to hold something -- geometry it precomputed,
+a parameter it estimated per reader -- cannot be written as one: the expression is built inside
+the per-trial path, so whatever it prepares is prepared again for every trial, and it receives
+the location column rather than the trial's areas of interest. For the 12 texts and 75 readers of
+``PoTeC``, that is geometry derived 900 times rather than 12.
+
+For those, ``algorithm=`` also takes a **trial corrector**: anything callable as
+``corrector(fixations, aois, location_column=...)``, returning one ``[x, y]`` list per fixation
+or ``None`` to decline the trial. A plain function is one, and so is an object holding state in
+``__call__``; the object is built once per
+:py:func:`~pymovements.events.correction.correct_fixations` call rather than once per trial.
+Pass it directly, or register it under a name with :py:func:`register_corrector` and select it
+the way you select ``'warp'``.
+
+Declining a trial behaves as a drift algorithm skipping one: a warning naming the trial, and
+its fixations stay uncorrected. A trial corrector cannot take part in a Wisdom of the Crowd
+ensemble, because its vote has no obvious weight against the algorithmic ones.
+
+.. currentmodule:: pymovements
+
 .. rubric:: Drift Correction Algorithms
     :name: drift-correction-algorithms
 
