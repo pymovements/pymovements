@@ -50,10 +50,12 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 all = [
-  "pymovements[datasets]"
+  "pymovements[excel,rdata]"
 ]
-datasets = [
-  "fastexcel>=0.13.0",
+excel = [
+  "fastexcel>=0.13.0"
+]
+rdata = [
   "pyreadr>=0.5.2"
 ]
 docs = [

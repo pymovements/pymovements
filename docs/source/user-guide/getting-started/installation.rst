@@ -66,12 +66,14 @@
 Optional Dependencies
 ---------------------
 
-Some features need packages that a plain installation does not include.
-Install them through an extra:
+A plain installation covers most of pymovements. A few file formats need an additional package.
+If you do not want to think about it, install everything:
 
 .. code-block:: bash
 
-    pip install 'pymovements[datasets]'
+    pip install 'pymovements[all]'
+
+If you want to keep your environment small, install only the extra you need:
 
 .. list-table::
     :header-rows: 1
@@ -79,15 +81,26 @@ Install them through an extra:
     * - Extra
       - Packages
       - Needed for
-    * - ``datasets``
-      - ``pyreadr``, ``fastexcel``
-      - Loading R data files (``.rda``), as used by :ref:`MECOL1W1`, :ref:`MECOL1W2`,
-        :ref:`MECOL2W1` and :ref:`MECOL2W2`, and Excel files (``.xlsx``),
-        as used by :ref:`ChineseReading`.
+    * - ``rdata``
+      - ``pyreadr``
+      - R data files (``.rda``), as used by :ref:`MECOL1W1`, :ref:`MECOL1W2`, :ref:`MECOL2W1`
+        and :ref:`MECOL2W2`.
+    * - ``excel``
+      - ``fastexcel``
+      - Excel files (``.xlsx``), as used by :ref:`ChineseReading`.
     * - ``all``
       - all of the above
       - Every optional feature.
 
 If a feature needs a package that is not installed, pymovements raises an ``ImportError`` that
 names the extra to install.
-With conda, install the packages listed for the extra directly.
+
+Conda has no extras. The conda-forge package ``pymovements-all`` is the counterpart of the
+``all`` extra:
+
+.. code-block:: bash
+
+    conda install -c conda-forge pymovements-all
+
+For a single extra, install its packages from the table next to pymovements, for example
+``conda install -c conda-forge pymovements pyreadr`` for R data files.

@@ -33,9 +33,9 @@ from pymovements._utils.optional import import_optional_dependency
 @pytest.mark.parametrize(
     ('name', 'extra'),
     [
-        pytest.param('numpy', 'datasets', id='core_dependency'),
+        pytest.param('numpy', 'rdata', id='core_dependency'),
         pytest.param('pyreadr', 'docs', id='other_extra'),
-        pytest.param('nonexistent', 'datasets', id='unknown_name'),
+        pytest.param('nonexistent', 'rdata', id='unknown_name'),
     ],
 )
 def test_import_optional_dependency_not_in_extra_raises_value_error(name, extra):
@@ -47,10 +47,10 @@ def test_import_optional_dependency_not_in_extra_raises_value_error(name, extra)
 def test_import_optional_dependency_conditional_core_requirement_raises_value_error(monkeypatch):
     requirements = [
         'pyreadr>=0.5.2; python_version >= "3.9"',
-        'fastexcel>=0.13.0; extra == "datasets"',
+        'fastexcel>=0.13.0; extra == "excel"',
     ]
     monkeypatch.setattr(importlib.metadata, 'requires', lambda name: requirements)
 
-    expected_message = "'pyreadr' is not a requirement of the pymovements extra 'datasets'"
+    expected_message = "'pyreadr' is not a requirement of the pymovements extra 'rdata'"
     with pytest.raises(ValueError, match=re.escape(expected_message)):
-        import_optional_dependency('pyreadr', extra='datasets')
+        import_optional_dependency('pyreadr', extra='rdata')
