@@ -950,6 +950,7 @@ def test_correct_fixation_locations_warp_character_level_aois():
     })
     locs_char = correct_fixation_locations(
         events_df, aois_char_level, algorithm='warp', character_level=True,
+        word_column='word',
     )
     assert corrected_ys(locs_char) == [100.0, 100.0, 200.0, 200.0]
 
@@ -1011,6 +1012,7 @@ def test_correct_fixation_locations_warp_character_level_flag(
     events_df, aois_df = letter_level_events_and_aois
     locs = correct_fixation_locations(
         events_df, aois_df, algorithm='warp', character_level=character_level,
+        word_column='word',
     )
     assert corrected_ys(locs) == expected_ys
 
@@ -1021,11 +1023,71 @@ def test_correct_fixation_locations_character_level_without_word_column_raises(
     events_df, aois_df = letter_level_events_and_aois
     with pytest.raises(
         ValueError,
+        match='character_level is True, but no word_column was provided',
+    ):
+        correct_fixation_locations(
+            events_df, aois_df, algorithm='warp', character_level=True,
+        )
+
+
+def test_correct_fixation_locations_character_level_missing_word_column_raises(
+    letter_level_events_and_aois,
+):
+    events_df, aois_df = letter_level_events_and_aois
+    with pytest.raises(
+        ValueError,
         match="character_level is True, but the AOIs dataframe has no 'word' column",
     ):
         correct_fixation_locations(
             events_df, aois_df.drop('word'), algorithm='warp', character_level=True,
+            word_column='word',
         )
+
+
+def test_correct_fixation_locations_character_level_custom_word_column(
+    letter_level_events_and_aois,
+):
+    events_df, aois_df = letter_level_events_and_aois
+    locs = correct_fixation_locations(
+        events_df,
+        aois_df.rename({'word': 'unit_of_analysis'}),
+        algorithm='warp',
+        character_level=True,
+        word_column='unit_of_analysis',
+    )
+    assert corrected_ys(locs) == [100.0, 100.0, 100.0, 100.0, 100.0, 200.0]
+
+
+def test_correct_fixation_locations_character_level_missing_custom_word_column_raises(
+    letter_level_events_and_aois,
+):
+    events_df, aois_df = letter_level_events_and_aois
+    with pytest.raises(
+        ValueError,
+        match="no 'unit_of_analysis' column to aggregate the character-level AOIs by",
+    ):
+        correct_fixation_locations(
+            events_df, aois_df.drop('word'), algorithm='warp', character_level=True,
+            word_column='unit_of_analysis',
+        )
+
+
+def test_correct_fixation_locations_ensemble_custom_word_column(
+    letter_level_events_and_aois,
+):
+    events_df, aois_df = letter_level_events_and_aois
+    default_locs = correct_fixation_locations(
+        events_df, aois_df, algorithm=['attach', 'warp'], character_level=True,
+        word_column='word',
+    )
+    custom_locs = correct_fixation_locations(
+        events_df,
+        aois_df.rename({'word': 'unit_of_analysis'}),
+        algorithm=['attach', 'warp'],
+        character_level=True,
+        word_column='unit_of_analysis',
+    )
+    assert custom_locs.to_list() == default_locs.to_list()
 
 
 def test_events_correct_fixations_warp_character_level(letter_level_events_and_aois):
@@ -1033,6 +1095,46 @@ def test_events_correct_fixations_warp_character_level(letter_level_events_and_a
     stimulus = pm.stimulus.TextStimulus(
         aois=aois_df,
         aoi_column='letter',
+        word_column='word',
+        start_x_column='start_x',
+        start_y_column='start_y',
+        end_x_column='end_x',
+        height_column='height',
+    )
+    events = pm.Events(events_df)
+    events.correct_fixations(stimulus, algorithm='warp', character_level=True)
+    corrected = [location[1] for location in events.frame['location'].to_list()]
+    assert corrected == [100.0, 100.0, 100.0, 100.0, 100.0, 200.0]
+
+
+def test_events_correct_fixations_character_level_without_word_column_raises(
+    letter_level_events_and_aois,
+):
+    events_df, aois_df = letter_level_events_and_aois
+    stimulus = pm.stimulus.TextStimulus(
+        aois=aois_df,
+        aoi_column='letter',
+        start_x_column='start_x',
+        start_y_column='start_y',
+        end_x_column='end_x',
+        height_column='height',
+    )
+    events = pm.Events(events_df)
+    with pytest.raises(
+        ValueError,
+        match='the TextStimulus has no word_column configured',
+    ):
+        events.correct_fixations(stimulus, algorithm='warp', character_level=True)
+
+
+def test_events_correct_fixations_warp_character_level_custom_word_column(
+    letter_level_events_and_aois,
+):
+    events_df, aois_df = letter_level_events_and_aois
+    stimulus = pm.stimulus.TextStimulus(
+        aois=aois_df.rename({'word': 'unit_of_analysis'}),
+        aoi_column='letter',
+        word_column='unit_of_analysis',
         start_x_column='start_x',
         start_y_column='start_y',
         end_x_column='end_x',

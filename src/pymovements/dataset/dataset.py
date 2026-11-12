@@ -1350,7 +1350,7 @@ class Dataset:
         character_level: bool
             Set to True when the stimulus AOIs are finer than words, e.g. one row per
             character. The AOIs are then aggregated to one location per word via the
-            'word' column, which must be present. (default: False)
+            stimulus' ``word_column``, which must be configured. (default: False)
         verbose: bool
             If ``True``, show a progress bar. (default: True)
 
