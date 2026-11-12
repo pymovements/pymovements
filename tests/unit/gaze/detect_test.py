@@ -1572,6 +1572,72 @@ def test_detect_selects_group_events_for_multiple_trial_columns():
     assert group_sizes == [1, 1, 1, 1]
 
 
+@pytest.mark.parametrize(
+    ('samples', 'events', 'expected_group_sizes'),
+    [
+        pytest.param(
+            pl.DataFrame({
+                'trial': [1] * 50 + [None] * 50,
+                'position': [[0.0, 0.0]] * 100,
+            }),
+            pl.DataFrame({
+                'trial': [1, 1, None],
+                'name': ['fixation', 'saccade', 'fixation'],
+                'onset': [0, 25, 50],
+                'offset': [24, 49, 99],
+            }),
+            [2, 1],
+            id='null_trial_value',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'trial': [1] * 50 + [2] * 50,
+                    'position': [[0.0, 0.0]] * 100,
+                }, schema_overrides={'trial': pl.Int32},
+            ),
+            pl.DataFrame(
+                {
+                    'trial': [1, 1, 2],
+                    'name': ['fixation', 'saccade', 'fixation'],
+                    'onset': [0, 25, 50],
+                    'offset': [24, 49, 99],
+                }, schema_overrides={'trial': pl.Int64},
+            ),
+            [2, 1],
+            id='differing_trial_dtypes',
+        ),
+        pytest.param(
+            pl.DataFrame({
+                'trial': [1] * 50 + [2] * 50,
+                'position': [[0.0, 0.0]] * 100,
+            }),
+            pl.DataFrame({
+                'trial': [1, 1],
+                'name': ['fixation', 'saccade'],
+                'onset': [0, 25],
+                'offset': [24, 49],
+            }),
+            [2, 0],
+            id='trial_without_events',
+        ),
+    ],
+)
+def test_detect_selects_group_events_per_trial(samples, events, expected_group_sizes):
+    gaze = pm.Gaze(samples, trial_columns=['trial'])
+    gaze.events = pm.Events(events)
+
+    group_sizes: list[int] = []
+
+    def detect_counting_events(events, **_kwargs):
+        group_sizes.append(events.frame.height)
+        return pm.Events(name='fixation', onsets=[0], offsets=[1])
+
+    gaze.detect(detect_counting_events)
+
+    assert group_sizes == expected_group_sizes
+
+
 def test_gaze_detect_with_numeric_time_column_passes_timesteps_unconverted():
     # A numeric time column (possible via direct samples mutation) must be passed
     # to the detection method as is, without any Duration conversion.
