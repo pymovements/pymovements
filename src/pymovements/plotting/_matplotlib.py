@@ -353,7 +353,7 @@ def _set_screen_axes(
     Raises
     ------
     ValueError
-        If the screen origin is not 'upper left'.
+        If ``position_column`` is ``'pixel'`` and the screen origin is not 'upper left'.
     """
     # The pixel extent does not apply to columns in other units, e.g. degrees of visual angle
     if position_column != 'pixel':

@@ -110,8 +110,11 @@ def scanpathplot(
     add_traceplot: bool
         Boolean value indicating whether to add traceplot to the scanpath plot. (default: False)
     gaze_position_column: str
-        Position column in the gaze dataframe. The axes limits are only set to the screen's
-        pixel extent if this is the ``'pixel'`` column. (default: 'pixel')
+        Position column in the gaze dataframe that sets the unit of the plot. It is drawn as the
+        trace if ``add_traceplot`` is True. The axes limits are only set to the screen's pixel
+        extent if this is the ``'pixel'`` column, so it must match the unit of the event
+        locations in ``position_column`` even without a trace. Event locations are computed in
+        degrees of visual angle by default, so pass ``'position'`` for those. (default: 'pixel')
     add_stimulus: bool
         Boolean value indicating whether to plot the scanpath on the stimuls. (default: False)
     add_arrows: bool

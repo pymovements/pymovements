@@ -226,9 +226,9 @@ def test_heatmap_position_column_does_not_use_pixel_axes(gaze):
     gaze.pix2deg()
     _, ax = pm.plotting.heatmap(gaze, position_column='position')
 
-    x_min, x_max, y_bottom, y_top = ax.get_images()[0].get_extent()
-    assert ax.get_xlim() == (x_min, x_max)
-    assert ax.get_ylim() == (y_bottom, y_top)
+    # Screen extent in dva, truncated to int: atan(19 / 60) = 17.56, atan(15 / 60) = 14.04
+    assert ax.get_xlim() == (-17, 17)
+    assert ax.get_ylim() == (14, -14)
 
 
 @pytest.mark.parametrize('origin', ['lower left', 'center', 'upper right'])

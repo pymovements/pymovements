@@ -231,17 +231,28 @@ def test_set_screen_axes_valid(gaze):
     assert ax.get_aspect() == 1
 
 
-@pytest.mark.parametrize('gaze', ['200'], indirect=True)
-def test_set_screen_axes_skipped_for_position_column(gaze):
+def test_set_screen_axes_skipped_for_position_column():
+    experiment = Experiment(
+        screen_width_px=1280,
+        screen_height_px=1024,
+        screen_width_cm=38,
+        screen_height_cm=30,
+        distance_cm=68,
+        origin='upper left',
+        sampling_rate=1000.0,
+    )
+    gaze = from_numpy(
+        samples=np.array([[-10.0, 0.0, 10.0], [-5.0, 0.0, 5.0]]),
+        schema=['x_pos', 'y_pos'],
+        experiment=experiment,
+        position_columns=['x_pos', 'y_pos'],
+    )
+
     _, ax = traceplot(gaze=gaze, position_column='position')
 
-    x = gaze.samples['position'].list.get(0)
-    y = gaze.samples['position'].list.get(1)
-    x_lim, y_lim = ax.get_xlim(), ax.get_ylim()
-    assert x_lim != (0, gaze.experiment.screen.width_px)
-    assert y_lim != (gaze.experiment.screen.height_px, 0)
-    assert min(x_lim) <= x.min() and x.max() <= max(x_lim)
-    assert min(y_lim) <= y.min() and y.max() <= max(y_lim)
+    # Data range in dva padded by the default pad_factor of 0.05, y-axis inverted.
+    assert ax.get_xlim() == pytest.approx((-11, 11))
+    assert ax.get_ylim() == pytest.approx((5.5, -5.5))
 
 
 @pytest.mark.parametrize('origin', ['lower left', 'center', 'upper right'])

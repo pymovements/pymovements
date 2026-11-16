@@ -377,11 +377,44 @@ def test_set_screen_axes_valid(gaze):
     assert ax.get_aspect() == 1
 
 
+@pytest.mark.parametrize('gaze', ['0_events'], indirect=True)
 def test_set_screen_axes_skipped_for_position_column(gaze):
-    _, ax = scanpathplot(gaze=gaze, gaze_position_column='position', add_traceplot=True)
+    gaze.events = Events(
+        pl.DataFrame({
+            'name': ['fixation', 'fixation'],
+            'onset': [0, 100],
+            'offset': [99, 199],
+            'duration': [99, 99],
+            'location': [[-10.0, -5.0], [10.0, 5.0]],
+        }),
+    )
 
-    assert ax.get_xlim() != (0, gaze.experiment.screen.width_px)
-    assert ax.get_ylim() != (gaze.experiment.screen.height_px, 0)
+    _, ax = scanpathplot(gaze=gaze, gaze_position_column='position')
+
+    # Fixation range in dva padded by the default pad_factor of 0.05, y-axis inverted.
+    assert ax.get_xlim() == pytest.approx((-11, 11))
+    assert ax.get_ylim() == pytest.approx((5.5, -5.5))
+
+
+@pytest.mark.parametrize('gaze', ['0_events'], indirect=True)
+def test_set_screen_axes_skipped_for_fixation_centroids_in_dva(gaze):
+    gaze.events = Events(
+        pl.DataFrame({
+            'name': ['fixation', 'fixation'],
+            'onset': [0, 100],
+            'offset': [99, 199],
+            'duration': [99, 99],
+        }),
+    )
+    # Fixation centroids are computed in degrees of visual angle by default.
+    gaze.compute_event_properties('location')
+
+    _, ax = scanpathplot(gaze=gaze, gaze_position_column='position')
+
+    x_lim, y_lim = sorted(ax.get_xlim()), sorted(ax.get_ylim())
+    for x, y in gaze.events.frame['location']:
+        assert x_lim[0] <= x <= x_lim[1]
+        assert y_lim[0] <= y <= y_lim[1]
 
 
 @pytest.mark.parametrize('origin', ['lower left', 'center'])
