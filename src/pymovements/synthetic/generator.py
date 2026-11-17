@@ -24,6 +24,7 @@ import abc
 import dataclasses
 import inspect
 import numbers
+import re
 import secrets
 from collections.abc import Callable
 from typing import Any
@@ -46,6 +47,18 @@ from pymovements.warnings import ExperimentalWarning
 PROVENANCE_KEY = 'synthetic'
 
 OutputT = TypeVar('OutputT', Events, Gaze)
+
+_CLASS_VAR_PATTERN = re.compile(r'(?:\w+\.)?ClassVar\b')
+
+
+def _is_class_var(annotation: Any) -> bool:
+    """Return whether an annotation declares a class variable rather than a dataclass field.
+
+    The annotation is matched as a string, since postponed annotations are strings that cannot
+    always be evaluated. Like ``dataclasses``, only a leading ``ClassVar``, optionally qualified by
+    a module, counts, so that ``ClassVariant`` or ``Annotated[int, 'ClassVar']`` stay fields.
+    """
+    return _CLASS_VAR_PATTERN.match(str(annotation).strip('\'"')) is not None
 
 
 class _Generator(abc.ABC, Generic[OutputT]):
@@ -216,18 +229,17 @@ class _Generator(abc.ABC, Generic[OutputT]):
         # A subclass inherits the dataclass check above, so a class without the decorator passes
         # it, and the fields it annotates would be left out of the constructor and the record.
         for generator_class in type(self).__mro__:
-            # A plain mixin is no generator, and the base classes of this module annotate class
-            # attributes, not fields.
+            # A plain mixin is no generator, and _Generator annotates the _generate hook, no field.
             if (
                 not issubclass(generator_class, _Generator)
-                or generator_class.__module__ == __name__
+                or generator_class is _Generator
                 or '__dataclass_fields__' in vars(generator_class)
             ):
                 continue
 
             undeclared = [
                 name for name, annotation in inspect.get_annotations(generator_class).items()
-                if 'ClassVar' not in str(annotation)
+                if not _is_class_var(annotation)
             ]
             if undeclared:
                 raise TypeError(

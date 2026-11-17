@@ -21,6 +21,7 @@
 import dataclasses
 import inspect
 import json
+from typing import Annotated
 from typing import ClassVar
 
 import numpy as np
@@ -467,6 +468,18 @@ class _DecoratedOnLevelBaseGenerator(_UndecoratedLevelBase):
     name = 'decorated_on_level_base'
 
 
+class ClassVariant:
+    pass
+
+
+class _ClassVarInTypeNameGenerator(_DecoratedGenerator):
+    variant: ClassVariant = ClassVariant()
+
+
+class _ClassVarInAnnotatedGenerator(_DecoratedGenerator):
+    extra: Annotated[float, 'ClassVar'] = 2.0
+
+
 class _AnnotatedMixin:
     cache: dict
 
@@ -513,6 +526,16 @@ class _AnnotatedMixin:
             _DecoratedOnLevelBaseGenerator,
             ('_UndecoratedLevelBase', "'extra'", '@dataclasses.dataclass'),
             id='field_of_an_undecorated_base_of_the_level',
+        ),
+        pytest.param(
+            _ClassVarInTypeNameGenerator,
+            ('_ClassVarInTypeNameGenerator', "'variant'", '@dataclasses.dataclass'),
+            id='class_var_in_the_type_name',
+        ),
+        pytest.param(
+            _ClassVarInAnnotatedGenerator,
+            ('_ClassVarInAnnotatedGenerator', "'extra'", '@dataclasses.dataclass'),
+            id='class_var_in_annotated_metadata',
         ),
     ],
 )
