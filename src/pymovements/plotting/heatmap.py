@@ -69,7 +69,9 @@ def heatmap(
     gaze: Gaze
         A Gaze object.
     position_column: str
-        The column name of the x and y position data. (default: 'pixel')
+        The column name of the x and y position data. Only a column named ``'pixel'`` gets the
+        screen's pixel extent as axes limits, for other columns the limits follow the extent of
+        the heatmap. (default: 'pixel')
     gridsize: tuple[int, int]
         The number of bins in the x and y dimensions. (default: (10, 10))
     cmap: colors.Colormap | str

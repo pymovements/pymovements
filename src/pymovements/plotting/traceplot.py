@@ -64,7 +64,9 @@ def traceplot(
     gaze: Gaze
         The Gaze to plot.
     position_column: str
-        The column name of the x and y position data (default: 'pixel')
+        The column name of the x and y position data. Only a column named ``'pixel'`` gets the
+        screen's pixel extent as axes limits, for other columns the limits follow the padded data
+        range. (default: 'pixel')
     cval: np.ndarray | None
         Line color values. (default: None)
     cmap: matplotlib.colors.Colormap | None

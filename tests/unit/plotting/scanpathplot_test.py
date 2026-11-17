@@ -377,16 +377,20 @@ def test_set_screen_axes_valid(gaze):
     assert ax.get_aspect() == 1
 
 
+@pytest.fixture(name='two_fixations', scope='function')
+def two_fixations_fixture():
+    return pl.DataFrame({
+        'name': ['fixation', 'fixation'],
+        'onset': [0, 100],
+        'offset': [99, 199],
+        'duration': [99, 99],
+    })
+
+
 @pytest.mark.parametrize('gaze', ['0_events'], indirect=True)
-def test_set_screen_axes_skipped_for_position_column(gaze):
+def test_set_screen_axes_skipped_for_position_column(gaze, two_fixations):
     gaze.events = Events(
-        pl.DataFrame({
-            'name': ['fixation', 'fixation'],
-            'onset': [0, 100],
-            'offset': [99, 199],
-            'duration': [99, 99],
-            'location': [[-10.0, -5.0], [10.0, 5.0]],
-        }),
+        two_fixations.with_columns(location=pl.Series([[-10.0, -5.0], [10.0, 5.0]])),
     )
 
     _, ax = scanpathplot(gaze=gaze, gaze_position_column='position')
@@ -397,15 +401,8 @@ def test_set_screen_axes_skipped_for_position_column(gaze):
 
 
 @pytest.mark.parametrize('gaze', ['0_events'], indirect=True)
-def test_set_screen_axes_skipped_for_fixation_centroids_in_dva(gaze):
-    gaze.events = Events(
-        pl.DataFrame({
-            'name': ['fixation', 'fixation'],
-            'onset': [0, 100],
-            'offset': [99, 199],
-            'duration': [99, 99],
-        }),
-    )
+def test_set_screen_axes_skipped_for_fixation_centroids_in_dva(gaze, two_fixations):
+    gaze.events = Events(two_fixations)
     # Fixation centroids are computed in degrees of visual angle by default.
     gaze.compute_event_properties('location')
 
