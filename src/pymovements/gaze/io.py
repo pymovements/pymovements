@@ -28,10 +28,10 @@ from typing import IO
 
 import polars as pl
 
-from pymovements._utils._sources import add_source
+from pymovements._utils.sources import add_source
 from pymovements.events.events import Events
-from pymovements.gaze._utils._parsing_begaze import parse_begaze
-from pymovements.gaze._utils._parsing_eyelink import parse_eyelink
+from pymovements.gaze._utils.parsing_begaze import parse_begaze
+from pymovements.gaze._utils.parsing_eyelink import parse_eyelink
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
 

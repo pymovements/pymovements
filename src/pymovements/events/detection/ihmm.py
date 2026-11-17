@@ -27,8 +27,8 @@ from typing import overload
 import numpy
 import polars
 
-from pymovements._utils import _checks
-from pymovements._utils._time import timesteps_to_numpy
+from pymovements._utils import checks
+from pymovements._utils.time import timesteps_to_numpy
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.transforms.numpy import norm
@@ -1323,7 +1323,7 @@ def ihmm(
             raise ValueError(f'velocities must be 2D list but list lengths are: {list_lengths}')
         velocities = numpy.vstack([velocities.list.get(0), velocities.list.get(1)]).transpose()
     velocities = numpy.array(velocities)
-    _checks.check_shapes(velocities=velocities)
+    checks.check_shapes(velocities=velocities)
 
     if mu is not None:
         mu = numpy.array(mu)
@@ -1350,7 +1350,7 @@ def ihmm(
     if minimum_duration <= 0:
         raise ValueError('minimum_duration must be greater than 0')
 
-    _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
+    checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
     if mu is not None and mu.shape != (2,):
         raise ValueError(

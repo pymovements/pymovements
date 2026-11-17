@@ -171,7 +171,7 @@ def test_map_to_aois_uses_first_overlapping_aoi_without_misalignment() -> None:
     )
 
     with pytest.warns(UserWarning, match='Multiple AOIs matched this point'):
-        events.map_to_aois(stimulus, verbose=False)
+        events.map_to_aois(stimulus)
 
     assert events.frame.height == 4
     assert events.frame.get_column('content').to_list() == ['AOI1', 'AOI1', 'AOI2', None]
@@ -431,7 +431,7 @@ def test_events_map_to_aois_no_new_columns_when_all_aoi_columns_present(
     # Keep a copy of original columns to verify no new columns are appended.
     original_cols = ev.frame.columns.copy()
 
-    ev.map_to_aois(simple_stimulus_w_h, preserve_structure=preserve_structure, verbose=False)
+    ev.map_to_aois(simple_stimulus_w_h, preserve_structure=preserve_structure)
 
     # The set and order of columns should remain unchanged (no new AOI columns appended),
     # exercising the `if aoi_columns:` no-branch.
@@ -546,7 +546,7 @@ def test_map_to_aois_key_that_changes_on_cast_gets_no_aoi(
     )
     events = Events(data=df, trial_columns=['trial'])
 
-    events.map_to_aois(stimulus_with_trials, verbose=False)
+    events.map_to_aois(stimulus_with_trials)
 
     assert events.frame.get_column('label').to_list() == [None]
 
@@ -576,7 +576,7 @@ def test_map_to_aois_numeric_string_key_matches_integer_key(
     )
     events = Events(data=df, trial_columns=['trial'])
 
-    events.map_to_aois(stimulus_with_trials, verbose=False)
+    events.map_to_aois(stimulus_with_trials)
 
     assert events.frame.get_column('label').to_list() == [expected_label]
 
@@ -612,7 +612,7 @@ def test_map_to_aois_integer_key_matches_string_key() -> None:
     )
     events = Events(data=df, trial_columns=['trial'])
 
-    events.map_to_aois(stimulus, verbose=False)
+    events.map_to_aois(stimulus)
 
     assert events.frame.get_column('label').to_list() == ['A', None]
 
@@ -630,7 +630,7 @@ def test_map_to_aois_valid_key_still_matches(stimulus_with_trials: TextStimulus)
     )
     events = Events(data=df, trial_columns=['trial'])
 
-    events.map_to_aois(stimulus_with_trials, verbose=False)
+    events.map_to_aois(stimulus_with_trials)
 
     assert events.frame.get_column('label').to_list() == ['A']
 
@@ -651,7 +651,7 @@ def test_map_to_aois_non_numeric_coordinates_get_no_match_and_warn(
     events = Events(data=df)
 
     with pytest.warns(UserWarning, match='Invalid eye coordinates in 2 of 2 fixations'):
-        events.map_to_aois(simple_stimulus, verbose=False)
+        events.map_to_aois(simple_stimulus)
 
     assert events.frame.get_column('label').to_list() == [None, None]
 
@@ -670,7 +670,7 @@ def test_map_to_aois_nan_coordinates_warn_once(simple_stimulus: TextStimulus) ->
     events = Events(data=df)
 
     with pytest.warns(UserWarning, match='Invalid eye coordinates in 1 of 2 fixations'):
-        events.map_to_aois(simple_stimulus, verbose=False)
+        events.map_to_aois(simple_stimulus)
 
     assert events.frame.get_column('label').to_list() == ['A', None]
 
@@ -687,7 +687,7 @@ def test_map_to_aois_no_matches_returns_all_none(simple_stimulus: TextStimulus) 
     )
     events = Events(data=df)
 
-    events.map_to_aois(simple_stimulus, verbose=False)
+    events.map_to_aois(simple_stimulus)
 
     assert events.frame.get_column('label').to_list() == [None, None]
 
@@ -733,7 +733,7 @@ def test_map_to_aois_overlap_with_keyed_null_key_and_unmatched_rows() -> None:
     events = Events(data=df, trial_columns=['trial', 'page'])
 
     with pytest.warns(UserWarning, match='Multiple AOIs matched this point'):
-        events.map_to_aois(stimulus, verbose=False)
+        events.map_to_aois(stimulus)
 
     assert events.frame.get_column('content').to_list() == ['L1', 'L1', None]
 
@@ -773,7 +773,7 @@ def test_map_to_aois_raises_for_mismatched_bounds(
     )
 
     with pytest.raises(ValueError, match='must be either both None or both not None'):
-        events.map_to_aois(stimulus, verbose=False)
+        events.map_to_aois(stimulus)
 
 
 def test_map_to_aois_numeric_string_list_coordinates_get_no_match(
@@ -791,7 +791,7 @@ def test_map_to_aois_numeric_string_list_coordinates_get_no_match(
     events = Events(data=df)
 
     with pytest.warns(UserWarning, match='Invalid eye coordinates in 1 of 1 fixations'):
-        events.map_to_aois(simple_stimulus, verbose=False)
+        events.map_to_aois(simple_stimulus)
 
     assert events.frame.get_column('label').to_list() == [None]
 
@@ -827,7 +827,7 @@ def test_map_to_aois_categorical_key_matches_string_key() -> None:
     )
     events = Events(data=df, trial_columns=['trial'])
 
-    events.map_to_aois(stimulus, verbose=False)
+    events.map_to_aois(stimulus)
 
     assert events.frame.get_column('label').to_list() == ['A']
 
@@ -847,7 +847,7 @@ def test_map_to_aois_non_numeric_list_without_structure_gets_no_match(
     events = Events(data=df)
 
     with pytest.warns(UserWarning, match='Invalid eye coordinates in 1 of 1 fixations'):
-        events.map_to_aois(simple_stimulus, preserve_structure=False, verbose=False)
+        events.map_to_aois(simple_stimulus, preserve_structure=False)
 
     assert events.frame.get_column('label').to_list() == [None]
 
@@ -866,6 +866,26 @@ def test_map_to_aois_missing_coordinate_columns_get_no_match(
     events = Events(data=df)
 
     with pytest.warns(UserWarning, match='Invalid eye coordinates in 1 of 1 fixations'):
-        events.map_to_aois(simple_stimulus, verbose=False)
+        events.map_to_aois(simple_stimulus)
 
     assert events.frame.get_column('label').to_list() == [None]
+
+
+@pytest.mark.parametrize('verbose', [True, False])
+def test_map_to_aois_verbose_is_deprecated(
+        verbose, simple_stimulus, assert_deprecation_is_removed,
+):
+    events = Events(
+        data=pl.DataFrame(
+            {'name': ['fixation'], 'onset': [0], 'offset': [1], 'location': [[5.0, 5.0]]},
+        ),
+    )
+
+    with pytest.raises(DeprecationWarning) as info:
+        events.map_to_aois(simple_stimulus, verbose=verbose)
+
+    assert_deprecation_is_removed(
+        function_name="Events.map_to_aois argument 'verbose'",
+        warning_message=info.value.args[0],
+        scheduled_version='0.34.0',
+    )

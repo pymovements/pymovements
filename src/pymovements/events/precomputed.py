@@ -24,7 +24,7 @@ from typing import Any
 
 import polars as pl
 
-from pymovements._utils._html import repr_html
+from pymovements._utils.html import repr_html
 
 
 @repr_html()

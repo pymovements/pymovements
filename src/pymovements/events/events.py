@@ -31,13 +31,13 @@ import numpy as np
 import polars
 from tqdm import tqdm
 
-from pymovements._utils import _checks
-from pymovements._utils._column_nesting import unnest_list_columns
-from pymovements._utils._html import repr_html
-from pymovements._utils._nulls import row_is_null
-from pymovements._utils._sources import merge_sources
-from pymovements._utils._time import normalize_duration_to_us
-from pymovements._utils._time import numeric_to_duration_us
+from pymovements._utils import checks
+from pymovements._utils.column_nesting import unnest_list_columns
+from pymovements._utils.html import repr_html
+from pymovements._utils.nulls import row_is_null
+from pymovements._utils.sources import merge_sources
+from pymovements._utils.time import normalize_duration_to_us
+from pymovements._utils.time import numeric_to_duration_us
 from pymovements.events.correction import fixation_correction
 from pymovements.measure.events.measures import duration
 from pymovements.measure.reading import compute_reading_measures
@@ -485,10 +485,10 @@ class Events:
             )
 
         if data is not None:
-            _checks.check_is_mutual_exclusive(data=data, onsets=onsets)
-            _checks.check_is_mutual_exclusive(data=data, offsets=offsets)
-            _checks.check_is_mutual_exclusive(data=data, name=name)
-            _checks.check_is_mutual_exclusive(data=data, name=trials)
+            checks.check_is_mutual_exclusive(data=data, onsets=onsets)
+            checks.check_is_mutual_exclusive(data=data, offsets=offsets)
+            checks.check_is_mutual_exclusive(data=data, name=name)
+            checks.check_is_mutual_exclusive(data=data, name=trials)
 
             data = data.clone()
             data = self._add_minimal_schema_columns(data)
@@ -506,7 +506,7 @@ class Events:
 
         else:
             # Make sure that if either onsets or offsets is None, the other one is None too.
-            _checks.check_is_none_is_mutual(onsets=onsets, offsets=offsets)
+            checks.check_is_none_is_mutual(onsets=onsets, offsets=offsets)
 
             # Make sure lengths of onsets and offsets are equal.
             if onsets is not None:
@@ -514,10 +514,10 @@ class Events:
                 # mypy does not get that offsets cannot be None (l. 87)
                 assert offsets is not None
 
-                _checks.check_is_length_matching(onsets=onsets, offsets=offsets)
+                checks.check_is_length_matching(onsets=onsets, offsets=offsets)
                 # In case name is given as a list, check that too.
                 if isinstance(name, Sequence) and not isinstance(name, str):
-                    _checks.check_is_length_matching(onsets=onsets, name=name)
+                    checks.check_is_length_matching(onsets=onsets, name=name)
 
                 # These reassignments are necessary for a correct conversion into a dataframe.
                 if len(onsets) == 0:
@@ -715,7 +715,7 @@ class Events:
                 raise TypeError(
                     'data must be passed as a list of values in case of providing multiple columns',
                 )
-            _checks.check_is_length_matching(column=column, data=data)
+            checks.check_is_length_matching(column=column, data=data)
 
             trial_columns = dict(zip(column, data))
 
@@ -1159,7 +1159,7 @@ class Events:
             aoi_dataframe: TextStimulus,
             *,
             preserve_structure: bool = True,
-            verbose: bool = True,
+            verbose: bool | None = None,
     ) -> None:
         """Map events to AOIs, ignoring non-fixations.
 
@@ -1211,8 +1211,13 @@ class Events:
         preserve_structure: bool
             Control whether to derive component columns and drop the list column as described
             above. Default: True.
-        verbose : bool
-            If ``True``, show a progress bar. (default: True)
+        verbose: bool | None
+            If ``True``, show a progress bar over the fixations with a null trial or page value,
+            the only ones that are still looked up one by one. (default: None)
+
+            .. deprecated:: v0.29.0
+                The mapping no longer loops over all events.
+                This argument will be removed in v0.34.0.
 
         Raises
         ------
@@ -1224,18 +1229,27 @@ class Events:
         ValueError
             If the events frame is empty.
         """
+        if verbose is not None:
+            warnings.warn(
+                DeprecationWarning(
+                    "Events.map_to_aois argument 'verbose' is deprecated since version v0.29.0. "
+                    'The mapping no longer loops over all events. '
+                    'This argument will be removed in v0.34.0.',
+                ),
+            )
+
         # Validate AOI configuration early
         if aoi_dataframe.width_column is None and aoi_dataframe.end_x_column is None:
             raise ValueError(
                 'either TextStimulus.width or TextStimulus.end_x_column must be defined',
             )
         if aoi_dataframe.width_column is not None:
-            _checks.check_is_none_is_mutual(
+            checks.check_is_none_is_mutual(
                 height_column=aoi_dataframe.width_column,
                 width_column=aoi_dataframe.height_column,
             )
         else:
-            _checks.check_is_none_is_mutual(
+            checks.check_is_none_is_mutual(
                 end_x_column=aoi_dataframe.end_x_column,
                 end_y_column=aoi_dataframe.end_y_column,
             )
@@ -1268,7 +1282,7 @@ class Events:
 
         if aoi_columns:
             aoi_df = _map_fixations_to_aois(
-                self.frame, aoi_dataframe, aoi_columns, aoi_schema, verbose,
+                self.frame, aoi_dataframe, aoi_columns, aoi_schema, verbose is True,
             )
             self.frame = polars.concat([self.frame, aoi_df], how='horizontal_extend')
 
@@ -1584,7 +1598,7 @@ class Events:
         else:
             stimuli = [stimulus]
             mapped = Events(working_frame, trial_columns=self.trial_columns)
-            mapped.map_to_aois(stimulus, verbose=False)
+            mapped.map_to_aois(stimulus)
             fixations, aois = mapped.frame, stimulus.aois
 
         # The measures are derived from the events and the stimulus files.
@@ -1669,7 +1683,7 @@ class Events:
             )
             if subset.frame.is_empty():
                 continue
-            subset.map_to_aois(stim, verbose=False)
+            subset.map_to_aois(stim)
             mapped_frames.append(subset.frame)
 
         # Rows whose key has no stimulus entry pass through unmapped, so that

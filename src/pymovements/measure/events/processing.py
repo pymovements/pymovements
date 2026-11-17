@@ -25,7 +25,7 @@ from warnings import warn
 
 import polars as pl
 
-from pymovements._utils._time import duration_to_ms
+from pymovements._utils.time import duration_to_ms
 from pymovements.exceptions import UnknownMeasure
 from pymovements.measure.events.measures import EVENT_MEASURES
 from pymovements.measure.samples.library import SampleMeasureLibrary

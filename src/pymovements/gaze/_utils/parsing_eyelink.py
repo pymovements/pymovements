@@ -42,7 +42,7 @@ from typing import Literal
 
 import polars as pl
 
-from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys, \
+from pymovements.gaze._utils.parsing import compile_patterns, get_pattern_keys, \
     check_nan
 
 

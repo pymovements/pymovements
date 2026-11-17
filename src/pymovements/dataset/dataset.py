@@ -34,9 +34,9 @@ from warnings import warn
 import polars as pl
 from tqdm.auto import tqdm
 
-from pymovements._utils._html import repr_html
-from pymovements._utils._sources import merge_sources
-from pymovements._utils._sources import relativize_sources
+from pymovements._utils.html import repr_html
+from pymovements._utils.sources import merge_sources
+from pymovements._utils.sources import relativize_sources
 from pymovements._version import __version__
 from pymovements.dataset import dataset_download
 from pymovements.dataset import dataset_files

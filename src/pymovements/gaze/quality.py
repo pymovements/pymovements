@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
-from pymovements._utils._time import duration_to_ms
+from pymovements._utils.time import duration_to_ms
 from pymovements._version import __version__
 from pymovements.gaze.validation import _ALL_CHECKS
 from pymovements.gaze.validation import CheckResult
