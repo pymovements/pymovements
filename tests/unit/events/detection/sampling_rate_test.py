@@ -184,6 +184,64 @@ class TestSingleSampleDetector:
         assert events.metadata == _entries(sampling_rate)
 
 
+@pytest.mark.parametrize(
+    ('detector', 'kwargs'),
+    [
+        pytest.param(
+            ivt,
+            {'velocities': [[0, 0]] * 9, 'velocity_threshold': 1, 'minimum_duration': 1},
+            id='ivt',
+        ),
+        pytest.param(
+            microsaccades,
+            {'velocities': [[10, 10]] * 9, 'threshold': (1, 1), 'minimum_duration': 1},
+            id='microsaccades',
+        ),
+        pytest.param(
+            blink,
+            {
+                'pupil': [np.nan] * 9,
+                'minimum_duration': 1,
+                'maximum_duration': None,
+                'minimum_gap': 0,
+            },
+            id='blink',
+        ),
+        pytest.param(
+            out_of_screen,
+            {'pixels': [[-1, 0]] * 9, 'x_max': 10, 'y_max': 10},
+            id='out_of_screen',
+        ),
+        pytest.param(
+            ihmm,
+            {
+                'velocities': [[0, 0]] * 9,
+                'mu': [0, 10],
+                'sigma': [1, 1],
+                'init_state': [0.5, 0.5],
+                'transition_probabilities': [[0.5, 0.5], [0.5, 0.5]],
+                'minimum_duration': 1,
+            },
+            id='ihmm',
+        ),
+        pytest.param(
+            idt,
+            {'positions': [[0, 0]] * 9, 'dispersion_threshold': 1, 'minimum_duration': 1},
+            id='idt',
+        ),
+    ],
+)
+def test_timesteps_none_builds_the_grid_from_the_sampling_rate(detector, kwargs):
+    # Nine samples forming one event at 500 Hz: the last sample lies at 16 ms and covers the
+    # 2 ms nominal interval, so the event lasts 18 ms.
+    events = detector(**kwargs, timesteps=None, sampling_rate=500)
+
+    assert events.frame['onset'].to_list() == [timedelta(0)]
+    assert events.frame['duration'].to_list() == [timedelta(milliseconds=18)]
+    assert events.frame['offset'].to_list() == [timedelta(milliseconds=16)]
+    assert events.metadata == _entries(500)
+
+
 @pytest.mark.parametrize(('detector', 'build_kwargs', 'event_samples'), THRESHOLD_DETECTORS)
 def test_minimum_duration_counts_the_nominal_interval(detector, build_kwargs, event_samples):
     timesteps = np.arange(10)

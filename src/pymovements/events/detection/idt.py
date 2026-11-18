@@ -83,14 +83,14 @@ def idt(
     timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None
         shape (N, )
         Corresponding continuous 1D timestep time series. Fractional (float) timesteps are
-        accepted. If None, sample based timesteps are assumed. (default: None)
+        accepted. If None, the timesteps are built from ``sampling_rate`` as a grid in milliseconds
+        starting at ``0``. (default: None)
     minimum_duration: float
         Minimum fixation duration. Each sample covers the interval to its successor, so a
         fixation is measured from its first sample to the sample after its last one. The last
         sample covers the nominal interval of ``sampling_rate``. The duration is specified in
         the units used in ``timesteps``. For a ``polars.Duration`` timesteps series the unit is
-        milliseconds. If ``timesteps`` is None, then ``minimum_duration`` is specified in
-        numbers of samples. (default: 100)
+        milliseconds. If ``timesteps`` is None, the unit is milliseconds. (default: 100)
     dispersion_threshold: float
         Threshold for dispersion for a group of consecutive samples to be identified as fixation.
         (default: 1.0)
@@ -264,7 +264,7 @@ def idt(
     positions = numpy.array(positions)
     checks.check_shapes(positions=positions)
 
-    timesteps = normalize_timesteps(timesteps, length=len(positions))
+    timesteps = normalize_timesteps(timesteps, length=len(positions), sampling_rate=sampling_rate)
     checks.check_is_length_matching(positions=positions, timesteps=timesteps)
 
     sampling_interval = sampling_interval_ms(sampling_rate)
