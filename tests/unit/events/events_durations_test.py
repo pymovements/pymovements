@@ -566,14 +566,14 @@ def test_check_null_duration_beside_offset_warns_once_and_is_not_filled():
     assert events.frame['duration'].to_list() == [timedelta(milliseconds=6), None]
 
 
-def test_check_null_duration_beside_offset_not_reported_with_validate_false():
-    with warnings.catch_warnings():
-        warnings.simplefilter('error')
+def test_check_null_duration_beside_offset_reported_with_validate_false():
+    with pytest.warns(UserWarning, match='null duration') as record:
         events = Events(
             onsets=[0, 0], offsets=[5, 5], durations=[6, None],
             offsets_inclusive=True, sampling_rate=1000, validate=False,
         )
 
+    assert len([w for w in record if 'null duration' in str(w.message)]) == 1
     assert events.frame['duration'].to_list() == [timedelta(milliseconds=6), None]
 
 

@@ -525,9 +525,8 @@ class Events:
         offset. Required to derive durations from inclusive offsets. If None, the sampling-rate
         entry in ``metadata`` is used. (default: None)
     validate: bool
-        If False, supplied durations are kept unchecked beside declared offsets, a null
-        ``duration`` beside a non-null ``offset`` is not reported, and a convention entry
-        without its column is kept without a warning. (default: True)
+        If False, supplied durations are kept unchecked beside declared offsets, and a
+        convention entry without its column is kept without a warning. (default: True)
     trials: list[int | float | str | None] | np.ndarray | None
         List of trial identifiers. (default: None)
     trial_columns: list[str] | str | None
@@ -756,6 +755,10 @@ class Events:
             trial_columns: list[str] | str | None = None,
             metadata: dict[str, Any] | None = None,
             time_unit: str | None = None,
+            # Passed by the rebuild sites only, never part of the public signature: skips the
+            # report of a null duration beside a non-null offset, which was given when the
+            # frame entered pymovements.
+            _silent: bool = False,
     ):
         self.trial_columns: list[str] | None  # otherwise mypy gets confused.
         # A deep copy: neither the entries written below nor later changes to nested values
@@ -926,6 +929,7 @@ class Events:
             sampling_rate=sampling_rate,
             sampling_rate_source=sampling_rate_source,
             validate=validate,
+            silent=_silent,
         )
 
         self._write_entries(
@@ -1006,6 +1010,7 @@ class Events:
             sampling_rate: float | None,
             sampling_rate_source: Literal['keyword', 'entry'],
             validate: bool,
+            silent: bool,
     ) -> None:
         """Fill or check the ``duration`` column against the ``offset`` column.
 
@@ -1057,21 +1062,23 @@ class Events:
             self.frame = self.frame.with_columns(derived.alias('duration'))
             return
 
+        # A null duration beside a non-null offset is reported, never filled. The report is
+        # not part of the validation that validate=False opts out of.
+        if not silent:
+            null_durations = self.frame.select(
+                (polars.col('duration').is_null() & polars.col('offset').is_not_null()).sum(),
+            ).item()
+            if null_durations:
+                rows_have = 'row has' if null_durations == 1 else 'rows have'
+                warn(
+                    f"{null_durations} {rows_have} a null duration beside a non-null offset. "
+                    'The durations stay null.',
+                    UserWarning,
+                    stacklevel=3,
+                )
+
         if not validate:
             return
-
-        # A null duration beside a non-null offset is reported, never filled.
-        null_durations = self.frame.select(
-            (polars.col('duration').is_null() & polars.col('offset').is_not_null()).sum(),
-        ).item()
-        if null_durations:
-            rows_have = 'row has' if null_durations == 1 else 'rows have'
-            warn(
-                f"{null_durations} {rows_have} a null duration beside a non-null offset. "
-                'The durations stay null.',
-                UserWarning,
-                stacklevel=3,
-            )
 
         self._check_durations_against_offsets(
             offsets_inclusive=offsets_inclusive,
@@ -1521,6 +1528,7 @@ class Events:
             trial_columns=self.trial_columns,
             metadata=self.metadata,
             validate=False,
+            _silent=True,
         )
 
     @overload
@@ -1576,6 +1584,7 @@ class Events:
                     trial_columns=self.trial_columns,
                     metadata=self.metadata,
                     validate=False,
+                    _silent=True,
                 )
                 for key, frame in event_dfs.items()
             }
@@ -1586,6 +1595,7 @@ class Events:
                 trial_columns=self.trial_columns,
                 metadata=self.metadata,
                 validate=False,
+                _silent=True,
             )
             for frame in event_dfs
         ]
@@ -2059,6 +2069,7 @@ class Events:
             trial_columns=self.trial_columns,
             metadata=merge_sources(self.metadata, aois.metadata),
             validate=False,
+            _silent=True,
         )
 
     def measure_reading(
@@ -2195,6 +2206,7 @@ class Events:
                 trial_columns=self.trial_columns,
                 metadata=self.metadata,
                 validate=False,
+                _silent=True,
             )
             mapped.map_to_aois(stimulus)
             fixations, aois = mapped.frame, stimulus.aois
@@ -2280,6 +2292,7 @@ class Events:
                 trial_columns=self.trial_columns,
                 metadata=self.metadata,
                 validate=False,
+                _silent=True,
             )
             if subset.frame.is_empty():
                 continue
