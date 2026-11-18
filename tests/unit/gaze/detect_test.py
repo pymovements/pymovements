@@ -1877,20 +1877,17 @@ def test_gaze_detect_existing_exclusive_events_raise_naming_clear():
 
 
 @pytest.mark.parametrize(
-    'trial',
+    ('trial', 'trials'),
     [
-        pytest.param(None, id='trial_less'),
-        pytest.param(np.array(['A'] * 50 + ['B'] * 50), id='grouped'),
+        pytest.param(None, None, id='trial_less'),
+        pytest.param(np.array(['A'] * 50 + ['B'] * 50), ['A'], id='grouped'),
     ],
 )
-def test_gaze_detect_existing_undeclared_offsets_raise_naming_clear(trial):
+def test_gaze_detect_existing_undeclared_offsets_raise_naming_clear(trial, trials):
     gaze = _velocity_gaze(
         trial=trial,
         experiment=pm.Experiment(sampling_rate=1000),
-        events=pm.Events(
-            name='fixation', onsets=[0], offsets=[10],
-            trials=None if trial is None else ['A'],
-        ),
+        events=pm.Events(name='fixation', onsets=[0], offsets=[10], trials=trials),
     )
 
     with pytest.raises(ValueError, match=r"undeclared 'offset' column.*detect\(clear=True\)"):
