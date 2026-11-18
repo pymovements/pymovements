@@ -358,7 +358,7 @@ def test_init_durations_from_offsets_on_undeclared_offsets_warns_once_and_is_ign
 
 
 @pytest.mark.parametrize('sampling_rate', [0, -1, math.nan, math.inf])
-def test_init_non_finite_positive_sampling_rate_raises(sampling_rate):
+def test_init_sampling_rate_not_finite_positive_raises(sampling_rate):
     with pytest.raises(ValueError, match='sampling_rate must be a finite positive number'):
         Events(onsets=[0], offsets=[1], offsets_inclusive=True, sampling_rate=sampling_rate)
 
@@ -555,22 +555,12 @@ def test_check_null_rows_neither_contradict_nor_pass():
             )
 
 
-def test_check_null_duration_beside_offset_warns_once_and_is_not_filled():
+@pytest.mark.parametrize('validate', [True, False])
+def test_check_null_duration_beside_offset_warns_once_and_is_not_filled(validate):
     with pytest.warns(UserWarning, match='null duration') as record:
         events = Events(
             onsets=[0, 0], offsets=[5, 5], durations=[6, None],
-            offsets_inclusive=True, sampling_rate=1000,
-        )
-
-    assert len([w for w in record if 'null duration' in str(w.message)]) == 1
-    assert events.frame['duration'].to_list() == [timedelta(milliseconds=6), None]
-
-
-def test_check_null_duration_beside_offset_reported_with_validate_false():
-    with pytest.warns(UserWarning, match='null duration') as record:
-        events = Events(
-            onsets=[0, 0], offsets=[5, 5], durations=[6, None],
-            offsets_inclusive=True, sampling_rate=1000, validate=False,
+            offsets_inclusive=True, sampling_rate=1000, validate=validate,
         )
 
     assert len([w for w in record if 'null duration' in str(w.message)]) == 1

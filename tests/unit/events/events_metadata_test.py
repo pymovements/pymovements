@@ -496,7 +496,7 @@ def test_metadata_offsets_inclusive_agreeing_with_orphan_entry_warns_for_keyword
 
 
 @pytest.mark.parametrize('sampling_rate', [0, -1, math.nan, math.inf])
-def test_metadata_non_finite_positive_sampling_rate_entry_raises(sampling_rate):
+def test_metadata_sampling_rate_entry_not_finite_positive_raises(sampling_rate):
     with pytest.raises(
             ValueError, match=r"metadata\['sampling_rate'\] must be a finite positive number",
     ):
