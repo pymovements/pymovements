@@ -32,6 +32,7 @@ import importlib
 import warnings
 from typing import cast
 from typing import ClassVar
+from typing import Literal
 
 import numpy as np
 import polars as pl
@@ -113,7 +114,7 @@ class StatisticalSampleGenerator(SampleGenerator):
         (default: Range(10.0, 30.0))
     smooth_pursuit_onset_duration: RangeLike
         The duration of the onset of a pursuit. (default: Range(40.0, 120.0))
-    smooth_pursuit_profile: str
+    smooth_pursuit_profile: Literal['constant', 'growing', 'decreasing']
         The shape after the onset, ``'constant'``, ``'growing'`` or ``'decreasing'``.
         (default: 'constant')
     smooth_pursuit_consistency: RangeLike
@@ -169,7 +170,7 @@ class StatisticalSampleGenerator(SampleGenerator):
     saccade_consistency: RangeLike = Range(0.0, 5.0)
     smooth_pursuit_velocity: RangeLike = Range(10.0, 30.0)
     smooth_pursuit_onset_duration: RangeLike = Range(40.0, 120.0)
-    smooth_pursuit_profile: str = 'constant'
+    smooth_pursuit_profile: Literal['constant', 'growing', 'decreasing'] = 'constant'
     smooth_pursuit_consistency: RangeLike = Range(0.0, 2.0)
     noise_percentage: float = 0.0
     noise_velocity: RangeLike = Range(0.0, 0.0)
@@ -484,7 +485,7 @@ class StatisticalSampleGenerator(SampleGenerator):
             return norms
 
         noisy = rng.choice(norms.size, size=n_noisy, replace=False)
-        changes = [_range(self.noise_velocity).draw(rng) for _ in range(n_noisy)]
+        changes = _range(self.noise_velocity).draw_many(rng, n_noisy)
 
         noisy_norms = norms.copy()
         noisy_norms[noisy] = np.abs(noisy_norms[noisy] + changes)
@@ -492,7 +493,11 @@ class StatisticalSampleGenerator(SampleGenerator):
 
 
 def _range(value: RangeLike) -> Range:
-    """Return the value as a range. Fields hold ranges once constructed."""
+    """Return the value as a range.
+
+    The range fields are annotated with what ``__init__`` accepts, so this narrows them to a
+    ``Range`` for mypy, and it keeps a field usable after it was reassigned with a pair.
+    """
     return Range.from_value(value)
 
 
