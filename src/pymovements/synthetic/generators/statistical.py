@@ -19,11 +19,8 @@
 # SOFTWARE.
 """Provides a statistical sample generator.
 
-The generator implements the velocity profiles of the eye movement simulator in section 3 of:
-
-    Fuhl, W., Santini, T., Kuebler, T., Castner, N., Rosenstiel, W., & Kasneci, E. (2018).
-    Eye movement simulation and detector creation to reduce laborious parameter adjustments.
-    arXiv:1804.00970.
+The generator implements the velocity profiles of the eye movement simulator in section 3 of
+:cite:p:`Fuhl2018`.
 """
 from __future__ import annotations
 
@@ -63,8 +60,9 @@ class StatisticalSampleGenerator(SampleGenerator):
     Conditioned on a gap-free event sequence, each event gets a velocity profile, built at
     ``profile_sampling_rate``: fixations are a small fluctuation above zero, saccades follow a
     Gamma-shaped profile, and smooth pursuits open with a sigmoid onset before a constant, growing
-    or decreasing pursuit. Each sample is then the mean of the profile since the previous sample,
-    so the signal trails its events by up to one sample, and measurement noise is added last.
+    or decreasing pursuit, following :cite:p:`Fuhl2018`. Each sample is then the mean of the
+    profile since the previous sample, so the signal trails its events by up to one sample, and
+    measurement noise is added last.
     Events with trial columns are generated trial by trial. An event with a duration of zero gets
     no samples and stays in the attached events, while a null duration is rejected, as the end is
     unknown, and so is a negative one.
