@@ -57,7 +57,7 @@ RangeLike = Range | tuple[float, float] | float
 @register_generator
 @dataclasses.dataclass
 class StatisticalSampleGenerator(SampleGenerator):
-    """Generates velocity magnitudes from parametrised profiles of fixations, saccades and pursuits.
+    """Generates velocity norms from parametrised profiles of fixations, saccades and pursuits.
 
     Conditioned on a gap-free event sequence, each event gets a velocity profile, built at
     ``profile_sampling_rate``: fixations are a small fluctuation above zero, saccades follow a
@@ -81,10 +81,10 @@ class StatisticalSampleGenerator(SampleGenerator):
     means, they spread less than the points, and less still as ``profile_sampling_rate`` rises or
     ``sampling_rate`` falls. A consistency tuned at one pair of rates does not carry over.
 
-    The output is a velocity magnitude without direction, so detectors and transforms that need
-    positions cannot consume it. Not modelled are constraints on the order of the events, which
-    belong to an event generator, fluctuating sampling rates, a normal distribution for where
-    noise is placed, and post-saccadic movement.
+    The output is the norm of a velocity whose direction is not modelled, so detectors and
+    transforms that need positions cannot consume it. Not modelled are constraints on the order
+    of the events, which belong to an event generator, fluctuating sampling rates, a normal
+    distribution for where noise is placed, and post-saccadic movement.
 
     The source does not say which part of the Gamma curve a saccade covers. Our choice is the
     part from its 0.5 % to its 99.5 % quantile, so every saccade falls back to nearly zero and the
@@ -150,7 +150,7 @@ class StatisticalSampleGenerator(SampleGenerator):
     ... )
     >>> gaze = generator.generate(events=events, seed=42)  # doctest: +IGNORE_WARNINGS
     >>> gaze.samples.columns
-    ['time', 'velocity_magnitude']
+    ['time', 'velocity_norm']
     >>> gaze.samples.height
     500
 
@@ -277,7 +277,7 @@ class StatisticalSampleGenerator(SampleGenerator):
             rng: np.random.Generator,
             events: Events,
     ) -> Gaze:
-        """Synthesize the velocity magnitudes of the events.
+        """Synthesize the velocity norms of the events.
 
         Parameters
         ----------
@@ -290,7 +290,7 @@ class StatisticalSampleGenerator(SampleGenerator):
         Returns
         -------
         Gaze
-            Samples with a time column in milliseconds and a velocity magnitude column.
+            Samples with a time column in milliseconds and a velocity norm column.
 
         Raises
         ------
@@ -352,12 +352,12 @@ class StatisticalSampleGenerator(SampleGenerator):
         samples = per_trial(rendered, synthesize, generator=self.name)
         samples = samples.with_columns(
             pl.Series(
-                'velocity_magnitude',
-                self._add_noise(samples['velocity_magnitude'].to_numpy(), rng),
+                'velocity_norm',
+                self._add_noise(samples['velocity_norm'].to_numpy(), rng),
             ),
         )
 
-        # A magnitude fills none of the Gaze component columns, which Gaze warns about. Its
+        # A norm fills none of the Gaze component columns, which Gaze warns about. Its
         # advice, to declare position or velocity columns, cannot apply to a signal without axes.
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', message='Gaze contains samples but no components')
@@ -382,11 +382,11 @@ class StatisticalSampleGenerator(SampleGenerator):
             profile_times.append(np.linspace(onset, end, profile.size, endpoint=False))
 
         times = sample_times(onsets[0], ends[-1], self.sampling_rate)
-        magnitudes = _resample(np.concatenate(profiles), np.concatenate(profile_times), times)
+        norms = _resample(np.concatenate(profiles), np.concatenate(profile_times), times)
 
         return pl.DataFrame({
             'time': times,
-            'velocity_magnitude': magnitudes,
+            'velocity_norm': norms,
         })
 
     def _velocity_profile(
@@ -477,18 +477,18 @@ class StatisticalSampleGenerator(SampleGenerator):
         """Return the number of profile points of a duration in milliseconds."""
         return round(duration * cast(float, self.profile_sampling_rate) / 1000.0)
 
-    def _add_noise(self, magnitudes: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    def _add_noise(self, norms: np.ndarray, rng: np.random.Generator) -> np.ndarray:
         """Change a share of the samples, picked uniformly, by a drawn velocity."""
-        n_noisy = round(magnitudes.size * self.noise_percentage / 100.0)
+        n_noisy = round(norms.size * self.noise_percentage / 100.0)
         if not n_noisy:
-            return magnitudes
+            return norms
 
-        noisy = rng.choice(magnitudes.size, size=n_noisy, replace=False)
+        noisy = rng.choice(norms.size, size=n_noisy, replace=False)
         changes = [_range(self.noise_velocity).draw(rng) for _ in range(n_noisy)]
 
-        noisy_magnitudes = magnitudes.copy()
-        noisy_magnitudes[noisy] = np.abs(noisy_magnitudes[noisy] + changes)
-        return noisy_magnitudes
+        noisy_norms = norms.copy()
+        noisy_norms[noisy] = np.abs(noisy_norms[noisy] + changes)
+        return noisy_norms
 
 
 def _range(value: RangeLike) -> Range:

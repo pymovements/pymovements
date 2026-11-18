@@ -68,10 +68,10 @@ def _events(*segments):
     )
 
 
-def _magnitudes(gaze, *, start=-math.inf, end=math.inf):
-    """Return the velocity magnitudes of the samples in [start, end) ms."""
+def _norms(gaze, *, start=-math.inf, end=math.inf):
+    """Return the velocity norms of the samples in [start, end) ms."""
     time = pl.col('time').dt.total_microseconds() / 1000.0
-    return gaze.samples.filter(time.is_between(start, end, closed='left'))['velocity_magnitude']
+    return gaze.samples.filter(time.is_between(start, end, closed='left'))['velocity_norm']
 
 
 def _saccade_peak(duration, *, seed=42, **hyperparameters):
@@ -80,11 +80,11 @@ def _saccade_peak(duration, *, seed=42, **hyperparameters):
         sampling_rate=1000.0, profile_sampling_rate=1000.0, **WITHOUT_JITTER, **hyperparameters,
     )
     gaze = generator.generate(events=_events(('saccade', duration)), seed=seed)
-    return _magnitudes(gaze).max()
+    return _norms(gaze).max()
 
 
 def _pursuit(*, duration=500.0, **hyperparameters):
-    """Return the magnitudes of one smooth pursuit, built and sampled at the same rate."""
+    """Return the norms of one smooth pursuit, built and sampled at the same rate."""
     generator = StatisticalSampleGenerator(
         sampling_rate=1000.0, profile_sampling_rate=1000.0, **WITHOUT_JITTER, **hyperparameters,
     )
@@ -120,9 +120,9 @@ def test_statistical_returns(contiguous_events, hyperparameters):
         sampling_rate=1000.0, **hyperparameters,
     ).generate(events=contiguous_events, seed=42)
 
-    assert gaze.samples.columns == ['time', 'velocity_magnitude']
+    assert gaze.samples.columns == ['time', 'velocity_norm']
     assert gaze.samples.height == 640
-    assert _magnitudes(gaze).min() >= 0.0
+    assert _norms(gaze).min() >= 0.0
     assert gaze.experiment.sampling_rate == 1000.0
 
 
@@ -165,8 +165,8 @@ def test_profile_sampling_rate_follows_a_higher_sampling_rate(
     assert gaze.samples.height == 640 * sampling_rate / 1000.0
 
 
-def test_output_is_a_velocity_magnitude(contiguous_events):
-    """A magnitude has no x and y, so none of the Gaze component columns is filled."""
+def test_output_is_a_velocity_norm(contiguous_events):
+    """A norm has no x and y, so none of the Gaze component columns is filled."""
     gaze = StatisticalSampleGenerator(sampling_rate=1000.0).generate(
         events=contiguous_events, seed=42,
     )
@@ -213,7 +213,7 @@ def test_event_of_zero_duration_gets_no_samples(segments, expected_height):
     gaze = generator.generate(events=events, seed=42)
 
     assert gaze.samples.height == expected_height
-    assert gaze.samples['velocity_magnitude'].max() == 0.0
+    assert gaze.samples['velocity_norm'].max() == 0.0
     assert_frame_equal(gaze.events.frame, events.frame)
 
 
@@ -303,7 +303,7 @@ def test_sample_averages_the_interval_that_ends_at_it():
         smooth_pursuit_consistency=0.0,
     ).generate(events=events, seed=42)
 
-    assert _magnitudes(gaze).to_list() == pytest.approx([1.0, 2.9])
+    assert _norms(gaze).to_list() == pytest.approx([1.0, 2.9])
 
 
 def test_sample_averages_the_profile_since_the_previous_sample():
@@ -318,8 +318,8 @@ def test_sample_averages_the_profile_since_the_previous_sample():
         sampling_rate=1000.0, **hyperparameters,
     ).generate(events=events, seed=42)
 
-    assert _magnitudes(exact).max() == pytest.approx(400.0)
-    assert _magnitudes(averaged).max() < 400.0
+    assert _norms(exact).max() == pytest.approx(400.0)
+    assert _norms(averaged).max() < 400.0
 
 
 @pytest.mark.parametrize(
@@ -409,9 +409,9 @@ def test_smooth_pursuit_follows_its_profile(hyperparameters, expected_first, exp
     """Fuhl et al. §3.4: a constant, linearly growing or linearly decreasing pursuit."""
     gaze = _pursuit(smooth_pursuit_onset_duration=0.0, **hyperparameters)
 
-    magnitudes = _magnitudes(gaze)
-    assert magnitudes[0] == pytest.approx(expected_first, abs=0.1)
-    assert magnitudes[-1] == pytest.approx(expected_last)
+    norms = _norms(gaze)
+    assert norms[0] == pytest.approx(expected_first, abs=0.1)
+    assert norms[-1] == pytest.approx(expected_last)
 
 
 def test_smooth_pursuit_without_an_onset_starts_at_its_velocity():
@@ -419,14 +419,14 @@ def test_smooth_pursuit_without_an_onset_starts_at_its_velocity():
         duration=3.0, smooth_pursuit_velocity=20.0, smooth_pursuit_onset_duration=0.0,
     )
 
-    assert _magnitudes(gaze).to_list() == pytest.approx([20.0] * 3)
+    assert _norms(gaze).to_list() == pytest.approx([20.0] * 3)
 
 
 def test_smooth_pursuit_of_one_onset_point_is_not_lost():
     """An onset cut to one point keeps almost the full velocity of the pursuit."""
     gaze = _pursuit(duration=1.0, smooth_pursuit_velocity=20.0)
 
-    assert _magnitudes(gaze).to_list() == pytest.approx([20.0], abs=0.1)
+    assert _norms(gaze).to_list() == pytest.approx([20.0], abs=0.1)
 
 
 def test_smooth_pursuit_velocity_takes_its_distribution():
@@ -435,17 +435,17 @@ def test_smooth_pursuit_velocity_takes_its_distribution():
         smooth_pursuit_velocity=Range(10.0, 30.0, 'normal', std=0.1),
     )
 
-    assert _magnitudes(gaze, start=1.0).to_list() == pytest.approx([20.0] * 499, abs=0.5)
+    assert _norms(gaze, start=1.0).to_list() == pytest.approx([20.0] * 499, abs=0.5)
 
 
 def test_smooth_pursuit_onset_rises_to_the_pursuit_velocity():
     """The onset is a sigmoid that reaches the pursuit velocity at its end and stays there."""
     gaze = _pursuit(smooth_pursuit_velocity=20.0, smooth_pursuit_onset_duration=80.0)
 
-    magnitudes = _magnitudes(gaze)
-    assert magnitudes[0] < 1.0
-    assert (magnitudes.head(80).diff().drop_nulls() >= 0.0).all()
-    assert _magnitudes(gaze, start=80.0).to_list() == pytest.approx([20.0] * 420)
+    norms = _norms(gaze)
+    assert norms[0] < 1.0
+    assert (norms.head(80).diff().drop_nulls() >= 0.0).all()
+    assert _norms(gaze, start=80.0).to_list() == pytest.approx([20.0] * 420)
 
 
 def test_smooth_pursuit_onset_duration_takes_its_distribution():
@@ -455,8 +455,8 @@ def test_smooth_pursuit_onset_duration_takes_its_distribution():
         smooth_pursuit_onset_duration=Range(40.0, 120.0, 'normal', std=1.0),
     )
 
-    assert _magnitudes(gaze, start=70.0, end=71.0).item() < 20.0
-    assert _magnitudes(gaze, start=90.0).to_list() == pytest.approx([20.0] * 410)
+    assert _norms(gaze, start=70.0, end=71.0).item() < 20.0
+    assert _norms(gaze, start=90.0).to_list() == pytest.approx([20.0] * 410)
 
 
 def test_fixation_without_jitter_is_still():
@@ -464,7 +464,7 @@ def test_fixation_without_jitter_is_still():
         events=_events(('fixation', 1000.0)), seed=42,
     )
 
-    assert (_magnitudes(gaze) == 0.0).all()
+    assert (_norms(gaze) == 0.0).all()
 
 
 def test_fixation_consistency_adds_jitter():
@@ -472,7 +472,7 @@ def test_fixation_consistency_adds_jitter():
         sampling_rate=1000.0, fixation_consistency=(1.0, 1.0),
     ).generate(events=_events(('fixation', 1000.0)), seed=42)
 
-    assert (_magnitudes(gaze) > 0.0).any()
+    assert (_norms(gaze) > 0.0).any()
 
 
 def test_fixation_consistency_of_one_value_holds_every_sample_at_it():
@@ -481,7 +481,7 @@ def test_fixation_consistency_of_one_value_holds_every_sample_at_it():
         events=_events(('fixation', 100.0)), seed=42,
     )
 
-    assert _magnitudes(gaze).to_list() == pytest.approx([2.5] * 100)
+    assert _norms(gaze).to_list() == pytest.approx([2.5] * 100)
 
 
 def test_fixation_jitter_spans_its_range_within_one_fixation():
@@ -490,12 +490,12 @@ def test_fixation_jitter_spans_its_range_within_one_fixation():
         sampling_rate=1000.0, profile_sampling_rate=1000.0, fixation_consistency=(2.0, 4.0),
     )
 
-    magnitudes = _magnitudes(generator.generate(events=_events(('fixation', 2000.0)), seed=42))
+    norms = _norms(generator.generate(events=_events(('fixation', 2000.0)), seed=42))
 
-    assert magnitudes.min() >= 2.0
-    assert magnitudes.max() <= 4.0
-    assert magnitudes.mean() == pytest.approx(3.0, abs=0.05)
-    assert magnitudes.std() == pytest.approx(2.0 / math.sqrt(12), rel=0.05)
+    assert norms.min() >= 2.0
+    assert norms.max() <= 4.0
+    assert norms.mean() == pytest.approx(3.0, abs=0.05)
+    assert norms.std() == pytest.approx(2.0 / math.sqrt(12), rel=0.05)
 
 
 @pytest.mark.parametrize(
@@ -515,8 +515,8 @@ def test_fixation_jitter_distribution_sets_its_look(consistency, expected_share_
         sampling_rate=1000.0, profile_sampling_rate=1000.0, fixation_consistency=consistency,
     )
 
-    magnitudes = _magnitudes(generator.generate(events=_events(('fixation', 5000.0)), seed=42))
-    on_the_bounds = ((magnitudes == 0.0) | (magnitudes == 1.0)).mean()
+    norms = _norms(generator.generate(events=_events(('fixation', 5000.0)), seed=42))
+    on_the_bounds = ((norms == 0.0) | (norms == 1.0)).mean()
 
     assert on_the_bounds == pytest.approx(expected_share_on_the_bounds, abs=0.02)
 
@@ -527,7 +527,7 @@ def test_saccade_jitter_moves_each_point_up_or_down_by_its_draw():
         generator = StatisticalSampleGenerator(
             sampling_rate=1000.0, profile_sampling_rate=1000.0, saccade_consistency=consistency,
         )
-        return _magnitudes(generator.generate(events=_events(('saccade', 60.0)), seed=42))
+        return _norms(generator.generate(events=_events(('saccade', 60.0)), seed=42))
 
     smooth = saccade(0.0)
     moves = (saccade(5.0) - smooth).filter(smooth > 5.0)
@@ -542,7 +542,7 @@ def test_jitter_shrinks_with_the_profile_points_behind_a_sample():
     events = _events(('fixation', 2000.0))
 
     spreads = [
-        _magnitudes(
+        _norms(
             StatisticalSampleGenerator(
                 sampling_rate=1000.0,
                 profile_sampling_rate=profile_sampling_rate,
@@ -565,17 +565,17 @@ def _saccade(skewness, duration=120.0):
         saccade_skewness=skewness,
         **WITHOUT_JITTER,
     )
-    return _magnitudes(generator.generate(events=_events(('saccade', duration)), seed=42))
+    return _norms(generator.generate(events=_events(('saccade', duration)), seed=42))
 
 
 def test_saccade_spans_its_gamma_curve_between_two_quantiles():
     """Hand-checked against scipy.stats.gamma.pdf of shape 16, from 0.5 % to 99.5 %."""
-    magnitudes = _saccade(0.5, duration=100.0)
+    norms = _saccade(0.5, duration=100.0)
 
-    assert magnitudes[0] == pytest.approx(23.5891, abs=1e-4)
-    assert magnitudes.arg_max() == 36
-    assert magnitudes[36] == pytest.approx(400.0)
-    assert magnitudes[-1] == pytest.approx(9.7519, abs=1e-4)
+    assert norms[0] == pytest.approx(23.5891, abs=1e-4)
+    assert norms.arg_max() == 36
+    assert norms[36] == pytest.approx(400.0)
+    assert norms[-1] == pytest.approx(9.7519, abs=1e-4)
 
 
 @pytest.mark.parametrize(
@@ -590,9 +590,9 @@ def test_saccade_skewness_moves_its_peak(skewness, expected_peak):
 
 
 def test_low_skewness_saccade_fills_its_event():
-    magnitudes = _saccade(0.2)
+    norms = _saccade(0.2)
 
-    assert (magnitudes > magnitudes.max() / 2).mean() > 0.4
+    assert (norms > norms.max() / 2).mean() > 0.4
 
 
 def test_default_saccade_peaks_as_in_the_source():
@@ -605,7 +605,7 @@ def test_default_saccade_peaks_as_in_the_source():
     )
 
     peaks = [
-        _magnitudes(generator.generate(events=_events(('saccade', 120.0)), seed=seed)).arg_max()
+        _norms(generator.generate(events=_events(('saccade', 120.0)), seed=seed)).arg_max()
         for seed in range(20)
     ]
 
@@ -616,7 +616,7 @@ def _still_fixation(**noise):
     """Generate a still fixation, so every sample that is not zero is noise."""
     generator = StatisticalSampleGenerator(sampling_rate=1000.0, fixation_consistency=0.0, **noise)
     gaze = generator.generate(events=_events(('fixation', 1000.0)), seed=42)
-    return _magnitudes(gaze)
+    return _norms(gaze)
 
 
 def test_noise_is_off_by_default():
@@ -632,9 +632,9 @@ def test_noise_is_off_by_default():
 )
 def test_noise_changes_the_requested_share_of_samples_within_its_range(noise_velocity):
     """Fuhl et al. §3.6: a percentage of the samples, each changed within a minimum and maximum."""
-    magnitudes = _still_fixation(noise_percentage=10.0, noise_velocity=noise_velocity)
+    norms = _still_fixation(noise_percentage=10.0, noise_velocity=noise_velocity)
 
-    noisy = magnitudes.filter(magnitudes > 0.0)
+    noisy = norms.filter(norms > 0.0)
     assert noisy.len() == 100
     assert noisy.min() >= 50.0
     assert noisy.max() <= 60.0
@@ -661,9 +661,9 @@ def test_noise_percentage_holds_across_short_trials():
 
     gaze = generator.generate(events=events, seed=42)
 
-    magnitudes = _magnitudes(gaze)
-    assert magnitudes.len() == 80
-    assert (magnitudes > 0.0).sum() == 8
+    norms = _norms(gaze)
+    assert norms.len() == 80
+    assert (norms > 0.0).sum() == 8
 
 
 def test_reproducible_under_seed(contiguous_events):
@@ -730,11 +730,11 @@ def test_orders_unsorted_events_within_each_trial():
     first, second = gaze.samples.partition_by('trial', maintain_order=True)
     assert first['trial'][0] == 1
     assert first.height == 300
-    assert (first['velocity_magnitude'].head(250) == 0.0).all()
-    assert first['velocity_magnitude'].tail(50).max() > 0.0
+    assert (first['velocity_norm'].head(250) == 0.0).all()
+    assert first['velocity_norm'].tail(50).max() > 0.0
     assert second['trial'][0] == 2
     assert second.height == 200
-    assert (second['velocity_magnitude'] == 0.0).all()
+    assert (second['velocity_norm'] == 0.0).all()
 
 
 def test_does_not_fill_the_time_between_trials():
@@ -1117,13 +1117,13 @@ def test_statistical_raises_error(hyperparameters, exception, msg_substrings):
         pytest.param(
             Events(
                 pl.DataFrame({
-                    'velocity_magnitude': [1], 'name': ['fixation'], 'onset': [0], 'offset': [200],
+                    'velocity_norm': [1], 'name': ['fixation'], 'onset': [0], 'offset': [200],
                 }),
-                trial_columns='velocity_magnitude',
+                trial_columns='velocity_norm',
                 time_unit='ms',
             ),
-            ('statistical', "['velocity_magnitude']", 'generated', 'rename'),
-            id='trial_column_named_velocity_magnitude',
+            ('statistical', "['velocity_norm']", 'generated', 'rename'),
+            id='trial_column_named_velocity_norm',
         ),
     ],
 )
