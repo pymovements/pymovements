@@ -83,6 +83,7 @@ def out_of_screen(
     ------
     TypeError
         If pixels is a polars Series and dtype not List
+        If timesteps is neither a Duration series nor of a numeric dtype
     ValueError
         If pixels is None or does not have shape (N, 2).
         If sampling_rate is not positive.
