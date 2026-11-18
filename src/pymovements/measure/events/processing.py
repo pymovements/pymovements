@@ -42,13 +42,41 @@ _START_IDX = '__pymovements_start_idx'
 _END_IDX = '__pymovements_end_idx'
 
 
+def measures_with_kwargs(
+        measures: str | tuple[str, dict[str, Any]] | list[str | tuple[str, dict[str, Any]]],
+) -> list[tuple[str, dict[str, Any]]]:
+    """Normalize a measure specification to a list of names with keyword arguments.
+
+    Parameters
+    ----------
+    measures: str | tuple[str, dict[str, Any]] | list[str | tuple[str, dict[str, Any]]]
+        A measure name, a tuple of a name and its keyword arguments, or a list of either.
+
+    Returns
+    -------
+    list[tuple[str, dict[str, Any]]]
+        One tuple per measure, with an empty dict for a bare name.
+    """
+    _check_measures(measures)
+
+    if isinstance(measures, str):
+        return [(measures, {})]
+    if isinstance(measures, tuple):
+        return [measures]
+    # we already validated above, it must be a list of strings and tuples
+    return [
+        (measure, {}) if isinstance(measure, str) else measure
+        for measure in measures
+    ]
+
+
 class EventProcessor:
     """Processes events.
 
     Parameters
     ----------
-    measures: str | list[str]
-        List of event measure names.
+    measures: str | tuple[str, dict[str, Any]] | list[str | tuple[str, dict[str, Any]]]
+        List of event measures, each a name or a tuple of a name and its keyword arguments.
 
     Raises
     ------
@@ -57,13 +85,14 @@ class EventProcessor:
         of supported measures.
     """
 
-    def __init__(self, measures: str | list[str]):
-        _check_measures(measures)
+    def __init__(
+            self,
+            measures: str | tuple[str, dict[str, Any]]
+            | list[str | tuple[str, dict[str, Any]]],
+    ):
+        measures_parsed = measures_with_kwargs(measures)
 
-        if isinstance(measures, str):
-            measures = [measures]
-
-        for measure_name in measures:
+        for measure_name, _ in measures_parsed:
             if measure_name not in EVENT_MEASURES:
                 raise UnknownMeasure(
                     measure_name=measure_name, known_measures=list(EVENT_MEASURES.keys()),
@@ -71,8 +100,8 @@ class EventProcessor:
 
         self.measures = [
             # initialize measure functions to create polars expressions.
-            EVENT_MEASURES[measure_name]()
-            for measure_name in measures
+            EVENT_MEASURES[measure_name](**measure_kwargs)
+            for measure_name, measure_kwargs in measures_parsed
         ]
 
     def process(self, events: pl.DataFrame) -> pl.DataFrame:
@@ -113,20 +142,9 @@ class EventSamplesProcessor:
             measures: str | tuple[str, dict[str, Any]]
             | list[str | tuple[str, dict[str, Any]]],
     ):
-        _check_measures(measures)
+        measures_parsed = measures_with_kwargs(measures)
 
-        measures_with_kwargs: list[tuple[str, dict[str, Any]]]
-        if isinstance(measures, str):
-            measures_with_kwargs = [(measures, {})]
-        elif isinstance(measures, tuple):
-            measures_with_kwargs = [measures]
-        else:  # we already validated above, it must be a list of strings and tuples
-            measures_with_kwargs = [
-                (measure, {}) if isinstance(measure, str) else measure
-                for measure in measures
-            ]
-
-        for measure_name, _ in measures_with_kwargs:
+        for measure_name, _ in measures_parsed:
             if measure_name not in SampleMeasureLibrary.measures:
                 known_measures = list(SampleMeasureLibrary.measures.keys())
                 raise UnknownMeasure(
@@ -136,7 +154,7 @@ class EventSamplesProcessor:
         self.measures: list[pl.Expr] = [
             # initialize measure functions to create polars expressions.
             SampleMeasureLibrary.get(measure_name)(**measure_kwargs)
-            for measure_name, measure_kwargs in measures_with_kwargs
+            for measure_name, measure_kwargs in measures_parsed
         ]
 
     def process(

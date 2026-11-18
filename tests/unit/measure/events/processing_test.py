@@ -29,15 +29,33 @@ from pymovements.exceptions import UnknownMeasure
 from pymovements.measure.events import duration
 from pymovements.measure.events import EventProcessor
 from pymovements.measure.events import EventSamplesProcessor
+from pymovements.measure.events import offset
 from pymovements.measure.samples import peak_velocity
 
 
 @pytest.mark.parametrize(
     ('args', 'kwargs', 'expected_measures'),
     [
-        pytest.param(['duration'], {}, [duration], id='arg_str_duration'),
-        pytest.param([['duration']], {}, [duration], id='arg_list_duration'),
-        pytest.param([], {'measures': 'duration'}, [duration], id='kwarg_measures_duration'),
+        pytest.param(
+            [('duration', {'offsets_inclusive': False})], {},
+            [duration(offsets_inclusive=False)],
+            id='arg_tuple_duration',
+        ),
+        pytest.param(
+            [[('duration', {'offsets_inclusive': False})]], {},
+            [duration(offsets_inclusive=False)],
+            id='arg_list_duration',
+        ),
+        pytest.param(
+            [], {'measures': ('offset', {'inclusive': True, 'sampling_rate': 1000})},
+            [offset(inclusive=True, sampling_rate=1000)],
+            id='kwarg_measures_offset',
+        ),
+        pytest.param(
+            [[('offset', {'inclusive': False}), ('duration', {'offsets_inclusive': False})]], {},
+            [offset(inclusive=False), duration(offsets_inclusive=False)],
+            id='arg_list_two_measures',
+        ),
     ],
 )
 def test_event_processor_init(args, kwargs, expected_measures):
@@ -45,7 +63,7 @@ def test_event_processor_init(args, kwargs, expected_measures):
 
     assert len(processor.measures) == len(expected_measures)
     for measure, expected_measure in zip(processor.measures, expected_measures):
-        assert str(measure) == str(expected_measure())
+        assert str(measure) == str(expected_measure)
 
 
 @pytest.mark.parametrize(
@@ -56,6 +74,30 @@ def test_event_processor_init(args, kwargs, expected_measures):
             UnknownMeasure,
             "Measure 'foo' is unknown.",
             id='unknown_measure',
+        ),
+        pytest.param(
+            ['duration'], {},
+            TypeError,
+            "missing 1 required keyword-only argument: 'offsets_inclusive'",
+            id='duration_without_keyword',
+        ),
+        pytest.param(
+            [('offset', {})], {},
+            TypeError,
+            "missing 1 required keyword-only argument: 'inclusive'",
+            id='offset_without_keyword',
+        ),
+        pytest.param(
+            [('offset', {'inclusive': True})], {},
+            ValueError,
+            'inclusive=True requires a sampling_rate',
+            id='offset_inclusive_without_rate',
+        ),
+        pytest.param(
+            [('duration', 'foo')], {},
+            TypeError,
+            'Second item of tuple must be a dictionary',
+            id='tuple_without_dict',
         ),
     ],
 )
@@ -68,28 +110,37 @@ def test_event_processor_init_exceptions(args, kwargs, exception, message):
     ('events', 'measures', 'expected_dataframe'),
     [
         pytest.param(
-            pl.DataFrame(schema={'onset': pl.Int64, 'offset': pl.Int64}),
-            'duration',
-            pl.DataFrame(schema={'duration': pl.Int64}),
+            pl.DataFrame(schema={'onset': pl.Duration('us'), 'offset': pl.Duration('us')}),
+            ('duration', {'offsets_inclusive': False}),
+            pl.DataFrame(schema={'duration': pl.Duration('us')}),
             id='duration_no_event',
         ),
         pytest.param(
             pl.DataFrame(
-                data={'onset': [0], 'offset': [1]},
-                schema={'onset': pl.Int64, 'offset': pl.Int64},
+                data={'onset': [0], 'offset': [1000]},
+                schema={'onset': pl.Duration('us'), 'offset': pl.Duration('us')},
             ),
-            'duration',
-            pl.DataFrame(data=[1], schema={'duration': pl.Int64}),
+            ('duration', {'offsets_inclusive': True, 'sampling_rate': 1000}),
+            pl.DataFrame(data=[2000], schema={'duration': pl.Duration('us')}),
             id='duration_single_event',
         ),
         pytest.param(
             pl.DataFrame(
-                data={'onset': [0, 100], 'offset': [1, 111]},
-                schema={'onset': pl.Int64, 'offset': pl.Int64},
+                data={'onset': [0, 100_000], 'offset': [1000, 111_000]},
+                schema={'onset': pl.Duration('us'), 'offset': pl.Duration('us')},
             ),
-            'duration',
-            pl.DataFrame(data=[1, 11], schema={'duration': pl.Int64}),
+            ('duration', {'offsets_inclusive': False}),
+            pl.DataFrame(data=[1000, 11_000], schema={'duration': pl.Duration('us')}),
             id='duration_two_events',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                data={'onset': [0, 100_000], 'duration': [1000, 11_000]},
+                schema={'onset': pl.Duration('us'), 'duration': pl.Duration('us')},
+            ),
+            ('offset', {'inclusive': True, 'sampling_rate': 1000}),
+            pl.DataFrame(data=[0, 110_000], schema={'offset': pl.Duration('us')}),
+            id='offset_inclusive',
         ),
     ],
 )
