@@ -240,9 +240,11 @@ def test_fill_with_duration_only_events():
     # A frame built from durations has no offset column. The event ends at onset + duration.
     events = Events(name='fixation', onsets=[0], durations=[49])
 
-    filled = fill(events, timesteps=np.arange(0, 100))
+    filled = fill(events, timesteps=np.arange(0, 100), sampling_rate=1000)
 
-    expected = Events(name='unclassified', onsets=[49], offsets=[99])
+    expected = Events(
+        name='unclassified', onsets=[49], offsets=[99], offsets_inclusive=True, sampling_rate=1000,
+    )
     assert_frame_equal(filled.frame, expected.frame)
 
 
