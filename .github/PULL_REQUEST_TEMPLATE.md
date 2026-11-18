@@ -1,53 +1,35 @@
+<!--
+Title: start with a type prefix and a colon, as in "fix: ..." or "feat: ...".
+Prefixes: feat, fix, docs, dataset, depr, perf, build, chore, ci, refactor, test, release.
+A scope in parentheses is optional, as in "feat(events): ...".
+Add "!" after prefix and scope for a breaking change, as in "feat!: ..." or "feat(events)!: ...".
+-->
+
+<!--
+If it applies: open the body with a "## 💥 Breaking Change" and/or a "## ⚠️ Deprecation" section.
+Definitions:
+https://pymovements.readthedocs.io/en/latest/contributing/contributing-code.html#pull-request-body
+-->
+
 ## Description
 
-Please include a clear and concise description of the change and which issue is fixed.
-Please also include excepted improvements, relevant motivation and context.
-List any dependencies that are required for this change.
+<!-- What does this change do, and why? Write "Resolves #N" if it fixes an issue. -->
 
-## Implemented changes
+## Changes
 
-Insert a description of the changes implemented in the pull request.
+<!-- A short bullet list that maps the diff, one bullet per change. -->
 
-- [ ] Change 1
-- [ ] Change 2
-- [ ] Change 3
+## Testing
 
-## How Has This Been Tested?
+<!-- How did you verify the change? Name the tests you added or ran and the checks you made. -->
 
-Please describe the tests that you ran to verify your changes.
-Provide instructions so we can reproduce.
-Please also list any relevant details for your test configuration
+<!--
+If it applies: add "## 🚨 Merge Danger" and "## Dependencies" after Testing, in that order.
+Definitions:
+https://pymovements.readthedocs.io/en/latest/contributing/contributing-code.html#pull-request-body
+-->
 
-- [ ] Test A
-- [ ] Test B
-
-## Type of change
-
-Remove irrelevant items:
-- Bug fix
-- New functionality
-- Performance improvement
-- New dataset
-- Breaking change
-- Documentation update
-
-## Context
-
-Resolves #
-
-#### related issues:
-- #
-
-#### required by:
-- #
-
-#### requires:
-- [ ] #
-
-#### conflicts with:
-- #
-
-## Checklist:
+## Checklist
 
 - [ ] My code follows the style guidelines of this project
 - [ ] I have performed a self-review of my own code
@@ -56,5 +38,5 @@ Resolves #
 - [ ] My changes generate no new warnings
 - [ ] I have added tests that prove my fix is effective or that my feature works
 - [ ] New and existing unit tests pass locally with my changes
-- [ ] Any dependent changes have been merged and published in downstream modules
 - [ ] I have checked my code and corrected any misspellings
+- [ ] First-time contributors: I added myself to `CITATION.cff`
