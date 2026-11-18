@@ -25,9 +25,9 @@ from collections.abc import Sized
 import numpy
 import polars
 
-from pymovements._utils import _checks
-from pymovements._utils._time import timesteps_to_numpy
-from pymovements.events._utils._filters import filter_candidates_remove_nans
+from pymovements._utils import checks
+from pymovements._utils.time import normalize_timesteps
+from pymovements.events._utils.filters import filter_candidates_remove_nans
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.transforms.numpy import consecutive
@@ -36,7 +36,7 @@ from pymovements.transforms.numpy import consecutive
 @register_event_detection
 def microsaccades(
         velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series,
-        timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
+        timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None = None,
         minimum_duration: int = 6,
         threshold: numpy.ndarray | tuple[float, float] | str = 'engbert2015',
         threshold_factor: float = 6,
@@ -58,10 +58,10 @@ def microsaccades(
     velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series
         shape (N, 2)
         x and y velocities of N samples in chronological order
-    timesteps: list[int] | numpy.ndarray | polars.Series | None
+    timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None
         shape (N, )
-        Corresponding continuous 1D timestep time series. If None, sample based timesteps are
-        assumed. (default: None)
+        Corresponding continuous 1D timestep time series. Fractional (float) timesteps are
+        accepted. If None, sample based timesteps are assumed. (default: None)
     minimum_duration: int
         Minimum saccade duration. The duration is specified in the units used in ``timesteps``;
          for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
@@ -92,7 +92,9 @@ def microsaccades(
     ------
     TypeError
         If velocities is a polars Series and dtype not List
+        If timesteps is neither a Duration series nor of a numeric dtype
     ValueError
+        If timesteps are not in ascending order.
         If `threshold` value is below `min_threshold` value.
         If passed `threshold` is either not two-dimensional or not a supported method.
 
@@ -232,16 +234,10 @@ def microsaccades(
             raise ValueError(f'velocities must be 2D list but list lengths are: {list_lengths}')
         velocities = numpy.vstack([velocities.list.get(0), velocities.list.get(1)]).transpose()
     velocities = numpy.array(velocities)
-    _checks.check_shapes(velocities=velocities)
+    checks.check_shapes(velocities=velocities)
 
-    if isinstance(timesteps, polars.Series):
-        timesteps = timesteps_to_numpy(timesteps)
-    elif timesteps is not None:
-        timesteps = numpy.array(timesteps)
-    else:
-        timesteps = numpy.arange(len(velocities), dtype=numpy.int64)
-    timesteps = numpy.array(timesteps).flatten()
-    _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
+    timesteps = normalize_timesteps(timesteps, length=len(velocities))
+    checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
     if isinstance(threshold, str):
         threshold = compute_threshold(velocities, method=threshold)

@@ -24,7 +24,7 @@ from warnings import warn
 
 import polars
 
-from pymovements._utils._checks import check_is_mutual_exclusive
+from pymovements._utils.checks import check_is_mutual_exclusive
 
 
 def unnest_list_columns(

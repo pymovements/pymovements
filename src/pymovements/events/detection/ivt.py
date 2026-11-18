@@ -23,9 +23,9 @@ from __future__ import annotations
 import numpy
 import polars
 
-from pymovements._utils import _checks
-from pymovements._utils._time import timesteps_to_numpy
-from pymovements.events._utils._filters import filter_candidates_remove_nans
+from pymovements._utils import checks
+from pymovements._utils.time import normalize_timesteps
+from pymovements.events._utils.filters import filter_candidates_remove_nans
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.transforms.numpy import consecutive
@@ -35,7 +35,7 @@ from pymovements.transforms.numpy import norm
 @register_event_detection
 def ivt(
         velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series,
-        timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
+        timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None = None,
         minimum_duration: int = 100,
         velocity_threshold: float = 20.0,
         include_nan: bool = False,
@@ -55,10 +55,10 @@ def ivt(
     velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series
         shape (N, 2)
         Corresponding continuous 2D velocity time series.
-    timesteps: list[int] | numpy.ndarray | polars.Series | None
+    timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None
         shape (N, )
-        Corresponding continuous 1D timestep time series. If None, sample based timesteps are
-        assumed. (default: None)
+        Corresponding continuous 1D timestep time series. Fractional (float) timesteps are
+        accepted. If None, sample based timesteps are assumed. (default: None)
     minimum_duration: int
         Minimum fixation duration. The duration is specified in the units used in ``timesteps``;
         for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
@@ -82,9 +82,11 @@ def ivt(
     ------
     TypeError
         If velocities is a polars Series and dtype not List
+        If timesteps is neither a Duration series nor of a numeric dtype
     ValueError
         If velocities is None
         If velocities does not have shape (N, 2)
+        If timesteps are not in ascending order
         If velocity threshold is None.
         If velocity threshold is not greater than 0.
 
@@ -222,21 +224,15 @@ def ivt(
             raise ValueError(f'velocities must be 2D list but list lengths are: {list_lengths}')
         velocities = numpy.vstack([velocities.list.get(0), velocities.list.get(1)]).transpose()
     velocities = numpy.array(velocities)
-    _checks.check_shapes(velocities=velocities)
+    checks.check_shapes(velocities=velocities)
 
     if velocity_threshold is None:
         raise ValueError('velocity threshold must not be None')
     if velocity_threshold <= 0:
         raise ValueError('velocity threshold must be greater than 0')
 
-    if isinstance(timesteps, polars.Series):
-        timesteps = timesteps_to_numpy(timesteps)
-    elif timesteps is not None:
-        timesteps = numpy.array(timesteps)
-    else:
-        timesteps = numpy.arange(len(velocities), dtype=numpy.int64)
-    timesteps = numpy.array(timesteps).flatten()
-    _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
+    timesteps = normalize_timesteps(timesteps, length=len(velocities))
+    checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
     # Get all indices with norm-velocities below threshold.
     velocity_norm = norm(velocities, axis=1)

@@ -20,22 +20,27 @@
 """Module for the TextDataFrame."""
 from __future__ import annotations
 
+import importlib
 import math
 import warnings
 from collections.abc import Sequence
+from copy import deepcopy
 from dataclasses import dataclass
 from dataclasses import KW_ONLY
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
 from typing import Literal
+from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import polars as pl
-from matplotlib import patches
 
-from pymovements._utils import _checks
-from pymovements._utils._html import repr_html
+from pymovements._utils import checks
+from pymovements._utils.html import repr_html
+from pymovements._utils.sources import add_source
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
 
 
 @dataclass(frozen=True)
@@ -254,7 +259,8 @@ class TextStimulus:
         Returns
         -------
         list[TextStimulus]
-            A list of TextStimulus objects.
+            A list of TextStimulus objects. Each split holds a deep copy of the
+            metadata dictionary.
         """
         return [
             TextStimulus(
@@ -269,6 +275,7 @@ class TextStimulus:
                 page_column=self.page_column,
                 trial_column=self.trial_column,
                 writing_system=self.writing_system,
+                metadata=deepcopy(self.metadata),
             )
             for df in self.aois.partition_by(by, as_dict=False)
         ]
@@ -321,6 +328,35 @@ class TextStimulus:
         For invalid or missing coordinates (e.g. `None` or strings), a `UserWarning` is emitted,
         and the lookup returns a single row of `None` values.
 
+        Examples
+        --------
+        Looking up the AOI containing a gaze coordinate returns the matching row:
+
+        >>> import polars as pl
+        >>> from pymovements.stimulus import TextStimulus
+        >>> stimulus = TextStimulus(
+        ...     aois=pl.DataFrame({
+        ...         'word': ['Hello', 'world'],
+        ...         'start_x': [100.0, 200.0],
+        ...         'start_y': [100.0, 100.0],
+        ...         'width': [80.0, 80.0],
+        ...         'height': [40.0, 40.0],
+        ...     }),
+        ...     aoi_column='word',
+        ...     start_x_column='start_x',
+        ...     start_y_column='start_y',
+        ...     width_column='width',
+        ...     height_column='height',
+        ... )
+        >>> stimulus.get_aoi(row={'x': 120.0, 'y': 110.0}, x_eye='x', y_eye='y')
+        shape: (1, 5)
+        ┌───────┬─────────┬─────────┬───────┬────────┐
+        │ word  ┆ start_x ┆ start_y ┆ width ┆ height │
+        │ ---   ┆ ---     ┆ ---     ┆ ---   ┆ ---    │
+        │ str   ┆ f64     ┆ f64     ┆ f64   ┆ f64    │
+        ╞═══════╪═════════╪═════════╪═══════╪════════╡
+        │ Hello ┆ 100.0   ┆ 100.0   ┆ 80.0  ┆ 40.0   │
+        └───────┴─────────┴─────────┴───────┴────────┘
         """
         aois = _get_aoi(self, row=row, x_eye=x_eye, y_eye=y_eye)
         if max_matches:
@@ -379,7 +415,8 @@ class TextStimulus:
             :py:meth:`~pymovements.stimulus.WritingSystem.from_descriptor()` for initialization.
             (default: ``'left-to-right'``)
         metadata: dict[str, Any] | None
-            Dictionary containing additional metadata. (default: None)
+            Dictionary containing additional metadata. Unless already present, a ``Sources``
+            entry holding ``path`` as given is added. (default: None)
         read_csv_kwargs: dict[str, Any] | None
             Custom read keyword arguments for polars. (default: None)
 
@@ -388,6 +425,46 @@ class TextStimulus:
         -------
         TextStimulus
             Returns the text stimulus file.
+
+        Examples
+        --------
+        .. testsetup::
+
+            >>> getfixture('doctest_tmp_cwd')
+
+        First we write a small AOI file with one row per word to disk:
+
+        >>> import polars as pl
+        >>> pl.DataFrame({
+        ...     'word': ['Hello', 'world'],
+        ...     'start_x': [100.0, 200.0],
+        ...     'start_y': [100.0, 100.0],
+        ...     'width': [80.0, 80.0],
+        ...     'height': [40.0, 40.0],
+        ... }).write_csv('aois.csv')
+
+        Loading the file returns a :py:class:`~pymovements.stimulus.TextStimulus`
+        holding the AOIs:
+
+        >>> from pymovements.stimulus import TextStimulus
+        >>> stimulus = TextStimulus.from_csv(
+        ...     'aois.csv',
+        ...     aoi_column='word',
+        ...     start_x_column='start_x',
+        ...     start_y_column='start_y',
+        ...     width_column='width',
+        ...     height_column='height',
+        ... )
+        >>> stimulus.aois
+        shape: (2, 5)
+        ┌───────┬─────────┬─────────┬───────┬────────┐
+        │ word  ┆ start_x ┆ start_y ┆ width ┆ height │
+        │ ---   ┆ ---     ┆ ---     ┆ ---   ┆ ---    │
+        │ str   ┆ f64     ┆ f64     ┆ f64   ┆ f64    │
+        ╞═══════╪═════════╪═════════╪═══════╪════════╡
+        │ Hello ┆ 100.0   ┆ 100.0   ┆ 80.0  ┆ 40.0   │
+        │ world ┆ 200.0   ┆ 100.0   ┆ 80.0  ┆ 40.0   │
+        └───────┴─────────┴─────────┴───────┴────────┘
         """
         if isinstance(path, str):
             path = Path(path)
@@ -415,7 +492,7 @@ class TextStimulus:
             page_column=page_column,
             trial_column=trial_column,
             writing_system=writing_system,
-            metadata=metadata,
+            metadata=add_source(metadata, path),
         )
 
     def resolve_boxes(
@@ -620,6 +697,9 @@ class TextStimulus:
             If the configured writing system is not horizontal
             left-to-right.
         """
+        plt = importlib.import_module('matplotlib.pyplot')
+        patches = importlib.import_module('matplotlib.patches')
+
         if (
             self.writing_system.directionality != 'left-to-right'
             or self.writing_system.axis != 'horizontal'
@@ -771,13 +851,46 @@ def from_file(
         Text writing system. See TextStimulus.__init__ for details.
         (default: WritingSystem(horizontal, top-to-bottom, left-to-right))
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. (default: None)
+        Dictionary containing additional metadata. Unless already present, a ``Sources``
+        entry holding ``aoi_path`` as given is added. (default: None)
 
 
     Returns
     -------
     TextStimulus
         Returns the text stimulus file.
+
+    Examples
+    --------
+    .. testsetup::
+
+        >>> getfixture('doctest_tmp_cwd')
+
+    First we write a small AOI file with one row per word to disk:
+
+    >>> import polars as pl
+    >>> pl.DataFrame({
+    ...     'word': ['Hello', 'world'],
+    ...     'start_x': [100.0, 200.0],
+    ...     'start_y': [100.0, 100.0],
+    ...     'width': [80.0, 80.0],
+    ...     'height': [40.0, 40.0],
+    ... }).write_csv('aois.csv')
+
+    Loading the file returns a :py:class:`~pymovements.stimulus.TextStimulus` holding
+    the AOIs:
+
+    >>> from pymovements.stimulus import text
+    >>> stimulus = text.from_file(
+    ...     'aois.csv',
+    ...     aoi_column='word',
+    ...     start_x_column='start_x',
+    ...     start_y_column='start_y',
+    ...     width_column='width',
+    ...     height_column='height',
+    ... )
+    >>> stimulus.aois['word'].to_list()
+    ['Hello', 'world']
     """
     return TextStimulus.from_csv(
         path=aoi_path,
@@ -847,7 +960,7 @@ def _get_aoi(
             )
 
     if aoi_dataframe.width_column is not None:
-        _checks.check_is_none_is_mutual(
+        checks.check_is_none_is_mutual(
             height_column=aoi_dataframe.width_column,
             width_column=aoi_dataframe.height_column,
         )
@@ -885,7 +998,7 @@ def _get_aoi(
         return aoi
 
     if aoi_dataframe.end_x_column is not None:
-        _checks.check_is_none_is_mutual(
+        checks.check_is_none_is_mutual(
             end_x_column=aoi_dataframe.end_x_column,
             end_y_column=aoi_dataframe.end_y_column,
         )

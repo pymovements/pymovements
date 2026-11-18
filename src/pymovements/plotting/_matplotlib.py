@@ -23,21 +23,22 @@ Not part of the public API.
 """
 from __future__ import annotations
 
+import importlib
 from collections.abc import Sequence
 from typing import Literal
+from typing import TYPE_CHECKING
 from typing import TypeAlias
 from warnings import warn
 
-import matplotlib.pyplot as plt
 import numpy as np
-import PIL.Image
-from matplotlib import colors
-from matplotlib import scale as mpl_scale
-from matplotlib.collections import LineCollection
-from matplotlib.collections import PatchCollection
-from matplotlib.patches import FancyArrowPatch
 
-from pymovements.plotting.screen import screen as screen_axes
+from pymovements.plotting.screen import make_screen_axes
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
+    from matplotlib import colors
+    from matplotlib.collections import LineCollection
+    from matplotlib.collections import PatchCollection
 
 LinearSegmentedColormapType: TypeAlias = dict[
     Literal['red', 'green', 'blue', 'alpha'],
@@ -84,18 +85,19 @@ DEFAULT_SEGMENTDATA_TWOSLOPE: LinearSegmentedColormapType = {
     ],
 }
 
-CmapNormType: TypeAlias = (
-    colors.TwoSlopeNorm | colors.Normalize | colors.NoNorm
-)
+if TYPE_CHECKING:
+    CmapNormType: TypeAlias = (
+        colors.TwoSlopeNorm | colors.Normalize | colors.NoNorm
+    )
 
-MatplotlibSetupType: TypeAlias = tuple[
-    plt.figure,
-    plt.Axes,
-    colors.Colormap,
-    CmapNormType,
-    np.ndarray,
-    bool,
-]
+    MatplotlibSetupType: TypeAlias = tuple[
+        plt.figure,
+        plt.Axes,
+        colors.Colormap,
+        CmapNormType,
+        np.ndarray,
+        bool,
+    ]
 
 
 def prepare_figure(
@@ -121,6 +123,8 @@ def prepare_figure(
     tuple[plt.Figure, plt.Axes]
         A tuple of a figure and its corresponding axes.
     """
+    plt = importlib.import_module('matplotlib.pyplot')
+
     if ax is None:
         # figsize may be None for some callers
         if figsize is None:
@@ -158,6 +162,11 @@ def _setup_axes_and_colormap(
 
     Returns fig, ax, cmap, cmap_norm, cval, show_cbar.
     """
+    plt = importlib.import_module('matplotlib.pyplot')
+    pil_image = importlib.import_module('PIL.Image')
+    colors = importlib.import_module('matplotlib.colors')
+    mpl_scale = importlib.import_module('matplotlib.scale')
+
     n = len(x_signal)
 
     if ax is None:
@@ -173,7 +182,7 @@ def _setup_axes_and_colormap(
             )
 
     if add_stimulus:
-        img = PIL.Image.open(path_to_image_stimulus)
+        img = pil_image.open(path_to_image_stimulus)
         ax.imshow(img, origin=stimulus_origin, extent=None)
     else:
 
@@ -270,9 +279,12 @@ def _draw_arrow_data(
     mutation_scale: float = 40.,
 ) -> PatchCollection:
     """Draw arrow data as arrows and return the collection."""
+    mpl_collections = importlib.import_module('matplotlib.collections')
+    mpl_patches = importlib.import_module('matplotlib.patches')
+
     arrows = []
     for i in range(len(fixation_x) - 1):
-        arrow = FancyArrowPatch(
+        arrow = mpl_patches.FancyArrowPatch(
             (fixation_x[i], fixation_y[i]), (fixation_x[i + 1], fixation_y[i + 1]),
             arrowstyle=arrowstyle,
             connectionstyle='arc3,rad=' + str(rad),
@@ -280,7 +292,7 @@ def _draw_arrow_data(
             mutation_scale=mutation_scale,
         )
         arrows.append(arrow)
-    arrow_collection = PatchCollection(arrows)
+    arrow_collection = mpl_collections.PatchCollection(arrows)
     collection = ax.add_collection(arrow_collection)
     return collection
 
@@ -294,9 +306,11 @@ def _draw_line_data(
     cval: np.ndarray | None = None,
 ) -> LineCollection:
     """Draw line data as a colored LineCollection and return the collection."""
+    mpl_collections = importlib.import_module('matplotlib.collections')
+
     points = np.array([x_signal, y_signal]).T.reshape((-1, 1, 2))
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
-    line_collection = LineCollection(segments, cmap=cmap, norm=cmap_norm)
+    line_collection = mpl_collections.LineCollection(segments, cmap=cmap, norm=cmap_norm)
     line_collection.set_array(cval)
     line_collection.set_linewidth(2)
     line = ax.add_collection(line_collection)
@@ -309,13 +323,15 @@ def _set_screen_axes(
     height_px: int | None,
     origin: str | None,
     *,
+    position_column: str,
     func_name: str,
 ) -> None:
     """Set axes limits and aspect ratio from a screen's pixel extent, if available.
 
-    Thin wrapper around ``pymovements.plotting.screen()`` that keeps the gaze
-    plotters' behavior: skip silently when the resolution is unset, and accept
-    only the ``'upper left'`` origin the gaze data is expressed in.
+    Thin wrapper around ``pymovements.plotting.make_screen_axes()`` that keeps the gaze
+    plotters' behavior: skip silently when the resolution is unset or the plotted
+    column is not in pixel coordinates, and accept only the ``'upper left'`` origin
+    the gaze data is expressed in.
 
     Parameters
     ----------
@@ -327,14 +343,22 @@ def _set_screen_axes(
         Screen height in pixels.
     origin : str | None
         Origin of the screen coordinate system.
+    position_column : str
+        Name of the plotted gaze column. The pixel extent is only applied to the
+        ``'pixel'`` column, as other columns (e.g. ``'position'`` in degrees of visual
+        angle) are not in pixel units.
     func_name : str
         Name of the plotting function, used in error messages.
 
     Raises
     ------
     ValueError
-        If the screen origin is not 'upper left'.
+        If ``position_column`` is ``'pixel'`` and the screen origin is not 'upper left'.
     """
+    # The pixel extent does not apply to columns in other units, e.g. degrees of visual angle
+    if position_column != 'pixel':
+        return
+
     # If screen has no pixel info, skip silently
     if width_px is None or height_px is None:
         return
@@ -344,4 +368,4 @@ def _set_screen_axes(
             f'{func_name}: screen origin must be "upper left", got "{origin}".',
         )
 
-    screen_axes(width_px, height_px, origin=origin, ax=ax)
+    make_screen_axes(width_px, height_px, origin=origin, ax=ax)

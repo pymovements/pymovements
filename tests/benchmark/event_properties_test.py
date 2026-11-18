@@ -1,0 +1,105 @@
+# Copyright (c) 2026 The pymovements Project Authors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+"""Benchmark event property computation over events and samples.
+
+``Gaze.compute_event_properties`` delegates to ``EventSamplesProcessor.process``, which assigns
+each sample to the event it belongs to and aggregates all requested sample measures. An earlier
+implementation scanned the whole samples frame once per event, so the cost grew with
+``numEvents * numSamples`` and dominated event detection on long recordings. These benchmarks
+track the cost of the vectorized implementation on synthetic 1 kHz recordings.
+"""
+import numpy as np
+import polars as pl
+import pytest
+
+from pymovements.measure.events import EventSamplesProcessor
+
+_RNG = np.random.default_rng(42)
+
+_EVENT_SAMPLES = 240
+_GAP_SAMPLES = 10
+
+
+def _synthetic_events_and_samples(
+        n_trials: int,
+        events_per_trial: int,
+) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """Generate non-overlapping fixation events with matching 1 kHz samples."""
+    block = _EVENT_SAMPLES + _GAP_SAMPLES
+    event_starts = np.arange(events_per_trial) * block
+    sample_times = (event_starts[:, None] + np.arange(_EVENT_SAMPLES)).ravel()
+
+    n_samples = n_trials * events_per_trial * _EVENT_SAMPLES
+    positions = _RNG.normal(size=(n_samples, 2))
+
+    events_frame = pl.DataFrame(
+        {
+            'trial': np.repeat(np.arange(n_trials), events_per_trial),
+            'name': 'fixation',
+            'onset': np.tile(event_starts, n_trials),
+            'offset': np.tile(event_starts + _EVENT_SAMPLES - 1, n_trials),
+        },
+        schema={
+            'trial': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+        },
+    )
+    samples_frame = (
+        pl.DataFrame(
+            {
+                'trial': np.repeat(np.arange(n_trials), events_per_trial * _EVENT_SAMPLES),
+                'time': np.tile(sample_times, n_trials),
+                'x': positions[:, 0],
+                'y': positions[:, 1],
+            },
+            schema={'trial': pl.Int64, 'time': pl.Int64, 'x': pl.Float64, 'y': pl.Float64},
+        )
+        .select(
+            'trial', 'time',
+            pl.concat_list(pl.col('x'), pl.col('y')).alias('position'),
+        )
+    )
+    return events_frame, samples_frame
+
+
+@pytest.mark.parametrize('events_per_trial', [100, 400])
+@pytest.mark.parametrize('overlapping', [False, True])
+def test_event_properties_benchmark(benchmark, events_per_trial, overlapping):
+    """Benchmark location and dispersion over 12 trials of 1 kHz samples.
+
+    Two sizes show the scaling in the number of events. The overlapping variant adds a copy of
+    every event under a second name with its onset two samples later, which exercises the range
+    assignment path instead of the cheaper asof path.
+    """
+    events, samples = _synthetic_events_and_samples(
+        n_trials=12, events_per_trial=events_per_trial,
+    )
+    if overlapping:
+        events = pl.concat([
+            events,
+            events.with_columns(pl.lit('fixation.ivt').alias('name'), pl.col('onset') + 2),
+        ])
+    processor = EventSamplesProcessor(['location', 'dispersion'])
+
+    benchmark.pedantic(
+        processor.process,
+        kwargs={'events': events, 'samples': samples, 'identifiers': 'trial'},
+        iterations=1,
+        rounds=10,
+    )

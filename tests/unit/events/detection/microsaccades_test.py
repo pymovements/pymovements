@@ -96,6 +96,16 @@ from pymovements.synthetic import step_function
             r'timesteps dtype must be float or int but is String',
             id='timesteps_str_raises_type_error',
         ),
+        pytest.param(
+            {
+                'velocities': pl.repeat((1, 2), 10, eager=True),
+                'threshold': 1.0,
+                'timesteps': [0, 1, 2, 3, 4, 9, 8, 7, 6, 5],
+            },
+            ValueError,
+            r'timesteps must be in ascending order',
+            id='timesteps_not_ascending_raises_value_error',
+        ),
     ],
 )
 def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
@@ -411,6 +421,25 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 offsets=[1049],
             ),
             id='two_steps_one_saccade_with_duration_timesteps',
+        ),
+        pytest.param(
+            {
+                'velocities': step_function(
+                    length=100,
+                    steps=[40, 50],
+                    values=[(9, 9), (0, 0)],
+                    start_value=(0, 0),
+                ),
+                'timesteps': pl.Series(np.arange(0, 50_000, 500)).cast(pl.Duration('us')),
+                'threshold': 1e-5,
+                'minimum_duration': 4,
+            },
+            Events(
+                name='saccade',
+                onsets=[20],
+                offsets=[24.5],
+            ),
+            id='two_steps_one_saccade_with_2khz_duration_timesteps',
         ),
     ],
 )

@@ -784,6 +784,454 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             ),
             id='two_identifiers_four_events_peak_velocity',
         ),
+
+        pytest.param(
+            pl.from_dict(
+                {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'offset': [10, 100]},
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
+            ),
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(100),
+                    'time': np.arange(100),
+                    'position': np.column_stack([np.arange(100), np.arange(100)]),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'position': pl.List(pl.Float64),
+                },
+            ),
+            {'measures': 'disposition'},
+            {'identifiers': 'subject_id'},
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1],
+                    'name': ['A', 'B'],
+                    'onset': [0, 80],
+                    'offset': [10, 100],
+                    'disposition': [sqrt(200), sqrt(722)],
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'name': pl.Utf8,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'disposition': pl.Float64,
+                },
+            ),
+            id='one_identifier_two_events_disposition',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1], 'name': ['A', 'B'],
+                    'onset': [0, 1000], 'offset': [10, 1004],
+                },
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
+            ),
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(20),
+                    'time': np.arange(20),
+                    'position': np.column_stack([np.ones(20), np.ones(20)]),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'position': pl.List(pl.Float64),
+                },
+            ),
+            {'measures': 'dispersion'},
+            {'identifiers': 'subject_id'},
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1],
+                    'name': ['A', 'B'],
+                    'onset': [0, 1000],
+                    'offset': [10, 1004],
+                    'dispersion': [0.0, None],
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'name': pl.Utf8,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'dispersion': pl.Float64,
+                },
+            ),
+            id='one_identifier_second_event_without_samples_dispersion',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1], 'name': ['fixation', 'fixation'],
+                    'onset': [0, 5], 'offset': [20, 10],
+                },
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
+            ),
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(21),
+                    'time': np.arange(21),
+                    'position': np.column_stack([np.arange(21), np.arange(21)]),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'position': pl.List(pl.Float64),
+                },
+            ),
+            {'measures': ['location', 'dispersion', 'disposition']},
+            {'identifiers': 'subject_id'},
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1],
+                    'name': ['fixation', 'fixation'],
+                    'onset': [0, 5],
+                    'offset': [20, 10],
+                    'location': [[10.0, 10.0], [7.5, 7.5]],
+                    'dispersion': [40.0, 10.0],
+                    'disposition': [sqrt(800), sqrt(50)],
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'name': pl.Utf8,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'location': pl.List(pl.Float64),
+                    'dispersion': pl.Float64,
+                    'disposition': pl.Float64,
+                },
+            ),
+            id='nested_events',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1], 'name': ['fixation', 'saccade'],
+                    'onset': [0, 8], 'offset': [10, 20],
+                },
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
+            ),
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(21),
+                    'time': np.arange(21),
+                    'position': np.column_stack([np.arange(21), np.arange(21)]),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'position': pl.List(pl.Float64),
+                },
+            ),
+            {'measures': ['location', 'dispersion', 'disposition']},
+            {'identifiers': 'subject_id'},
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1],
+                    'name': ['fixation', 'saccade'],
+                    'onset': [0, 8],
+                    'offset': [10, 20],
+                    'location': [[5.0, 5.0], [14.0, 14.0]],
+                    'dispersion': [20.0, 24.0],
+                    'disposition': [sqrt(200), sqrt(288)],
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'name': pl.Utf8,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'location': pl.List(pl.Float64),
+                    'dispersion': pl.Float64,
+                    'disposition': pl.Float64,
+                },
+            ),
+            id='overlapping_events_two_names',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1], 'name': ['fixation', 'fixation'],
+                    'onset': [3, 3], 'offset': [7, 7],
+                },
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
+            ),
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(21),
+                    'time': np.arange(21),
+                    'position': np.column_stack([np.arange(21), np.arange(21)]),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'position': pl.List(pl.Float64),
+                },
+            ),
+            {'measures': ['location', 'dispersion', 'disposition']},
+            {'identifiers': 'subject_id'},
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1],
+                    'name': ['fixation', 'fixation'],
+                    'onset': [3, 3],
+                    'offset': [7, 7],
+                    'location': [[5.0, 5.0], [5.0, 5.0]],
+                    'dispersion': [8.0, 8.0],
+                    'disposition': [sqrt(32), sqrt(32)],
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'name': pl.Utf8,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'location': pl.List(pl.Float64),
+                    'dispersion': pl.Float64,
+                    'disposition': pl.Float64,
+                },
+            ),
+            id='two_identical_events',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1], 'name': ['fixation', 'fixation'],
+                    'onset': [0, 10], 'offset': [10, 20],
+                },
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
+            ),
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(21),
+                    'time': np.arange(21),
+                    'position': np.column_stack([np.arange(21), np.arange(21)]),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'position': pl.List(pl.Float64),
+                },
+            ),
+            {'measures': ['location', 'dispersion', 'disposition']},
+            {'identifiers': 'subject_id'},
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1],
+                    'name': ['fixation', 'fixation'],
+                    'onset': [0, 10],
+                    'offset': [10, 20],
+                    'location': [[5.0, 5.0], [15.0, 15.0]],
+                    'dispersion': [20.0, 20.0],
+                    'disposition': [sqrt(200), sqrt(200)],
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'name': pl.Utf8,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'location': pl.List(pl.Float64),
+                    'dispersion': pl.Float64,
+                    'disposition': pl.Float64,
+                },
+            ),
+            id='adjacent_events_sharing_boundary_sample',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1], 'name': ['A', 'B'],
+                    'onset': [0, 1000], 'offset': [10, 1010],
+                },
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
+            ),
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(21),
+                    'time': np.arange(21),
+                    'position': np.column_stack([np.arange(21), np.arange(21)]),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'position': pl.List(pl.Float64),
+                },
+            ),
+            {'measures': ['location', 'dispersion']},
+            {'identifiers': 'subject_id'},
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1],
+                    'name': ['A', 'B'],
+                    'onset': [0, 1000],
+                    'offset': [10, 1010],
+                    'location': [[5.0, 5.0], None],
+                    'dispersion': [20.0, None],
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'name': pl.Utf8,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'location': pl.List(pl.Float64),
+                    'dispersion': pl.Float64,
+                },
+            ),
+            id='event_without_samples_location_null',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1, 2], 'name': ['A', 'B', 'C'],
+                    'onset': [0, 5, 3], 'offset': [10, 15, 8],
+                },
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
+            ),
+            pl.from_dict(
+                {
+                    'subject_id': np.concatenate([np.ones(21), 2 * np.ones(21)]),
+                    'time': np.tile(np.arange(21), 2),
+                    'position': np.column_stack([
+                        np.concatenate([np.arange(21), np.arange(21) + 100]),
+                        np.concatenate([np.arange(21), np.arange(21) + 100]),
+                    ]),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'position': pl.List(pl.Float64),
+                },
+            ),
+            {'measures': ['location', 'dispersion', 'disposition']},
+            {'identifiers': 'subject_id'},
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1, 2],
+                    'name': ['A', 'B', 'C'],
+                    'onset': [0, 5, 3],
+                    'offset': [10, 15, 8],
+                    'location': [[5.0, 5.0], [10.0, 10.0], [105.5, 105.5]],
+                    'dispersion': [20.0, 20.0, 10.0],
+                    'disposition': [sqrt(200), sqrt(200), sqrt(50)],
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'name': pl.Utf8,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'location': pl.List(pl.Float64),
+                    'dispersion': pl.Float64,
+                    'disposition': pl.Float64,
+                },
+            ),
+            id='overlapping_events_in_one_trial_and_event_in_another',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {'name': ['A', 'B'], 'onset': [0, 5], 'offset': [10, 15]},
+                schema={'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64},
+            ),
+            pl.from_dict(
+                {
+                    'time': np.arange(21),
+                    'position': np.column_stack([np.arange(21), np.arange(21)]),
+                },
+                schema={'time': pl.Int64, 'position': pl.List(pl.Float64)},
+            ),
+            {'measures': ['location', 'dispersion', 'disposition']},
+            {},
+            pl.from_dict(
+                {
+                    'name': ['A', 'B'],
+                    'onset': [0, 5],
+                    'offset': [10, 15],
+                    'location': [[5.0, 5.0], [10.0, 10.0]],
+                    'dispersion': [20.0, 20.0],
+                    'disposition': [sqrt(200), sqrt(200)],
+                },
+                schema={
+                    'name': pl.Utf8,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'location': pl.List(pl.Float64),
+                    'dispersion': pl.Float64,
+                    'disposition': pl.Float64,
+                },
+            ),
+            id='overlapping_events_without_identifiers',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1, 1], 'name': ['A', 'B', 'C'],
+                    'onset': [0, 5, 1000], 'offset': [10, 15, 1010],
+                },
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
+            ),
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(21),
+                    'time': np.arange(21),
+                    'position': np.column_stack([np.arange(21), np.arange(21)]),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'position': pl.List(pl.Float64),
+                },
+            ),
+            {'measures': ['location', 'dispersion', 'disposition']},
+            {'identifiers': 'subject_id'},
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1, 1],
+                    'name': ['A', 'B', 'C'],
+                    'onset': [0, 5, 1000],
+                    'offset': [10, 15, 1010],
+                    'location': [[5.0, 5.0], [10.0, 10.0], None],
+                    'dispersion': [20.0, 20.0, None],
+                    'disposition': [sqrt(200), sqrt(200), None],
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'name': pl.Utf8,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'location': pl.List(pl.Float64),
+                    'dispersion': pl.Float64,
+                    'disposition': pl.Float64,
+                },
+            ),
+            id='overlapping_events_and_event_without_samples',
+        ),
     ],
 )
 def test_event_samples_processor_process_correct_result(
