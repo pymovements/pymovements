@@ -20,6 +20,7 @@
 """Module for event measures."""
 from pymovements.measure.events.measures import duration
 from pymovements.measure.events.measures import EVENT_MEASURES
+from pymovements.measure.events.measures import offset
 from pymovements.measure.events.measures import register_event_measure
 from pymovements.measure.events.processing import EventProcessor
 from pymovements.measure.events.processing import EventSamplesProcessor
@@ -31,4 +32,5 @@ __all__ = [
     'EventSamplesProcessor',
 
     'duration',
+    'offset',
 ]
