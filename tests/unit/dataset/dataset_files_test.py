@@ -1033,7 +1033,7 @@ def test_load_precomputed_rm_file_xlsx(target_filename, make_example_file):
 
 
 @pytest.mark.parametrize(
-    ('filename', 'content', 'load_kwargs', 'load_function', 'missing_module'),
+    ('filename', 'content', 'load_kwargs', 'load_function', 'missing_module', 'extra'),
     [
         pytest.param(
             'rda_test_file.rda',
@@ -1041,6 +1041,7 @@ def test_load_precomputed_rm_file_xlsx(target_filename, make_example_file):
             {'r_dataframe_key': 'joint.fix'},
             load_precomputed_reading_measure_file,
             'pyreadr',
+            'rdata',
             id='reading_measures_rda',
         ),
         pytest.param(
@@ -1049,6 +1050,7 @@ def test_load_precomputed_rm_file_xlsx(target_filename, make_example_file):
             {'sheet_name': 'Sheet 1'},
             load_precomputed_reading_measure_file,
             'fastexcel',
+            'excel',
             id='reading_measures_xlsx',
         ),
         pytest.param(
@@ -1057,12 +1059,13 @@ def test_load_precomputed_rm_file_xlsx(target_filename, make_example_file):
             {'r_dataframe_key': 'joint.fix'},
             load_precomputed_event_file,
             'pyreadr',
+            'rdata',
             id='events_rda',
         ),
     ],
 )
 def test_load_precomputed_file_missing_optional_dependency_raises_install_hint(
-        filename, content, load_kwargs, load_function, missing_module, make_example_file,
+        filename, content, load_kwargs, load_function, missing_module, extra, make_example_file,
         monkeypatch,
 ):
     filepath = make_example_file(filename)
@@ -1070,7 +1073,7 @@ def test_load_precomputed_file_missing_optional_dependency_raises_install_hint(
     file = DatasetFile(path=filepath, definition=resource_definition)
     monkeypatch.setitem(sys.modules, missing_module, None)
 
-    with pytest.raises(ImportError, match=re.escape("pip install 'pymovements[datasets]'")):
+    with pytest.raises(ImportError, match=re.escape(f"pip install 'pymovements[{extra}]'")):
         load_function(file, dataset_definition=DatasetDefinition())
 
 
@@ -1096,7 +1099,7 @@ def test_load_precomputed_rm_file_rda_outdated_pyreadr_raises_upgrade_hint(
     expected_message = (
         "pymovements requires 'pyreadr>=0.5.2' "
         f"(version '{installed_version}' is installed). "
-        "Upgrade it with: pip install --upgrade 'pymovements[datasets]'"
+        "Upgrade it with: pip install --upgrade 'pymovements[rdata]'"
     )
     with pytest.raises(ImportError, match=re.escape(expected_message)):
         load_precomputed_reading_measure_file(file, dataset_definition=DatasetDefinition())

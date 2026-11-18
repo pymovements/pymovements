@@ -1,17 +1,11 @@
 name: ChineseReading
-description: 'ChineseReading dataset :cite:p:`ChineseReading`.
-
-
-  This dataset includes eye tracking data from more than 300 participants recorded
-  in a single
-
-  session. Precomputed events and word-level reading measures are reported.
-
-  Each participant is instructed to read several sentences.
-
-  Check the respective paper for details :cite:p:`ChineseReading`.
-
-  '
+description: "ChineseReading dataset :cite:p:`ChineseReading`.\n\nThis dataset includes\
+  \ eye tracking data from more than 300 participants recorded in a single\nsession.\
+  \ Precomputed events and word-level reading measures are reported.\nEach participant\
+  \ is instructed to read several sentences.\nCheck the respective paper for details\
+  \ :cite:p:`ChineseReading`.\n\n.. note:: The reading measures are distributed as\
+  \ Excel files. Loading them needs the\n   ``excel`` extra, install it with ``pip\
+  \ install 'pymovements[excel]'``.\n"
 resources:
 - content: precomputed_events
   source:

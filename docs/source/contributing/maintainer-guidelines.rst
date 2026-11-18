@@ -39,6 +39,37 @@ Make sure:
   (not in the subject).
 - to use Markdown for formatting.
 
+Optional Dependencies
+---------------------
+
+A package goes into an extra instead of ``dependencies`` when only a few datasets or one feature
+need it, or when it is heavy. The extras are named by what they enable, not by the package:
+
+.. list-table::
+    :header-rows: 1
+
+    * - Kind
+      - Named by
+      - Examples
+    * - Reader for a file format
+      - the format
+      - ``rdata`` for ``pyreadr``, ``excel`` for ``fastexcel``
+    * - Interoperability with another library
+      - the library
+      - ``pandas``, ``mne``
+    * - Backend for models
+      - the framework
+      - ``torch``, ``tensorflow``
+    * - ``all``
+      - every extra above, no exceptions
+      -
+
+A new extra appears in three places: ``[project.optional-dependencies]`` in ``pyproject.toml``,
+the ``all`` extra, and the Optional Dependencies section of the installation guide. The test
+environments in ``tox.ini`` install ``all``. The code imports the package through
+``import_optional_dependency``, which reads the minimum version from ``pyproject.toml`` and names
+the extra in its error message.
+
 Publishing Releases
 -------------------
 

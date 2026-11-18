@@ -533,7 +533,7 @@ def load_precomputed_reading_measure_file(
         precomputed_reading_measure_df = pl.read_csv(file.path, **read_kwargs)
     elif file_path_suffix in r_extensions:
         if 'r_dataframe_key' in load_kwargs:
-            pyreadr = import_optional_dependency('pyreadr', extra='datasets')
+            pyreadr = import_optional_dependency('pyreadr', extra='rdata')
             precomputed_r = pyreadr.read_r(file.path)
             # convert to polars DataFrame because read_r has no .clone().
             precomputed_reading_measure_df = pl.DataFrame(
@@ -545,8 +545,8 @@ def load_precomputed_reading_measure_file(
         read_kwargs = load_kwargs.pop('read_excel_kwargs', {})
         if read_kwargs.get('engine', 'calamine') == 'calamine':
             # polars imports fastexcel itself, this call only raises the pymovements install hint
-            # for the datasets extra and enforces its minimum version.
-            import_optional_dependency('fastexcel', extra='datasets')
+            # for the excel extra and enforces its minimum version.
+            import_optional_dependency('fastexcel', extra='excel')
         precomputed_reading_measure_df = pl.read_excel(file.path, **read_kwargs)
     else:
         raise ValueError(
@@ -642,7 +642,7 @@ def load_precomputed_event_file(
         precomputed_event_df = pl.read_csv(file.path, **read_kwargs)
     elif file_path_suffix in r_extensions:
         if 'r_dataframe_key' in load_kwargs:
-            pyreadr = import_optional_dependency('pyreadr', extra='datasets')
+            pyreadr = import_optional_dependency('pyreadr', extra='rdata')
             precomputed_r = pyreadr.read_r(file.path)
             # convert to polars DataFrame because read_r has no .clone().
             precomputed_event_df = pl.DataFrame(
