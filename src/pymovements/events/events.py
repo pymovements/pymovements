@@ -966,7 +966,7 @@ class Events:
         if offsets_inclusive_source == 'keyword' and 'offset' in self.frame.columns:
             entry = self.metadata.get('offset')
             self.metadata['offset'] = {
-                **(entry if isinstance(entry, dict) else {}),
+                **(entry or {}),
                 'inclusive': offsets_inclusive,
             }
         if sampling_rate_source == 'keyword':
