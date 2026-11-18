@@ -136,9 +136,10 @@ def _entries(sampling_rate):
 @pytest.mark.parametrize(('detector', 'build_kwargs', 'event_samples'), DETECTORS)
 class TestEveryDetector:
     # The shared parametrization hands every method the event slice, not every method needs it.
-    # pylint: disable=unused-argument
 
-    def test_requires_sampling_rate(self, detector, build_kwargs, event_samples):
+    def test_requires_sampling_rate(
+            self, detector, build_kwargs, event_samples,
+    ):  # pylint: disable=unused-argument
         with pytest.raises(
             TypeError, match="missing 1 required keyword-only argument: 'sampling_rate'",
         ):
@@ -147,7 +148,7 @@ class TestEveryDetector:
     @pytest.mark.parametrize('sampling_rate', [0, -1])
     def test_raises_on_non_positive_sampling_rate(
             self, detector, build_kwargs, event_samples, sampling_rate,
-    ):
+    ):  # pylint: disable=unused-argument
         with pytest.raises(ValueError, match='sampling_rate must be positive'):
             detector(**build_kwargs(np.arange(3)), sampling_rate=sampling_rate)
 
@@ -167,21 +168,17 @@ class TestEveryDetector:
 
 
 @pytest.mark.parametrize(('detector', 'build_kwargs', 'event_samples'), SINGLE_SAMPLE_DETECTORS)
-class TestSingleSampleDetector:
-    # The shared parametrization hands every method the event slice, not every method needs it.
-    # pylint: disable=unused-argument
+@pytest.mark.parametrize('sampling_rate', [1000, 600])
+def test_single_sample_event_lasts_one_nominal_interval(
+        detector, build_kwargs, event_samples, sampling_rate,
+):  # pylint: disable=unused-argument
+    events = detector(**build_kwargs(np.arange(3)), sampling_rate=sampling_rate)
 
-    @pytest.mark.parametrize('sampling_rate', [1000, 600])
-    def test_event_lasts_one_nominal_interval(
-            self, detector, build_kwargs, event_samples, sampling_rate,
-    ):
-        events = detector(**build_kwargs(np.arange(3)), sampling_rate=sampling_rate)
-
-        nominal_interval = timedelta(microseconds=round(1_000_000 / sampling_rate))
-        assert events.frame['onset'].to_list() == [timedelta(milliseconds=1)]
-        assert events.frame['duration'].to_list() == [nominal_interval]
-        assert events.frame['offset'].to_list() == [timedelta(milliseconds=1)]
-        assert events.metadata == _entries(sampling_rate)
+    nominal_interval = timedelta(microseconds=round(1_000_000 / sampling_rate))
+    assert events.frame['onset'].to_list() == [timedelta(milliseconds=1)]
+    assert events.frame['duration'].to_list() == [nominal_interval]
+    assert events.frame['offset'].to_list() == [timedelta(milliseconds=1)]
+    assert events.metadata == _entries(sampling_rate)
 
 
 @pytest.mark.parametrize(
