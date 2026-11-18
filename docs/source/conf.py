@@ -250,6 +250,8 @@ def strip_private_parameters_handler(
     kept = [part for part in parameters if not part.lstrip('*').startswith('_')]
     if len(kept) == len(parameters):
         return None
+    if kept and kept[-1] == '*':
+        kept.pop()
     return f"({', '.join(kept)})", return_annotation
 
 
