@@ -130,13 +130,13 @@ class EventSamplesProcessor:
     Parameters
     ----------
     measures: str | tuple[str, dict[str, Any]] | list[str | tuple[str, dict[str, Any]]]
-        List of sample measures.
+        List of sample measures, each a name or a tuple of a name and its keyword arguments.
 
     Raises
     ------
     UnknownMeasure
-        If ``event_properties`` includes an unknown measure. See :ref:`sample-measures` and
-        :ref:`event-measures` for an overview of supported measures.
+        If ``measures`` includes an unknown measure. See :ref:`sample-measures` for an overview
+        of supported measures.
     """
 
     def __init__(

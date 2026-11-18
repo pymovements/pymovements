@@ -1069,12 +1069,19 @@ class Dataset:
             name: str | None = None,
             verbose: bool = True,
     ) -> Dataset:
-        """Calculate an event property and add it as a column to the event dataframe.
+        """Calculate event properties and add them as columns to the event dataframes.
+
+        Calls :py:meth:`~pymovements.Gaze.compute_event_properties` on every gaze object: each
+        property is an event measure (:ref:`event-measures`) or a sample measure
+        (:ref:`sample-measures`), a measure that accepts ``sampling_rate`` receives the rate of
+        the events when none is given, and a column that already exists is overwritten with a
+        warning.
 
         Parameters
         ----------
         event_properties: str | tuple[str, dict[str, Any]] | list[str | tuple[str, dict[str, Any]]]
-            The event properties to compute.
+            The event properties to compute, each a measure name or a tuple of a name and its
+            keyword arguments.
         name: str | None
             Process only events that match the name. (default: None)
         verbose : bool
@@ -1087,8 +1094,6 @@ class Dataset:
             :ref:`event-measures` for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
-        ValueError
-            If the computed property already exists in the event dataframe.
 
         Returns
         -------
