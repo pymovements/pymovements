@@ -172,7 +172,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='all_within_screen_no_events',
         ),
         pytest.param(
@@ -181,7 +181,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='all_within_screen_no_events_numpy',
         ),
         pytest.param(
@@ -189,7 +189,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 'pixels': pl.Series([[0, 0], [1919.9, 1079.9], [960, 540]]),
                 'x_max': 1920, 'y_max': 1080,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='on_boundary_inclusive_min_exclusive_max_no_events',
         ),
         pytest.param(
@@ -197,7 +197,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 'pixels': np.array([[0, 0], [1919.9, 1079.9], [960, 540]]),
                 'x_max': 1920, 'y_max': 1080,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='on_boundary_inclusive_min_exclusive_max_no_events_numpy',
         ),
         pytest.param(

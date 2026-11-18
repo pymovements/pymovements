@@ -1350,7 +1350,7 @@ class Gaze:
         >>> gaze.events.frame.is_empty()
         True
         >>> gaze.events.frame.columns
-        ['trial', 'name', 'onset', 'offset', 'duration']
+        ['trial', 'onset', 'duration', 'name']
         >>> gaze.events.frame.schema['trial']
         Int64
         """
@@ -1490,7 +1490,16 @@ class Gaze:
                 if needs_events
                 else {}
             )
-            empty_events = Events(self.events.frame.clear()) if needs_events else self.events
+            empty_events = (
+                Events(
+                    self.events.frame.clear(),
+                    trial_columns=self.events.trial_columns,
+                    metadata=deepcopy(self.events.metadata),
+                    validate=False,
+                )
+                if needs_events
+                else self.events
+            )
 
             new_events_grouped: list[polars.DataFrame] = []
 
@@ -1498,7 +1507,12 @@ class Gaze:
                 if not needs_events:
                     group_events = self.events
                 elif group_identifier in events_by_trial:
-                    group_events = Events(events_by_trial[group_identifier])
+                    group_events = Events(
+                        events_by_trial[group_identifier],
+                        trial_columns=self.events.trial_columns,
+                        metadata=deepcopy(self.events.metadata),
+                        validate=False,
+                    )
                 else:
                     group_events = empty_events
 
@@ -2598,14 +2612,14 @@ class Gaze:
         └──────────────┴────────────┘
         >>> gaze.events
         shape: (2, 5)
-        ┌──────────┬──────────────┬──────────────┬───────┬──────────────┐
-        │ name     ┆ onset        ┆ offset       ┆ trial ┆ duration     │
-        │ ---      ┆ ---          ┆ ---          ┆ ---   ┆ ---          │
-        │ str      ┆ duration[μs] ┆ duration[μs] ┆ i64   ┆ duration[μs] │
-        ╞══════════╪══════════════╪══════════════╪═══════╪══════════════╡
-        │ fixation ┆ 0µs          ┆ 1ms          ┆ 1     ┆ 1ms          │
-        │ fixation ┆ 2ms          ┆ 3ms          ┆ 2     ┆ 1ms          │
-        └──────────┴──────────────┴──────────────┴───────┴──────────────┘
+        ┌──────────────┬──────────────┬──────────┬──────────────┬───────┐
+        │ onset        ┆ duration     ┆ name     ┆ offset       ┆ trial │
+        │ ---          ┆ ---          ┆ ---      ┆ ---          ┆ ---   │
+        │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] ┆ i64   │
+        ╞══════════════╪══════════════╪══════════╪══════════════╪═══════╡
+        │ 0µs          ┆ 1ms          ┆ fixation ┆ 1ms          ┆ 1     │
+        │ 2ms          ┆ 1ms          ┆ fixation ┆ 3ms          ┆ 2     │
+        └──────────────┴──────────────┴──────────┴──────────────┴───────┘
         """
         if subset is None:
             samples_subset = self.samples.columns
