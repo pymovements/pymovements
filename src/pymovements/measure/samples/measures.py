@@ -764,7 +764,8 @@ def bcea(
         * pl.lit(pi)
         * sigma_x
         * sigma_y
-        * (1.0 - rho_sq).sqrt(),
+        # Rounding can push rho_sq just above 1 for perfectly correlated samples.
+        * (1.0 - rho_sq).clip(lower_bound=0.0).sqrt(),
     )
 
     return result.alias('bcea')
