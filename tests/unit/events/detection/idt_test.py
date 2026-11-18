@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests functionality of the IDT algorithm."""
+from datetime import timedelta
+
 import numpy as np
 import polars as pl
 import pytest
@@ -788,6 +790,27 @@ def test_idt_detects_fixations(kwargs, expected):
     events = idt(**kwargs)
 
     assert_frame_equal(events.frame, expected.frame)
+
+
+def test_idt_onsets_and_offsets_on_a_constant_interval_grid():
+    # Two fixations on a 1 ms grid: the sampling rate extends each duration by one interval
+    # and leaves the onset and offset samples where the dispersion window puts them.
+    positions = step_function(
+        length=100, steps=[49, 50], values=[(9, 9), (1, 1)], start_value=(0, 0),
+    )
+
+    events = idt(
+        positions, timesteps=np.arange(100), dispersion_threshold=1, minimum_duration=2,
+        sampling_rate=1000,
+    )
+
+    assert events.frame['onset'].to_list() == [timedelta(0), timedelta(milliseconds=50)]
+    assert events.frame['offset'].to_list() == [
+        timedelta(milliseconds=49), timedelta(milliseconds=99),
+    ]
+    assert events.frame['duration'].to_list() == [
+        timedelta(milliseconds=50), timedelta(milliseconds=50),
+    ]
 
 
 @pytest.mark.parametrize(
