@@ -1786,7 +1786,10 @@ def test_load_event_files_respects_empty_user_sources(tmp_path):
 
 
 def write_legacy_event_file(tmp_path):
-    """Save one event file of a 1000 Hz recording with duration == offset - onset per row."""
+    """Save one event file with duration == offset - onset per row at 1000 Hz.
+
+    Returns the files and paths that load it.
+    """
     events_dirpath = tmp_path / 'events'
     events_dirpath.mkdir()
     events_df = pl.DataFrame(
@@ -1831,13 +1834,24 @@ def test_load_event_files_writes_sampling_rate_from_experiment(tmp_path):
         pytest.param(Experiment(sampling_rate=None), id='no_rate'),
     ],
 )
-def test_load_event_files_writes_no_sampling_rate_without_experiment_rate(tmp_path, experiment):
-    files, paths = write_legacy_event_file(tmp_path)
-    definition = DatasetDefinition(experiment=experiment)
+class TestLoadEventFilesWithoutExperimentRate:
+    def test_writes_no_sampling_rate(self, tmp_path, experiment):
+        files, paths = write_legacy_event_file(tmp_path)
+        definition = DatasetDefinition(experiment=experiment)
 
-    events_list = load_event_files(definition, files, paths, verbose=False)
+        events_list = load_event_files(definition, files, paths, verbose=False)
 
-    assert 'sampling_rate' not in events_list[0].metadata
+        assert 'sampling_rate' not in events_list[0].metadata
+
+    def test_migration_raises(self, tmp_path, experiment):
+        files, paths = write_legacy_event_file(tmp_path)
+        definition = DatasetDefinition(experiment=experiment)
+
+        with pytest.raises(ValueError, match='requires a sampling_rate'):
+            load_event_files(
+                definition, files, paths, verbose=False,
+                offsets_inclusive=True, durations_from_offsets=True,
+            )
 
 
 @pytest.mark.parametrize(
@@ -1882,16 +1896,6 @@ def test_load_event_files_validates_by_default(tmp_path):
 
     with pytest.raises(ValueError, match='every row contradicts offsets_inclusive=True'):
         load_event_files(definition, files, paths, verbose=False, offsets_inclusive=True)
-
-
-def test_load_event_files_migration_raises_without_experiment_rate(tmp_path):
-    files, paths = write_legacy_event_file(tmp_path)
-
-    with pytest.raises(ValueError, match='requires a sampling_rate'):
-        load_event_files(
-            DatasetDefinition(), files, paths, verbose=False,
-            offsets_inclusive=True, durations_from_offsets=True,
-        )
 
 
 @pytest.mark.parametrize(
