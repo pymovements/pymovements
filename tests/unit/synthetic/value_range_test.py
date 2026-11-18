@@ -88,6 +88,12 @@ def test_range_returns(kwargs, expected):
             id='nan_std_raises_value_error',
         ),
         pytest.param(
+            {'minimum': 0.0, 'maximum': 1.0, 'distribution': 'normal', 'std': math.inf},
+            ValueError,
+            ('std', 'finite', 'inf'),
+            id='infinite_std_raises_value_error',
+        ),
+        pytest.param(
             {'minimum': 0.0, 'maximum': 1.0, 'distribution': 'gamma'},
             ValueError,
             ('distribution', 'normal', 'uniform', "'gamma'"),

@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test the bridging of gaps in event sequences."""
+import math
+
 import numpy as np
 import polars as pl
 import pytest
@@ -247,6 +249,20 @@ def test_bridge_gaps_accepts_real_numbers(max_gap):
             ValueError,
             ('max_gap', 'negative'),
             id='negative_max_gap_raises_value_error',
+        ),
+        pytest.param(
+            Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560]),
+            math.inf,
+            ValueError,
+            ('max_gap', 'finite', 'inf'),
+            id='infinite_max_gap_raises_value_error',
+        ),
+        pytest.param(
+            Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560]),
+            math.nan,
+            ValueError,
+            ('max_gap', 'finite', 'nan'),
+            id='nan_max_gap_raises_value_error',
         ),
         pytest.param(
             Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560]),

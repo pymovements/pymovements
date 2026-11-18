@@ -180,8 +180,8 @@ def check_finite(value: Any, name: str) -> float:
 
 
 def check_not_negative(value: Any, name: str) -> float:
-    """Return the value as a float, rejecting non-numbers and negative values."""
-    number = check_number(value, name)
+    """Return the value as a float, rejecting non-finite numbers and negative values."""
+    number = check_finite(value, name)
 
     if number < 0:
         raise ValueError(f'{name} must not be negative but is: {number}')

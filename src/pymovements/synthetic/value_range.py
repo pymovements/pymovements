@@ -92,7 +92,6 @@ class Range:
         check_name(self.distribution, 'distribution', ('normal', 'uniform'))
 
         if self.std is not None:
-            check_finite(self.std, 'std')
             object.__setattr__(self, 'std', check_not_negative(self.std, 'std'))
 
             if self.distribution != 'normal':
