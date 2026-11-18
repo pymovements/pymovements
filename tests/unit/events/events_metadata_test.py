@@ -540,9 +540,12 @@ def test_metadata_non_dict_offset_entry_raises(entry, expected_match):
 
 
 def test_metadata_offset_convention_entry_inclusive_none_declares_nothing():
-    events = Events(onsets=[0], offsets=[5], metadata={'offset': {'inclusive': None}})
+    events = Events(
+        onsets=[0], offsets=[5], offsets_inclusive=True, sampling_rate=1000,
+        metadata={'offset': {'inclusive': None}},
+    )
 
-    assert events.frame['duration'].to_list() == [timedelta(milliseconds=5)]
+    assert events.frame['duration'].to_list() == [timedelta(milliseconds=6)]
 
 
 @pytest.mark.parametrize('offsets_inclusive', [True, False])
