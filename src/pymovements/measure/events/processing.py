@@ -26,6 +26,7 @@ from warnings import warn
 import polars as pl
 
 from pymovements._utils.time import duration_to_ms
+from pymovements.events._utils.selection import selection_end
 from pymovements.exceptions import UnknownMeasure
 from pymovements.measure.events.measures import EVENT_MEASURES
 from pymovements.measure.samples.library import SampleMeasureLibrary
@@ -36,7 +37,8 @@ _ROW_ID = '__pymovements_row_id'
 _TRIAL_KEY = '__pymovements_trial_key'
 _TIME_MS = '__pymovements_time_ms'
 _ONSET_MS = '__pymovements_onset_ms'
-_OFFSET_MS = '__pymovements_offset_ms'
+_DURATION_MS = '__pymovements_duration_ms'
+_END_MS = '__pymovements_end_ms'
 _SAMPLE_IDX = '__pymovements_sample_idx'
 _START_IDX = '__pymovements_start_idx'
 _END_IDX = '__pymovements_end_idx'
@@ -163,8 +165,15 @@ class EventSamplesProcessor:
             samples: pl.DataFrame,
             identifiers: str | list[str] | None = None,
             name: str | None = None,
+            sampling_rate: float | None = None,
     ) -> pl.DataFrame:
         """Process event and gaze dataframe.
+
+        The samples of an event are those in the half-open interval from its onset to its end,
+        ``onset + duration``. With a sampling rate the end moves half a sampling interval
+        earlier, so a sample that arrives slightly early stays out of the preceding event. An
+        event with a ``null`` or ``0`` duration selects no samples and keeps its row with null
+        properties.
 
         Parameters
         ----------
@@ -176,6 +185,9 @@ class EventSamplesProcessor:
             Column names to join on events and samples dataframes. (default: None)
         name: str | None
             Process only events that match the name. (default: None)
+        sampling_rate: float | None
+            Sampling rate in Hz for the tolerance at the end of each event. Without one the
+            plain interval applies. (default: None)
 
         Returns
         -------
@@ -198,8 +210,8 @@ class EventSamplesProcessor:
             _identifiers = identifiers
 
         # Each event is uniquely defined by a list of trial identifiers,
-        # a name and its on- and offset.
-        event_identifiers = [*_identifiers, 'name', 'onset', 'offset']
+        # a name, its onset and its duration.
+        event_identifiers = [*_identifiers, 'name', 'onset', 'duration']
         measure_columns = [measure.meta.output_name() for measure in self.measures]
 
         if name is not None:
@@ -232,8 +244,9 @@ class EventSamplesProcessor:
                 *self.measures,
             ).collect()
 
-        # Give each event a stable id that preserves the original row order and bring the event
-        # bounds onto the common millisecond scale used for the sample assignment.
+        # Give each event a stable id that preserves the original row order, bring the onset and
+        # duration onto the common millisecond scale used for the sample assignment and derive
+        # the end bound of the half-open selection from them.
         events_work = events.with_columns(
             pl.int_range(pl.len()).alias(_EVENT_ID),
             (
@@ -242,10 +255,14 @@ class EventSamplesProcessor:
                 else pl.col('onset').cast(pl.Float64)
             ).alias(_ONSET_MS),
             (
-                duration_to_ms('offset')
-                if isinstance(events.schema['offset'], pl.Duration)
-                else pl.col('offset').cast(pl.Float64)
-            ).alias(_OFFSET_MS),
+                duration_to_ms('duration')
+                if isinstance(events.schema['duration'], pl.Duration)
+                else pl.col('duration').cast(pl.Float64)
+            ).alias(_DURATION_MS),
+        ).with_columns(
+            selection_end(
+                _ONSET_MS, _DURATION_MS, sampling_rate=sampling_rate, dtype=pl.Float64,
+            ).alias(_END_MS),
         )
         samples_work = samples_work.with_columns(
             pl.int_range(pl.len()).alias(_ROW_ID),
@@ -266,15 +283,21 @@ class EventSamplesProcessor:
         else:
             by_columns = None
 
+        # Events without an end bound (a null onset or duration) select no samples and are left
+        # out of the assignment, so they neither collect samples nor take them from other events.
         group_columns = by_columns or []
-        events_sorted = events_work.sort([*group_columns, _ONSET_MS, _OFFSET_MS])
+        events_sorted = (
+            events_work
+            .filter(pl.col(_ONSET_MS).is_not_null() & pl.col(_END_MS).is_not_null())
+            .sort([*group_columns, _ONSET_MS, _END_MS])
+        )
         samples_sorted = samples_work.sort([*group_columns, _TIME_MS, _ROW_ID])
 
         # The cheap asof assignment gives every sample to exactly one event, which is only correct
         # when events do not overlap. That holds for the standard detectors, but not necessarily
-        # for a whole events frame (e.g. nested events, a fixation and a saccade sharing samples,
-        # or two events sharing a boundary sample). In that case every event needs to collect the
-        # shared samples, so fall back to expanding each event to its sample range.
+        # for a whole events frame (e.g. nested events, or a fixation and a saccade sharing
+        # samples). In that case every event needs to collect the shared samples, so fall back to
+        # expanding each event to its sample range.
         if _events_overlap(events_sorted, by_columns):
             assigned = _assign_samples_by_range(events_sorted, samples_sorted, by_columns)
         else:
@@ -303,17 +326,13 @@ def _events_overlap(
 ) -> bool:
     """Return whether any two events within the same group overlap.
 
-    Expects the events sorted by group, onset and offset. Event bounds are inclusive, so events
-    that only share a boundary sample overlap as well. Events with a null onset or offset have no
-    bounds to compare and are left out, so they never force the range path.
+    Expects the events sorted by group, onset and end, with no null onsets or ends. The selection
+    is half-open, so an event ending where the next one starts does not overlap with it.
     """
-    bounded = events_sorted.filter(
-        pl.col(_ONSET_MS).is_not_null() & pl.col(_OFFSET_MS).is_not_null(),
-    )
-    previous_offset = pl.col(_OFFSET_MS).shift(1)
+    previous_end = pl.col(_END_MS).shift(1)
     if by_columns is not None:
-        previous_offset = previous_offset.over(by_columns)
-    return bool(bounded.select((previous_offset >= pl.col(_ONSET_MS)).any()).item())
+        previous_end = previous_end.over(by_columns)
+    return bool(events_sorted.select((previous_end > pl.col(_ONSET_MS)).any()).item())
 
 
 def _assign_samples_asof(
@@ -327,7 +346,7 @@ def _assign_samples_asof(
     it. This is the cheap path; it requires non-overlapping events. Expects the events sorted by
     group and onset, and the samples sorted by group, time and row id.
     """
-    right_columns = [_EVENT_ID, _ONSET_MS, _OFFSET_MS, *(by_columns or [])]
+    right_columns = [_EVENT_ID, _ONSET_MS, _END_MS, *(by_columns or [])]
     assigned = samples_sorted.join_asof(
         events_sorted.select(right_columns),
         left_on=_TIME_MS,
@@ -336,9 +355,9 @@ def _assign_samples_asof(
         strategy='backward',
         check_sortedness=False,
     )
-    # Drop samples before the first event and samples past the event offset.
+    # Drop samples before the first event and samples at or past the event end.
     return assigned.filter(
-        pl.col(_EVENT_ID).is_not_null() & (pl.col(_TIME_MS) <= pl.col(_OFFSET_MS)),
+        pl.col(_EVENT_ID).is_not_null() & (pl.col(_TIME_MS) < pl.col(_END_MS)),
     )
 
 
@@ -350,11 +369,11 @@ def _assign_samples_by_range(
     """Assign each sample to its events when events may overlap.
 
     Within a group, the samples spanning an event form a contiguous range once the samples are
-    sorted by time. The first sample at or after the onset and the last sample at or before the
-    offset are found with forward and backward asof joins; the ranges are then expanded and
-    joined back onto the samples, so every overlapping event gets all of its samples. Events
-    without samples produce no range and therefore keep null properties. Expects the events
-    sorted by group and onset, and the samples sorted by group, time and row id.
+    sorted by time. The first sample at or after the onset and the last sample before the end
+    are found with forward and backward asof joins; the ranges are then expanded and joined back
+    onto the samples, so every overlapping event gets all of its samples. Events without samples
+    produce no range and therefore keep null properties. Expects the events sorted by group and
+    onset, and the samples sorted by group, time and row id.
     """
     group_columns = by_columns or []
     samples_sorted = samples_sorted.with_columns(pl.int_range(pl.len()).alias(_SAMPLE_IDX))
@@ -373,13 +392,14 @@ def _assign_samples_by_range(
         .select(_EVENT_ID, pl.col(_SAMPLE_IDX).alias(_START_IDX))
     )
     ends = (
-        events_sorted.sort([*group_columns, _OFFSET_MS])
+        events_sorted.sort([*group_columns, _END_MS])
         .join_asof(
             sample_positions,
-            left_on=_OFFSET_MS,
+            left_on=_END_MS,
             right_on=_TIME_MS,
             by=by_columns,
             strategy='backward',
+            allow_exact_matches=False,
             check_sortedness=False,
         )
         .select(_EVENT_ID, pl.col(_SAMPLE_IDX).alias(_END_IDX))
