@@ -88,8 +88,8 @@ class StatisticalSampleGenerator(SampleGenerator):
 
     The source does not say which part of the Gamma curve a saccade covers. Our choice is the
     part from its 0.5 % to its 99.5 % quantile, so every saccade falls back to nearly zero and the
-    skewness only sets where the peak sits. A highly skewed saccade still starts above zero,
-    since its curve rises steeply.
+    skewness sets its asymmetry, no longer which part of the curve it shows. A highly skewed
+    saccade still starts above zero, since its curve rises steeply.
 
     Attributes
     ----------
