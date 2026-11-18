@@ -505,6 +505,29 @@ def test_pos2acc_raises_error(kwargs, expected_error):
             2 * np.ones(n_coords),
             id='linear_input_returns_constant_velocity',
         ),
+        pytest.param(
+            {
+                'arr': np.square(np.linspace(0, n_coords - 1, n_coords)),
+                'sampling_rate': 10,
+            },
+            (1, -1),
+            200 * np.ones(n_coords),
+            id='quadratic_input_scales_with_squared_sampling_rate',
+        ),
+        pytest.param(
+            {
+                'arr': np.column_stack(
+                    [
+                        np.square(np.linspace(0, n_coords - 1, n_coords)),
+                        -np.square(np.linspace(0, n_coords - 1, n_coords)),
+                    ],
+                ),
+                'sampling_rate': 10,
+            },
+            (1, -1),
+            np.column_stack([200 * np.ones(n_coords), -200 * np.ones(n_coords)]),
+            id='quadratic_2d_input_scales_with_squared_sampling_rate',
+        ),
     ],
 )
 def test_pos2acc_returns(kwargs, padding, expected_value):
