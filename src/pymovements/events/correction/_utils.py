@@ -25,7 +25,7 @@ from collections.abc import Sequence
 
 import polars as pl
 
-from pymovements._utils._expressions import as_expr
+from pymovements._utils.expressions import as_expr
 from pymovements.events.correction._aoi import get_lines_of_text_from_aois
 
 
