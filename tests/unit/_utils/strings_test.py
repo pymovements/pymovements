@@ -24,7 +24,7 @@ import re
 
 import pytest
 
-from pymovements._utils._strings import curly_to_regex
+from pymovements._utils.strings import curly_to_regex
 
 
 @pytest.mark.parametrize(

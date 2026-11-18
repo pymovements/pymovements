@@ -30,8 +30,8 @@ from typing import Any
 
 from deprecated.sphinx import deprecated
 
-from pymovements._utils._checks import check_is_mutual_exclusive
-from pymovements._utils._html import repr_html
+from pymovements._utils.checks import check_is_mutual_exclusive
+from pymovements._utils.html import repr_html
 from pymovements.dataset.websource import WebSource
 
 

@@ -448,6 +448,54 @@ def test_text_stimulus_splitting_different_between(filename, custom_read_kwargs,
     assert len(unique_values) == len(set(unique_values))
 
 
+def test_word_column_default_is_none(sample_aoi_dataframe):
+    """Test that word_column defaults to None."""
+    stimulus = TextStimulus(
+        aois=sample_aoi_dataframe,
+        aoi_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        width_column='width',
+        height_column='height',
+    )
+    assert stimulus.word_column is None
+
+
+def test_word_column_preserved_by_from_file(make_example_file):
+    """Test that from_file() preserves word_column."""
+    aoi_path = make_example_file('stimuli/toy_text_aoi.csv')
+    stimulus = text.from_file(
+        aoi_path,
+        aoi_column='char',
+        word_column='char',
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+    )
+    assert stimulus.word_column == 'char'
+
+
+def test_word_column_preserved_by_split(sample_aoi_dataframe):
+    """Test that split() preserves word_column."""
+    stimulus = TextStimulus(
+        aois=sample_aoi_dataframe,
+        aoi_column='aoi',
+        word_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+    )
+
+    splits = stimulus.split(by='page')
+
+    assert len(splits) == 2
+    assert all(split.word_column == 'aoi' for split in splits)
+
+
 def test_writing_system_default(sample_aoi_dataframe):
     """Test that default writing_system is horizontal-lr."""
     stimulus = TextStimulus(

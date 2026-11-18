@@ -42,7 +42,7 @@ import warnings
 
 import polars as pl
 
-from pymovements._utils._expressions import as_expr
+from pymovements._utils.expressions import as_expr
 
 # Expression parameters are deliberately named after the annotation columns they default to,
 # which shadows the sibling factory functions producing those columns.

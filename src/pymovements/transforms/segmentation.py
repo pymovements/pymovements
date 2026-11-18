@@ -26,7 +26,7 @@ import warnings
 import numpy as np
 import polars as pl
 
-from pymovements._utils._time import duration_to_ms
+from pymovements._utils.time import duration_to_ms
 
 
 def _to_num(series: pl.Series) -> np.ndarray:

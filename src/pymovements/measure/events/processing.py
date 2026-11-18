@@ -20,16 +20,26 @@
 """Module for event processing."""
 from __future__ import annotations
 
-from datetime import timedelta
 from typing import Any
 from warnings import warn
 
 import polars as pl
 
-from pymovements._utils._time import duration_to_ms
+from pymovements._utils.time import duration_to_ms
 from pymovements.exceptions import UnknownMeasure
 from pymovements.measure.events.measures import EVENT_MEASURES
 from pymovements.measure.samples.library import SampleMeasureLibrary
+
+# Internal column names used to vectorize the event-to-sample assignment.
+_EVENT_ID = '__pymovements_event_id'
+_ROW_ID = '__pymovements_row_id'
+_TRIAL_KEY = '__pymovements_trial_key'
+_TIME_MS = '__pymovements_time_ms'
+_ONSET_MS = '__pymovements_onset_ms'
+_OFFSET_MS = '__pymovements_offset_ms'
+_SAMPLE_IDX = '__pymovements_sample_idx'
+_START_IDX = '__pymovements_start_idx'
+_END_IDX = '__pymovements_end_idx'
 
 
 class EventProcessor:
@@ -172,86 +182,204 @@ class EventSamplesProcessor:
         # Each event is uniquely defined by a list of trial identifiers,
         # a name and its on- and offset.
         event_identifiers = [*_identifiers, 'name', 'onset', 'offset']
+        measure_columns = [measure.meta.output_name() for measure in self.measures]
 
         if name is not None:
             events = events.filter(pl.col('name').str.contains(f'^{name}$'))
             if len(events) == 0:
                 warn(f"No events found with name '{name}'.")
 
-        results = []
-
-        # Sample measures expect the time column in numeric milliseconds. The samples handed
-        # to the measures are converted below. The event time filter also compares in
-        # milliseconds so it stays correct whether or not the events and samples time dtypes
-        # match (e.g. Duration events against a numeric sample time column, or vice versa).
-        # Duration values are converted by their physical unit; a numeric time column follows
-        # the codebase convention of already being in milliseconds.
+        # Sample measures expect the time column in numeric milliseconds. The samples handed to
+        # the measures are converted below. Event bounds and sample times are additionally put
+        # on a common millisecond scale for the vectorized event membership assignment, so it
+        # stays correct whether or not the events and samples time dtypes match (e.g. Duration
+        # events against a numeric sample time column, or vice versa). Duration values are
+        # converted by their physical unit; a numeric time column follows the codebase
+        # convention of already being in milliseconds.
         time_is_duration = (
             'time' in samples.columns and isinstance(samples.schema['time'], pl.Duration)
         )
-        samples_schema = dict(samples.schema)
+        samples_work = samples
         if time_is_duration:
-            samples_schema['time'] = pl.Float64
-
-        # Time expression in milliseconds used for the event membership filter.
-        time_filter_expr = (
-            duration_to_ms('time') if time_is_duration else pl.col('time')
-        )
+            samples_work = samples_work.with_columns(duration_to_ms('time').alias('time'))
 
         if len(events) == 0:
-            measure_columns = [measure.meta.output_name() for measure in self.measures]
             warn(
                 f'No events available for processing. Creating empty columns for {measure_columns}',
             )
 
             # run measures on empty samples data frame.
-            result = pl.LazyFrame(schema=samples_schema).select(
+            return pl.LazyFrame(schema=dict(samples_work.schema)).select(
                 *[pl.repeat(None, 0).alias(column_name) for column_name in event_identifiers],
                 *self.measures,
+            ).collect()
+
+        # Give each event a stable id that preserves the original row order and bring the event
+        # bounds onto the common millisecond scale used for the sample assignment.
+        events_work = events.with_columns(
+            pl.int_range(pl.len()).alias(_EVENT_ID),
+            (
+                duration_to_ms('onset')
+                if isinstance(events.schema['onset'], pl.Duration)
+                else pl.col('onset').cast(pl.Float64)
+            ).alias(_ONSET_MS),
+            (
+                duration_to_ms('offset')
+                if isinstance(events.schema['offset'], pl.Duration)
+                else pl.col('offset').cast(pl.Float64)
+            ).alias(_OFFSET_MS),
+        )
+        samples_work = samples_work.with_columns(
+            pl.int_range(pl.len()).alias(_ROW_ID),
+            pl.col('time').cast(pl.Float64).alias(_TIME_MS),
+        )
+
+        # Assign each sample to the event it belongs to. Grouping by a hashed trial key makes the
+        # asof join operate per trial and treats null identifiers as matching values. Overlapping
+        # events are expanded to per-event sample ranges when they are detected below.
+        if _identifiers:
+            events_work = events_work.with_columns(
+                pl.struct(_identifiers).hash().alias(_TRIAL_KEY),
             )
-            results.append(result)
-
-        for event in events.iter_rows(named=True):
-            event_keys = {column: event[column] for column in event_identifiers}
-
-            # Convert the event bounds to milliseconds so they match the millisecond time
-            # filter expression regardless of the events' own time dtype.
-            onset_ms = event['onset']
-            offset_ms = event['offset']
-            if isinstance(onset_ms, timedelta):
-                onset_ms = onset_ms / timedelta(milliseconds=1)
-            if isinstance(offset_ms, timedelta):
-                offset_ms = offset_ms / timedelta(milliseconds=1)
-
-            # Find samples that belong to the current event (lazy evaluation).
-            event_samples = samples.lazy().filter(
-                time_filter_expr.is_between(onset_ms, offset_ms),
-                *[
-                    pl.col(column).is_null() if event_keys[column] is None
-                    else pl.col(column) == event_keys[column]
-                    for column in _identifiers
-                ],
+            samples_work = samples_work.with_columns(
+                pl.struct(_identifiers).hash().alias(_TRIAL_KEY),
             )
+            by_columns: list[str] | None = [_TRIAL_KEY]
+        else:
+            by_columns = None
 
-            if time_is_duration:
-                event_samples = event_samples.with_columns(
-                    duration_to_ms('time').alias('time'),
-                )
+        group_columns = by_columns or []
+        events_sorted = events_work.sort([*group_columns, _ONSET_MS, _OFFSET_MS])
+        samples_sorted = samples_work.sort([*group_columns, _TIME_MS, _ROW_ID])
 
-            # Compute event measure values and include identifier columns.
-            # Cast literals to the schema type from the events dataframe to ensure
-            # consistent schemas across all events when concatenating results.
-            result = event_samples.select(
-                *[
-                    pl.lit(event_keys[column]).cast(events.schema[column]).alias(column)
-                    for column in event_identifiers
-                ],
-                *self.measures,
-            )
-            results.append(result)
+        # The cheap asof assignment gives every sample to exactly one event, which is only correct
+        # when events do not overlap. That holds for the standard detectors, but not necessarily
+        # for a whole events frame (e.g. nested events, a fixation and a saccade sharing samples,
+        # or two events sharing a boundary sample). In that case every event needs to collect the
+        # shared samples, so fall back to expanding each event to its sample range.
+        if _events_overlap(events_sorted, by_columns):
+            assigned = _assign_samples_by_range(events_sorted, samples_sorted, by_columns)
+        else:
+            assigned = _assign_samples_asof(events_sorted, samples_sorted, by_columns)
 
-        # Collect results from lazy frame.
-        return pl.concat(results).collect()
+        # Restore the original sample order within each event so order-dependent measures
+        # (e.g. disposition) keep observing the samples in their source order, then aggregate
+        # all measures in a single pass.
+        aggregated = assigned.sort(_ROW_ID).group_by(_EVENT_ID).agg(*self.measures)
+
+        # Left-join back onto the events so events without samples get null properties and the
+        # original event order is preserved. Only the identifier columns are carried over to
+        # avoid clashing with measure columns that already exist in the events dataframe.
+        return (
+            events_work
+            .select(*event_identifiers, _EVENT_ID)
+            .join(aggregated, on=_EVENT_ID, how='left')
+            .sort(_EVENT_ID)
+            .select(*event_identifiers, *measure_columns)
+        )
+
+
+def _events_overlap(
+        events_sorted: pl.DataFrame,
+        by_columns: list[str] | None,
+) -> bool:
+    """Return whether any two events within the same group overlap.
+
+    Expects the events sorted by group, onset and offset. Event bounds are inclusive, so events
+    that only share a boundary sample overlap as well. Events with a null onset or offset have no
+    bounds to compare and are left out, so they never force the range path.
+    """
+    bounded = events_sorted.filter(
+        pl.col(_ONSET_MS).is_not_null() & pl.col(_OFFSET_MS).is_not_null(),
+    )
+    previous_offset = pl.col(_OFFSET_MS).shift(1)
+    if by_columns is not None:
+        previous_offset = previous_offset.over(by_columns)
+    return bool(bounded.select((previous_offset >= pl.col(_ONSET_MS)).any()).item())
+
+
+def _assign_samples_asof(
+        events_sorted: pl.DataFrame,
+        samples_sorted: pl.DataFrame,
+        by_columns: list[str] | None,
+) -> pl.DataFrame:
+    """Assign each sample to its event when events do not overlap.
+
+    A backward asof join assigns every sample to the event with the latest onset at or before
+    it. This is the cheap path; it requires non-overlapping events. Expects the events sorted by
+    group and onset, and the samples sorted by group, time and row id.
+    """
+    right_columns = [_EVENT_ID, _ONSET_MS, _OFFSET_MS, *(by_columns or [])]
+    assigned = samples_sorted.join_asof(
+        events_sorted.select(right_columns),
+        left_on=_TIME_MS,
+        right_on=_ONSET_MS,
+        by=by_columns,
+        strategy='backward',
+        check_sortedness=False,
+    )
+    # Drop samples before the first event and samples past the event offset.
+    return assigned.filter(
+        pl.col(_EVENT_ID).is_not_null() & (pl.col(_TIME_MS) <= pl.col(_OFFSET_MS)),
+    )
+
+
+def _assign_samples_by_range(
+        events_sorted: pl.DataFrame,
+        samples_sorted: pl.DataFrame,
+        by_columns: list[str] | None,
+) -> pl.DataFrame:
+    """Assign each sample to its events when events may overlap.
+
+    Within a group, the samples spanning an event form a contiguous range once the samples are
+    sorted by time. The first sample at or after the onset and the last sample at or before the
+    offset are found with forward and backward asof joins; the ranges are then expanded and
+    joined back onto the samples, so every overlapping event gets all of its samples. Events
+    without samples produce no range and therefore keep null properties. Expects the events
+    sorted by group and onset, and the samples sorted by group, time and row id.
+    """
+    group_columns = by_columns or []
+    samples_sorted = samples_sorted.with_columns(pl.int_range(pl.len()).alias(_SAMPLE_IDX))
+    sample_positions = samples_sorted.select([*group_columns, _TIME_MS, _SAMPLE_IDX])
+
+    starts = (
+        events_sorted
+        .join_asof(
+            sample_positions,
+            left_on=_ONSET_MS,
+            right_on=_TIME_MS,
+            by=by_columns,
+            strategy='forward',
+            check_sortedness=False,
+        )
+        .select(_EVENT_ID, pl.col(_SAMPLE_IDX).alias(_START_IDX))
+    )
+    ends = (
+        events_sorted.sort([*group_columns, _OFFSET_MS])
+        .join_asof(
+            sample_positions,
+            left_on=_OFFSET_MS,
+            right_on=_TIME_MS,
+            by=by_columns,
+            strategy='backward',
+            check_sortedness=False,
+        )
+        .select(_EVENT_ID, pl.col(_SAMPLE_IDX).alias(_END_IDX))
+    )
+    bounds = starts.join(ends, on=_EVENT_ID).filter(
+        pl.col(_START_IDX).is_not_null() & pl.col(_END_IDX).is_not_null()
+        & (pl.col(_START_IDX) <= pl.col(_END_IDX)),
+    )
+
+    return (
+        bounds
+        .select(
+            _EVENT_ID,
+            pl.int_ranges(pl.col(_START_IDX), pl.col(_END_IDX) + 1).alias(_SAMPLE_IDX),
+        )
+        .explode(_SAMPLE_IDX)
+        .join(samples_sorted, on=_SAMPLE_IDX, how='left')
+    )
 
 
 def _check_measures(

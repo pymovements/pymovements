@@ -138,6 +138,6 @@ def test_events_map_to_aois_merges_stimulus_sources(simple_stimulus: TextStimulu
         metadata={'Sources': ['raw/sub_1.csv']},
     )
 
-    events.map_to_aois(simple_stimulus, verbose=False)
+    events.map_to_aois(simple_stimulus)
 
     assert events.metadata['Sources'] == ['raw/sub_1.csv', 'stimuli/text_1_aoi.csv']
