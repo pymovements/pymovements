@@ -707,13 +707,18 @@ def bcea(
             f'but got: {confidence}',
         )
 
-    x_position = pl.col(column).list.get(0)
-    y_position = pl.col(column).list.get(1)
+    x_component = pl.col(column).list.get(0)
+    y_component = pl.col(column).list.get(1)
+
+    # Missing samples must not count towards n, or the variances come out too small.
+    is_complete = x_component.is_not_null() & y_component.is_not_null()
+    x_position = x_component.filter(is_complete)
+    y_position = y_component.filter(is_complete)
 
     x_mean = x_position.mean()
     y_mean = y_position.mean()
 
-    n_minus_one = pl.len() - 1
+    n_minus_one = x_position.len() - 1
 
     x_centered = x_position - x_mean
     y_centered = y_position - y_mean
