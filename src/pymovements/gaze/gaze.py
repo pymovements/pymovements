@@ -1395,7 +1395,8 @@ class Gaze:
         polars.exceptions.ColumnNotFoundError
             If the events lack any of the trial columns.
         polars.exceptions.SchemaError
-            If a trial column has dtypes in samples and events that are not compatible.
+            If a trial column has dtypes in samples and events that are not compatible, or values
+            in samples that do not fit its dtype in events.
         """
         if self.events is None or clear:
             self.clear_events()
@@ -1466,6 +1467,14 @@ class Gaze:
                         f"trial column '{trial_column}' has dtype {samples_dtype} in samples "
                         f'but {events_dtype} in events, which are not compatible',
                     )
+                # Compatible dtypes can still differ in range, for example Int64 and UInt8.
+                try:
+                    self.samples.get_column(trial_column).unique().cast(events_dtype)
+                except polars.exceptions.InvalidOperationError as exception:
+                    raise polars.exceptions.SchemaError(
+                        f"trial column '{trial_column}' has values in samples that do not fit "
+                        f'its dtype {events_dtype} in events',
+                    ) from exception
 
             # Only detectors that accept an ``events`` argument look at previously detected
             # events. For these, one partition of the events frame serves every trial, and

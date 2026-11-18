@@ -1377,7 +1377,7 @@ def detect_one_fixation_with_events(events, **_kwargs):
     return pm.Events(name='fixation', onsets=[0], offsets=[1])
 
 
-def dummy_detect_with_events(**_kwargs):
+def detect_one_fixation_without_events(**_kwargs):
     """Return one event."""
     return pm.Events(name='fixation', onsets=[0], offsets=[1])
 
@@ -1397,7 +1397,9 @@ def dummy_detect_with_events(**_kwargs):
         pytest.param(
             pl.Int64, pl.Null, detect_one_fixation_with_events, id='int_samples_null_events',
         ),
-        pytest.param(pl.String, pl.Int64, dummy_detect_with_events, id='detector_without_events'),
+        pytest.param(
+            pl.String, pl.Int64, detect_one_fixation_without_events, id='detector_without_events',
+        ),
     ],
 )
 def test_gaze_detect_incompatible_trial_column_dtypes_raises_exception(
@@ -1419,6 +1421,39 @@ def test_gaze_detect_incompatible_trial_column_dtypes_raises_exception(
     assert msg == (
         f"trial column 'trial' has dtype {samples_dtype} in samples but {events_dtype} "
         'in events, which are not compatible'
+    )
+
+
+@pytest.mark.parametrize(
+    ('samples_trials', 'events_trials', 'events_dtype'),
+    [
+        pytest.param([1, 300], [1, 2], pl.UInt8, id='int64_samples_uint8_events_overflow'),
+        pytest.param([-1, 1], [1, 2], pl.UInt32, id='int64_samples_uint32_events_negative'),
+        pytest.param(
+            ['a', 'c'], ['a', 'b'], pl.Enum(['a', 'b']), id='string_samples_enum_events_unknown',
+        ),
+    ],
+)
+def test_gaze_detect_trial_values_not_fitting_events_dtype_raises_exception(
+        samples_trials, events_trials, events_dtype,
+):
+    samples = pl.DataFrame({
+        'trial': [samples_trials[0]] * 50 + [samples_trials[1]] * 50,
+        'position': [[0.0, 0.0]] * 100,
+    })
+    events = pl.DataFrame(
+        {'trial': events_trials, 'name': ['fixation'] * 2, 'onset': [0, 50], 'offset': [49, 99]},
+    ).with_columns(pl.col('trial').cast(events_dtype))
+    gaze = pm.Gaze(samples, trial_columns=['trial'])
+    gaze.events = pm.Events(events)
+
+    with pytest.raises(pl.exceptions.SchemaError) as exc_info:
+        gaze.detect(detect_one_fixation_with_events)
+
+    msg, = exc_info.value.args
+    assert msg == (
+        f"trial column 'trial' has values in samples that do not fit its dtype {events_dtype} "
+        'in events'
     )
 
 
@@ -1492,7 +1527,7 @@ def test_detect_with_events_no_warning():
 
     with warnings.catch_warnings(record=True) as record:
         warnings.simplefilter('always')
-        gaze.detect(dummy_detect_with_events)
+        gaze.detect(detect_one_fixation_without_events)
 
     # Check that no UserWarning about "No events" was issued
     assert not any(
