@@ -20,6 +20,7 @@
 """Provides the registries of event and sample generators."""
 from __future__ import annotations
 
+from typing import Any
 from typing import Generic
 from typing import TypeVar
 
@@ -85,6 +86,31 @@ class _GeneratorRegistry(Generic[GeneratorT]):
         return cls.generators[name]
 
     @classmethod
+    def create(cls, name: str, **parameters: Any) -> GeneratorT:
+        """Create a generator by name.
+
+        Parameters
+        ----------
+        name: str
+            Name of the generator.
+        **parameters: Any
+            The hyperparameters of the generator, passed to its constructor.
+
+        Returns
+        -------
+        GeneratorT
+            The generator, ready to ``generate()`` as often as needed.
+
+        Raises
+        ------
+        KeyError
+            If no generator is registered under that name.
+        TypeError
+            If the generator does not take one of the parameters or misses a required one.
+        """
+        return cls.get(name)(**parameters)
+
+    @classmethod
     def names(cls) -> list[str]:
         """Return the names of all registered generators.
 
@@ -122,6 +148,33 @@ class EventGeneratorRegistry(_GeneratorRegistry[EventGenerator]):
     ----------
     generators: dict[str, type[EventGenerator]]
         Registered generator classes, keyed by their name.
+
+    Examples
+    --------
+    Create a registered generator once with its hyperparameters, then generate as often as
+    needed with the run parameters:
+
+    >>> import dataclasses
+    >>> import pymovements as pm
+    >>> @pm.synthetic.register_generator
+    ... @dataclasses.dataclass
+    ... class SteadyFixations(pm.synthetic.EventGenerator):
+    ...     name = 'steady_fixations'
+    ...     fixation_duration: float = 250.0
+    ...
+    ...     def _generate(self, *, rng, duration):
+    ...         count = int(duration * 1000 // self.fixation_duration)
+    ...         onsets = [index * self.fixation_duration for index in range(count)]
+    ...         offsets = [onset + self.fixation_duration for onset in onsets]
+    ...         return pm.Events(name=['fixation'] * count, onsets=onsets, offsets=offsets)
+    >>> generator = pm.synthetic.EventGeneratorRegistry.create(
+    ...     'steady_fixations', fixation_duration=500.0,
+    ... )
+    >>> for duration in (1.0, 2.0):
+    ...     events = generator.generate(duration=duration, seed=42)  # doctest: +IGNORE_WARNINGS
+    ...     print(events.frame['name'].to_list())
+    ['fixation', 'fixation']
+    ['fixation', 'fixation', 'fixation', 'fixation']
     """
 
     generators: dict[str, type[EventGenerator]] = {}
@@ -137,6 +190,44 @@ class SampleGeneratorRegistry(_GeneratorRegistry[SampleGenerator]):
     ----------
     generators: dict[str, type[SampleGenerator]]
         Registered generator classes, keyed by their name.
+
+    Examples
+    --------
+    Create a registered generator once with its hyperparameters, ``sampling_rate`` included,
+    then generate as often as needed with the run parameters:
+
+    >>> import dataclasses
+    >>> import numpy as np
+    >>> import polars as pl
+    >>> import pymovements as pm
+    >>> @pm.synthetic.register_generator
+    ... @dataclasses.dataclass
+    ... class QuietGaze(pm.synthetic.SampleGenerator):
+    ...     name = 'quiet_gaze'
+    ...     noise: float = 0.1
+    ...
+    ...     def _generate(self, *, rng, events):
+    ...         end = events.frame['offset'].dt.total_microseconds().max() / 1000
+    ...         time = np.arange(0, end, 1000 / self.sampling_rate)
+    ...         return pm.Gaze(
+    ...             samples=pl.DataFrame({
+    ...                 'time': time,
+    ...                 'x': rng.normal(0, self.noise, time.size),
+    ...                 'y': rng.normal(0, self.noise, time.size),
+    ...             }),
+    ...             time_column='time',
+    ...             time_unit='ms',
+    ...             position_columns=['x', 'y'],
+    ...         )
+    >>> generator = pm.synthetic.SampleGeneratorRegistry.create(
+    ...     'quiet_gaze', sampling_rate=500, noise=0.5,
+    ... )
+    >>> for offset in (500, 1000):
+    ...     events = pm.Events(name=['fixation'], onsets=[0], offsets=[offset])
+    ...     gaze = generator.generate(events=events, seed=42)  # doctest: +IGNORE_WARNINGS
+    ...     print(gaze.samples.height)
+    250
+    500
     """
 
     generators: dict[str, type[SampleGenerator]] = {}
