@@ -23,7 +23,7 @@ from __future__ import annotations
 import numpy
 import polars
 
-from pymovements._utils.time import duration_to_ms
+from pymovements._utils.time import event_times_to_ms
 from pymovements._utils.time import timesteps_to_numpy
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
@@ -46,8 +46,9 @@ def fill(
     timesteps: list[int] | numpy.ndarray | polars.Series
         shape (N, )
         Continuous 1D timestep time series. Each event covers the half-open interval
-        ``[onset, offset)``; the event ``onset`` and ``offset`` values must be in the same
-        unit as ``timesteps``. When ``events`` stores ``polars.Duration`` on- and offsets,
+        ``[onset, offset)``. The event ``onset`` and ``offset`` values must be in the same
+        unit as ``timesteps``. Without an ``offset`` column the event ends at
+        ``onset + duration``. When ``events`` stores ``polars.Duration`` time columns,
         ``timesteps`` are expected to be in milliseconds.
     minimum_duration: int
         Minimum fixation duration. The duration is specified in the units used in ``timesteps``.
@@ -67,12 +68,9 @@ def fill(
     # Create binary mask where each existing event is marked.
     events_mask = numpy.zeros(len(timesteps), dtype=bool)
 
-    # Convert Duration columns to millisecond values matching the timesteps unit.
-    events_frame = events.frame
-    if isinstance(events_frame.schema['onset'], polars.Duration):
-        events_frame = events_frame.with_columns(
-            duration_to_ms(polars.col('onset', 'offset')),
-        )
+    # Convert the event times to milliseconds to match the timesteps unit. A frame
+    # without an offset column gets one from onset + duration.
+    events_frame = event_times_to_ms(events.frame)
 
     for row in events_frame.iter_rows(named=True):
         onset = row['onset']
