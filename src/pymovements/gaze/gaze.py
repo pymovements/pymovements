@@ -82,6 +82,20 @@ def _is_numeric_or_null(dtype: polars.DataType) -> bool:
     return dtype.is_numeric() or dtype == polars.Null
 
 
+def _is_matching_trial_dtype(samples_dtype: polars.DataType, events_dtype: polars.DataType) -> bool:
+    """Return whether trial keys of these dtypes can be matched between samples and events.
+
+    Integer widths and string-like dtypes are interchangeable, and a null column matches any
+    dtype. Any other pair must be equal.
+    """
+    if polars.Null in (samples_dtype, events_dtype) or samples_dtype == events_dtype:
+        return True
+    if samples_dtype.is_integer() and events_dtype.is_integer():
+        return True
+    string_like = (polars.String, polars.Categorical, polars.Enum)
+    return isinstance(samples_dtype, string_like) and isinstance(events_dtype, string_like)
+
+
 def _list_xy_exprs(column: str, eye: str) -> tuple[polars.Expr, polars.Expr]:
     """Build expressions selecting one eye's x/y from a list column of components.
 
@@ -1358,7 +1372,9 @@ class Gaze:
         ----------
         method: Callable[..., Events] | str
             The event detection method to be applied. A method that accepts an ``events``
-            argument must neither mutate nor return it.
+            argument must neither mutate nor return it. With trial columns, it receives only the
+            events of the current trial. As in :py:meth:`~.Gaze.split`, samples with a null
+            trial receive events with a null trial.
         eye: str
             Select which eye to choose. Valid options are ``auto``, ``left``, ``right`` or ``None``.
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
@@ -1426,6 +1442,17 @@ class Gaze:
                     f'trial columns {missing_trial_columns} missing from events, '
                     f'available columns: {self.events.frame.columns}',
                 )
+
+            # Trials are matched to their events by key value. Keys of different kinds never
+            # match, so every trial would silently get no events.
+            for trial_column in self.trial_columns:
+                samples_dtype = self.samples.schema[trial_column]
+                events_dtype = self.events.frame.schema[trial_column]
+                if not _is_matching_trial_dtype(samples_dtype, events_dtype):
+                    raise polars.exceptions.SchemaError(
+                        f"trial column '{trial_column}' has dtype {samples_dtype} in samples "
+                        f'but {events_dtype} in events, which do not match',
+                    )
 
             # Only detectors that accept an ``events`` argument look at previously detected
             # events. For these, one partition of the events frame serves every trial, and

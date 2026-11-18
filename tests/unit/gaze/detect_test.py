@@ -1372,6 +1372,52 @@ def test_gaze_detect_missing_trial_column_events_raises_exception():
     )
 
 
+def detect_one_fixation_with_events(events, **_kwargs):
+    del events
+    return pm.Events(name='fixation', onsets=[0], offsets=[1])
+
+
+def detect_one_fixation(**_kwargs):
+    return pm.Events(name='fixation', onsets=[0], offsets=[1])
+
+
+@pytest.mark.parametrize(
+    ('samples_dtype', 'events_dtype', 'method'),
+    [
+        pytest.param(
+            pl.String, pl.Int64, detect_one_fixation_with_events, id='string_samples_int_events',
+        ),
+        pytest.param(
+            pl.Int64, pl.String, detect_one_fixation_with_events, id='int_samples_string_events',
+        ),
+        pytest.param(
+            pl.Float64, pl.Int64, detect_one_fixation_with_events, id='float_samples_int_events',
+        ),
+        pytest.param(pl.String, pl.Int64, detect_one_fixation, id='detector_without_events'),
+    ],
+)
+def test_gaze_detect_incompatible_trial_column_dtypes_raises_exception(
+        samples_dtype, events_dtype, method,
+):
+    samples = pl.DataFrame(
+        {'trial': [1] * 50 + [2] * 50, 'position': [[0.0, 0.0]] * 100},
+    ).with_columns(pl.col('trial').cast(samples_dtype))
+    events = pl.DataFrame(
+        {'trial': [1, 2], 'name': ['fixation'] * 2, 'onset': [0, 50], 'offset': [49, 99]},
+    ).with_columns(pl.col('trial').cast(events_dtype))
+    gaze = pm.Gaze(samples, trial_columns=['trial'])
+    gaze.events = pm.Events(events)
+
+    with pytest.raises(pl.exceptions.SchemaError) as exc_info:
+        gaze.detect(method)
+
+    msg, = exc_info.value.args
+    assert msg == (
+        f"trial column 'trial' has dtype {samples_dtype} in samples but {events_dtype} "
+        'in events, which do not match'
+    )
+
+
 @pytest.mark.parametrize(
     ('method', 'column'),
     [
@@ -1606,6 +1652,22 @@ def test_detect_selects_group_events_for_multiple_trial_columns():
             ),
             [2, 1],
             id='differing_trial_dtypes',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'trial': ['a'] * 50 + ['b'] * 50,
+                    'position': [[0.0, 0.0]] * 100,
+                }, schema_overrides={'trial': pl.Categorical},
+            ),
+            pl.DataFrame({
+                'trial': ['a', 'a', 'b'],
+                'name': ['fixation', 'saccade', 'fixation'],
+                'onset': [0, 25, 50],
+                'offset': [24, 49, 99],
+            }),
+            [2, 1],
+            id='categorical_samples_string_events',
         ),
         pytest.param(
             pl.DataFrame({
