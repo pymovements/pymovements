@@ -526,7 +526,9 @@ def test_gaze_compute_event_properties_time_based_sample_measure():
         time_column='time',
         time_unit='ms',
         pixel_columns=['x', 'y'],
-        events=Events(name=['fixation'], onsets=[0], offsets=[3]),
+        events=Events(
+            name=['fixation'], onsets=[0], offsets=[3], offsets_inclusive=True, sampling_rate=1000,
+        ),
     )
 
     gaze.compute_event_properties(('data_loss', {'column': 'pixel', 'sampling_rate': 1000.0}))

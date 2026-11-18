@@ -46,6 +46,7 @@ from pymovements._utils.time import durations_to_ms
 from pymovements._utils.time import time_column_to_duration_us
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
+from pymovements.events._utils.selection import resolve_sampling_rate
 from pymovements.events.events import _carry_detected_entries
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.quality import DataQualityReport
@@ -59,7 +60,10 @@ from pymovements.gaze.validation import check_time_monotone
 from pymovements.gaze.validation import check_trial_columns_dtype
 from pymovements.gaze.validation import check_trial_columns_exist
 from pymovements.gaze.validation import CheckResult
+from pymovements.measure.events.measures import EVENT_MEASURES
+from pymovements.measure.events.processing import EventProcessor
 from pymovements.measure.events.processing import EventSamplesProcessor
+from pymovements.measure.events.processing import measures_with_kwargs
 from pymovements.measure.reading import ReadingMeasures
 from pymovements.measure.samples.library import SampleMeasureLibrary
 from pymovements.stimulus import TextStimulus
@@ -1551,12 +1555,32 @@ class Gaze:
         """Calculate event properties for given events.
 
         The calculated event properties are added as columns to
-        :py:attr:`~pymovements.Gaze.events`.
+        :py:attr:`~pymovements.Gaze.events`. Each property is an event measure
+        (:ref:`event-measures`), computed from the columns of the events frame, or a sample
+        measure (:ref:`sample-measures`), computed from the samples of each event. A name found
+        in both registries resolves to the event measure. The event measures run first, so a
+        recomputed ``duration`` is the one the sample measures select by.
+
+        A sample measure selects the samples in the half-open interval from the onset to
+        ``onset + duration``. With a sampling rate the interval ends half a sampling interval
+        early, so a sample that arrives slightly early stays out of the preceding event. Events
+        with a ``null`` or ``0`` duration keep their rows with null properties.
+
+        A measure that accepts ``sampling_rate`` receives the rate of the events when the
+        keyword arguments give none: the ``sampling_rate`` entry of
+        :py:attr:`~pymovements.Events.metadata` first, the experiment second. The same rate sets
+        the tolerance of the sample selection. The column written by the ``offset`` measure
+        gets its convention entry, ``metadata[<column>] = {'inclusive': ...}``, with the
+        ``inclusive`` value used.
+
+        A property whose column already exists overwrites it with a warning. For the ``offset``
+        measure the entry is rewritten as well.
 
         Parameters
         ----------
         event_properties: str | tuple[str, dict[str, Any]] | list[str | tuple[str, dict[str, Any]]]
-            The event properties to compute.
+            The event properties to compute, each a measure name or a tuple of a name and its
+            keyword arguments.
         name: str | None
             Process only events that match the name. (default: None)
 
@@ -1567,6 +1591,12 @@ class Gaze:
             :ref:`event-measures` for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
+
+        Examples
+        --------
+        >>> gaze.compute_event_properties(('offset', {'inclusive': True}))  # doctest: +SKIP
+        >>> gaze.compute_event_properties(('duration', {'offsets_inclusive': True}))  # doctest: +SKIP
+        >>> gaze.compute_event_properties(['peak_velocity', 'amplitude'])  # doctest: +SKIP
         """
         if len(self.events) == 0:
             warn(
@@ -1575,23 +1605,93 @@ class Gaze:
             )
 
         identifiers = self.trial_columns if self.trial_columns is not None else []
+        sampling_rate = resolve_sampling_rate(self.events, self.experiment)
 
-        processor = EventSamplesProcessor(event_properties)
-        results = processor.process(
-            self.events.frame, self.samples, identifiers=identifiers, name=name,
-        )
+        event_measures: list[tuple[str, dict[str, Any]]] = []
+        sample_measures: list[tuple[str, dict[str, Any]]] = []
+        for measure_name, given_kwargs in measures_with_kwargs(event_properties):
+            # A copy: the caller's dictionaries stay as passed.
+            measure_kwargs = dict(given_kwargs)
+            if measure_name in EVENT_MEASURES:
+                measure = EVENT_MEASURES[measure_name]
+                event_measures.append((measure_name, measure_kwargs))
+            else:
+                measure = SampleMeasureLibrary.measures.get(measure_name)
+                sample_measures.append((measure_name, measure_kwargs))
+            if (
+                    measure is not None and sampling_rate is not None
+                    and 'sampling_rate' in inspect.signature(measure).parameters
+                    and measure_kwargs.get('sampling_rate') is None
+            ):
+                measure_kwargs['sampling_rate'] = sampling_rate
 
-        join_on = identifiers + ['name', 'onset', 'offset']
-        column_intersection = set(self.events.columns) & set(results.columns)
-        overwrite_columns = list(column_intersection - set(join_on))
+        if event_measures:
+            self._compute_event_measures(event_measures, name=name)
+
+        if sample_measures:
+            processor = EventSamplesProcessor(sample_measures)
+            results = processor.process(
+                self.events.frame, self.samples,
+                identifiers=identifiers, name=name, sampling_rate=sampling_rate,
+            )
+
+            join_on = identifiers + ['name', 'onset', 'duration']
+            column_intersection = set(self.events.columns) & set(results.columns)
+            overwrite_columns = list(column_intersection - set(join_on))
+            if overwrite_columns:
+                warn(
+                    'The following columns already exist in event and will be overwritten: '
+                    f'{overwrite_columns}',
+                )
+                self.events.drop(overwrite_columns)
+            if results.height:
+                self.events.add_event_properties(results, join_on=join_on)
+
+    def _compute_event_measures(
+            self,
+            measures: list[tuple[str, dict[str, Any]]],
+            name: str | None,
+    ) -> None:
+        """Write the columns of event measures into the events frame, one measure at a time.
+
+        An event measure derives its column from the other columns of the same row, so the
+        result is written in place instead of joined: a recomputed ``duration`` would otherwise
+        have to serve as its own join key. The measures apply in the given order, each seeing
+        the columns the previous ones wrote. With ``name`` given, rows of other events keep
+        their existing value, or get null in a new column.
+
+        Parameters
+        ----------
+        measures: list[tuple[str, dict[str, Any]]]
+            The event measures, each a registry name with its keyword arguments.
+        name: str | None
+            Process only events that match the name.
+        """
+        processor = EventProcessor(measures)
+        output_names = [measure.meta.output_name() for measure in processor.measures]
+
+        overwrite_columns = [column for column in output_names if column in self.events.columns]
         if overwrite_columns:
             warn(
                 'The following columns already exist in event and will be overwritten: '
                 f'{overwrite_columns}',
             )
-            self.events.drop(overwrite_columns)
-        if results.height:
-            self.events.add_event_properties(results, join_on=join_on)
+
+        mask = polars.col('name').str.contains(f'^{name}$') if name is not None else None
+        for (measure_name, measure_kwargs), measure, column in zip(
+                measures, processor.measures, output_names,
+        ):
+            expression = measure
+            if mask is not None:
+                expression = (
+                    polars.when(mask)
+                    .then(measure)
+                    .otherwise(polars.col(column) if column in self.events.columns else None)
+                    .alias(column)
+                )
+            self.events.frame = self.events.frame.with_columns(expression)
+            if measure_name == 'offset':
+                self.events.metadata[column] = {'inclusive': measure_kwargs['inclusive']}
 
     def measure_samples(
             self,

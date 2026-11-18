@@ -31,6 +31,7 @@ from polars.testing import assert_frame_equal
 from pymovements import Events
 from pymovements import Experiment
 from pymovements import Gaze
+from polars.testing import assert_series_equal
 
 
 @pytest.fixture(name='make_gaze_with_events', scope='function')
@@ -1718,6 +1719,8 @@ def test_gaze_compute_event_properties_overwrites_column(existing_amplitude, exp
                 'offset': [4],
                 'amplitude': [existing_amplitude],
             }),
+            offsets_inclusive=True,
+            sampling_rate=1000,
         ),
     )
 
@@ -1754,10 +1757,181 @@ def test_gaze_compute_event_properties_null_trial():
                     'trial_id': [1, None],
                 },
             ),
+            offsets_inclusive=True,
+            sampling_rate=1000,
         ),
     )
     gaze.compute_event_properties('location')
     assert gaze.events.frame['location'].to_list() == [[0.5, 0.5], [2.5, 2.5]]
+
+
+def _duration_us(values):
+    return pl.Series(values, dtype=pl.Int64).cast(pl.Duration('us'))
+
+
+@pytest.mark.parametrize(
+    'rate_source',
+    [
+        pytest.param('entry', id='rate_from_events_entry'),
+        pytest.param('experiment', id='rate_from_experiment'),
+    ],
+)
+def test_gaze_compute_event_properties_offset_reproduces_stored_offsets(rate_source):
+    # Events built the way the detectors build them: inclusive offsets on a 1000 Hz grid.
+    stored = Events(
+        name=['fixation', 'saccade'], onsets=[0, 10], offsets=[4, 12],
+        offsets_inclusive=True, sampling_rate=1000,
+    )
+    stored_offsets = stored.frame['offset']
+
+    if rate_source == 'entry':
+        events = stored
+        events.drop('offset')
+        experiment = None
+    else:
+        events = Events(name=['fixation', 'saccade'], onsets=[0, 10], durations=[5, 3])
+        experiment = Experiment(sampling_rate=1000)
+    assert 'sampling_rate' not in events.metadata or rate_source == 'entry'
+    gaze = Gaze(events=events, experiment=experiment)
+
+    gaze.compute_event_properties(('offset', {'inclusive': True}))
+
+    assert_series_equal(gaze.events.frame['offset'], stored_offsets)
+
+
+def test_gaze_compute_event_properties_runs_event_measures_with_kwargs():
+    gaze = Gaze(
+        events=Events(
+            name=['fixation', 'saccade'], onsets=[0, 10], durations=[5, 3], sampling_rate=1000,
+        ),
+    )
+
+    with pytest.warns(
+            UserWarning,
+            match=r"already exist in event and will be overwritten: \['duration'\]",
+    ):
+        gaze.compute_event_properties([
+            ('offset', {'inclusive': False}),
+            ('duration', {'offsets_inclusive': False}),
+        ])
+
+    assert_series_equal(gaze.events.frame['offset'], _duration_us([5000, 13000]).alias('offset'))
+    assert_series_equal(
+        gaze.events.frame['duration'], _duration_us([5000, 3000]).alias('duration'),
+    )
+
+
+def test_gaze_compute_event_properties_offset_inclusive_without_rate_raises():
+    gaze = Gaze(events=Events(name=['fixation'], onsets=[0], durations=[5]))
+
+    with pytest.raises(ValueError, match='inclusive=True requires a sampling_rate'):
+        gaze.compute_event_properties(('offset', {'inclusive': True}))
+
+
+def test_gaze_compute_event_properties_offset_exclusive_without_rate():
+    gaze = Gaze(events=Events(name=['fixation', 'saccade'], onsets=[0, 10], durations=[5, 3]))
+
+    gaze.compute_event_properties(('offset', {'inclusive': False}))
+
+    assert_series_equal(gaze.events.frame['offset'], _duration_us([5000, 13000]).alias('offset'))
+
+
+@pytest.mark.parametrize(
+    ('inclusive', 'expected_offsets_us'),
+    [
+        pytest.param(True, [4000, None, None], id='inclusive_null_for_impulse_and_null'),
+        pytest.param(False, [5000, 10000, None], id='exclusive_onset_for_impulse'),
+    ],
+)
+def test_gaze_compute_event_properties_offset_impulse_and_null_rows(
+        inclusive, expected_offsets_us,
+):
+    gaze = Gaze(
+        events=Events(
+            pl.DataFrame({
+                'name': ['fixation', 'impulse', 'unknown'],
+                'onset': [0, 10, 20],
+                'duration': [5, 0, None],
+            }),
+            sampling_rate=1000,
+        ),
+    )
+
+    gaze.compute_event_properties(('offset', {'inclusive': inclusive}))
+
+    assert_series_equal(
+        gaze.events.frame['offset'], _duration_us(expected_offsets_us).alias('offset'),
+    )
+
+
+def test_gaze_compute_event_properties_duration_recomputes_in_place():
+    # Durations of at least one sampling interval: offset() then duration() is the identity.
+    gaze = Gaze(
+        events=Events(
+            name=['fixation', 'saccade', 'blink'], onsets=[0, 10, 20], durations=[5, 3, 1],
+            sampling_rate=1000,
+        ),
+    )
+    gaze.compute_event_properties(('offset', {'inclusive': True}))
+    expected_frame = gaze.events.frame.clone()
+    gaze.events.frame = gaze.events.frame.with_columns(
+        pl.lit(0).cast(pl.Duration('us')).alias('duration'),
+    )
+
+    with pytest.warns(
+            UserWarning,
+            match=r"already exist in event and will be overwritten: \['duration'\]",
+    ):
+        gaze.compute_event_properties(('duration', {'offsets_inclusive': True}))
+
+    assert_frame_equal(gaze.events.frame, expected_frame)
+
+
+@pytest.mark.parametrize(
+    ('measure', 'missing'),
+    [
+        pytest.param('offset', 'inclusive', id='offset_without_inclusive'),
+        pytest.param('duration', 'offsets_inclusive', id='duration_without_offsets_inclusive'),
+    ],
+)
+def test_gaze_compute_event_properties_missing_keyword_raises(measure, missing):
+    gaze = Gaze(
+        events=Events(name=['fixation'], onsets=[0], offsets=[4], offsets_inclusive=True,
+                      sampling_rate=1000),
+    )
+
+    with pytest.raises(TypeError, match=f"missing 1 required keyword-only argument: '{missing}'"):
+        gaze.compute_event_properties((measure, {}))
+
+
+def test_gaze_compute_event_properties_offset_entry_set_and_rewritten():
+    gaze = Gaze(
+        events=Events(name=['fixation', 'saccade'], onsets=[0, 10], durations=[5, 3],
+                      sampling_rate=1000),
+    )
+
+    gaze.compute_event_properties(('offset', {'inclusive': True}))
+    assert gaze.events.metadata['offset'] == {'inclusive': True}
+    assert_series_equal(gaze.events.frame['offset'], _duration_us([4000, 12000]).alias('offset'))
+
+    with pytest.warns(
+            UserWarning,
+            match=r"already exist in event and will be overwritten: \['offset'\]",
+    ):
+        gaze.compute_event_properties(('offset', {'inclusive': False}))
+    assert gaze.events.metadata['offset'] == {'inclusive': False}
+    assert_series_equal(gaze.events.frame['offset'], _duration_us([5000, 13000]).alias('offset'))
+
+
+def test_gaze_compute_event_properties_event_measure_with_name():
+    gaze = Gaze(
+        events=Events(name=['fixation', 'saccade'], onsets=[0, 10], durations=[5, 3],
+                      sampling_rate=1000),
+    )
+
+    gaze.compute_event_properties(('offset', {'inclusive': False}), name='fixation')
+
+    assert_series_equal(gaze.events.frame['offset'], _duration_us([5000, None]).alias('offset'))
 
 
 @pytest.mark.parametrize(
