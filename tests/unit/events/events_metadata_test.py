@@ -512,6 +512,18 @@ def test_metadata_non_numeric_sampling_rate_entry_raises(sampling_rate, expected
         Events(onsets=[0], durations=[5], metadata={'sampling_rate': sampling_rate})
 
 
+@pytest.mark.parametrize(
+    ('inclusive', 'expected_match'),
+    [
+        pytest.param('false', r"must be a bool, but is 'false'\.", id='str'),
+        pytest.param(1, r'must be a bool, but is 1\.', id='int'),
+    ],
+)
+def test_metadata_non_bool_offset_convention_entry_raises(inclusive, expected_match):
+    with pytest.raises(ValueError, match=expected_match):
+        Events(onsets=[0], offsets=[5], metadata={'offset': {'inclusive': inclusive}})
+
+
 @pytest.mark.parametrize('offsets_inclusive', [True, False])
 def test_metadata_offsets_inclusive_without_offset_column_writes_no_entry(offsets_inclusive):
     with pytest.warns(UserWarning, match="no 'offset' column"):

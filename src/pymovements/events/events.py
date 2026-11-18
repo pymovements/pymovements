@@ -96,10 +96,16 @@ def _resolve_offset_convention(
     Raises
     ------
     ValueError
-        If the keyword differs from the ``offset`` entry.
+        If the ``inclusive`` value of the ``offset`` entry is not a bool, or if the keyword
+        differs from the ``offset`` entry.
     """
     entry = metadata.get('offset')
     entry_inclusive = entry.get('inclusive') if isinstance(entry, dict) else None
+    if entry_inclusive is not None and not isinstance(entry_inclusive, bool):
+        raise ValueError(
+            "the metadata entry metadata['offset']['inclusive'] must be a bool, "
+            f'but is {entry_inclusive!r}.',
+        )
     if (
             offsets_inclusive is not None and entry_inclusive is not None
             and offsets_inclusive != entry_inclusive
@@ -564,7 +570,8 @@ class Events:
         If ``durations`` or ``offsets`` are passed without ``onsets``, if their lengths do not
         match the length of ``onsets``, if ``time_unit`` is not one of ``'s'``, ``'ms'`` or
         ``'us'``, if ``sampling_rate`` is not positive, if the sampling-rate entry in
-        ``metadata`` is not a positive number, if durations are derived from inclusive offsets
+        ``metadata`` is not a positive number, if the ``inclusive`` value of the ``offset``
+        entry in ``metadata`` is not a bool, if durations are derived from inclusive offsets
         without a sampling rate, if every row contradicts the declared offset convention, or if
         ``offsets_inclusive`` or ``sampling_rate`` differs from its entry in ``metadata``.
 
