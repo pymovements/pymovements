@@ -959,7 +959,7 @@ from pymovements.synthetic import step_function
         ),
 
         # fill: the gaze's own events declare the inclusive convention and the filled rows
-        # count the nominal interval. fill reads an existing offset as exclusive (#1795).
+        # count the nominal interval. fill reads an existing offset as exclusive.
         pytest.param(
             'fill',
             {'sampling_rate': 1000},
