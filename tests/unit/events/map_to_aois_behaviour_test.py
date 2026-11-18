@@ -635,6 +635,24 @@ def test_map_to_aois_valid_key_still_matches(stimulus_with_trials: TextStimulus)
     assert events.frame.get_column('label').to_list() == ['A']
 
 
+def test_map_to_aois_key_without_aois_gets_no_aoi(stimulus_with_trials: TextStimulus) -> None:
+    """A fixation whose key has no AOIs gets no AOI, other keys still match theirs."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'fixation'],
+            'onset': [0, 1],
+            'offset': [1, 2],
+            'location': [[5.0, 5.0], [5.0, 5.0]],
+            'trial': [1, 3],
+        },
+    )
+    events = Events(data=df, trial_columns=['trial'])
+
+    events.map_to_aois(stimulus_with_trials)
+
+    assert events.frame.get_column('label').to_list() == ['A', None]
+
+
 def test_map_to_aois_non_numeric_coordinates_get_no_match_and_warn(
     simple_stimulus: TextStimulus,
 ) -> None:
