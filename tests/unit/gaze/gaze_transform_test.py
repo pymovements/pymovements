@@ -869,6 +869,33 @@ def fixture_experiment():
             id='clip',
         ),
 
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    {
+                        'time': [1000, 1001, 1002, 1003],
+                        'x_pix': [-50, 5, 50, None],
+                        'y_pix': [4, 5, 6, 7],
+                    },
+                ),
+                'pixel_columns': ['x_pix', 'y_pix'],
+            },
+            'nullify', {
+                'input_column': 'pixel', 'output_column': 'pixel', 'n_components': 2,
+                'lower_bound': 1, 'upper_bound': 10,
+            },
+            pm.Gaze(
+                samples=pl.from_dict(
+                    {
+                        'time': [1000, 1001, 1002, 1003],
+                        'pixel': [None, [5, 5], None, [None, 7]],
+                    },
+                    schema={'time': pl.Int64, 'pixel': pl.List(pl.Int64)},
+                ),
+            ),
+            id='nullify',
+        ),
+
     ],
 )
 def test_gaze_transform_expected_frame(
@@ -1327,6 +1354,28 @@ def test_gaze_clip_creates_new_column(experiment):
         pixel_columns=['x_pix', 'y_pix'],
     )
     gaze.clip(
+        input_column='pixel',
+        output_column='pixel_new',
+        n_components=2,
+        lower_bound=1,
+        upper_bound=10,
+    )
+    assert 'pixel_new' in gaze.columns
+
+
+def test_gaze_nullify_creates_new_column(experiment):
+    gaze = pm.Gaze(
+        samples=pl.from_dict(
+            {
+                'time': [1000, 1001, 1002, 1003],
+                'x_pix': [1, 5, 10, None],
+                'y_pix': [4, 5, 6, 7],
+            },
+        ),
+        experiment=experiment,
+        pixel_columns=['x_pix', 'y_pix'],
+    )
+    gaze.nullify(
         input_column='pixel',
         output_column='pixel_new',
         n_components=2,
