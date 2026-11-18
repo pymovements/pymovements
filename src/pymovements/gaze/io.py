@@ -546,7 +546,8 @@ def from_asc(
 
     Message lines can carry a timestamp offset, ``MSG <timestamp> [offset] <text>``. The offset is
     a signed integer in milliseconds, and the message refers to an event at ``timestamp - offset``.
-    The parsed message time is this corrected time, and messages are sorted by it. The offset is
+    The parsed message time is this corrected time, and messages are sorted by it. Calibrations and
+    validations parsed from message lines also carry the corrected time. The offset is
     removed from the content, so ``patterns`` and ``metadata_patterns`` match the text without it.
 
     ==============================  ==========  ===============
@@ -558,8 +559,9 @@ def from_asc(
     ==============================  ==========  ===============
 
     A leading integer counts as an offset only if more text follows. Message text that starts with
-    an integer followed by more text is therefore misread, as in the last row. Columns added by
-    ``patterns`` change at the message's line in the file, not at its corrected time.
+    an integer followed by more text is therefore misread, as in the last row. If an offset is
+    larger than its timestamp, the corrected time is negative and a warning is raised. Columns
+    added by ``patterns`` change at the message's line in the file, not at its corrected time.
 
     Examples
     --------

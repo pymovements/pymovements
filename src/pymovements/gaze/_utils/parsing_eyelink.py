@@ -727,11 +727,12 @@ def parse_eyelink(
         )
 
     messages_list: list[tuple[float, str]] = []
+    num_negative_message_times = 0
 
-    cal_timestamp = ''
+    cal_timestamp: float | None = None
 
-    validations = []
-    calibrations = []
+    validations: list[dict[str, Any]] = []
+    calibrations: list[dict[str, Any]] = []
     recording_config: list[dict[str, Any]] = []
     samples_config: list[dict[str, Any]] = []
     start_recording_timestamp: str | None = None
@@ -809,9 +810,9 @@ def parse_eyelink(
                 samples['time'].append(timestamp)
 
             # A sample line directly after !CAL ends the calibration entry with its timestamp only.
-            if cal_timestamp:
+            if cal_timestamp is not None:
                 calibrations.append({'timestamp': cal_timestamp})
-                cal_timestamp = ''
+                cal_timestamp = None
 
             continue
 
@@ -828,8 +829,12 @@ def parse_eyelink(
             context_timeline[offset] = {**current_additional}
 
         # msg_prefix and the message regexes below expect no offset, so all matching from here on
-        # uses the line without it.
+        # uses the line without it. Its timestamp is not corrected, so times come from message.
         line_without_offset, message = _parse_message(line)
+        if message is not None:
+            message_time, _ = message
+            if message_time < 0:
+                num_negative_message_times += 1
 
         # Then process patterns and update context for subsequent lines
         matched_ctx = _check_patterns(line_without_offset, compiled_patterns)
@@ -855,7 +860,7 @@ def parse_eyelink(
                     is_binocular = True
             current_layout = layout
 
-        if cal_timestamp:
+        if cal_timestamp is not None:
             # if a calibration timestamp has been found, the next line will be a
             # calibration pattern, if not, there will only be the timestamp added to the overview
 
@@ -868,7 +873,7 @@ def parse_eyelink(
                 if (match := _match_regex(CALIBRATION_REGEX, line_without_offset))
                 else {'timestamp': cal_timestamp},
             )
-            cal_timestamp = ''
+            cal_timestamp = None
 
         elif match := _match_regex(RECORDING_CONFIG_REGEX, line_without_offset):
             # Drop optional groups that weren't present for legacy behaviour
@@ -917,14 +922,18 @@ def parse_eyelink(
         if messages and message:
             messages_list.append(message)
 
-        if match := _match_regex(CALIBRATION_TIMESTAMP_REGEX, line_without_offset):
-            cal_timestamp = match.groupdict()['timestamp']
+        if message is not None and _match_regex(CALIBRATION_TIMESTAMP_REGEX, line_without_offset):
+            cal_timestamp = message_time
 
-        elif match := _match_regex(VALIDATION_REGEX, line_without_offset):
-            validations.append(match.groupdict())
+        elif message is not None and (
+            match := _match_regex(VALIDATION_REGEX, line_without_offset)
+        ):
+            validations.append({**match.groupdict(), 'timestamp': message_time})
 
-        elif match := _match_regex(VALIDATION_ABORTED_REGEX, line_without_offset):
-            validation = match.groupdict()
+        elif message is not None and (
+            match := _match_regex(VALIDATION_ABORTED_REGEX, line_without_offset)
+        ):
+            validation = {**match.groupdict(), 'timestamp': message_time}
             validation['tracked_eye'] = (
                 'LEFT' if validation['tracked_eye'] == 'L' else 'RIGHT'
             )
@@ -980,6 +989,13 @@ def parse_eyelink(
 
     if not metadata:
         warnings.warn('No metadata found. Please check the file for errors.')
+
+    if num_negative_message_times:
+        warnings.warn(
+            f"{num_negative_message_times} message lines in file '{file_name}' have an offset "
+            'larger than their timestamp, so their corrected time is negative. '
+            'The leading integer of these lines may be part of the message text.',
+        )
 
     # Match events using collected starts/ends and context timeline
     matched_events = _match_events_with_context(
