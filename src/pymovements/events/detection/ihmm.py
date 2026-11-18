@@ -1210,7 +1210,7 @@ def ihmm(
     ------
     TypeError
         If velocities is a polars Series whose dtype is not List.
-        If timesteps is a polars Series whose dtype is neither numeric nor Duration.
+        If timesteps is neither a Duration series nor of a numeric dtype.
         If minimum_duration is not an integer.
     ValueError
         If sampling_rate is not positive.
