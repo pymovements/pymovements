@@ -1387,20 +1387,31 @@ class Gaze:
             existing events carry an offset column without a convention entry, unless ``clear``
             is ``True``.
         """
-        if self.events is None or clear:
-            self.clear_events()
-
         if isinstance(method, str):
             method = EventDetectionLibrary.get(method)
+
+        method_argspec = inspect.getfullargspec(method)
+        method_args = method_argspec.args + method_argspec.kwonlyargs
+
+        # The sampling rate is resolved before the events are cleared, so a missing rate
+        # leaves the existing events as they are.
+        if 'sampling_rate' in method_args and kwargs.get('sampling_rate') is None:
+            if self.experiment is None or self.experiment.sampling_rate is None:
+                raise ValueError(
+                    f"{getattr(method, '__name__', method)} requires a sampling_rate, but the "
+                    'gaze has no experiment sampling rate. Pass Experiment(sampling_rate=...) '
+                    'to the gaze or sampling_rate= to detect().',
+                )
+            kwargs['sampling_rate'] = self.experiment.sampling_rate
+
+        if self.events is None or clear:
+            self.clear_events()
 
         # Events detected from this gaze object share its source files. This also covers
         # events containers replaced after construction, e.g. by Dataset.clear_events().
         # Merging after method resolution keeps detect free of side effects when the
         # method name is invalid.
         self.events.metadata = merge_sources(self.events.metadata, self.metadata)
-
-        method_argspec = inspect.getfullargspec(method)
-        method_args = method_argspec.args + method_argspec.kwonlyargs
 
         if self.n_components is not None:
             eye_components = self._infer_eye_components(eye)
@@ -2893,15 +2904,6 @@ class Gaze:
                 kwargs['timesteps'] = duration_to_ms(timesteps_series)
             else:
                 kwargs['timesteps'] = timesteps_series
-
-        if 'sampling_rate' in method_args and kwargs.get('sampling_rate') is None:
-            if self.experiment is None or self.experiment.sampling_rate is None:
-                raise ValueError(
-                    f"{getattr(method, '__name__', method)} requires a sampling_rate, but the "
-                    'gaze has no experiment sampling rate. Pass Experiment(sampling_rate=...) '
-                    'to the gaze or sampling_rate= to detect().',
-                )
-            kwargs['sampling_rate'] = self.experiment.sampling_rate
 
         return kwargs
 
