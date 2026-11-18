@@ -62,10 +62,11 @@ class StatisticalSampleGenerator(SampleGenerator):
     Conditioned on a gap-free event sequence, each event gets a velocity profile, built at
     ``profile_sampling_rate``: fixations are a small fluctuation above zero, saccades follow a
     Gamma-shaped profile, and smooth pursuits open with a sigmoid onset before a constant, growing
-    or decreasing pursuit. Each sample is then the mean of the profile from its own time up to the
-    next sample, and measurement noise is added last. Events with trial columns are generated
-    trial by trial. An event with a duration of zero gets no samples and stays in the attached
-    events, while a null duration is rejected, as the end is unknown, and so is a negative one.
+    or decreasing pursuit. Each sample is then the mean of the profile since the previous sample,
+    so the signal trails its events by up to one sample, and measurement noise is added last.
+    Events with trial columns are generated trial by trial. An event with a duration of zero gets
+    no samples and stays in the attached events, while a null duration is rejected, as the end is
+    unknown, and so is a negative one.
 
     Each random quantity is a :py:class:`~pymovements.synthetic.Range`, given as a range, a
     ``(minimum, maximum)`` pair for a uniform range, or a single value. Durations are in
@@ -496,16 +497,17 @@ def _range(value: RangeLike) -> Range:
 
 
 def _resample(profile: np.ndarray, profile_times: np.ndarray, times: np.ndarray) -> np.ndarray:
-    """Return the mean of the profile from each sample's time up to the next sample's.
+    """Return the mean of the profile since the previous sample's time, up to each sample's own.
 
-    Fuhl et al. §3.5 average the values between two sampling positions. Each window starts at its
-    own sample, so a sample stamped at an onset belongs to that event. A window holding no
-    profile value falls back to the profile at the sample's time.
+    Fuhl et al. §3.5 take the mean of all values from the last sampling position to the new one,
+    so a sample stamped at an onset still averages the event before it. The first sample has no
+    previous one and takes the profile points up to its own time. A window holding no profile
+    value falls back to the profile at the sample's time.
     """
     resampled = np.interp(times, profile_times, profile)
 
-    starts = np.searchsorted(profile_times, times, side='left')
-    ends = np.append(starts[1:], profile.size)
+    ends = np.searchsorted(profile_times, times, side='right')
+    starts = np.append(0, ends[:-1])
     cumulative = np.concatenate(([0.0], np.cumsum(profile)))
     counts = ends - starts
     sums = cumulative[ends] - cumulative[starts]

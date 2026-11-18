@@ -285,23 +285,28 @@ def test_orders_unsorted_events(contiguous_events):
     assert_frame_equal(unsorted.samples, ordered.samples)
 
 
-def test_sample_at_an_onset_belongs_to_that_event():
-    """Each sample averages the profile up to the next sample, so the ground truth does not lag.
+def test_sample_averages_the_interval_that_ends_at_it():
+    """Fuhl et al. §3.5: each sample is the mean from the last sampling position to its own.
 
-    The fixation has no jitter, so every sample stamped inside it must be exactly zero, the one at
-    its onset included. A window reaching back to the previous sample would mix in the saccade.
+    The fixation's points are all 1 and the pursuit's all 20. At 100 Hz from a 1000 Hz profile,
+    the sample at 10 ms averages the points in (0, 10] ms, nine of the fixation and the first of
+    the pursuit, so the signal trails the pursuit's onset by one sample.
     """
-    events = _events(('saccade', 50.0), ('fixation', 50.0))
+    events = _events(('fixation', 10.0), ('smooth_pursuit', 10.0))
 
     gaze = StatisticalSampleGenerator(
-        sampling_rate=1000.0, **WITHOUT_JITTER,
+        sampling_rate=100.0,
+        profile_sampling_rate=1000.0,
+        fixation_consistency=1.0,
+        smooth_pursuit_velocity=20.0,
+        smooth_pursuit_onset_duration=0.0,
+        smooth_pursuit_consistency=0.0,
     ).generate(events=events, seed=42)
 
-    assert (_magnitudes(gaze, start=50.0) == 0.0).all()
-    assert _magnitudes(gaze, start=49.0, end=50.0).item() > 0.0
+    assert _magnitudes(gaze).to_list() == pytest.approx([1.0, 2.9])
 
 
-def test_sample_averages_the_profile_until_the_next_sample():
+def test_sample_averages_the_profile_since_the_previous_sample():
     """Fuhl et al. §3.5: averaging a dense profile flattens the saccade's peak a little."""
     events = _events(('saccade', 40.0))
     hyperparameters = {**WITHOUT_JITTER, 'saccade_peak_velocity': 400.0}
