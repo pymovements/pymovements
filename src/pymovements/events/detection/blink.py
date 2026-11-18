@@ -120,6 +120,7 @@ def blink(
     ------
     TypeError
         If minimum_candidate_duration_to_absorb_gap neither int nor tuple[int].
+        If timesteps is neither a Duration series nor of a numeric dtype
     ValueError
         If pupil is not 1D.
         If pupil and timesteps have different lengths.
