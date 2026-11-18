@@ -1591,12 +1591,6 @@ class Gaze:
             :ref:`event-measures` for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
-
-        Examples
-        --------
-        >>> gaze.compute_event_properties(('offset', {'inclusive': True}))  # doctest: +SKIP
-        >>> gaze.compute_event_properties(('duration', {'offsets_inclusive': True}))  # doctest: +SKIP
-        >>> gaze.compute_event_properties(['peak_velocity', 'amplitude'])  # doctest: +SKIP
         """
         if len(self.events) == 0:
             warn(
@@ -1607,11 +1601,12 @@ class Gaze:
         identifiers = self.trial_columns if self.trial_columns is not None else []
         sampling_rate = resolve_sampling_rate(self.events, self.experiment)
 
-        event_measures: list[tuple[str, dict[str, Any]]] = []
-        sample_measures: list[tuple[str, dict[str, Any]]] = []
+        event_measures: list[str | tuple[str, dict[str, Any]]] = []
+        sample_measures: list[str | tuple[str, dict[str, Any]]] = []
         for measure_name, given_kwargs in measures_with_kwargs(event_properties):
             # A copy: the caller's dictionaries stay as passed.
             measure_kwargs = dict(given_kwargs)
+            measure: Callable[..., Any] | None
             if measure_name in EVENT_MEASURES:
                 measure = EVENT_MEASURES[measure_name]
                 event_measures.append((measure_name, measure_kwargs))
@@ -1649,7 +1644,7 @@ class Gaze:
 
     def _compute_event_measures(
             self,
-            measures: list[tuple[str, dict[str, Any]]],
+            measures: list[str | tuple[str, dict[str, Any]]],
             name: str | None,
     ) -> None:
         """Write the columns of event measures into the events frame, one measure at a time.
@@ -1662,7 +1657,7 @@ class Gaze:
 
         Parameters
         ----------
-        measures: list[tuple[str, dict[str, Any]]]
+        measures: list[str | tuple[str, dict[str, Any]]]
             The event measures, each a registry name with its keyword arguments.
         name: str | None
             Process only events that match the name.
@@ -1679,7 +1674,7 @@ class Gaze:
 
         mask = polars.col('name').str.contains(f'^{name}$') if name is not None else None
         for (measure_name, measure_kwargs), measure, column in zip(
-                measures, processor.measures, output_names,
+                measures_with_kwargs(measures), processor.measures, output_names,
         ):
             expression = measure
             if mask is not None:

@@ -68,7 +68,7 @@ def test_duration_without_offsets_inclusive_raises():
             TypeError,
             match="missing 1 required keyword-only argument: 'offsets_inclusive'",
     ):
-        duration()
+        duration()  # pylint: disable=missing-kwoa
 
 
 @pytest.mark.parametrize(

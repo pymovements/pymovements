@@ -73,7 +73,7 @@ def test_offset_inclusive_without_sampling_rate_raises():
 
 def test_offset_without_inclusive_raises():
     with pytest.raises(TypeError, match="missing 1 required keyword-only argument: 'inclusive'"):
-        offset()
+        offset()  # pylint: disable=missing-kwoa
 
 
 def test_offset_missing_duration_column_raises():

@@ -307,7 +307,10 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'name': ['fixation', 'saccade', 'blink'], 'onset': [0, 3, 7], 'duration': [3, 4, 1]},
+                {
+                    'name': ['fixation', 'saccade', 'blink'],
+                    'onset': [0, 3, 7], 'duration': [3, 4, 1],
+                },
             ),
             pl.from_dict({
                 'time': [0, 1, 2, 3, 4, 5, 6, 7],
@@ -329,7 +332,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {'subject_id': [1], 'name': ['saccade'], 'onset': [0], 'duration': [11]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -365,7 +369,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {'subject_id': [1], 'name': ['saccade'], 'onset': [0], 'duration': [6]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -407,7 +412,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {'subject_id': [1], 'name': ['fixation'], 'onset': [0], 'duration': [11]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -450,7 +456,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {'subject_id': [1], 'name': ['saccade'], 'onset': [0], 'duration': [11]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -492,7 +499,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'duration': [11, 21]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -535,7 +543,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'duration': [11, 21]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -578,7 +587,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'duration': [11, 21]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -621,7 +631,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'duration': [11, 21]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -664,7 +675,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'duration': [11, 21]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -707,7 +719,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'duration': [11, 21]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -840,7 +853,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'duration': [11, 21]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -883,7 +897,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'onset': [0, 1000], 'duration': [11, 5],
                 },
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -926,7 +941,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'onset': [0, 5], 'duration': [21, 6],
                 },
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -973,7 +989,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'onset': [0, 8], 'duration': [11, 13],
                 },
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -1020,7 +1037,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'onset': [3, 3], 'duration': [5, 5],
                 },
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -1067,7 +1085,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'onset': [0, 10], 'duration': [11, 11],
                 },
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -1114,7 +1133,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'onset': [0, 1000], 'duration': [11, 11],
                 },
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -1159,7 +1179,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'onset': [0, 5, 3], 'duration': [11, 11, 6],
                 },
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -1244,7 +1265,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'onset': [0, 5, 1000], 'duration': [11, 11, 11],
                 },
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -1598,7 +1620,8 @@ def test_event_samples_processor_process_duration_time_no_events():
             pl.from_dict(
                 {'subject_id': [1, 1], 'name': 'abcdef', 'onset': [0, 80], 'duration': [11, 21]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(

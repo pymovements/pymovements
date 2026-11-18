@@ -27,11 +27,11 @@ import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
+from polars.testing import assert_series_equal
 
 from pymovements import Events
 from pymovements import Experiment
 from pymovements import Gaze
-from polars.testing import assert_series_equal
 
 
 @pytest.fixture(name='make_gaze_with_events', scope='function')
@@ -1896,8 +1896,10 @@ def test_gaze_compute_event_properties_duration_recomputes_in_place():
 )
 def test_gaze_compute_event_properties_missing_keyword_raises(measure, missing):
     gaze = Gaze(
-        events=Events(name=['fixation'], onsets=[0], offsets=[4], offsets_inclusive=True,
-                      sampling_rate=1000),
+        events=Events(
+            name=['fixation'], onsets=[0], offsets=[4], offsets_inclusive=True,
+            sampling_rate=1000,
+        ),
     )
 
     with pytest.raises(TypeError, match=f"missing 1 required keyword-only argument: '{missing}'"):
@@ -1906,8 +1908,10 @@ def test_gaze_compute_event_properties_missing_keyword_raises(measure, missing):
 
 def test_gaze_compute_event_properties_offset_entry_set_and_rewritten():
     gaze = Gaze(
-        events=Events(name=['fixation', 'saccade'], onsets=[0, 10], durations=[5, 3],
-                      sampling_rate=1000),
+        events=Events(
+            name=['fixation', 'saccade'], onsets=[0, 10], durations=[5, 3],
+            sampling_rate=1000,
+        ),
     )
 
     gaze.compute_event_properties(('offset', {'inclusive': True}))
@@ -1925,8 +1929,10 @@ def test_gaze_compute_event_properties_offset_entry_set_and_rewritten():
 
 def test_gaze_compute_event_properties_event_measure_with_name():
     gaze = Gaze(
-        events=Events(name=['fixation', 'saccade'], onsets=[0, 10], durations=[5, 3],
-                      sampling_rate=1000),
+        events=Events(
+            name=['fixation', 'saccade'], onsets=[0, 10], durations=[5, 3],
+            sampling_rate=1000,
+        ),
     )
 
     gaze.compute_event_properties(('offset', {'inclusive': False}), name='fixation')
