@@ -28,8 +28,8 @@ import numpy
 import polars
 
 from pymovements._utils import checks
+from pymovements._utils.time import normalize_timesteps
 from pymovements._utils.time import sampling_interval_ms
-from pymovements._utils.time import timesteps_to_numpy
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.transforms.numpy import norm
@@ -1098,14 +1098,15 @@ def ihmm(
 
     timesteps : list[int] | numpy.ndarray | polars.Series | None
         Timestamp for each velocity sample. May be integer or float valued, or a
-        ``polars.Duration`` series, which is converted to milliseconds. If None, uses
-        sequential indices (0, 1, 2, ..., T-1). (default: None)
+        ``polars.Duration`` series, which is converted to milliseconds. If None, the timesteps
+        are built from ``sampling_rate`` as a grid in milliseconds starting at ``0``.
+        (default: None)
 
     minimum_duration: int
         Minimum fixation duration. The duration is specified in the units used in ``timesteps``;
         for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
-        None, then ``minimum_duration`` is specified in numbers of samples. Must be an integer,
-        so with float-valued ``timesteps`` only whole-unit thresholds can be expressed.
+        None, the unit is milliseconds. Must be an integer, so with float-valued ``timesteps``
+        only whole-unit thresholds can be expressed.
         (default: 100)
 
     mu : list[float] | numpy.ndarray | None
@@ -1217,6 +1218,7 @@ def ihmm(
         If velocities is a polars Series whose lists don't all have length 2.
         If parameter shapes are incorrect (not (2,) or (2,2)).
         If minimum_duration is not greater than 0.
+        If timesteps are not in ascending order.
         If transition_probabilities rows don't sum to 1, or contain values outside [0, 1].
         If init_state does not sum to 1, or contains values outside [0, 1].
         If hmm_parameters_dict has incorrect keys or shapes, or its init/trans
@@ -1353,13 +1355,9 @@ def ihmm(
     if transition_probabilities is not None:
         transition_probabilities = numpy.array(transition_probabilities)
 
-    if isinstance(timesteps, polars.Series):
-        timesteps = timesteps_to_numpy(timesteps)
-    elif timesteps is not None:
-        timesteps = numpy.array(timesteps)
-    else:
-        timesteps = numpy.arange(len(velocities), dtype=numpy.int64)
-    timesteps = numpy.array(timesteps).flatten()
+    timesteps = normalize_timesteps(
+        timesteps, length=len(velocities), sampling_rate=sampling_rate,
+    )
 
     if not isinstance(minimum_duration, (int, numpy.integer)):
         raise TypeError(
