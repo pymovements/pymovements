@@ -1785,6 +1785,115 @@ def test_load_event_files_respects_empty_user_sources(tmp_path):
     assert events_list[0].metadata == {'Sources': []}
 
 
+def write_legacy_event_file(tmp_path):
+    """Save one event file of a 1000 Hz recording with duration == offset - onset per row."""
+    events_dirpath = tmp_path / 'events'
+    events_dirpath.mkdir()
+    events_df = pl.DataFrame(
+        {
+            'onset': [0, 10_000],
+            'duration': [5_000, 7_000],
+            'name': ['saccade', 'fixation'],
+            'offset': [5_000, 17_000],
+        },
+        schema={
+            'onset': pl.Duration('us'),
+            'duration': pl.Duration('us'),
+            'name': pl.String,
+            'offset': pl.Duration('us'),
+        },
+    )
+    events_df.write_ipc(events_dirpath / 'sub_1.feather')
+
+    files = [
+        DatasetFile(
+            path=tmp_path / 'raw' / 'sub_1.csv',
+            definition=ResourceDefinition(content='gaze'),
+        ),
+    ]
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+    return files, paths
+
+
+def test_load_event_files_writes_sampling_rate_from_experiment(tmp_path):
+    files, paths = write_legacy_event_file(tmp_path)
+    definition = DatasetDefinition(experiment=Experiment(sampling_rate=1000))
+
+    events_list = load_event_files(definition, files, paths, verbose=False)
+
+    assert events_list[0].metadata['sampling_rate'] == 1000
+
+
+@pytest.mark.parametrize(
+    'experiment',
+    [
+        pytest.param(None, id='no_experiment'),
+        pytest.param(Experiment(sampling_rate=None), id='no_rate'),
+    ],
+)
+def test_load_event_files_writes_no_sampling_rate_without_experiment_rate(tmp_path, experiment):
+    files, paths = write_legacy_event_file(tmp_path)
+    definition = DatasetDefinition(experiment=experiment)
+
+    events_list = load_event_files(definition, files, paths, verbose=False)
+
+    assert 'sampling_rate' not in events_list[0].metadata
+
+
+@pytest.mark.parametrize(
+    ('kwargs', 'expected_offset_entry', 'expected_durations'),
+    [
+        pytest.param(
+            {'offsets_inclusive': False},
+            {'inclusive': False},
+            [5_000, 7_000],
+            id='offsets_inclusive',
+        ),
+        pytest.param(
+            {'offsets_inclusive': True, 'durations_from_offsets': True},
+            {'inclusive': True},
+            [6_000, 8_000],
+            id='durations_from_offsets',
+        ),
+        pytest.param(
+            {'offsets_inclusive': True, 'validate': False},
+            {'inclusive': True},
+            [5_000, 7_000],
+            id='validate',
+        ),
+    ],
+)
+def test_load_event_files_forwards_keywords(
+        tmp_path, kwargs, expected_offset_entry, expected_durations,
+):
+    files, paths = write_legacy_event_file(tmp_path)
+    definition = DatasetDefinition(experiment=Experiment(sampling_rate=1000))
+
+    events_list = load_event_files(definition, files, paths, verbose=False, **kwargs)
+
+    assert events_list[0].metadata['offset'] == expected_offset_entry
+    durations = events_list[0].frame['duration'].dt.total_microseconds().to_list()
+    assert durations == expected_durations
+
+
+def test_load_event_files_validates_by_default(tmp_path):
+    files, paths = write_legacy_event_file(tmp_path)
+    definition = DatasetDefinition(experiment=Experiment(sampling_rate=1000))
+
+    with pytest.raises(ValueError, match='every row contradicts offsets_inclusive=True'):
+        load_event_files(definition, files, paths, verbose=False, offsets_inclusive=True)
+
+
+def test_load_event_files_migration_raises_without_experiment_rate(tmp_path):
+    files, paths = write_legacy_event_file(tmp_path)
+
+    with pytest.raises(ValueError, match='requires a sampling_rate'):
+        load_event_files(
+            DatasetDefinition(), files, paths, verbose=False,
+            offsets_inclusive=True, durations_from_offsets=True,
+        )
+
+
 @pytest.mark.parametrize(
     'extension',
     [
