@@ -46,6 +46,7 @@ from pymovements._utils.time import durations_to_ms
 from pymovements._utils.time import time_column_to_duration_us
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
+from pymovements.events.events import _carry_detected_entries
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.quality import DataQualityReport
 from pymovements.gaze.quality import run_report
@@ -1357,6 +1358,11 @@ class Gaze:
     ) -> None:
         """Detect events by applying a specific event detection method.
 
+        A method that takes a ``sampling_rate`` keyword receives the sampling rate of the
+        experiment unless ``sampling_rate`` is passed in ``kwargs``, where ``None`` counts as
+        not passed. The entries of the detected events, the sampling rate and the offset
+        convention, are carried into the metadata of :py:attr:`~.Gaze.events`.
+
         Parameters
         ----------
         method: Callable[..., Events] | str
@@ -1371,21 +1377,41 @@ class Gaze:
             merged into the existing one. (default: False)
         **kwargs: Any
             Additional keyword arguments to be passed to the event detection method.
-        """
-        if self.events is None or clear:
-            self.clear_events()
 
+        Raises
+        ------
+        ValueError
+            If the method takes ``sampling_rate`` and neither ``kwargs`` nor the experiment
+            provide one. If the sampling rate or the offset convention of the detected events
+            differs from the entry already stored in :py:attr:`~.Gaze.events`, or if the
+            existing events carry an offset column without a convention entry, unless ``clear``
+            is ``True``.
+        """
         if isinstance(method, str):
             method = EventDetectionLibrary.get(method)
+
+        method_argspec = inspect.getfullargspec(method)
+        method_args = method_argspec.args + method_argspec.kwonlyargs
+
+        # The sampling rate is resolved before the events are cleared, so a missing rate
+        # leaves the existing events as they are.
+        if 'sampling_rate' in method_args and kwargs.get('sampling_rate') is None:
+            if self.experiment is None or self.experiment.sampling_rate is None:
+                raise ValueError(
+                    f"{getattr(method, '__name__', method)} requires a sampling_rate, but the "
+                    'gaze has no experiment sampling rate. Pass Experiment(sampling_rate=...) '
+                    'to the gaze or sampling_rate= to detect().',
+                )
+            kwargs['sampling_rate'] = self.experiment.sampling_rate
+
+        if self.events is None or clear:
+            self.clear_events()
 
         # Events detected from this gaze object share its source files. This also covers
         # events containers replaced after construction, e.g. by Dataset.clear_events().
         # Merging after method resolution keeps detect free of side effects when the
         # method name is invalid.
         self.events.metadata = merge_sources(self.events.metadata, self.metadata)
-
-        method_argspec = inspect.getfullargspec(method)
-        method_args = method_argspec.args + method_argspec.kwonlyargs
 
         if self.n_components is not None:
             eye_components = self._infer_eye_components(eye)
@@ -1403,6 +1429,7 @@ class Gaze:
             )
 
             new_events = method(**method_kwargs)
+            _carry_detected_entries(self.events, new_events)
 
             if len(new_events) == 0:
                 warn(
@@ -1482,6 +1509,7 @@ class Gaze:
                 )
 
                 new_events = method(**method_kwargs)
+                _carry_detected_entries(self.events, new_events)
                 # add group identifiers as new columns
                 new_events.add_trial_column(self.trial_columns, group_identifier)
 
