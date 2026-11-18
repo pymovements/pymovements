@@ -1017,30 +1017,39 @@ def test_correct_fixation_locations_warp_character_level_flag(
     assert corrected_ys(locs) == expected_ys
 
 
-def test_correct_fixation_locations_character_level_without_word_column_raises(
-    letter_level_events_and_aois,
+@pytest.mark.parametrize(
+    ('correct', 'algorithm', 'word_column', 'match'),
+    [
+        pytest.param(
+            correct_fixation_locations, 'warp', None,
+            'character_level is True, but no word_column was provided',
+            id='word_column_none_warp',
+        ),
+        pytest.param(
+            correct_fixation_locations, 'attach', None,
+            'character_level is True, but no word_column was provided',
+            id='word_column_none_attach',
+        ),
+        pytest.param(
+            correct_fixations, 'attach', None,
+            'character_level is True, but no word_column was provided',
+            id='word_column_none_correct_fixations',
+        ),
+        pytest.param(
+            correct_fixation_locations, 'warp', 'unit_of_analysis',
+            "no 'unit_of_analysis' column to aggregate the character-level AOIs by",
+            id='word_column_absent_from_aois',
+        ),
+    ],
+)
+def test_correct_fixation_locations_character_level_word_column_raises(
+    letter_level_events_and_aois, correct, algorithm, word_column, match,
 ):
     events_df, aois_df = letter_level_events_and_aois
-    with pytest.raises(
-        ValueError,
-        match='character_level is True, but no word_column was provided',
-    ):
-        correct_fixation_locations(
-            events_df, aois_df, algorithm='warp', character_level=True,
-        )
-
-
-def test_correct_fixation_locations_character_level_missing_word_column_raises(
-    letter_level_events_and_aois,
-):
-    events_df, aois_df = letter_level_events_and_aois
-    with pytest.raises(
-        ValueError,
-        match="character_level is True, but the AOIs dataframe has no 'word' column",
-    ):
-        correct_fixation_locations(
-            events_df, aois_df.drop('word'), algorithm='warp', character_level=True,
-            word_column='word',
+    with pytest.raises(ValueError, match=match):
+        correct(
+            events_df, aois_df, algorithm=algorithm, character_level=True,
+            word_column=word_column,
         )
 
 
@@ -1058,36 +1067,18 @@ def test_correct_fixation_locations_character_level_custom_word_column(
     assert corrected_ys(locs) == [100.0, 100.0, 100.0, 100.0, 100.0, 200.0]
 
 
-def test_correct_fixation_locations_character_level_missing_custom_word_column_raises(
-    letter_level_events_and_aois,
-):
-    events_df, aois_df = letter_level_events_and_aois
-    with pytest.raises(
-        ValueError,
-        match="no 'unit_of_analysis' column to aggregate the character-level AOIs by",
-    ):
-        correct_fixation_locations(
-            events_df, aois_df.drop('word'), algorithm='warp', character_level=True,
-            word_column='unit_of_analysis',
-        )
-
-
 def test_correct_fixation_locations_ensemble_custom_word_column(
     letter_level_events_and_aois,
 ):
     events_df, aois_df = letter_level_events_and_aois
-    default_locs = correct_fixation_locations(
-        events_df, aois_df, algorithm=['attach', 'warp'], character_level=True,
-        word_column='word',
-    )
-    custom_locs = correct_fixation_locations(
+    locs = correct_fixation_locations(
         events_df,
         aois_df.rename({'word': 'unit_of_analysis'}),
         algorithm=['attach', 'warp'],
         character_level=True,
         word_column='unit_of_analysis',
     )
-    assert custom_locs.to_list() == default_locs.to_list()
+    assert corrected_ys(locs) == [100.0] * 6
 
 
 def test_events_correct_fixations_warp_character_level(letter_level_events_and_aois):

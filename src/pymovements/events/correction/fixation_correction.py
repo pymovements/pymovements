@@ -424,6 +424,15 @@ def _fixation_location(fixations: pl.DataFrame, location_column: str) -> str | p
     )
 
 
+def _check_word_column(character_level: bool, word_column: str | None) -> None:
+    """Raise if character-level AOIs come without a column to aggregate them by."""
+    if character_level and word_column is None:
+        raise ValueError(
+            'character_level is True, but no word_column was provided. Pass the name '
+            'of the AOI column that groups sub-word AOIs into words.',
+        )
+
+
 def correct_fixation_locations(
     events: pl.DataFrame,
     aois: pl.DataFrame,
@@ -501,8 +510,9 @@ def correct_fixation_locations(
     ------
     ValueError
         If the algorithm name is unknown, the directionality is invalid, an
-        algorithm_kwargs entry is accepted by no candidate algorithm, or required
-        coordinate data is missing.
+        algorithm_kwargs entry is accepted by no candidate algorithm, required
+        coordinate data is missing, or ``character_level`` is True but no
+        ``word_column`` is provided.
     TypeError
         If algorithm is neither a string nor a list of strings.
 
@@ -535,6 +545,7 @@ def correct_fixation_locations(
     :py:func:`~pymovements.events.correction.correct_fixations`.
     """
     right_to_left = is_right_to_left(directionality)
+    _check_word_column(character_level, word_column)
     if algorithm_kwargs is None:
         algorithm_kwargs = {}
     for reserved_key in ('directionality', 'word_locations', 'location'):
@@ -837,8 +848,8 @@ def correct_fixations(
     ValueError
         If an algorithm name is unknown, if the directionality is invalid, if
         trial_columns are missing from the events dataframe, if no AOIs are found for a
-        trial with fixations to correct, or if the fixation events have already been
-        corrected.
+        trial with fixations to correct, if the fixation events have already been
+        corrected, or if ``character_level`` is True but no ``word_column`` is provided.
     TypeError
         If algorithm is neither a string nor a list of strings.
 
@@ -872,6 +883,7 @@ def correct_fixations(
     """
     # Validate eagerly so an invalid directionality raises even without matching fixations.
     is_right_to_left(directionality)
+    _check_word_column(character_level, word_column)
 
     if isinstance(trial_columns, str):
         trial_columns = [trial_columns]

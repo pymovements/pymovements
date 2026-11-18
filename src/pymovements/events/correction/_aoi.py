@@ -136,14 +136,9 @@ def get_word_locations_from_aois(
     Raises
     ------
     ValueError
-        If ``character_level`` is True but no ``word_column`` is provided or the AOIs
-        dataframe has no such column.
+        If ``character_level`` is True but the AOIs dataframe has no ``word_column``
+        column.
     """
-    if character_level and word_column is None:
-        raise ValueError(
-            'character_level is True, but no word_column was provided. Pass the name '
-            'of the AOI column that groups sub-word AOIs into words.',
-        )
     if character_level and word_column not in aois.columns:
         raise ValueError(
             f"character_level is True, but the AOIs dataframe has no '{word_column}' "
