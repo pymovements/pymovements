@@ -20,6 +20,7 @@
 """Tests the Events minimal schema, durations and offset conventions."""
 from __future__ import annotations
 
+import math
 import re
 import warnings
 from datetime import timedelta
@@ -356,9 +357,9 @@ def test_init_durations_from_offsets_on_undeclared_offsets_warns_once_and_is_ign
     assert events.frame['duration'].to_list() == [timedelta(milliseconds=expected_ms)]
 
 
-@pytest.mark.parametrize('sampling_rate', [0, -1])
-def test_init_non_positive_sampling_rate_raises(sampling_rate):
-    with pytest.raises(ValueError, match='sampling_rate must be positive'):
+@pytest.mark.parametrize('sampling_rate', [0, -1, math.nan, math.inf])
+def test_init_non_finite_positive_sampling_rate_raises(sampling_rate):
+    with pytest.raises(ValueError, match='sampling_rate must be a finite positive number'):
         Events(onsets=[0], offsets=[1], offsets_inclusive=True, sampling_rate=sampling_rate)
 
 

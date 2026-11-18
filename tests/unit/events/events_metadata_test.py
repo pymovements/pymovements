@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test metadata attribute of the Events class."""
+import math
 import re
 import warnings
 from contextlib import contextmanager
@@ -494,9 +495,11 @@ def test_metadata_offsets_inclusive_agreeing_with_orphan_entry_warns_for_keyword
     assert events.metadata == metadata
 
 
-@pytest.mark.parametrize('sampling_rate', [0, -1])
-def test_metadata_non_positive_sampling_rate_entry_raises(sampling_rate):
-    with pytest.raises(ValueError, match=r"metadata\['sampling_rate'\] must be positive"):
+@pytest.mark.parametrize('sampling_rate', [0, -1, math.nan, math.inf])
+def test_metadata_non_finite_positive_sampling_rate_entry_raises(sampling_rate):
+    with pytest.raises(
+            ValueError, match=r"metadata\['sampling_rate'\] must be a finite positive number",
+    ):
         Events(onsets=[0], durations=[5], metadata={'sampling_rate': sampling_rate})
 
 

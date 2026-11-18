@@ -21,6 +21,7 @@
 # pylint: disable=too-many-lines
 from __future__ import annotations
 
+import math
 import warnings
 from collections.abc import Sequence
 from copy import deepcopy
@@ -151,8 +152,8 @@ def _resolve_sampling_rate(
     Raises
     ------
     ValueError
-        If the sampling-rate entry is not a positive number, or if the keyword differs from
-        it.
+        If the sampling-rate entry is not a finite positive number, or if the keyword
+        differs from it.
     """
     entry_rate = metadata.get('sampling_rate')
     rate = None
@@ -164,10 +165,10 @@ def _resolve_sampling_rate(
                 f'but is {entry_rate!r}.',
             )
         rate = float(entry_rate)
-        if rate <= 0:
+        if not math.isfinite(rate) or rate <= 0:
             raise ValueError(
-                "the metadata entry metadata['sampling_rate'] must be positive, "
-                f'but is {entry_rate}.',
+                "the metadata entry metadata['sampling_rate'] must be a finite positive "
+                f'number, but is {entry_rate}.',
             )
     if sampling_rate is not None and rate is not None and sampling_rate != rate:
         raise ValueError(
@@ -573,9 +574,9 @@ class Events:
     ValueError
         If ``durations`` or ``offsets`` are passed without ``onsets``, if their lengths do not
         match the length of ``onsets``, if ``time_unit`` is not one of ``'s'``, ``'ms'`` or
-        ``'us'``, if ``sampling_rate`` is not positive, if the sampling-rate entry in
-        ``metadata`` is not a positive number, if the ``offset`` entry in ``metadata`` is not a
-        dict or its ``inclusive`` value is neither a bool nor ``None``, if durations are derived
+        ``'us'``, if ``sampling_rate`` or the sampling-rate entry in ``metadata`` is not a
+        finite positive number, if the ``offset`` entry in ``metadata`` is not a dict or its
+        ``inclusive`` value is neither a bool nor ``None``, if durations are derived
         from inclusive offsets without a sampling rate, if every row contradicts the declared
         offset convention, or if ``offsets_inclusive`` or ``sampling_rate`` differs from its entry
         in ``metadata``.
@@ -647,11 +648,11 @@ class Events:
     entry. A keyword that differs from its entry raises a ``ValueError``, also on a frame without
     an ``offset`` column. An entry of the wrong shape raises a ``ValueError`` too: an ``offset``
     entry that is not a dict, an ``inclusive`` value that is neither a bool nor ``None``, or a
-    sampling rate that is not a positive number. An ``inclusive`` value of ``None`` declares no
-    convention. Several offset columns may carry their own convention entries. A convention entry
-    for a column the frame does not have is kept, and with ``validate=True`` one warning names
-    the column. :py:meth:`~pymovements.Events.drop` removes the ``metadata`` entry keyed by a
-    dropped column's name, such as the convention entry of an offset column.
+    sampling rate that is not a finite positive number. An ``inclusive`` value of ``None``
+    declares no convention. Several offset columns may carry their own convention entries. A
+    convention entry for a column the frame does not have is kept, and with ``validate=True``
+    one warning names the column. :py:meth:`~pymovements.Events.drop` removes the ``metadata``
+    entry keyed by a dropped column's name, such as the convention entry of an offset column.
 
     Modifying ``frame`` directly is not supported: ``metadata`` is not kept consistent with it.
 
@@ -775,8 +776,12 @@ class Events:
                 "and 'us' for microseconds.",
             )
 
-        if sampling_rate is not None and not sampling_rate > 0:
-            raise ValueError(f'sampling_rate must be positive, but is {sampling_rate}.')
+        if sampling_rate is not None and not (
+                math.isfinite(sampling_rate) and sampling_rate > 0
+        ):
+            raise ValueError(
+                f'sampling_rate must be a finite positive number, but is {sampling_rate}.',
+            )
 
         if data is not None:
             checks.check_is_mutual_exclusive(data=data, onsets=onsets)
