@@ -82,14 +82,19 @@ def _is_numeric_or_null(dtype: polars.DataType) -> bool:
     return dtype.is_numeric() or dtype == polars.Null
 
 
-def _is_matching_trial_dtype(samples_dtype: polars.DataType, events_dtype: polars.DataType) -> bool:
-    """Return whether trial keys of these dtypes can be matched between samples and events.
+def _is_compatible_trial_dtype(
+        samples_dtype: polars.DataType,
+        events_dtype: polars.DataType,
+) -> bool:
+    """Return whether trial keys of these dtypes are compatible between samples and events.
 
-    Integer widths and string-like dtypes are interchangeable, and a null column matches any
-    dtype. Any other pair must be equal.
+    Integer widths and string-like dtypes are interchangeable, and a null column in samples is
+    compatible with any dtype in events. Any other pair must be equal.
     """
-    if polars.Null in (samples_dtype, events_dtype) or samples_dtype == events_dtype:
+    if samples_dtype in (events_dtype, polars.Null):
         return True
+    if events_dtype == polars.Null:
+        return False
     if samples_dtype.is_integer() and events_dtype.is_integer():
         return True
     string_like = (polars.String, polars.Categorical, polars.Enum)
@@ -1384,6 +1389,13 @@ class Gaze:
             merged into the existing one. (default: False)
         **kwargs: Any
             Additional keyword arguments to be passed to the event detection method.
+
+        Raises
+        ------
+        polars.exceptions.ColumnNotFoundError
+            If the events lack any of the trial columns.
+        polars.exceptions.SchemaError
+            If a trial column has dtypes in samples and events that are not compatible.
         """
         if self.events is None or clear:
             self.clear_events()
@@ -1443,15 +1455,16 @@ class Gaze:
                     f'available columns: {self.events.frame.columns}',
                 )
 
-            # Trials are matched to their events by key value. Keys of different kinds never
-            # match, so every trial would silently get no events.
+            # Trials are matched to their events by key value, and the new events are
+            # concatenated to the existing ones. Keys of incompatible dtypes cannot be matched or
+            # concatenated.
             for trial_column in self.trial_columns:
                 samples_dtype = self.samples.schema[trial_column]
                 events_dtype = self.events.frame.schema[trial_column]
-                if not _is_matching_trial_dtype(samples_dtype, events_dtype):
+                if not _is_compatible_trial_dtype(samples_dtype, events_dtype):
                     raise polars.exceptions.SchemaError(
                         f"trial column '{trial_column}' has dtype {samples_dtype} in samples "
-                        f'but {events_dtype} in events, which do not match',
+                        f'but {events_dtype} in events, which are not compatible',
                     )
 
             # Only detectors that accept an ``events`` argument look at previously detected
@@ -1499,8 +1512,17 @@ class Gaze:
                     stacklevel=2,
                 )
 
+            # The new events carry the trial keys in their own dtypes. Cast them to the dtypes
+            # of the existing events so that the concatenation does not fail.
+            trial_dtypes = {
+                trial_column: self.events.frame.schema[trial_column]
+                for trial_column in self.trial_columns
+            }
             self.events.frame = polars.concat(
-                [self.events.frame, *new_events_grouped],
+                [
+                    self.events.frame,
+                    *(frame.cast(trial_dtypes) for frame in new_events_grouped),
+                ],
                 how='diagonal',
             )
 

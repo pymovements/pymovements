@@ -1377,7 +1377,8 @@ def detect_one_fixation_with_events(events, **_kwargs):
     return pm.Events(name='fixation', onsets=[0], offsets=[1])
 
 
-def detect_one_fixation(**_kwargs):
+def dummy_detect_with_events(**_kwargs):
+    """Return one event."""
     return pm.Events(name='fixation', onsets=[0], offsets=[1])
 
 
@@ -1393,7 +1394,10 @@ def detect_one_fixation(**_kwargs):
         pytest.param(
             pl.Float64, pl.Int64, detect_one_fixation_with_events, id='float_samples_int_events',
         ),
-        pytest.param(pl.String, pl.Int64, detect_one_fixation, id='detector_without_events'),
+        pytest.param(
+            pl.Int64, pl.Null, detect_one_fixation_with_events, id='int_samples_null_events',
+        ),
+        pytest.param(pl.String, pl.Int64, dummy_detect_with_events, id='detector_without_events'),
     ],
 )
 def test_gaze_detect_incompatible_trial_column_dtypes_raises_exception(
@@ -1404,7 +1408,7 @@ def test_gaze_detect_incompatible_trial_column_dtypes_raises_exception(
     ).with_columns(pl.col('trial').cast(samples_dtype))
     events = pl.DataFrame(
         {'trial': [1, 2], 'name': ['fixation'] * 2, 'onset': [0, 50], 'offset': [49, 99]},
-    ).with_columns(pl.col('trial').cast(events_dtype))
+    ).with_columns(pl.col('trial').cast(events_dtype, strict=False))
     gaze = pm.Gaze(samples, trial_columns=['trial'])
     gaze.events = pm.Events(events)
 
@@ -1414,7 +1418,7 @@ def test_gaze_detect_incompatible_trial_column_dtypes_raises_exception(
     msg, = exc_info.value.args
     assert msg == (
         f"trial column 'trial' has dtype {samples_dtype} in samples but {events_dtype} "
-        'in events, which do not match'
+        'in events, which are not compatible'
     )
 
 
@@ -1451,11 +1455,6 @@ def test_gaze_detect_missing_missing_eye_components_raises_exception(method, col
 def dummy_detect_no_events(**_kwargs):
     """Return no events."""
     return pm.Events()
-
-
-def dummy_detect_with_events(**_kwargs):
-    """Return one event."""
-    return pm.Events(name='fixation', onsets=[0], offsets=[1])
 
 
 def test_detect_no_events_warning():
@@ -1668,6 +1667,56 @@ def test_detect_selects_group_events_for_multiple_trial_columns():
             }),
             [2, 1],
             id='categorical_samples_string_events',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'trial': [1] * 50 + [2] * 50,
+                    'position': [[0.0, 0.0]] * 100,
+                }, schema_overrides={'trial': pl.Int32},
+            ),
+            pl.DataFrame(
+                {
+                    'trial': [1, 1, 2],
+                    'name': ['fixation', 'saccade', 'fixation'],
+                    'onset': [0, 25, 50],
+                    'offset': [24, 49, 99],
+                }, schema_overrides={'trial': pl.Int32},
+            ),
+            [2, 1],
+            id='int32_samples_int32_events',
+        ),
+        pytest.param(
+            pl.DataFrame({
+                'trial': [1] * 50 + [2] * 50,
+                'position': [[0.0, 0.0]] * 100,
+            }),
+            pl.DataFrame(
+                {
+                    'trial': [1, 1, 2],
+                    'name': ['fixation', 'saccade', 'fixation'],
+                    'onset': [0, 25, 50],
+                    'offset': [24, 49, 99],
+                }, schema_overrides={'trial': pl.Int32},
+            ),
+            [2, 1],
+            id='int64_samples_int32_events',
+        ),
+        pytest.param(
+            pl.DataFrame({
+                'trial': ['a'] * 50 + ['b'] * 50,
+                'position': [[0.0, 0.0]] * 100,
+            }),
+            pl.DataFrame(
+                {
+                    'trial': ['a', 'a', 'b'],
+                    'name': ['fixation', 'saccade', 'fixation'],
+                    'onset': [0, 25, 50],
+                    'offset': [24, 49, 99],
+                }, schema_overrides={'trial': pl.Categorical},
+            ),
+            [2, 1],
+            id='string_samples_categorical_events',
         ),
         pytest.param(
             pl.DataFrame({
