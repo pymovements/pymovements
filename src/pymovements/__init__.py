@@ -40,6 +40,7 @@ from pymovements.dataset import ResourceDefinition
 from pymovements.dataset import ResourceDefinitions
 from pymovements.dataset.websource import WebSource
 from pymovements.events import Events
+from pymovements.events import register_corrector
 from pymovements.exceptions import ChecksumError
 from pymovements.exceptions import UnknownFileType
 from pymovements.exceptions import UnknownMeasure
@@ -74,6 +75,7 @@ __all__ = [
     'ValidationError',
     'Participants',
     'Phenotype',
+    'register_corrector',
     'register_dataset',
     'ResourceDefinition',
     'ResourceDefinitions',
