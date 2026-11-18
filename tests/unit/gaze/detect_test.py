@@ -1811,6 +1811,20 @@ def test_gaze_detect_without_sampling_rate_raises_naming_experiment(experiment):
         gaze.detect('ivt', minimum_duration=1)
 
 
+def test_gaze_detect_without_sampling_rate_keeps_the_existing_events_on_clear():
+    gaze = _velocity_gaze(
+        events=pm.Events(name='fixation', onsets=[0], offsets=[10], offsets_inclusive=False),
+    )
+
+    with pytest.raises(ValueError, match=r'Experiment\(sampling_rate=\.\.\.\)'):
+        gaze.detect('ivt', minimum_duration=1, clear=True)
+
+    assert_frame_equal(
+        gaze.events.frame,
+        pm.Events(name='fixation', onsets=[0], offsets=[10], offsets_inclusive=False).frame,
+    )
+
+
 def test_gaze_detect_explicit_sampling_rate_wins_over_experiment():
     gaze = _velocity_gaze(experiment=pm.Experiment(sampling_rate=1000))
 
