@@ -623,7 +623,9 @@ class Events:
     allows 1 µs, because onset, offset and duration are rounded to microseconds one by one.
     Without a sampling rate the durations of inclusive offsets must exceed ``offset - onset`` by
     one common positive interval. If every row contradicts the declaration, a ``ValueError``
-    names the ways to fix it. If some rows do, one warning names them.
+    names the ways to fix it. If some rows do, one warning names them. A null ``duration``
+    beside a non-null ``offset`` is reported with one warning and stays null, with
+    ``validate=True`` and ``validate=False`` alike.
 
     ``metadata`` carries the convention and the sampling rate, so a frame rebuilt from
     ``frame`` and ``metadata`` needs neither keyword:
@@ -755,9 +757,9 @@ class Events:
             trial_columns: list[str] | str | None = None,
             metadata: dict[str, Any] | None = None,
             time_unit: str | None = None,
-            # Passed by the rebuild sites only, never part of the public signature: skips the
-            # report of a null duration beside a non-null offset, which was given when the
-            # frame entered pymovements.
+            # Passed by the rebuild sites only, left out of the rendered signature and the
+            # Parameters section: skips the report of a null duration beside a non-null
+            # offset, which was given when the frame entered pymovements.
             _silent: bool = False,
     ):
         self.trial_columns: list[str] | None  # otherwise mypy gets confused.
