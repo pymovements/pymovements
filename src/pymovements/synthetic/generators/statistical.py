@@ -28,6 +28,7 @@ The generator implements the velocity profiles of the eye movement simulator in 
 from __future__ import annotations
 
 import dataclasses
+import importlib
 import warnings
 from typing import cast
 from typing import ClassVar
@@ -82,8 +83,12 @@ class StatisticalSampleGenerator(SampleGenerator):
     The output is a velocity magnitude without direction, so detectors and transforms that need
     positions cannot consume it. Not modelled are constraints on the order of the events, which
     belong to an event generator, fluctuating sampling rates, a normal distribution for where
-    noise is placed, and post-saccadic movement. A skewed saccade has not decayed when its event
-    ends, so it stops above zero.
+    noise is placed, and post-saccadic movement.
+
+    The source does not say which part of the Gamma curve a saccade covers. Our choice is the
+    part from its 0.5 % to its 99.5 % quantile, so every saccade falls back to nearly zero and the
+    skewness only sets where the peak sits. A highly skewed saccade still starts above zero,
+    since its curve rises steeply.
 
     Attributes
     ----------
@@ -97,9 +102,9 @@ class StatisticalSampleGenerator(SampleGenerator):
     saccade_peak_velocity: RangeLike
         The peak velocity of a saccade of the longest duration. (default: Range(300.0, 500.0))
     saccade_skewness: RangeLike
-        The skewness of the Gamma-shaped profile. Must lie between zero and two, where the
-        profile stops rising to a peak. It also sets the width of a saccade: a low skewness gives
-        a narrow peak, not a wide and nearly symmetric saccade. (default: Range(1.0, 1.5))
+        The skewness of the Gamma-shaped profile. A higher skewness puts the peak earlier. Must
+        lie between zero and two, where the profile stops rising to a peak.
+        (default: Range(0.3, 0.9))
     saccade_consistency: RangeLike
         The jitter along a saccade. (default: Range(0.0, 5.0))
     smooth_pursuit_velocity: RangeLike
@@ -159,7 +164,7 @@ class StatisticalSampleGenerator(SampleGenerator):
     fixation_consistency: RangeLike = Range(0.0, 1.0)
     saccade_duration: RangeLike = Range(20.0, 80.0)
     saccade_peak_velocity: RangeLike = Range(300.0, 500.0)
-    saccade_skewness: RangeLike = Range(1.0, 1.5)
+    saccade_skewness: RangeLike = Range(0.3, 0.9)
     saccade_consistency: RangeLike = Range(0.0, 5.0)
     smooth_pursuit_velocity: RangeLike = Range(10.0, 30.0)
     smooth_pursuit_onset_duration: RangeLike = Range(40.0, 120.0)
@@ -419,8 +424,11 @@ class StatisticalSampleGenerator(SampleGenerator):
 
         Fuhl et al. §3.3 multiply two numbers in [0, 1], one for the length and one for the peak
         velocity, so that shorter saccades reach lower peaks. The skewness fixes the Gamma's
-        shape through skewness = 2 / sqrt(shape).
+        shape through skewness = 2 / sqrt(shape), and the saccade spans the curve from its 0.5 %
+        to its 99.5 % quantile.
         """
+        scipy_stats = importlib.import_module('scipy.stats')
+
         durations = _range(self.saccade_duration)
         if durations.maximum > durations.minimum:
             length_fraction = np.clip(
@@ -435,9 +443,10 @@ class StatisticalSampleGenerator(SampleGenerator):
         shape = (2.0 / _range(self.saccade_skewness).draw(rng)) ** 2
 
         # The density is normalised to its maximum, so its constant cancels. It is evaluated in
-        # log space, since a direct power overflows for large shapes, and starts one step past
-        # zero, where the logarithm is undefined.
-        support = np.linspace(0.0, 2.0 * shape, n_samples + 1)[1:]
+        # log space, since a direct power overflows for large shapes.
+        support = np.linspace(
+            scipy_stats.gamma.ppf(0.005, shape), scipy_stats.gamma.ppf(0.995, shape), n_samples,
+        )
         log_density = (shape - 1.0) * np.log(support) - support
 
         return peak * np.exp(log_density - log_density.max())

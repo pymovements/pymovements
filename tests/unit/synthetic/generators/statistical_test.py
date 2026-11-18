@@ -550,53 +550,61 @@ def test_jitter_shrinks_with_the_profile_points_behind_a_sample():
     assert spreads[0] / spreads[1] == pytest.approx(math.sqrt(10), rel=0.1)
 
 
-def test_saccade_skewness_sets_its_width():
-    """The source leaves the support open, so the skewness also decides the width."""
-    def samples_above_half_of_the_peak(skewness):
-        generator = StatisticalSampleGenerator(
-            sampling_rate=1000.0,
-            profile_sampling_rate=1000.0,
-            saccade_duration=(20.0, 120.0),
-            saccade_skewness=skewness,
-            **WITHOUT_JITTER,
-        )
-        magnitudes = _magnitudes(generator.generate(events=_events(('saccade', 120.0)), seed=42))
-        return (magnitudes > magnitudes.max() / 2).sum()
-
-    assert samples_above_half_of_the_peak(0.5) < samples_above_half_of_the_peak(1.5)
-
-
-def test_default_saccade_is_as_wide_as_in_the_source():
-    """Fuhl et al. Figure 3: a 120 ms saccade stays above half its peak for over 60 ms."""
+def _saccade(skewness, duration=120.0):
+    """Return a lone saccade at its full peak velocity, with one profile point per sample."""
     generator = StatisticalSampleGenerator(
         sampling_rate=1000.0,
-        saccade_duration=(20.0, 120.0),
-        saccade_skewness=(1.0, 1.5),
+        profile_sampling_rate=1000.0,
+        saccade_duration=(20.0, duration),
+        saccade_peak_velocity=400.0,
+        saccade_skewness=skewness,
         **WITHOUT_JITTER,
     )
-    default_skewness = StatisticalSampleGenerator(sampling_rate=1000.0).saccade_skewness
-
-    assert default_skewness == generator.saccade_skewness
-
-    for seed in range(20):
-        magnitudes = _magnitudes(generator.generate(events=_events(('saccade', 120.0)), seed=seed))
-
-        assert (magnitudes > magnitudes.max() / 2).sum() >= 60
+    return _magnitudes(generator.generate(events=_events(('saccade', duration)), seed=42))
 
 
-def test_skewed_saccade_stops_above_zero_as_in_the_source():
-    """Fuhl et al. Figure 3: a skewed saccade has not decayed when its event ends."""
+def test_saccade_spans_its_gamma_curve_between_two_quantiles():
+    """Hand-checked against scipy.stats.gamma.pdf of shape 16, from 0.5 % to 99.5 %."""
+    magnitudes = _saccade(0.5, duration=100.0)
+
+    assert magnitudes[0] == pytest.approx(23.5891, abs=1e-4)
+    assert magnitudes.arg_max() == 36
+    assert magnitudes[36] == pytest.approx(400.0)
+    assert magnitudes[-1] == pytest.approx(9.7519, abs=1e-4)
+
+
+@pytest.mark.parametrize(
+    ('skewness', 'expected_peak'),
+    [
+        pytest.param(0.3, 50, id='low_skewness_peaks_near_the_middle'),
+        pytest.param(0.9, 30, id='high_skewness_peaks_early'),
+    ],
+)
+def test_saccade_skewness_moves_its_peak(skewness, expected_peak):
+    assert _saccade(skewness).arg_max() == expected_peak
+
+
+def test_low_skewness_saccade_fills_its_event():
+    magnitudes = _saccade(0.2)
+
+    assert (magnitudes > magnitudes.max() / 2).mean() > 0.4
+
+
+def test_default_saccade_peaks_as_in_the_source():
+    """Fuhl et al. Figure 3: 120 ms saccades peak at about 30 and 50 ms."""
     generator = StatisticalSampleGenerator(
         sampling_rate=1000.0,
         profile_sampling_rate=1000.0,
         saccade_duration=(20.0, 120.0),
-        saccade_skewness=1.5,
         **WITHOUT_JITTER,
     )
 
-    magnitudes = _magnitudes(generator.generate(events=_events(('saccade', 120.0)), seed=42))
+    peaks = [
+        _magnitudes(generator.generate(events=_events(('saccade', 120.0)), seed=seed)).arg_max()
+        for seed in range(20)
+    ]
 
-    assert magnitudes[-1] > 0.1 * magnitudes.max()
+    assert 30 <= min(peaks) <= max(peaks) <= 50
 
 
 def _still_fixation(**noise):
