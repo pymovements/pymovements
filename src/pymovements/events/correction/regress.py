@@ -20,14 +20,13 @@
 """Provides the regress drift correction algorithm."""
 from __future__ import annotations
 
+import importlib
 from collections.abc import Callable
 from collections.abc import Sequence
 from functools import partial
 
 import numpy as np
 import polars as pl
-from scipy.optimize import minimize
-from scipy.stats import norm
 
 from pymovements.events.correction._utils import locations_to_lists
 from pymovements.events.correction._utils import map_locations
@@ -43,6 +42,9 @@ def regress(
     location: str | pl.Expr = 'location',
 ) -> pl.Expr:
     """Fit linear regression parameters (slope, offset, std) to align fixations to lines.
+
+    Each fixation is assigned to the text line with the highest likelihood under the
+    fitted regression model.
 
     Reference: :cite:p:`Cohen2013,Carr2022`.
 
@@ -65,6 +67,30 @@ def regress(
     -------
     pl.Expr
         Expression computing the corrected y-coordinates.
+
+    Examples
+    --------
+    Correcting fixations of a single trial that drift away from two lines of text with
+    their centers at y = 100 and 200 assigns each fixation to its likeliest line under
+    the fitted regression model:
+
+    >>> import polars as pl
+    >>> from pymovements.events.correction import regress
+    >>> fixations = pl.DataFrame({
+    ...     'location': [[100.0, 108.0], [150.0, 95.0], [100.0, 210.0], [150.0, 195.0]],
+    ... })
+    >>> fixations.select(regress([100.0, 200.0]))
+    shape: (4, 1)
+    ┌───────────┐
+    │ y_regress │
+    │ ---       │
+    │ f64       │
+    ╞═══════════╡
+    │ 100.0     │
+    │ 100.0     │
+    │ 200.0     │
+    │ 200.0     │
+    └───────────┘
     """
     line_values = to_line_values(line_ys)
     core = partial(
@@ -86,6 +112,8 @@ def _regress_core(
     s_bounds: tuple[float, float],
 ) -> pl.Series:
     """Fit the regression parameters for a single trial and pick the likeliest lines."""
+    scipy_optimize = importlib.import_module('scipy.optimize')
+
     x_values, y_values = locations_to_lists(locations)
     densities_of = partial(
         _line_log_densities,
@@ -96,7 +124,8 @@ def _regress_core(
         o_bounds=o_bounds,
         s_bounds=s_bounds,
     )
-    best_fit = minimize(partial(_negative_log_likelihood, densities_of=densities_of), [0, 0, 0])
+    objective = partial(_negative_log_likelihood, densities_of=densities_of)
+    best_fit = scipy_optimize.minimize(objective, [0, 0, 0])
     densities = densities_of(best_fit.x)
     corrected_y = [
         line_values[max(range(len(line_values)), key=list(fixation).__getitem__)]
@@ -116,12 +145,14 @@ def _line_log_densities(
     s_bounds: tuple[float, float],
 ) -> list[np.ndarray]:
     """Per-line log-densities of observing the fixation y-values."""
-    slope = k_bounds[0] + (k_bounds[1] - k_bounds[0]) * norm.cdf(params[0])
-    offset = o_bounds[0] + (o_bounds[1] - o_bounds[0]) * norm.cdf(params[1])
-    deviation = s_bounds[0] + (s_bounds[1] - s_bounds[0]) * norm.cdf(params[2])
+    scipy_stats = importlib.import_module('scipy.stats')
+
+    slope = k_bounds[0] + (k_bounds[1] - k_bounds[0]) * scipy_stats.norm.cdf(params[0])
+    offset = o_bounds[0] + (o_bounds[1] - o_bounds[0]) * scipy_stats.norm.cdf(params[1])
+    deviation = s_bounds[0] + (s_bounds[1] - s_bounds[0]) * scipy_stats.norm.cdf(params[2])
     predicted_y = [x * slope for x in x_values]
     return [
-        norm.logpdf(
+        scipy_stats.norm.logpdf(
             y_values,
             [predicted + line_y + offset for predicted in predicted_y],
             deviation,

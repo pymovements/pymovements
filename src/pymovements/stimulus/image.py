@@ -20,16 +20,20 @@
 """Module for the ImageDataFrame."""
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
 from typing import Any
+from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
-import PIL.Image
 from deprecated.sphinx import deprecated
 
-from pymovements._utils._html import repr_html
-from pymovements._utils._paths import get_filepaths
-from pymovements._utils._strings import curly_to_regex
+from pymovements._utils.html import repr_html
+from pymovements._utils.paths import get_filepaths
+from pymovements._utils.sources import add_source
+from pymovements._utils.strings import curly_to_regex
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
 
 
 @repr_html(['images', 'metadata'])
@@ -83,6 +87,8 @@ class ImageStimulus:
         This is a convenience wrapper that draws the stimulus via
         :py:meth:`~pymovements.stimulus.ImageStimulus.plot` and then displays it.
         """
+        plt = importlib.import_module('matplotlib.pyplot')
+
         self.origin = origin
 
         self.plot(stimulus_id)
@@ -126,14 +132,15 @@ class ImageStimulus:
         path:  str | Path
             Path to image file to be read.
         metadata: dict[str, Any] | None
-            Dictionary containing additional metadata. (default: None)
+            Dictionary containing additional metadata. Unless already present, a ``Sources``
+            entry holding ``path`` as given is added. (default: None)
 
         Returns
         -------
         ImageStimulus
             Returns an ImageStimulus initialized with the image stimulus file.
         """
-        return ImageStimulus(images=[Path(path)], metadata=metadata)
+        return ImageStimulus(images=[Path(path)], metadata=add_source(metadata, path))
 
 
 def from_file(image_path: str | Path, metadata: dict[str, Any] | None = None) -> ImageStimulus:
@@ -144,7 +151,8 @@ def from_file(image_path: str | Path, metadata: dict[str, Any] | None = None) ->
     image_path:  str | Path
         Path to file to be read.
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. (default: None)
+        Dictionary containing additional metadata. Unless already present, a ``Sources``
+        entry holding ``image_path`` as given is added. (default: None)
 
     Returns
     -------
@@ -156,6 +164,9 @@ def from_file(image_path: str | Path, metadata: dict[str, Any] | None = None) ->
 
 def from_files(path: str | Path, filename_format: str) -> ImageStimulus:
     """Load image stimulus from file.
+
+    The matched files are recorded in a ``Sources`` metadata entry as found
+    below ``path``, in POSIX form.
 
     Parameters
     ----------
@@ -169,8 +180,11 @@ def from_files(path: str | Path, filename_format: str) -> ImageStimulus:
     ImageStimulus
         Returns the image stimulus file.
     """
-    filenames = get_filepaths(path, regex=curly_to_regex(filename_format))
-    return ImageStimulus(list(filenames))
+    filenames = list(get_filepaths(path, regex=curly_to_regex(filename_format)))
+    metadata = {}
+    if filenames:
+        metadata['Sources'] = [Path(filename).as_posix() for filename in filenames]
+    return ImageStimulus(filenames, metadata=metadata)
 
 
 def _draw_image_stimulus(
@@ -206,9 +220,12 @@ def _draw_image_stimulus(
     fig: plt.figure
     ax: plt.Axes
     """
+    plt = importlib.import_module('matplotlib.pyplot')
+    pil_image = importlib.import_module('PIL.Image')
+
     try:
-        img = PIL.Image.open(image_stimulus)
-    except PIL.UnidentifiedImageError as exception:
+        img = pil_image.open(image_stimulus)
+    except pil_image.UnidentifiedImageError as exception:
         raise ValueError(
             f"Unsupported image file '{image_stimulus}'. "
             "Use 'PIL.features.pilinfo()' to get an overview of supported types.",

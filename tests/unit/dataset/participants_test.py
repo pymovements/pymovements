@@ -92,6 +92,22 @@ def test_participants_init_data(data):
             {'participant_id': {'Format': 'string'}, 'test': {'Format': 'string'}},
             id='string',
         ),
+        pytest.param(
+            pl.DataFrame(
+                {'participant_id': ['sub-01'], 'test': ['a']},
+                schema={'participant_id': pl.String, 'test': pl.Categorical},
+            ),
+            {'participant_id': {'Format': 'string'}, 'test': {'Format': 'string'}},
+            id='categorical',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {'participant_id': ['sub-01'], 'test': ['a']},
+                schema={'participant_id': pl.String, 'test': pl.Enum(['a', 'b'])},
+            ),
+            {'participant_id': {'Format': 'string'}, 'test': {'Format': 'string'}},
+            id='enum',
+        ),
     ],
 )
 def test_participants_init_infers_correct_format(data, expected_metadata):
