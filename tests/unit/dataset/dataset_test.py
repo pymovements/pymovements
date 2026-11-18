@@ -24,6 +24,7 @@ import os
 import re
 import shutil
 from collections.abc import Callable
+from copy import deepcopy
 from dataclasses import dataclass
 from dataclasses import replace
 from pathlib import Path
@@ -1699,6 +1700,134 @@ def test_load_previously_saved_events_gaze(
         events_dirname=events_dirname, **load_save_kwargs,
     )
     assert dataset.events
+
+
+def load_saved_events(dataset, loader, **kwargs):
+    """Load the saved event files through the named public loader."""
+    if loader == 'load':
+        return dataset.load(events=True, stimuli=False, **kwargs)
+    dataset.load(stimuli=False)
+    return dataset.load_event_files(**kwargs)
+
+
+@pytest.mark.parametrize('loader', ['load', 'load_event_files'])
+def test_load_events_forwards_offsets_inclusive(loader, gaze_dataset_configuration):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+
+    load_saved_events(dataset, loader, offsets_inclusive=False)
+
+    assert dataset.events
+    for events in dataset.events:
+        assert events.metadata['offset'] == {'inclusive': False}
+        assert events.frame['duration'].dt.total_microseconds().to_list() == [5_000] * 10
+
+
+@pytest.mark.parametrize('loader', ['load', 'load_event_files'])
+def test_load_events_forwards_durations_from_offsets(loader, gaze_dataset_configuration):
+    # The saved files are legacy files: duration == offset - onset on every row, 1000 Hz.
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+
+    load_saved_events(dataset, loader, offsets_inclusive=True, durations_from_offsets=True)
+
+    assert dataset.events
+    for events in dataset.events:
+        assert events.metadata['offset'] == {'inclusive': True}
+        assert events.frame['duration'].dt.total_microseconds().to_list() == [6_000] * 10
+
+
+@pytest.mark.parametrize('loader', ['load', 'load_event_files'])
+def test_load_events_forwards_validate(loader, gaze_dataset_configuration):
+    # The saved files are legacy files: duration == offset - onset on every row, 1000 Hz.
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+
+    load_saved_events(dataset, loader, offsets_inclusive=True, validate=False)
+
+    assert dataset.events
+    for events in dataset.events:
+        assert events.metadata['offset'] == {'inclusive': True}
+        assert events.frame['duration'].dt.total_microseconds().to_list() == [5_000] * 10
+
+
+@pytest.mark.parametrize('loader', ['load', 'load_event_files'])
+def test_load_events_validates_by_default(loader, gaze_dataset_configuration):
+    # The saved files are legacy files: duration == offset - onset on every row, 1000 Hz.
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+
+    with pytest.raises(ValueError, match='every row contradicts offsets_inclusive=True'):
+        load_saved_events(dataset, loader, offsets_inclusive=True)
+
+
+@pytest.mark.parametrize('loader', ['load', 'load_event_files'])
+def test_load_events_writes_sampling_rate_from_experiment(loader, gaze_dataset_configuration):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+
+    load_saved_events(dataset, loader)
+
+    assert dataset.events
+    for events in dataset.events:
+        assert events.metadata['sampling_rate'] == 1000
+
+
+def definition_without_rate(definition, experiment):
+    """Return a copy of the definition whose experiment is ``experiment`` or has no rate."""
+    if experiment is None:
+        return replace(definition, experiment=None)
+    experiment = deepcopy(definition.experiment)
+    experiment.sampling_rate = None
+    return replace(definition, experiment=experiment)
+
+
+@pytest.mark.parametrize('loader', ['load', 'load_event_files'])
+@pytest.mark.parametrize('experiment', [None, 'no_rate'])
+def test_load_events_writes_no_sampling_rate_without_experiment_rate(
+        loader, experiment, gaze_dataset_configuration,
+):
+    init_kwargs = gaze_dataset_configuration['init_kwargs']
+    definition = definition_without_rate(init_kwargs['definition'], experiment)
+    dataset = Dataset(**{**init_kwargs, 'definition': definition})
+
+    load_saved_events(dataset, loader)
+
+    assert dataset.events
+    for events in dataset.events:
+        assert 'sampling_rate' not in events.metadata
+
+
+@pytest.mark.parametrize('loader', ['load', 'load_event_files'])
+@pytest.mark.parametrize('experiment', [None, 'no_rate'])
+def test_load_events_migration_raises_without_experiment_rate(
+        loader, experiment, gaze_dataset_configuration,
+):
+    init_kwargs = gaze_dataset_configuration['init_kwargs']
+    definition = definition_without_rate(init_kwargs['definition'], experiment)
+    dataset = Dataset(**{**init_kwargs, 'definition': definition})
+
+    with pytest.raises(ValueError, match='requires a sampling_rate'):
+        load_saved_events(dataset, loader, offsets_inclusive=True, durations_from_offsets=True)
+
+
+@pytest.mark.parametrize('loader', ['load', 'load_event_files'])
+def test_load_events_without_offset_column_keeps_frame(loader, gaze_dataset_configuration):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+    fileinfo = gaze_dataset_configuration['fileinfo']['gaze']
+    saved_frame = pl.DataFrame(
+        {
+            'onset': [0, 10_000],
+            'duration': [5_000, 7_000],
+            'name': ['saccade', 'fixation'],
+        },
+        schema={'onset': pl.Duration('us'), 'duration': pl.Duration('us'), 'name': pl.String},
+    )
+    create_event_files_from_fileinfo(
+        [saved_frame] * fileinfo.height, fileinfo, dataset.path / 'events',
+    )
+
+    load_saved_events(dataset, loader)
+
+    assert dataset.events
+    for events in dataset.events:
+        assert_frame_equal(events.frame, saved_frame)
+        assert 'offset' not in events.metadata
 
 
 @pytest.mark.parametrize(

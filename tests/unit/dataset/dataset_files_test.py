@@ -1701,7 +1701,7 @@ def test_load_event_files_adds_relative_sources(tmp_path):
     ]
     paths = DatasetPaths(root=tmp_path, dataset='.')
 
-    events_list = load_event_files(files, paths, verbose=False)
+    events_list = load_event_files(DatasetDefinition(), files, paths, verbose=False)
 
     assert events_list[0].metadata == {
         'subject_id': 1,
@@ -1729,7 +1729,7 @@ def test_load_event_files_keeps_user_sources_list_unmutated(tmp_path):
     ]
     paths = DatasetPaths(root=tmp_path, dataset='.')
 
-    events_list = load_event_files(files, paths, verbose=False)
+    events_list = load_event_files(DatasetDefinition(), files, paths, verbose=False)
 
     # The user-supplied entry is respected and recorded relative to the dataset root.
     assert events_list[0].metadata == {'Sources': ['events/sub_1.feather']}
@@ -1756,7 +1756,7 @@ def test_load_event_files_relativizes_relative_user_source(tmp_path, monkeypatch
     ]
     paths = DatasetPaths(root=tmp_path, dataset='.')
 
-    events_list = load_event_files(files, paths, verbose=False)
+    events_list = load_event_files(DatasetDefinition(), files, paths, verbose=False)
 
     # The relative entry is anchored at the working directory and then made root-relative.
     assert events_list[0].metadata == {'Sources': ['events/sub_1.feather']}
@@ -1778,7 +1778,7 @@ def test_load_event_files_respects_empty_user_sources(tmp_path):
     ]
     paths = DatasetPaths(root=tmp_path, dataset='.')
 
-    events_list = load_event_files(files, paths, verbose=False)
+    events_list = load_event_files(DatasetDefinition(), files, paths, verbose=False)
 
     # An explicitly empty user-provided Sources entry expresses that no source shall be
     # recorded. Neither source recording nor relativization touches it.
