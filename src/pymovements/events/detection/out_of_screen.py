@@ -24,8 +24,8 @@ import numpy
 import polars
 
 from pymovements._utils import checks
+from pymovements._utils.time import normalize_timesteps
 from pymovements._utils.time import sampling_interval_ms
-from pymovements._utils.time import timesteps_to_numpy
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.transforms.numpy import consecutive
@@ -65,8 +65,8 @@ def out_of_screen(
         Minimum valid y pixel coordinate (inclusive). (default: 0)
     timesteps: list[int] | numpy.ndarray | polars.Series | None
         shape (N, )
-        Corresponding continuous 1D timestep time series. If None, sample based timesteps are
-        assumed. (default: None)
+        Corresponding continuous 1D timestep time series. If None, the timesteps are built
+        from ``sampling_rate`` as a grid in milliseconds starting at ``0``. (default: None)
     name: str
         Name for detected events in Events. (default: 'out_of_screen')
     sampling_rate: float
@@ -86,6 +86,7 @@ def out_of_screen(
     ValueError
         If pixels is None or does not have shape (N, 2).
         If sampling_rate is not positive.
+        If timesteps are not in ascending order.
         If x_min >= x_max.
         If y_min >= y_max.
     """
@@ -108,13 +109,7 @@ def out_of_screen(
             f'y_min must be less than y_max, but got y_min={y_min} and y_max={y_max}',
         )
 
-    if isinstance(timesteps, polars.Series):
-        timesteps = timesteps_to_numpy(timesteps)
-    elif timesteps is not None:
-        timesteps = numpy.array(timesteps)
-    else:
-        timesteps = numpy.arange(len(pixels), dtype=numpy.int64)
-    timesteps = numpy.array(timesteps)
+    timesteps = normalize_timesteps(timesteps, length=len(pixels), sampling_rate=sampling_rate)
     checks.check_is_length_matching(pixels=pixels, timesteps=timesteps)
 
     sampling_interval = sampling_interval_ms(sampling_rate)

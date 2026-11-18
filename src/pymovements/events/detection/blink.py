@@ -26,8 +26,8 @@ import numpy
 import polars
 
 from pymovements._utils import checks
+from pymovements._utils.time import normalize_timesteps
 from pymovements._utils.time import sampling_interval_ms
-from pymovements._utils.time import timesteps_to_numpy
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.transforms.numpy import consecutive
@@ -73,8 +73,8 @@ def blink(
         Continuous 1D pupil size time series (e.g., diameter or area).
     timesteps: list[int] | numpy.ndarray | polars.Series | None
         shape (N,)
-        Corresponding continuous 1D timestep time series. If None, sample-based timesteps are
-        assumed.
+        Corresponding continuous 1D timestep time series. If None, the timesteps are built
+        from ``sampling_rate`` as a grid in milliseconds starting at ``0``.
         (default: None)
     delta: float | None
         Threshold on absolute pupil difference for flagging rapid changes. If None, it is
@@ -84,19 +84,19 @@ def blink(
     minimum_duration: int
         Minimum blink duration. The duration is specified in the units used in ``timesteps``;
         for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
-        None, then ``minimum_duration`` is specified in numbers of samples.
+        None, the unit is milliseconds.
         (default: 50)
     maximum_duration: int | None
         Maximum blink duration. The duration is specified in the units used in ``timesteps``;
         for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
-        None, then ``maximum_duration`` is specified in numbers of samples.
+        None, the unit is milliseconds.
         Set to None to disable the upper bound.
         (default: 500)
     minimum_gap: int
         Minimum time gap in-between two blinks. Blinks that have a smaller time gap are combined
         into a single event. The duration is specified in the units used in ``timesteps``; for a
         ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is None,
-        then ``minimum_gap`` is specified in numbers of samples.
+        the unit is milliseconds.
         (default: 100)
     minimum_candidates_around_gap: tuple[int, int] | int
         Minimum number of candidate samples required on each side of a gap for it to be absorbed. If
@@ -123,6 +123,7 @@ def blink(
     ValueError
         If pupil is not 1D.
         If pupil and timesteps have different lengths.
+        If timesteps are not in ascending order.
         If sampling_rate is not positive.
         If delta is not positive.
         If minimum_duration is not positive.
@@ -141,13 +142,7 @@ def blink(
             f'pupil must be a 1D array, but got array with shape {pupil.shape}',
         )
 
-    if isinstance(timesteps, polars.Series):
-        timesteps = timesteps_to_numpy(timesteps)
-    elif timesteps is not None:
-        timesteps = numpy.array(timesteps)
-    else:
-        timesteps = numpy.arange(len(pupil), dtype=numpy.int64)
-    timesteps = numpy.array(timesteps)
+    timesteps = normalize_timesteps(timesteps, length=len(pupil), sampling_rate=sampling_rate)
     checks.check_is_length_matching(pupil=pupil, timesteps=timesteps)
 
     sampling_interval = sampling_interval_ms(sampling_rate)

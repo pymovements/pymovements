@@ -64,12 +64,12 @@ def microsaccades(
     timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None
         shape (N, )
         Corresponding continuous 1D timestep time series. Fractional (float) timesteps are
-        accepted. If None, sample based timesteps are assumed. (default: None)
+        accepted. If None, the timesteps are built from ``sampling_rate`` as a grid in milliseconds
+        starting at ``0``. (default: None)
     minimum_duration: int
         Minimum saccade duration. The duration is specified in the units used in ``timesteps``;
-         for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
-         None, then ``minimum_duration`` is specified in numbers of samples.
-         (default: 6)
+        for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
+        None, the unit is milliseconds. (default: 6)
     threshold: numpy.ndarray | tuple[float, float] | str
         If tuple of floats then use this as explicit elliptic threshold. If str, then use
         a data-driven velocity threshold method. Refer to
@@ -245,7 +245,9 @@ def microsaccades(
     velocities = numpy.array(velocities)
     checks.check_shapes(velocities=velocities)
 
-    timesteps = normalize_timesteps(timesteps, length=len(velocities))
+    timesteps = normalize_timesteps(
+        timesteps, length=len(velocities), sampling_rate=sampling_rate,
+    )
     checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
     sampling_interval = sampling_interval_ms(sampling_rate)
