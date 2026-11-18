@@ -45,17 +45,45 @@ def register_event_measure(function: Callable) -> Callable:
 
 
 @register_event_measure
-def duration() -> pl.Expr:
-    """Duration of an event.
+def duration(*, offsets_inclusive: bool, sampling_rate: float | None = None) -> pl.Expr:
+    """Duration of an event, derived from its onset and offset.
 
-    The duration is defined as the difference between offset time and onset time.
+    The duration is ``offset - onset``, plus one sampling interval when the offset is the
+    timestamp of the last sample. It is written as a ``polars.Duration('us')`` column from the
+    onset and offset columns of an events frame, overwriting a stored duration. With the same
+    convention on both, :py:func:`offset` followed by this measure returns the stored durations
+    for every event lasting at least one sampling interval. An impulse has no inclusive offset,
+    so its ``null`` inclusive offset gives a ``null`` duration.
+
+    Parameters
+    ----------
+    offsets_inclusive: bool
+        The convention of the offset column, as declared on
+        :py:class:`~pymovements.Events`: ``True`` if the offset is the timestamp of the last
+        sample, which needs the sampling rate, ``False`` if it is the end of the event.
+    sampling_rate: float | None
+        The sampling rate in Hz. Required with ``offsets_inclusive=True``, ignored otherwise.
+        (default: None)
 
     Returns
     -------
     pl.Expr
         The duration of the event.
+
+    Raises
+    ------
+    ValueError
+        If ``offsets_inclusive`` is ``True`` and no ``sampling_rate`` is given.
     """
     result = pl.col('offset') - pl.col('onset')
+    if offsets_inclusive:
+        if sampling_rate is None:
+            raise ValueError(
+                'offsets_inclusive=True requires a sampling_rate: '
+                'duration = offset - onset + 1 / sampling_rate.',
+            )
+        # Rounded to microseconds like the durations the detectors derive.
+        result = result + pl.duration(microseconds=round(1_000_000 / sampling_rate))
     return result.alias('duration')
 
 
