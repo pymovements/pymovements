@@ -1372,7 +1372,8 @@ class Events:
         ValueError
             If the trial or page column of the stimulus holds multiple unique values
             without being part of :py:attr:`~pymovements.Events.trial_columns`, as the
-            AOIs of all trials or pages would be pooled into a single text.
+            AOIs of all trials or pages would be pooled into a single text, or if
+            ``character_level`` is True but ``aois.word_column`` is None.
 
         Examples
         --------
