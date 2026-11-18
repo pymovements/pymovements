@@ -25,13 +25,18 @@ from dataclasses import dataclass
 from dataclasses import fields
 from numbers import Number
 from typing import Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 from deprecated.sphinx import deprecated
 
-from pymovements._utils import _checks
-from pymovements._utils._html import repr_html
+from pymovements._utils import checks
+from pymovements._utils.html import repr_html
+from pymovements.plotting.screen import make_screen_axes
 from pymovements.transforms.numpy import pix2deg
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
 
 
 @repr_html()
@@ -149,10 +154,10 @@ class Screen:
         size: tuple[float | None, float | None] | None = None,
     ):
         # Check mutual exclusivity.
-        _checks.check_is_mutual_exclusive(width_px=width_px, resolution=resolution)
-        _checks.check_is_mutual_exclusive(height_px=height_px, resolution=resolution)
-        _checks.check_is_mutual_exclusive(width_cm=width_cm, size=size)
-        _checks.check_is_mutual_exclusive(height_cm=height_cm, size=size)
+        checks.check_is_mutual_exclusive(width_px=width_px, resolution=resolution)
+        checks.check_is_mutual_exclusive(height_px=height_px, resolution=resolution)
+        checks.check_is_mutual_exclusive(width_cm=width_cm, size=size)
+        checks.check_is_mutual_exclusive(height_cm=height_cm, size=size)
 
         # Build the tuple from the individual px/cm arguments if not provided.
         self.resolution = resolution if resolution is not None else (width_px, height_px)
@@ -272,7 +277,7 @@ class Screen:
         self._check_numerical_attribute('distance_cm')
         assert self.distance_cm is not None
 
-        _checks.check_is_not_none(origin=self.origin)
+        checks.check_is_not_none(origin=self.origin)
         assert self.origin is not None
 
         return float(
@@ -297,7 +302,7 @@ class Screen:
         self._check_numerical_attribute('distance_cm')
         assert self.distance_cm is not None
 
-        _checks.check_is_not_none(origin=self.origin)
+        checks.check_is_not_none(origin=self.origin)
         assert self.origin is not None
 
         return float(
@@ -322,7 +327,7 @@ class Screen:
         self._check_numerical_attribute('distance_cm')
         assert self.distance_cm is not None
 
-        _checks.check_is_not_none(origin=self.origin)
+        checks.check_is_not_none(origin=self.origin)
         assert self.origin is not None
 
         return float(
@@ -347,7 +352,7 @@ class Screen:
         self._check_numerical_attribute('distance_cm')
         assert self.distance_cm is not None
 
-        _checks.check_is_not_none(origin=self.origin)
+        checks.check_is_not_none(origin=self.origin)
         assert self.origin is not None
 
         return float(
@@ -430,7 +435,7 @@ class Screen:
         self._check_numerical_attribute('distance_cm')
         assert self.distance_cm is not None
 
-        _checks.check_is_not_none(origin=self.origin)
+        checks.check_is_not_none(origin=self.origin)
         assert self.origin is not None
 
         return pix2deg(
@@ -444,9 +449,9 @@ class Screen:
     def _check_numerical_attribute(self, key: str) -> None:
         """Check if numerical attribute is not None and greater than zero."""
         value = getattr(self, key, None)
-        _checks.check_is_not_none(**{key: value})
+        checks.check_is_not_none(**{key: value})
         assert isinstance(value, (int, float))
-        _checks.check_is_greater_than_zero(**{key: value})
+        checks.check_is_greater_than_zero(**{key: value})
 
     def to_dict(
             self,
@@ -507,6 +512,51 @@ class Screen:
                     del data[key]
 
         return data
+
+    def plot(self, *, ax: plt.Axes | None = None) -> tuple[plt.Figure, plt.Axes]:
+        """Create an empty axes spanning the screen's pixel extent.
+
+        The axes is set up from the screen's ``width_px``, ``height_px`` and ``origin``.
+
+        Parameters
+        ----------
+        ax: plt.Axes | None
+            Axes to set up. A new figure and axes are created if ``None``.
+            (default: None)
+
+        Returns
+        -------
+        tuple[plt.Figure, plt.Axes]
+            The figure and the display-space axes.
+
+        Raises
+        ------
+        ValueError
+            If ``width_px`` or ``height_px`` is unset.
+        ValueError
+            If ``origin`` is unset or not a supported origin.
+
+        See Also
+        --------
+        pymovements.plotting.make_screen_axes : Create an empty axes for a display's pixel extent.
+
+        Examples
+        --------
+        >>> screen = Screen(
+        ...     width_px=1280,
+        ...     height_px=1024,
+        ...     width_cm=38.0,
+        ...     height_cm=30.0,
+        ...     distance_cm=68.0,
+        ...     origin='upper left',
+        ... )
+        >>> fig, ax = screen.plot()
+        >>> tuple(float(value) for value in ax.get_xlim())
+        (0.0, 1280.0)
+        >>> tuple(float(value) for value in ax.get_ylim())
+        (1024.0, 0.0)
+        """
+        return make_screen_axes(self.width_px, self.height_px, origin=self.origin, ax=ax)
 
     def __bool__(self) -> bool:
         """Return True if the screen has data defined, else False."""

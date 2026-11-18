@@ -37,16 +37,16 @@ resources:
     read_csv_kwargs:
       separator: "\t"
       columns:
-      - time
       - book_name
       - screen_id
+      - time
       - x_left
       - y_left
       - pupil_left
       schema_overrides:
-        time: '!polars.datatypes.classes.Int64'
         book_name: '!polars.datatypes.classes.String'
         screen_id: '!polars.datatypes.classes.Int64'
+        time: '!polars.datatypes.classes.Int64'
         x_left: '!polars.datatypes.classes.Float32'
         y_left: '!polars.datatypes.classes.Float32'
         pupil_left: '!polars.datatypes.classes.Float32'

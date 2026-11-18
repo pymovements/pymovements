@@ -21,16 +21,20 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 from warnings import warn
 
-import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import colors
 
-from pymovements.gaze import Gaze
 from pymovements.plotting._matplotlib import _set_screen_axes
 from pymovements.plotting._matplotlib import prepare_figure
 from pymovements.stimulus.image import _draw_image_stimulus
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
+    from matplotlib import colors
+
+    from pymovements.gaze import Gaze
 
 
 def heatmap(
@@ -65,7 +69,9 @@ def heatmap(
     gaze: Gaze
         A Gaze object.
     position_column: str
-        The column name of the x and y position data. (default: 'pixel')
+        The column name of the x and y position data. Only a column named ``'pixel'`` gets the
+        screen's pixel extent as axes limits, for other columns the limits follow the extent of
+        the heatmap. (default: 'pixel')
     gridsize: tuple[int, int]
         The number of bins in the x and y dimensions. (default: (10, 10))
     cmap: colors.Colormap | str
@@ -220,7 +226,14 @@ def heatmap(
     heatmap_plot.set_alpha(np.where(heatmap_plot.get_array().data > 0, alpha, 0.0))
 
     # Apply screen-based axis limits and aspect ratio
-    _set_screen_axes(ax, gaze.experiment.screen, func_name='heatmap')
+    _set_screen_axes(
+        ax,
+        gaze.experiment.screen.width_px,
+        gaze.experiment.screen.height_px,
+        gaze.experiment.screen.origin,
+        position_column=position_column,
+        func_name='heatmap',
+    )
 
     # Set the plot title and axis labels
     if title:

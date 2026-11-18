@@ -12,8 +12,9 @@ environment and the ``pymovements`` package installed.
 
     .. grid-item-card::
 
-        **Already installed?**
-        ^^^^^^^^^^^^^^^^^^^^^^
+        .. card-header::
+
+            **Already installed?**
 
         Get familiar with ``pymovements`` by working through this beginner tutorial:
 

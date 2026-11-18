@@ -19,7 +19,10 @@
 # SOFTWARE.
 """Test Text stimulus class."""
 import math
+<<<<<<< HEAD
 from copy import deepcopy
+=======
+>>>>>>> origin/main
 from dataclasses import replace
 
 import matplotlib.pyplot as plt
@@ -27,6 +30,7 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
+from pymovements.plotting import make_screen_axes
 from pymovements.stimulus import text
 from pymovements.stimulus import TextStimulus
 from pymovements.stimulus import WritingSystem
@@ -267,7 +271,7 @@ def test_text_stimulus_from_file_has_correct_metadata_default(make_example_file)
         height_column='height',
         page_column='page',
     )
-    assert stimulus.metadata == {}
+    assert stimulus.metadata == {'Sources': [aoi_path.as_posix()]}
 
 
 @pytest.mark.parametrize(
@@ -278,7 +282,6 @@ def test_text_stimulus_from_file_has_correct_metadata_default(make_example_file)
     ],
 )
 def test_text_stimulus_has_correct_metadata(metadata, make_example_file):
-    metadata_pre = deepcopy(metadata)
     aoi_path = make_example_file('stimuli/toy_text_aoi.csv')
 
     stimulus = text.from_file(
@@ -292,8 +295,30 @@ def test_text_stimulus_has_correct_metadata(metadata, make_example_file):
         metadata=metadata,
     )
 
-    assert stimulus.metadata == metadata_pre
-    assert stimulus.metadata is metadata
+    expected_sources = [aoi_path.as_posix()]
+    assert stimulus.metadata == {**metadata, 'Sources': expected_sources}
+
+
+def test_text_stimulus_from_file_does_not_mutate_passed_metadata(make_example_file):
+    aoi_path = make_example_file('stimuli/toy_text_aoi.csv')
+    metadata = {'key': 'value'}
+
+    stimulus = text.from_file(
+        aoi_path,
+        aoi_column='char',
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+        metadata=metadata,
+    )
+
+    assert metadata == {'key': 'value'}
+    assert stimulus.metadata == {
+        'key': 'value',
+        'Sources': [aoi_path.as_posix()],
+    }
 
 
 def test_text_stimulus_unsupported_format(make_example_file):
@@ -427,6 +452,54 @@ def test_text_stimulus_splitting_different_between(filename, custom_read_kwargs,
     assert len(unique_values) == len(set(unique_values))
 
 
+def test_word_column_default_is_none(sample_aoi_dataframe):
+    """Test that word_column defaults to None."""
+    stimulus = TextStimulus(
+        aois=sample_aoi_dataframe,
+        aoi_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        width_column='width',
+        height_column='height',
+    )
+    assert stimulus.word_column is None
+
+
+def test_word_column_preserved_by_from_file(make_example_file):
+    """Test that from_file() preserves word_column."""
+    aoi_path = make_example_file('stimuli/toy_text_aoi.csv')
+    stimulus = text.from_file(
+        aoi_path,
+        aoi_column='char',
+        word_column='char',
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+    )
+    assert stimulus.word_column == 'char'
+
+
+def test_word_column_preserved_by_split(sample_aoi_dataframe):
+    """Test that split() preserves word_column."""
+    stimulus = TextStimulus(
+        aois=sample_aoi_dataframe,
+        aoi_column='aoi',
+        word_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+    )
+
+    splits = stimulus.split(by='page')
+
+    assert len(splits) == 2
+    assert all(split.word_column == 'aoi' for split in splits)
+
+
 def test_writing_system_default(sample_aoi_dataframe):
     """Test that default writing_system is horizontal-lr."""
     stimulus = TextStimulus(
@@ -555,6 +628,29 @@ def test_writing_system_preserved_by_split_sample_df(sample_aoi_dataframe, writi
     # Check that all split parts preserve the writing_system
     assert len(splits) == 2
     assert all(stimulus.writing_system == writing_system for stimulus in splits)
+
+
+def test_text_stimulus_split_propagates_metadata(sample_aoi_dataframe):
+    stimulus = TextStimulus(
+        aois=sample_aoi_dataframe,
+        aoi_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+        metadata={'Sources': ['stimuli/text_1_aoi.csv']},
+    )
+
+    splits = stimulus.split(by='page')
+
+    assert len(splits) == 2
+    for split_stimulus in splits:
+        assert split_stimulus.metadata == {'Sources': ['stimuli/text_1_aoi.csv']}
+
+    # The metadata is deep-copied, mutating a split does not affect the original.
+    splits[0].metadata['Sources'].append('other.csv')
+    assert stimulus.metadata['Sources'] == ['stimuli/text_1_aoi.csv']
 
 
 @pytest.mark.parametrize(
@@ -1236,6 +1332,26 @@ def test_text_stimulus_plot_uses_provided_ax(sample_aoi_dataframe):
     assert returned_fig is existing_fig
 
 
+<<<<<<< HEAD
+=======
+def test_text_stimulus_plot_keeps_provided_ax_limits(sample_aoi_dataframe):
+    stimulus = TextStimulus(
+        aois=sample_aoi_dataframe,
+        aoi_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        **WIDTH_HEIGHT_COLUMNS,
+    )
+
+    _, ax = make_screen_axes(1280, 1024)
+
+    stimulus.plot(ax=ax)
+
+    assert ax.get_xlim() == (0, 1280)
+    assert ax.get_ylim() == (1024, 0)
+
+
+>>>>>>> origin/main
 def test_text_stimulus_plot_show_boxes_false_draws_labels_only(sample_aoi_dataframe):
     stimulus = TextStimulus(
         aois=sample_aoi_dataframe,

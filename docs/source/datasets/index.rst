@@ -25,8 +25,9 @@ Download your dataset and load it into memory with these few lines of code:
 
     .. grid-item-card::
 
-        **Are you missing a dataset?**
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        .. card-header::
+
+            **Are you missing a dataset?**
 
         Check out this guide on how to contribute datasets to the library:
 
