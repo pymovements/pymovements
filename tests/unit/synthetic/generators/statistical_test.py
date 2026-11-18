@@ -233,24 +233,6 @@ def test_event_of_zero_duration_does_not_depend_on_the_row_order():
     assert gaze.samples.height == 400
 
 
-def test_trial_of_only_zero_durations_gets_no_samples():
-    events = Events(
-        pl.DataFrame({
-            'trial': [1, 2],
-            'name': ['fixation', 'saccade'],
-            'onset': [0, 0],
-            'offset': [200, 0],
-        }),
-        trial_columns='trial',
-        time_unit='ms',
-    )
-
-    gaze = StatisticalSampleGenerator(sampling_rate=1000.0).generate(events=events, seed=42)
-
-    assert gaze.samples['trial'].unique().to_list() == [1]
-    assert gaze.samples.height == 200
-
-
 def test_samples_start_at_the_first_onset():
     events = Events(
         name=['fixation', 'saccade'], onsets=[500, 700], offsets=[700, 740], time_unit='ms',
@@ -1068,6 +1050,20 @@ def test_statistical_raises_error(hyperparameters, exception, msg_substrings):
             _events(('saccade', 0.0)),
             ('statistical', 'duration of zero', 'nothing to generate'),
             id='only_events_of_zero_duration',
+        ),
+        pytest.param(
+            Events(
+                pl.DataFrame({
+                    'trial': [1, 2, 2],
+                    'name': ['fixation', 'saccade', 'fixation'],
+                    'onset': [0, 0, 0],
+                    'offset': [200, 0, 0],
+                }),
+                trial_columns='trial',
+                time_unit='ms',
+            ),
+            ('statistical', "{'trial': 2}", 'duration of zero', 'drop the trial'),
+            id='trial_of_only_events_of_zero_duration',
         ),
         pytest.param(
             Events(

@@ -64,8 +64,9 @@ class StatisticalSampleGenerator(SampleGenerator):
     profile since the previous sample, so the signal trails its events by up to one sample, and
     measurement noise is added last.
     Events with trial columns are generated trial by trial. An event with a duration of zero gets
-    no samples and stays in the attached events, while a null duration is rejected, as the end is
-    unknown, and so is a negative one.
+    no samples and stays in the attached events, but a trial whose events all have a duration of
+    zero is rejected, as it would go missing from the output. A null duration is rejected, as the
+    end is unknown, and so is a negative one.
 
     Each random quantity is a :py:class:`~pymovements.synthetic.Range`, given as a range, a
     ``(minimum, maximum)`` pair for a uniform range, or a single value. Durations are in
@@ -297,8 +298,9 @@ class StatisticalSampleGenerator(SampleGenerator):
             If ``events`` is not an ``Events`` object.
         ValueError
             If the events have gaps, overlap, are empty, all have a duration of zero, contain
-            a null onset, a null or negative duration or an event type without a profile, or
-            if a trial column has the name of a generated or ``Gaze`` column.
+            a trial whose events all have a duration of zero, a null onset, a null or negative
+            duration or an event type without a profile, or if a trial column has the name of a
+            generated or ``Gaze`` column.
         """
         if not isinstance(events, Events):
             raise TypeError(
@@ -335,8 +337,21 @@ class StatisticalSampleGenerator(SampleGenerator):
 
         # An event of zero duration selects no samples. A separate copy is rendered, since the
         # events are attached to the output as they came.
+        has_duration = pl.col('duration') > pl.duration(microseconds=0)
         rendered = events.clone()
-        rendered.frame = rendered.frame.filter(pl.col('duration') > pl.duration(microseconds=0))
+        rendered.frame = rendered.frame.filter(has_duration)
+
+        if events.trial_columns:
+            skipped = events.frame.group_by(events.trial_columns, maintain_order=True).agg(
+                has_duration.any().alias('has_duration'),
+            ).filter(~pl.col('has_duration'))
+            if skipped.height:
+                trial = skipped.drop('has_duration').row(0, named=True)
+                raise ValueError(
+                    f"generator '{self.name}': all events of the trial {trial} have a duration "
+                    'of zero, so there is nothing to generate samples for; drop the trial',
+                )
+
         if rendered.frame.is_empty() and not events.frame.is_empty():
             raise ValueError(
                 f"generator '{self.name}': all events have a duration of zero, so there is "
