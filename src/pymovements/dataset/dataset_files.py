@@ -245,7 +245,9 @@ def load_event_files(
     AttributeError
         If `fileinfo` is None or the `fileinfo` dataframe is empty.
     ValueError
-        If the extension is not in list of valid extensions.
+        If the extension is not in list of valid extensions, if durations are derived from
+        inclusive offsets and the definition's experiment has no sampling rate, or if every
+        row of a file contradicts the declared offset convention.
     """
     list_of_events: list[Events] = []
 

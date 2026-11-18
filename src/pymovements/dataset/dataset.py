@@ -608,7 +608,9 @@ class Dataset:
         AttributeError
             If `fileinfo` is None or the `fileinfo` dataframe is empty.
         ValueError
-            If extension is not in list of valid extensions.
+            If extension is not in list of valid extensions, if durations are derived from
+            inclusive offsets and the definition's experiment has no sampling rate, or if every
+            row of a file contradicts the declared offset convention.
         """
         self._check_fileinfo()
         events = dataset_files.load_event_files(
