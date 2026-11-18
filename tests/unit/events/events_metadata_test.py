@@ -524,6 +524,24 @@ def test_metadata_non_bool_offset_convention_entry_raises(inclusive, expected_ma
         Events(onsets=[0], offsets=[5], metadata={'offset': {'inclusive': inclusive}})
 
 
+@pytest.mark.parametrize(
+    ('entry', 'expected_match'),
+    [
+        pytest.param(12.5, r"metadata\['offset'\] must be a dict, but is 12\.5\.", id='float'),
+        pytest.param(True, r"metadata\['offset'\] must be a dict, but is True\.", id='bool'),
+    ],
+)
+def test_metadata_non_dict_offset_entry_raises(entry, expected_match):
+    with pytest.raises(ValueError, match=expected_match):
+        Events(onsets=[0], offsets=[5], metadata={'offset': entry})
+
+
+def test_metadata_offset_convention_entry_inclusive_none_declares_nothing():
+    events = Events(onsets=[0], offsets=[5], metadata={'offset': {'inclusive': None}})
+
+    assert events.frame['duration'].to_list() == [timedelta(milliseconds=5)]
+
+
 @pytest.mark.parametrize('offsets_inclusive', [True, False])
 def test_metadata_offsets_inclusive_without_offset_column_writes_no_entry(offsets_inclusive):
     with pytest.warns(UserWarning, match="no 'offset' column"):

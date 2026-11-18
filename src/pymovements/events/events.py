@@ -96,11 +96,15 @@ def _resolve_offset_convention(
     Raises
     ------
     ValueError
-        If the ``inclusive`` value of the ``offset`` entry is not a bool, or if the keyword
-        differs from the ``offset`` entry.
+        If the ``offset`` entry is not a dict, if its ``inclusive`` value is neither a bool nor
+        ``None``, or if the keyword differs from the ``offset`` entry.
     """
     entry = metadata.get('offset')
-    entry_inclusive = entry.get('inclusive') if isinstance(entry, dict) else None
+    if entry is not None and not isinstance(entry, dict):
+        raise ValueError(
+            f"the metadata entry metadata['offset'] must be a dict, but is {entry!r}.",
+        )
+    entry_inclusive = entry.get('inclusive') if entry is not None else None
     if entry_inclusive is not None and not isinstance(entry_inclusive, bool):
         raise ValueError(
             "the metadata entry metadata['offset']['inclusive'] must be a bool, "
@@ -570,10 +574,11 @@ class Events:
         If ``durations`` or ``offsets`` are passed without ``onsets``, if their lengths do not
         match the length of ``onsets``, if ``time_unit`` is not one of ``'s'``, ``'ms'`` or
         ``'us'``, if ``sampling_rate`` is not positive, if the sampling-rate entry in
-        ``metadata`` is not a positive number, if the ``inclusive`` value of the ``offset``
-        entry in ``metadata`` is not a bool, if durations are derived from inclusive offsets
-        without a sampling rate, if every row contradicts the declared offset convention, or if
-        ``offsets_inclusive`` or ``sampling_rate`` differs from its entry in ``metadata``.
+        ``metadata`` is not a positive number, if the ``offset`` entry in ``metadata`` is not a
+        dict or its ``inclusive`` value is neither a bool nor ``None``, if durations are derived
+        from inclusive offsets without a sampling rate, if every row contradicts the declared
+        offset convention, or if ``offsets_inclusive`` or ``sampling_rate`` differs from its entry
+        in ``metadata``.
 
     Notes
     -----
@@ -640,10 +645,13 @@ class Events:
     The convention of ``offset`` is declared by ``offsets_inclusive``, by its entry, or by both
     when they agree. The sampling rate resolves from ``sampling_rate`` first, then from its
     entry. A keyword that differs from its entry raises a ``ValueError``, also on a frame without
-    an ``offset`` column. Several offset columns may carry their own convention entries. A
-    convention entry for a column the frame does not have is kept, and with ``validate=True``
-    one warning names the column. :py:meth:`~pymovements.Events.drop` removes the convention
-    entry together with its column.
+    an ``offset`` column. An entry of the wrong shape raises a ``ValueError`` too: an ``offset``
+    entry that is not a dict, an ``inclusive`` value that is neither a bool nor ``None``, or a
+    sampling rate that is not a positive number. An ``inclusive`` value of ``None`` declares no
+    convention. Several offset columns may carry their own convention entries. A convention entry
+    for a column the frame does not have is kept, and with ``validate=True`` one warning names
+    the column. :py:meth:`~pymovements.Events.drop` removes the ``metadata`` entry keyed by a
+    dropped column's name, such as the convention entry of an offset column.
 
     Modifying ``frame`` directly is not supported: ``metadata`` is not kept consistent with it.
 
