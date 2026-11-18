@@ -521,15 +521,25 @@ def test_metadata_offsets_inclusive_without_offset_column_writes_no_entry(offset
 
 
 @pytest.mark.parametrize(
-    ('durations', 'offsets'),
+    ('durations', 'offsets', 'offsets_inclusive', 'expected_metadata'),
     [
-        pytest.param([6, 11], [5, 10], id='common_positive_residual'),
-        pytest.param([6, 12], [5, 10], id='unequal_residuals'),
-        pytest.param(None, [5, 10], id='exclusive_derived'),
+        pytest.param(
+            [6, 11], [5, 10], True, {'offset': {'inclusive': True}},
+            id='common_positive_residual',
+        ),
+        pytest.param(
+            [6, 12], [5, 10], True, {'offset': {'inclusive': True}},
+            id='unequal_residuals',
+        ),
+        pytest.param(
+            None, [5, 10], False, {'offset': {'inclusive': False}},
+            id='exclusive_derived',
+        ),
     ],
 )
-def test_metadata_no_sampling_rate_entry_without_sampling_rate(durations, offsets):
-    offsets_inclusive = durations is not None
+def test_metadata_no_sampling_rate_entry_without_sampling_rate(
+        durations, offsets, offsets_inclusive, expected_metadata,
+):
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', message='.*contradict')
         events = Events(
@@ -537,8 +547,7 @@ def test_metadata_no_sampling_rate_entry_without_sampling_rate(durations, offset
             offsets_inclusive=offsets_inclusive,
         )
 
-    assert 'sampling_rate' not in events.metadata
-    assert events.metadata == {'offset': {'inclusive': offsets_inclusive}}
+    assert events.metadata == expected_metadata
 
 
 @pytest.mark.parametrize(
@@ -588,15 +597,32 @@ def test_metadata_convention_entry_without_column_does_not_warn_with_validate_fa
     assert events.metadata == metadata
 
 
-@pytest.mark.parametrize('column', ['offset', 'offset_vendor'])
-def test_drop_offset_column_removes_its_convention_entry(column):
+@pytest.mark.parametrize(
+    ('column', 'expected_metadata'),
+    [
+        pytest.param(
+            'offset',
+            {'offset_vendor': {'inclusive': True}, 'sampling_rate': 1000, 'key': 'value'},
+            id='offset',
+        ),
+        pytest.param(
+            'offset_vendor',
+            {'offset': {'inclusive': False}, 'sampling_rate': 1000, 'key': 'value'},
+            id='offset_vendor',
+        ),
+    ],
+)
+def test_drop_offset_column_removes_its_convention_entry(column, expected_metadata):
     data = pl.DataFrame({'onset': [0], 'offset': [5], 'offset_vendor': [4]})
     events = Events(
-        data, offsets_inclusive=False, sampling_rate=1000,
-        metadata={'offset_vendor': {'inclusive': True}, 'key': 'value'},
+        data,
+        metadata={
+            'offset': {'inclusive': False},
+            'offset_vendor': {'inclusive': True},
+            'sampling_rate': 1000,
+            'key': 'value',
+        },
     )
-    expected_metadata = dict(events.metadata)
-    del expected_metadata[column]
 
     with warnings.catch_warnings():
         warnings.simplefilter('error')
