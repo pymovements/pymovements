@@ -1880,6 +1880,28 @@ def test_gaze_detect_differing_sampling_rate_raises_naming_clear(trial):
     assert gaze.events.metadata == _detected_entries(1000)
 
 
+@pytest.mark.parametrize(
+    ('trial', 'trials'),
+    [
+        pytest.param(None, None, id='trial_less'),
+        pytest.param(np.array(['A'] * 50 + ['B'] * 50), ['A'], id='grouped'),
+    ],
+)
+def test_gaze_detect_differing_sampling_rate_raise_leaves_the_metadata_unchanged(trial, trials):
+    # The existing events carry a rate but no offset column, so the detected offset
+    # convention would be copied before the rate raises if the entries were not checked first.
+    gaze = _velocity_gaze(
+        trial=trial,
+        experiment=pm.Experiment(sampling_rate=500),
+        events=pm.Events(onsets=[0], durations=[100], trials=trials, sampling_rate=1000),
+    )
+
+    with pytest.raises(ValueError, match=r'detect\(clear=True\)'):
+        gaze.detect('ivt', minimum_duration=1)
+
+    assert gaze.events.metadata == {'sampling_rate': 1000}
+
+
 def test_gaze_detect_existing_exclusive_events_raise_naming_clear():
     gaze = _velocity_gaze(
         experiment=pm.Experiment(sampling_rate=1000),

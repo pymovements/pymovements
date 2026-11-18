@@ -2473,8 +2473,9 @@ def _carry_detected_entries(events: Events, detected: Events) -> None:
     and a differing sampling-rate entry or offset convention entry raises, since one events
     frame holds one sampling grid and one convention per offset column. An offset column of
     ``events`` without a convention entry raises as well: the detected convention would declare
-    rows that were never declared. Keys that are no entry, such as the sources, are left
-    untouched on both sides.
+    rows that were never declared. Every entry is checked before any is copied, so a raise
+    leaves the metadata of ``events`` as it was. Keys that are no entry, such as the sources,
+    are left untouched on both sides.
 
     Parameters
     ----------
@@ -2491,10 +2492,11 @@ def _carry_detected_entries(events: Events, detected: Events) -> None:
         column that the detected events declare.
     """
     metadata = events.metadata
+    carried: dict[str, Any] = {}
     for key, value in detected.metadata.items():
         if key == 'sampling_rate':
             if key not in metadata:
-                metadata[key] = value
+                carried[key] = value
             elif metadata[key] != value:
                 raise ValueError(
                     f'detected events have sampling_rate={value!r}, but the existing events '
@@ -2511,10 +2513,11 @@ def _carry_detected_entries(events: Events, detected: Events) -> None:
                         f"the 'offset' column with offsets_inclusive=, or call "
                         'detect(clear=True) to replace the existing events.',
                     )
-                metadata[key] = dict(value)
+                carried[key] = dict(value)
             elif not isinstance(existing, dict) or existing.get('inclusive') != value['inclusive']:
                 raise ValueError(
                     f"detected events declare metadata['{key}'] = {value!r}, but the existing "
                     f"events carry metadata['{key}'] = {metadata[key]!r}. "
                     'Call detect(clear=True) to replace the existing events.',
                 )
+    metadata.update(carried)
