@@ -169,6 +169,7 @@ check_untyped_defs = false
 disallow_untyped_defs = false
 
 [tool.pydoclint]
+ignore-private-args = true
 skip-checking-raises = true
 treat-property-methods-as-class-attributes = true
 

@@ -21,6 +21,7 @@
 # pylint: disable=too-many-lines
 from __future__ import annotations
 
+import math
 import warnings
 from collections.abc import Sequence
 from copy import deepcopy
@@ -151,8 +152,8 @@ def _resolve_sampling_rate(
     Raises
     ------
     ValueError
-        If the sampling-rate entry is not a positive number, or if the keyword differs from
-        it.
+        If the sampling-rate entry is not a finite positive number, or if the keyword
+        differs from it.
     """
     entry_rate = metadata.get('sampling_rate')
     rate = None
@@ -164,10 +165,10 @@ def _resolve_sampling_rate(
                 f'but is {entry_rate!r}.',
             )
         rate = float(entry_rate)
-        if rate <= 0:
+        if not math.isfinite(rate) or rate <= 0:
             raise ValueError(
-                "the metadata entry metadata['sampling_rate'] must be positive, "
-                f'but is {entry_rate}.',
+                "the metadata entry metadata['sampling_rate'] must be a finite positive "
+                f'number, but is {entry_rate}.',
             )
     if sampling_rate is not None and rate is not None and sampling_rate != rate:
         raise ValueError(
@@ -524,9 +525,8 @@ class Events:
         offset. Required to derive durations from inclusive offsets. If None, the sampling-rate
         entry in ``metadata`` is used. (default: None)
     validate: bool
-        If False, supplied durations are kept unchecked beside declared offsets, a null
-        ``duration`` beside a non-null ``offset`` is not reported, and a convention entry
-        without its column is kept without a warning. (default: True)
+        If False, supplied durations are kept unchecked beside declared offsets, and a
+        convention entry without its column is kept without a warning. (default: True)
     trials: list[int | float | str | None] | np.ndarray | None
         List of trial identifiers. (default: None)
     trial_columns: list[str] | str | None
@@ -573,9 +573,9 @@ class Events:
     ValueError
         If ``durations`` or ``offsets`` are passed without ``onsets``, if their lengths do not
         match the length of ``onsets``, if ``time_unit`` is not one of ``'s'``, ``'ms'`` or
-        ``'us'``, if ``sampling_rate`` is not positive, if the sampling-rate entry in
-        ``metadata`` is not a positive number, if the ``offset`` entry in ``metadata`` is not a
-        dict or its ``inclusive`` value is neither a bool nor ``None``, if durations are derived
+        ``'us'``, if ``sampling_rate`` or the sampling-rate entry in ``metadata`` is not a
+        finite positive number, if the ``offset`` entry in ``metadata`` is not a dict or its
+        ``inclusive`` value is neither a bool nor ``None``, if durations are derived
         from inclusive offsets without a sampling rate, if every row contradicts the declared
         offset convention, or if ``offsets_inclusive`` or ``sampling_rate`` differs from its entry
         in ``metadata``.
@@ -623,7 +623,9 @@ class Events:
     allows 1 µs, because onset, offset and duration are rounded to microseconds one by one.
     Without a sampling rate the durations of inclusive offsets must exceed ``offset - onset`` by
     one common positive interval. If every row contradicts the declaration, a ``ValueError``
-    names the ways to fix it. If some rows do, one warning names them.
+    names the ways to fix it. If some rows do, one warning names them. A null ``duration``
+    beside a non-null ``offset`` is reported with one warning and stays null, with
+    ``validate=True`` and ``validate=False`` alike.
 
     ``metadata`` carries the convention and the sampling rate, so a frame rebuilt from
     ``frame`` and ``metadata`` needs neither keyword:
@@ -647,11 +649,11 @@ class Events:
     entry. A keyword that differs from its entry raises a ``ValueError``, also on a frame without
     an ``offset`` column. An entry of the wrong shape raises a ``ValueError`` too: an ``offset``
     entry that is not a dict, an ``inclusive`` value that is neither a bool nor ``None``, or a
-    sampling rate that is not a positive number. An ``inclusive`` value of ``None`` declares no
-    convention. Several offset columns may carry their own convention entries. A convention entry
-    for a column the frame does not have is kept, and with ``validate=True`` one warning names
-    the column. :py:meth:`~pymovements.Events.drop` removes the ``metadata`` entry keyed by a
-    dropped column's name, such as the convention entry of an offset column.
+    sampling rate that is not a finite positive number. An ``inclusive`` value of ``None``
+    declares no convention. Several offset columns may carry their own convention entries. A
+    convention entry for a column the frame does not have is kept, and with ``validate=True``
+    one warning names the column. :py:meth:`~pymovements.Events.drop` removes the ``metadata``
+    entry keyed by a dropped column's name, such as the convention entry of an offset column.
 
     Modifying ``frame`` directly is not supported: ``metadata`` is not kept consistent with it.
 
@@ -755,6 +757,10 @@ class Events:
             trial_columns: list[str] | str | None = None,
             metadata: dict[str, Any] | None = None,
             time_unit: str | None = None,
+            # Passed by the rebuild sites only, left out of the rendered signature and the
+            # Parameters section: skips the report of a null duration beside a non-null
+            # offset, which was given when the frame entered pymovements.
+            _silent: bool = False,
     ):
         self.trial_columns: list[str] | None  # otherwise mypy gets confused.
         # A deep copy: neither the entries written below nor later changes to nested values
@@ -775,8 +781,12 @@ class Events:
                 "and 'us' for microseconds.",
             )
 
-        if sampling_rate is not None and not sampling_rate > 0:
-            raise ValueError(f'sampling_rate must be positive, but is {sampling_rate}.')
+        if sampling_rate is not None and not (
+                math.isfinite(sampling_rate) and sampling_rate > 0
+        ):
+            raise ValueError(
+                f'sampling_rate must be a finite positive number, but is {sampling_rate}.',
+            )
 
         if data is not None:
             checks.check_is_mutual_exclusive(data=data, onsets=onsets)
@@ -921,6 +931,7 @@ class Events:
             sampling_rate=sampling_rate,
             sampling_rate_source=sampling_rate_source,
             validate=validate,
+            silent=_silent,
         )
 
         self._write_entries(
@@ -961,7 +972,7 @@ class Events:
         if offsets_inclusive_source == 'keyword' and 'offset' in self.frame.columns:
             entry = self.metadata.get('offset')
             self.metadata['offset'] = {
-                **(entry if isinstance(entry, dict) else {}),
+                **(entry or {}),
                 'inclusive': offsets_inclusive,
             }
         if sampling_rate_source == 'keyword':
@@ -1001,6 +1012,7 @@ class Events:
             sampling_rate: float | None,
             sampling_rate_source: Literal['keyword', 'entry'],
             validate: bool,
+            silent: bool,
     ) -> None:
         """Fill or check the ``duration`` column against the ``offset`` column.
 
@@ -1052,21 +1064,23 @@ class Events:
             self.frame = self.frame.with_columns(derived.alias('duration'))
             return
 
+        # A null duration beside a non-null offset is reported, never filled. The report is
+        # not part of the validation that validate=False opts out of.
+        if not silent:
+            null_durations = self.frame.select(
+                (polars.col('duration').is_null() & polars.col('offset').is_not_null()).sum(),
+            ).item()
+            if null_durations:
+                rows_have = 'row has' if null_durations == 1 else 'rows have'
+                warn(
+                    f"{null_durations} {rows_have} a null duration beside a non-null offset. "
+                    'The durations stay null.',
+                    UserWarning,
+                    stacklevel=3,
+                )
+
         if not validate:
             return
-
-        # A null duration beside a non-null offset is reported, never filled.
-        null_durations = self.frame.select(
-            (polars.col('duration').is_null() & polars.col('offset').is_not_null()).sum(),
-        ).item()
-        if null_durations:
-            rows_have = 'row has' if null_durations == 1 else 'rows have'
-            warn(
-                f"{null_durations} {rows_have} a null duration beside a non-null offset. "
-                'The durations stay null.',
-                UserWarning,
-                stacklevel=3,
-            )
 
         self._check_durations_against_offsets(
             offsets_inclusive=offsets_inclusive,
@@ -1516,6 +1530,7 @@ class Events:
             trial_columns=self.trial_columns,
             metadata=self.metadata,
             validate=False,
+            _silent=True,
         )
 
     @overload
@@ -1571,6 +1586,7 @@ class Events:
                     trial_columns=self.trial_columns,
                     metadata=self.metadata,
                     validate=False,
+                    _silent=True,
                 )
                 for key, frame in event_dfs.items()
             }
@@ -1581,6 +1597,7 @@ class Events:
                 trial_columns=self.trial_columns,
                 metadata=self.metadata,
                 validate=False,
+                _silent=True,
             )
             for frame in event_dfs
         ]
@@ -2054,6 +2071,7 @@ class Events:
             trial_columns=self.trial_columns,
             metadata=merge_sources(self.metadata, aois.metadata),
             validate=False,
+            _silent=True,
         )
 
     def measure_reading(
@@ -2190,6 +2208,7 @@ class Events:
                 trial_columns=self.trial_columns,
                 metadata=self.metadata,
                 validate=False,
+                _silent=True,
             )
             mapped.map_to_aois(stimulus)
             fixations, aois = mapped.frame, stimulus.aois
@@ -2275,6 +2294,7 @@ class Events:
                 trial_columns=self.trial_columns,
                 metadata=self.metadata,
                 validate=False,
+                _silent=True,
             )
             if subset.frame.is_empty():
                 continue

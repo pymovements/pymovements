@@ -218,6 +218,43 @@ def strip_property_attributes_handler(app, what, name, obj, options, lines):
         del lines[start:end]
 
 
+def _split_top_level(text):
+    """Split on the commas outside brackets."""
+    parts = []
+    depth = 0
+    start = 0
+    for index, char in enumerate(text):
+        if char in '([{':
+            depth += 1
+        elif char in ')]}':
+            depth -= 1
+        elif char == ',' and depth == 0:
+            parts.append(text[start:index])
+            start = index + 1
+    parts.append(text[start:])
+    return parts
+
+
+def strip_private_parameters_handler(
+        app, what, name, obj, options, signature, return_annotation,
+):
+    """Remove underscore-prefixed parameters from a rendered signature.
+
+    A private keyword, such as the one the rebuild sites pass to ``Events``, is set by
+    pymovements itself and is not part of the public API, so the rendered signature leaves it
+    out. The source signature stays complete for pydoclint, which ignores private arguments.
+    """
+    if not signature:
+        return None
+    parameters = [part.strip() for part in _split_top_level(signature.strip()[1:-1])]
+    kept = [part for part in parameters if not part.lstrip('*').startswith('_')]
+    if len(kept) == len(parameters):
+        return None
+    if kept and kept[-1] == '*':
+        kept.pop()
+    return f"({', '.join(kept)})", return_annotation
+
+
 def setup(app):
     app.add_config_value('REVISION', 'master', 'env')
     app.add_config_value('generated_path', '_generated', 'env')
@@ -226,6 +263,7 @@ def setup(app):
     app.connect('doctree-resolved', doctree_resolved_handler)
     # napoleon connects with the default priority 500, lower priorities run first.
     app.connect('autodoc-process-docstring', strip_property_attributes_handler, priority=400)
+    app.connect('autodoc-process-signature', strip_private_parameters_handler)
 
 
 # Add any paths that contain templates here, relative to this directory.

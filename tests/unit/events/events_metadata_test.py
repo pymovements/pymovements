@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test metadata attribute of the Events class."""
+import math
 import re
 import warnings
 from contextlib import contextmanager
@@ -494,9 +495,11 @@ def test_metadata_offsets_inclusive_agreeing_with_orphan_entry_warns_for_keyword
     assert events.metadata == metadata
 
 
-@pytest.mark.parametrize('sampling_rate', [0, -1])
-def test_metadata_non_positive_sampling_rate_entry_raises(sampling_rate):
-    with pytest.raises(ValueError, match=r"metadata\['sampling_rate'\] must be positive"):
+@pytest.mark.parametrize('sampling_rate', [0, -1, math.nan, math.inf])
+def test_metadata_sampling_rate_entry_not_finite_positive_raises(sampling_rate):
+    with pytest.raises(
+            ValueError, match=r"metadata\['sampling_rate'\] must be a finite positive number",
+    ):
         Events(onsets=[0], durations=[5], metadata={'sampling_rate': sampling_rate})
 
 
@@ -537,9 +540,12 @@ def test_metadata_non_dict_offset_entry_raises(entry, expected_match):
 
 
 def test_metadata_offset_convention_entry_inclusive_none_declares_nothing():
-    events = Events(onsets=[0], offsets=[5], metadata={'offset': {'inclusive': None}})
+    events = Events(
+        onsets=[0], offsets=[5], offsets_inclusive=True, sampling_rate=1000,
+        metadata={'offset': {'inclusive': None}},
+    )
 
-    assert events.frame['duration'].to_list() == [timedelta(milliseconds=5)]
+    assert events.frame['duration'].to_list() == [timedelta(milliseconds=6)]
 
 
 @pytest.mark.parametrize('offsets_inclusive', [True, False])
