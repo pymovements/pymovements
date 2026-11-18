@@ -190,6 +190,42 @@ def test_bcea_confidence_invalid_type_raises_type_error(confidence):
             ),
             id='bcea_negative_positions',
         ),
+        pytest.param(
+            {},
+            pl.DataFrame(
+                {'position': [[-1, -1], [None, None], [1, 1], None, [-1, 1], [1, -1]]},
+                schema={'position': pl.List(pl.Float64)},
+            ),
+            pl.DataFrame(
+                {'bcea': [9.61668805750038]},
+                schema={'bcea': pl.Float64},
+            ),
+            id='bcea_missing_samples_are_not_counted',
+        ),
+        pytest.param(
+            {},
+            pl.DataFrame(
+                {'position': [[-1, -1], [5, None], [None, 5], [1, 1], [-1, 1], [1, -1]]},
+                schema={'position': pl.List(pl.Float64)},
+            ),
+            pl.DataFrame(
+                {'bcea': [9.61668805750038]},
+                schema={'bcea': pl.Float64},
+            ),
+            id='bcea_samples_missing_one_component_are_not_counted',
+        ),
+        pytest.param(
+            {},
+            pl.DataFrame(
+                {'position': [[1, 2], [None, None], [None, None]]},
+                schema={'position': pl.List(pl.Float64)},
+            ),
+            pl.DataFrame(
+                {'bcea': [None]},
+                schema={'bcea': pl.Float64},
+            ),
+            id='bcea_one_complete_sample_returns_none',
+        ),
     ],
 )
 def test_bcea_has_expected_result(init_kwargs, input_df, expected_df):
