@@ -13,8 +13,13 @@ jobs:
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
+  # Contents write is for the alert commit comment and for publishing the
+  # chart to gh-pages on push to main. Pull request runs reach benchmark.yml
+  # directly, not through this job.
   benchmark:
     uses: ./.github/workflows/benchmark.yml
+    permissions:
+      contents: write
 
   build:
     needs: [tests, benchmark]
