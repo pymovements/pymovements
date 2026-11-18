@@ -1374,6 +1374,91 @@ def test_gaze_detect_missing_trial_column_events_raises_exception():
     )
 
 
+def detect_one_fixation_with_events(events, **_kwargs):
+    del events
+    return pm.Events(name='fixation', onsets=[0], offsets=[1])
+
+
+def detect_one_fixation_without_events(**_kwargs):
+    """Return one event."""
+    return pm.Events(name='fixation', onsets=[0], offsets=[1])
+
+
+@pytest.mark.parametrize(
+    ('samples_dtype', 'events_dtype', 'method'),
+    [
+        pytest.param(
+            pl.String, pl.Int64, detect_one_fixation_with_events, id='string_samples_int_events',
+        ),
+        pytest.param(
+            pl.Int64, pl.String, detect_one_fixation_with_events, id='int_samples_string_events',
+        ),
+        pytest.param(
+            pl.Float64, pl.Int64, detect_one_fixation_with_events, id='float_samples_int_events',
+        ),
+        pytest.param(
+            pl.Int64, pl.Null, detect_one_fixation_with_events, id='int_samples_null_events',
+        ),
+        pytest.param(
+            pl.String, pl.Int64, detect_one_fixation_without_events, id='detector_without_events',
+        ),
+    ],
+)
+def test_gaze_detect_incompatible_trial_column_dtypes_raises_exception(
+        samples_dtype, events_dtype, method,
+):
+    samples = pl.DataFrame(
+        {'trial': [1] * 50 + [2] * 50, 'position': [[0.0, 0.0]] * 100},
+    ).with_columns(pl.col('trial').cast(samples_dtype))
+    events = pl.DataFrame(
+        {'trial': [1, 2], 'name': ['fixation'] * 2, 'onset': [0, 50], 'offset': [49, 99]},
+    ).with_columns(pl.col('trial').cast(events_dtype, strict=False))
+    gaze = pm.Gaze(samples, trial_columns=['trial'])
+    gaze.events = pm.Events(events)
+
+    with pytest.raises(pl.exceptions.SchemaError) as exc_info:
+        gaze.detect(method)
+
+    msg, = exc_info.value.args
+    assert msg == (
+        f"trial column 'trial' has dtype {samples_dtype} in samples but {events_dtype} "
+        'in events, which are not compatible'
+    )
+
+
+@pytest.mark.parametrize(
+    ('samples_trials', 'events_trials', 'events_dtype'),
+    [
+        pytest.param([1, 300], [1, 2], pl.UInt8, id='int64_samples_uint8_events_overflow'),
+        pytest.param([-1, 1], [1, 2], pl.UInt32, id='int64_samples_uint32_events_negative'),
+        pytest.param(
+            ['a', 'c'], ['a', 'b'], pl.Enum(['a', 'b']), id='string_samples_enum_events_unknown',
+        ),
+    ],
+)
+def test_gaze_detect_trial_values_not_fitting_events_dtype_raises_exception(
+        samples_trials, events_trials, events_dtype,
+):
+    samples = pl.DataFrame({
+        'trial': [samples_trials[0]] * 50 + [samples_trials[1]] * 50,
+        'position': [[0.0, 0.0]] * 100,
+    })
+    events = pl.DataFrame(
+        {'trial': events_trials, 'name': ['fixation'] * 2, 'onset': [0, 50], 'offset': [49, 99]},
+    ).with_columns(pl.col('trial').cast(events_dtype))
+    gaze = pm.Gaze(samples, trial_columns=['trial'])
+    gaze.events = pm.Events(events)
+
+    with pytest.raises(pl.exceptions.SchemaError) as exc_info:
+        gaze.detect(detect_one_fixation_with_events)
+
+    msg, = exc_info.value.args
+    assert msg == (
+        f"trial column 'trial' has values in samples that do not fit its dtype {events_dtype} "
+        'in events'
+    )
+
+
 @pytest.mark.parametrize(
     ('method', 'column'),
     [
@@ -1407,11 +1492,6 @@ def test_gaze_detect_missing_missing_eye_components_raises_exception(method, col
 def dummy_detect_no_events(**_kwargs):
     """Return no events."""
     return pm.Events()
-
-
-def dummy_detect_with_events(**_kwargs):
-    """Return one event."""
-    return pm.Events(name='fixation', onsets=[0], offsets=[1])
 
 
 def test_detect_no_events_warning():
@@ -1449,7 +1529,7 @@ def test_detect_with_events_no_warning():
 
     with warnings.catch_warnings(record=True) as record:
         warnings.simplefilter('always')
-        gaze.detect(dummy_detect_with_events)
+        gaze.detect(detect_one_fixation_without_events)
 
     # Check that no UserWarning about "No events" was issued
     assert not any(
@@ -1572,6 +1652,138 @@ def test_detect_selects_group_events_for_multiple_trial_columns():
     gaze.detect(detect_counting_events)
 
     assert group_sizes == [1, 1, 1, 1]
+
+
+@pytest.mark.parametrize(
+    ('samples', 'events', 'expected_group_sizes'),
+    [
+        pytest.param(
+            pl.DataFrame({
+                'trial': [1] * 50 + [None] * 50,
+                'position': [[0.0, 0.0]] * 100,
+            }),
+            pl.DataFrame({
+                'trial': [1, 1, None],
+                'name': ['fixation', 'saccade', 'fixation'],
+                'onset': [0, 25, 50],
+                'offset': [24, 49, 99],
+            }),
+            [2, 1],
+            id='null_trial_value',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'trial': [1] * 50 + [2] * 50,
+                    'position': [[0.0, 0.0]] * 100,
+                }, schema_overrides={'trial': pl.Int32},
+            ),
+            pl.DataFrame(
+                {
+                    'trial': [1, 1, 2],
+                    'name': ['fixation', 'saccade', 'fixation'],
+                    'onset': [0, 25, 50],
+                    'offset': [24, 49, 99],
+                }, schema_overrides={'trial': pl.Int64},
+            ),
+            [2, 1],
+            id='differing_trial_dtypes',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'trial': ['a'] * 50 + ['b'] * 50,
+                    'position': [[0.0, 0.0]] * 100,
+                }, schema_overrides={'trial': pl.Categorical},
+            ),
+            pl.DataFrame({
+                'trial': ['a', 'a', 'b'],
+                'name': ['fixation', 'saccade', 'fixation'],
+                'onset': [0, 25, 50],
+                'offset': [24, 49, 99],
+            }),
+            [2, 1],
+            id='categorical_samples_string_events',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'trial': [1] * 50 + [2] * 50,
+                    'position': [[0.0, 0.0]] * 100,
+                }, schema_overrides={'trial': pl.Int32},
+            ),
+            pl.DataFrame(
+                {
+                    'trial': [1, 1, 2],
+                    'name': ['fixation', 'saccade', 'fixation'],
+                    'onset': [0, 25, 50],
+                    'offset': [24, 49, 99],
+                }, schema_overrides={'trial': pl.Int32},
+            ),
+            [2, 1],
+            id='int32_samples_int32_events',
+        ),
+        pytest.param(
+            pl.DataFrame({
+                'trial': [1] * 50 + [2] * 50,
+                'position': [[0.0, 0.0]] * 100,
+            }),
+            pl.DataFrame(
+                {
+                    'trial': [1, 1, 2],
+                    'name': ['fixation', 'saccade', 'fixation'],
+                    'onset': [0, 25, 50],
+                    'offset': [24, 49, 99],
+                }, schema_overrides={'trial': pl.Int32},
+            ),
+            [2, 1],
+            id='int64_samples_int32_events',
+        ),
+        pytest.param(
+            pl.DataFrame({
+                'trial': ['a'] * 50 + ['b'] * 50,
+                'position': [[0.0, 0.0]] * 100,
+            }),
+            pl.DataFrame(
+                {
+                    'trial': ['a', 'a', 'b'],
+                    'name': ['fixation', 'saccade', 'fixation'],
+                    'onset': [0, 25, 50],
+                    'offset': [24, 49, 99],
+                }, schema_overrides={'trial': pl.Categorical},
+            ),
+            [2, 1],
+            id='string_samples_categorical_events',
+        ),
+        pytest.param(
+            pl.DataFrame({
+                'trial': [1] * 50 + [2] * 50,
+                'position': [[0.0, 0.0]] * 100,
+            }),
+            pl.DataFrame({
+                'trial': [1, 1],
+                'name': ['fixation', 'saccade'],
+                'onset': [0, 25],
+                'offset': [24, 49],
+            }),
+            [2, 0],
+            id='trial_without_events',
+        ),
+    ],
+)
+def test_detect_selects_group_events_per_trial(samples, events, expected_group_sizes):
+    gaze = pm.Gaze(samples, trial_columns=['trial'])
+    gaze.events = pm.Events(events)
+
+    group_sizes: list[int] = []
+
+    def detect_counting_events(events, **_kwargs):
+        group_sizes.append(events.frame.height)
+        return pm.Events(name='fixation', onsets=[0], offsets=[1])
+
+    gaze.detect(detect_counting_events)
+
+    assert group_sizes == expected_group_sizes
 
 
 def test_gaze_detect_with_numeric_time_column_passes_timesteps_unconverted():

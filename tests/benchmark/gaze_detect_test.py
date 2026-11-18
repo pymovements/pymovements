@@ -25,6 +25,7 @@ data with many trials.
 """
 import numpy as np
 import polars as pl
+import pytest
 
 from pymovements import Gaze
 
@@ -72,3 +73,21 @@ def test_gaze_detect_fill_empty_events_benchmark(benchmark):
         gaze.detect('fill')
 
     benchmark.pedantic(_run, setup=gaze.clear_events, iterations=1, rounds=5)
+
+
+# Trials fully covered by I-VT events leave nothing to fill.
+@pytest.mark.filterwarnings('ignore:fill. No events were detected:UserWarning')
+def test_gaze_detect_fill_after_ivt_benchmark(benchmark):
+    """Benchmark fill over 5k trials with 200 samples each after velocity-threshold detection."""
+    gaze = _build_gaze()
+    gaze.detect('ivt', velocity_threshold=20.0, minimum_duration=1)
+    ivt_events = gaze.events.frame.clone()
+
+    def _setup() -> None:
+        # Fill appends to the events frame, so start each round from the detected events.
+        gaze.events.frame = ivt_events.clone()
+
+    def _run() -> None:
+        gaze.detect('fill')
+
+    benchmark.pedantic(_run, setup=_setup, iterations=1, rounds=5)
