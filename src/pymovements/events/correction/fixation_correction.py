@@ -303,6 +303,7 @@ def _correct_single(
     algorithm_kwargs: dict[str, Any],
     location: str | pl.Expr,
     character_level: bool,
+    word_column: str | None,
 ) -> pl.Series:
     """Correct fixation locations with a single drift algorithm."""
     if algorithm in {'compare', 'warp'}:
@@ -313,7 +314,9 @@ def _correct_single(
                     "('start_x', 'end_x') in aois DataFrame or the "
                     "'word_locations' parameter.",
                 )
-            word_locations = get_word_locations_from_aois(aois, character_level)
+            word_locations = get_word_locations_from_aois(
+                aois, character_level, word_column,
+            )
         target: pl.Series | list[float] = word_locations
     else:
         target = get_lines_of_text_from_aois(aois)
@@ -338,10 +341,11 @@ def _correct_ensemble(
     algorithm_kwargs: dict[str, Any],
     location: str | pl.Expr,
     character_level: bool,
-) -> tuple[pl.Series, pl.Series]:
+    word_column: str | None,
+) -> pl.Series:
     """Correct fixation locations by majority voting across the candidate algorithms."""
     if {'compare', 'warp'} & set(candidate_algos) and word_locations is None:
-        word_locations = get_word_locations_from_aois(aois, character_level)
+        word_locations = get_word_locations_from_aois(aois, character_level, word_column)
 
     # Vote on line indices rather than raw y-coordinates so that candidate algorithms cannot
     # split votes through differing float representations of the same text line.
@@ -406,6 +410,15 @@ def _fixation_location(fixations: pl.DataFrame, location_column: str) -> str | p
     )
 
 
+def _check_word_column(character_level: bool, word_column: str | None) -> None:
+    """Raise if character-level AOIs come without a column to aggregate them by."""
+    if character_level and word_column is None:
+        raise ValueError(
+            'character_level is True, but no word_column was provided. Pass the name '
+            'of the AOI column that groups sub-word AOIs into words.',
+        )
+
+
 def correct_fixation_locations(
     events: pl.DataFrame,
     aois: pl.DataFrame,
@@ -416,6 +429,7 @@ def correct_fixation_locations(
     fixation_name: str = 'fixation',
     location_column: str = 'location',
     character_level: bool = False,
+    word_column: str | None = None,
 ) -> pl.Series:
     """Correct fixations based on the specified drift algorithm and AOIs.
 
@@ -467,8 +481,11 @@ def correct_fixation_locations(
         instead. (default: 'location')
     character_level: bool
         Set to True when the AOIs are finer than words, e.g. one row per character. The
-        AOIs are then aggregated to one location per word via the 'word' column, which
-        must be present. (default: False)
+        AOIs are then aggregated to one location per word via the ``word_column`` column,
+        which must be provided and present. (default: False)
+    word_column: str | None
+        Name of the AOI column identifying the words to aggregate character-level AOIs by.
+        Required when ``character_level`` is True, otherwise unused. (default: None)
 
     Returns
     -------
@@ -479,8 +496,9 @@ def correct_fixation_locations(
     ------
     ValueError
         If the algorithm name is unknown, the directionality is invalid, an
-        algorithm_kwargs entry is accepted by no candidate algorithm, or required
-        coordinate data is missing.
+        algorithm_kwargs entry is accepted by no candidate algorithm, required
+        coordinate data is missing, or ``character_level`` is True but no
+        ``word_column`` is provided.
     TypeError
         If algorithm is neither a string nor a list of strings.
 
@@ -516,7 +534,7 @@ def correct_fixation_locations(
         events, aois, algorithm=algorithm, directionality=directionality,
         word_locations=word_locations, algorithm_kwargs=algorithm_kwargs,
         fixation_name=fixation_name, location_column=location_column,
-        character_level=character_level,
+        character_level=character_level, word_column=word_column,
     )[0]
 
 
@@ -530,9 +548,11 @@ def _correct_fixation_locations_with_agreement(
     fixation_name: str = 'fixation',
     location_column: str = 'location',
     character_level: bool = False,
+    word_column: str | None = None,
 ) -> tuple[pl.Series, pl.Series]:
     """Correct fixation locations and return per-fixation agreement values."""
     right_to_left = is_right_to_left(directionality)
+    _check_word_column(character_level, word_column)
     if algorithm_kwargs is None:
         algorithm_kwargs = {}
     for reserved_key in ('directionality', 'word_locations', 'location'):
@@ -555,14 +575,14 @@ def _correct_fixation_locations_with_agreement(
             fixations, aois, candidate_algos,
             directionality=directionality, word_locations=word_locations,
             algorithm_kwargs=algorithm_kwargs, location=location,
-            character_level=character_level,
+            character_level=character_level, word_column=word_column,
         )
     else:
         corrected = _correct_single(
             fixations, aois, candidate_algos[0],
             directionality=directionality, word_locations=word_locations,
             algorithm_kwargs=algorithm_kwargs, location=location,
-            character_level=character_level,
+            character_level=character_level, word_column=word_column,
         )
         agreement = pl.Series(
             'correction_agreement', [1.0] * corrected.len(), dtype=pl.Float64,
@@ -630,7 +650,8 @@ def _correct_trial(
     fixation_name: str,
     location_column: str,
     character_level: bool,
-) -> tuple[pl.Series, pl.Series] | None:
+    word_column: str | None,
+) -> pl.Series | None:
     """Correct the fixations of a single trial, or return None if the trial is skipped."""
     n_lines = count_text_lines(trial_aois, word_locations)
     if n_lines is not None:
@@ -658,6 +679,7 @@ def _correct_trial(
         directionality=directionality, word_locations=word_locations,
         algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,
         location_column=location_column, character_level=character_level,
+        word_column=word_column,
     )
 
 
@@ -766,6 +788,7 @@ def correct_fixations(
     fixation_name: str = 'fixation',
     location_column: str = 'location',
     character_level: bool = False,
+    word_column: str | None = None,
 ) -> pl.DataFrame:
     """Correct fixation locations per trial using the specified drift algorithm.
 
@@ -836,8 +859,11 @@ def correct_fixations(
         their '_original' names from this parameter accordingly. (default: 'location')
     character_level: bool
         Set to True when the AOIs are finer than words, e.g. one row per character. The
-        AOIs are then aggregated to one location per word via the 'word' column, which
-        must be present. (default: False)
+        AOIs are then aggregated to one location per word via the ``word_column`` column,
+        which must be provided and present. (default: False)
+    word_column: str | None
+        Name of the AOI column identifying the words to aggregate character-level AOIs by.
+        Required when ``character_level`` is True, otherwise unused. (default: None)
 
     Returns
     -------
@@ -849,8 +875,8 @@ def correct_fixations(
     ValueError
         If an algorithm name is unknown, if the directionality is invalid, if
         trial_columns are missing from the events dataframe, if no AOIs are found for a
-        trial with fixations to correct, or if the fixation events have already been
-        corrected.
+        trial with fixations to correct, if the fixation events have already been
+        corrected, or if ``character_level`` is True but no ``word_column`` is provided.
     TypeError
         If algorithm is neither a string nor a list of strings.
 
@@ -884,6 +910,7 @@ def correct_fixations(
     """
     # Validate eagerly so an invalid directionality raises even without matching fixations.
     is_right_to_left(directionality)
+    _check_word_column(character_level, word_column)
 
     if isinstance(trial_columns, str):
         trial_columns = [trial_columns]
@@ -934,6 +961,7 @@ def correct_fixations(
             directionality=directionality, word_locations=word_locations,
             algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,
             location_column=location_column, character_level=character_level,
+            word_column=word_column,
         )
         if corrected_result is None:
             continue

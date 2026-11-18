@@ -1235,14 +1235,14 @@ def ihmm(
 
     >>> ihmm(velocities)
     shape: (2, 4)
-    ┌──────────┬──────────────┬──────────────┬──────────────┐
-    │ name     ┆ onset        ┆ offset       ┆ duration     │
-    │ ---      ┆ ---          ┆ ---          ┆ ---          │
-    │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
-    ╞══════════╪══════════════╪══════════════╪══════════════╡
-    │ fixation ┆ 52ms         ┆ 247ms        ┆ 195ms        │
-    │ fixation ┆ 252ms        ┆ 447ms        ┆ 195ms        │
-    └──────────┴──────────────┴──────────────┴──────────────┘
+    ┌──────────────┬──────────────┬──────────┬──────────────┐
+    │ onset        ┆ duration     ┆ name     ┆ offset       │
+    │ ---          ┆ ---          ┆ ---      ┆ ---          │
+    │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
+    ╞══════════════╪══════════════╪══════════╪══════════════╡
+    │ 52ms         ┆ 195ms        ┆ fixation ┆ 247ms        │
+    │ 252ms        ┆ 195ms        ┆ fixation ┆ 447ms        │
+    └──────────────┴──────────────┴──────────┴──────────────┘
 
     Run fixation detection with custom HMM parameters:
 
@@ -1252,14 +1252,14 @@ def ihmm(
     ...         'trans': [[0.97360507, 0.02639493],[0.07593547, 0.92406453]]}
     >>> ihmm(velocities, hmm_parameters_dict = hmm_parameters)
     shape: (2, 4)
-    ┌──────────┬──────────────┬──────────────┬──────────────┐
-    │ name     ┆ onset        ┆ offset       ┆ duration     │
-    │ ---      ┆ ---          ┆ ---          ┆ ---          │
-    │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
-    ╞══════════╪══════════════╪══════════════╪══════════════╡
-    │ fixation ┆ 52ms         ┆ 247ms        ┆ 195ms        │
-    │ fixation ┆ 252ms        ┆ 447ms        ┆ 195ms        │
-    └──────────┴──────────────┴──────────────┴──────────────┘
+    ┌──────────────┬──────────────┬──────────┬──────────────┐
+    │ onset        ┆ duration     ┆ name     ┆ offset       │
+    │ ---          ┆ ---          ┆ ---      ┆ ---          │
+    │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
+    ╞══════════════╪══════════════╪══════════╪══════════════╡
+    │ 52ms         ┆ 195ms        ┆ fixation ┆ 247ms        │
+    │ 252ms        ┆ 195ms        ┆ fixation ┆ 447ms        │
+    └──────────────┴──────────────┴──────────┴──────────────┘
 
     We can also apply the detection on a :py:class:`~pymovements.Gaze` object.
 
@@ -1292,28 +1292,28 @@ def ihmm(
     >>> gaze.detect('ihmm')
     >>> gaze.events
     shape: (2, 4)
-    ┌──────────┬──────────────┬──────────────┬──────────────┐
-    │ name     ┆ onset        ┆ offset       ┆ duration     │
-    │ ---      ┆ ---          ┆ ---          ┆ ---          │
-    │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
-    ╞══════════╪══════════════╪══════════════╪══════════════╡
-    │ fixation ┆ 52ms         ┆ 247ms        ┆ 195ms        │
-    │ fixation ┆ 252ms        ┆ 447ms        ┆ 195ms        │
-    └──────────┴──────────────┴──────────────┴──────────────┘
+    ┌──────────────┬──────────────┬──────────┬──────────────┐
+    │ onset        ┆ duration     ┆ name     ┆ offset       │
+    │ ---          ┆ ---          ┆ ---      ┆ ---          │
+    │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
+    ╞══════════════╪══════════════╪══════════╪══════════════╡
+    │ 52ms         ┆ 195ms        ┆ fixation ┆ 247ms        │
+    │ 252ms        ┆ 195ms        ┆ fixation ┆ 447ms        │
+    └──────────────┴──────────────┴──────────┴──────────────┘
 
     Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
 
     >>> gaze.detect('ihmm', reestimation=True, name='fixation_ihmm')
     >>> gaze.events.filter_by_name('fixation_ihmm')
     shape: (2, 4)
-    ┌───────────────┬──────────────┬──────────────┬──────────────┐
-    │ name          ┆ onset        ┆ offset       ┆ duration     │
-    │ ---           ┆ ---          ┆ ---          ┆ ---          │
-    │ str           ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
-    ╞═══════════════╪══════════════╪══════════════╪══════════════╡
-    │ fixation_ihmm ┆ 52ms         ┆ 247ms        ┆ 195ms        │
-    │ fixation_ihmm ┆ 252ms        ┆ 447ms        ┆ 195ms        │
-    └───────────────┴──────────────┴──────────────┴──────────────┘
+    ┌──────────────┬──────────────┬───────────────┬──────────────┐
+    │ onset        ┆ duration     ┆ name          ┆ offset       │
+    │ ---          ┆ ---          ┆ ---           ┆ ---          │
+    │ duration[μs] ┆ duration[μs] ┆ str           ┆ duration[μs] │
+    ╞══════════════╪══════════════╪═══════════════╪══════════════╡
+    │ 52ms         ┆ 195ms        ┆ fixation_ihmm ┆ 247ms        │
+    │ 252ms        ┆ 195ms        ┆ fixation_ihmm ┆ 447ms        │
+    └──────────────┴──────────────┴───────────────┴──────────────┘
     """
     if isinstance(velocities, polars.Series):
         if not isinstance(velocities.dtype, polars.List):

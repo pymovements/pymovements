@@ -129,7 +129,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 ).select(pl.concat_list(['x', 'y']).alias('position'))['position'],
                 'threshold': 10,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='two_steps_one_saccade_high_threshold_no_events',
         ),
         pytest.param(
@@ -142,7 +142,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 ),
                 'threshold': 10,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='two_steps_one_saccade_high_threshold_no_events_numpy',
         ),
         pytest.param(
@@ -349,7 +349,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 ).select(pl.concat_list(['x', 'y']).alias('position'))['position'],
                 'threshold': 'std',
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='string_based_threshold',
         ),
         pytest.param(
@@ -362,7 +362,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 ),
                 'threshold': 'std',
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='string_based_threshold_numpy',
         ),
         pytest.param(
