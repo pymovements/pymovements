@@ -239,6 +239,17 @@ def test_timesteps_none_builds_the_grid_from_the_sampling_rate(detector, kwargs)
     assert events.metadata == _entries(500)
 
 
+def test_ivt_minimum_duration_counts_the_grid_built_from_the_sampling_rate():
+    # Nine zero samples at 500 Hz form one 18 ms fixation when timesteps is None.
+    kwargs = {'velocities': [[0, 0]] * 9, 'timesteps': None, 'velocity_threshold': 1}
+
+    passing = ivt(**kwargs, minimum_duration=12, sampling_rate=500)
+    failing = ivt(**kwargs, minimum_duration=19, sampling_rate=500)
+
+    assert passing.frame['duration'].to_list() == [timedelta(milliseconds=18)]
+    assert failing.frame.height == 0
+
+
 @pytest.mark.parametrize(('detector', 'build_kwargs', 'event_samples'), THRESHOLD_DETECTORS)
 def test_minimum_duration_counts_the_nominal_interval(detector, build_kwargs, event_samples):
     timesteps = np.arange(10)
