@@ -245,15 +245,6 @@ def test_event_of_zero_duration_gets_no_samples(onsets, offsets, locations, name
     assert_frame_equal(gaze.events.frame, events.frame)
 
 
-def test_trial_of_only_zero_durations_gets_no_samples():
-    gaze = _generate(
-        _fixations(onsets=(0, 0), offsets=(200, 0), locations=LOCATIONS[:2], trial=[1, 2]),
-    )
-
-    assert gaze.samples['trial'].unique().to_list() == [1]
-    assert gaze.samples.height == 200
-
-
 def test_reads_the_end_of_a_fixation_from_its_duration():
     """PMEP 1: an event ends at onset + duration, so it needs no offset."""
     events = Events(
@@ -803,6 +794,12 @@ def test_geometrical_raises_error(hyperparameters, exception, msg_substrings):
             1000.0,
             ('geometrical', 'all events', 'duration of zero', 'nothing to generate'),
             id='all_durations_of_zero',
+        ),
+        pytest.param(
+            _fixations(onsets=(0, 0), offsets=(200, 0), locations=LOCATIONS[:2], trial=[1, 2]),
+            1000.0,
+            ('geometrical', "{'trial': 2}", 'duration of zero', 'drop the trial'),
+            id='trial_of_only_events_of_zero_duration',
         ),
         pytest.param(
             _fixations(onsets=(0, 200), offsets=(250, 500), locations=LOCATIONS[:2]),

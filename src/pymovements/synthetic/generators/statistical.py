@@ -42,6 +42,7 @@ from pymovements.synthetic._utils import check_durations
 from pymovements.synthetic._utils import check_name
 from pymovements.synthetic._utils import check_number
 from pymovements.synthetic._utils import check_positive
+from pymovements.synthetic._utils import drop_zero_durations
 from pymovements.synthetic._utils import per_trial
 from pymovements.synthetic._utils import sample_times
 from pymovements.synthetic.generator import SampleGenerator
@@ -319,28 +320,7 @@ class StatisticalSampleGenerator(SampleGenerator):
 
         check_durations(events, generator=self.name)
 
-        # An event of zero duration selects no samples. A separate copy is rendered, since the
-        # events are attached to the output as they came.
-        has_duration = pl.col('duration') > pl.duration(microseconds=0)
-        rendered = events.clone()
-        rendered.frame = rendered.frame.filter(has_duration)
-
-        if events.trial_columns:
-            skipped = events.frame.group_by(events.trial_columns, maintain_order=True).agg(
-                has_duration.any().alias('has_duration'),
-            ).filter(~pl.col('has_duration'))
-            if skipped.height:
-                trial = skipped.drop('has_duration').row(0, named=True)
-                raise ValueError(
-                    f'{_prefix(self.name)}all events of the trial {trial} have a duration of '
-                    'zero, so there is nothing to generate samples for; drop the trial',
-                )
-
-        if rendered.frame.is_empty() and not events.frame.is_empty():
-            raise ValueError(
-                f'{_prefix(self.name)}all events have a duration of zero, so there is nothing '
-                'to generate samples for',
-            )
+        rendered = drop_zero_durations(events, generator=self.name)
 
         check_contiguous(rendered, generator=self.name)
 
