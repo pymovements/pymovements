@@ -180,3 +180,17 @@ class Range:
         std = (self.maximum - self.minimum) / 4.0 if self.std is None else self.std
         centre = (self.minimum + self.maximum) / 2.0
         return np.clip(rng.normal(centre, std, size), self.minimum, self.maximum)
+
+
+#: What a range hyperparameter of a generator accepts: a range, a ``(minimum, maximum)`` pair for a
+#: uniform range, or a single value.
+RangeLike = Range | tuple[float, float] | float
+
+
+def _range(value: RangeLike) -> Range:
+    """Return the value as a range.
+
+    The range fields are annotated with what ``__init__`` accepts, so this narrows them to a
+    ``Range`` for mypy, and it keeps a field usable after it was reassigned with a pair.
+    """
+    return Range.from_value(value)

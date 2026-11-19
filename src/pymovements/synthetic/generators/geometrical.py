@@ -39,7 +39,6 @@ import dataclasses
 import importlib
 import math
 import numbers
-from typing import cast
 from typing import ClassVar
 
 import numpy as np
@@ -52,7 +51,9 @@ from pymovements.synthetic._utils import per_trial
 from pymovements.synthetic._utils import sample_times
 from pymovements.synthetic.generator import SampleGenerator
 from pymovements.synthetic.registry import register_generator
+from pymovements.synthetic.value_range import _range
 from pymovements.synthetic.value_range import Range
+from pymovements.synthetic.value_range import RangeLike
 
 #: The event types the generator can render. Everything that is not a fixation is interpolated.
 EVENT_TYPES = ('fixation', 'saccade')
@@ -60,8 +61,6 @@ EVENT_TYPES = ('fixation', 'saccade')
 #: The event column the fixation locations are read from, as the ``location`` event property
 #: computes it.
 LOCATION_COLUMN = 'location'
-
-RangeLike = Range | tuple[float, float] | float
 
 
 @register_generator
@@ -152,7 +151,7 @@ class GeometricalSampleGenerator(SampleGenerator):
         )
 
         try:
-            self.fixation_deviation = Range.from_value(self.fixation_deviation)
+            self.fixation_deviation = _range(self.fixation_deviation)
         except (TypeError, ValueError) as error:
             raise type(error)(f'fixation_deviation: {error}') from error
 
@@ -351,7 +350,7 @@ class GeometricalSampleGenerator(SampleGenerator):
 
         The held samples are in time order, so each fixation's samples are one run of them.
         """
-        deviations = cast(Range, self.fixation_deviation)
+        deviations = _range(self.fixation_deviation)
         scattered = positions.copy()
 
         boundaries = np.flatnonzero(np.diff(held_fixation)) + 1
