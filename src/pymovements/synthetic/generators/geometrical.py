@@ -48,6 +48,7 @@ from pymovements.events.events import Events
 from pymovements.gaze.gaze import Gaze
 from pymovements.synthetic._utils import check_durations
 from pymovements.synthetic._utils import check_name
+from pymovements.synthetic._utils import drop_zero_durations
 from pymovements.synthetic._utils import per_trial
 from pymovements.synthetic._utils import sample_times
 from pymovements.synthetic.generator import SampleGenerator
@@ -74,8 +75,9 @@ class GeometricalSampleGenerator(SampleGenerator):
     These are the gaps between fixations and the saccades ``bridge_gaps`` fills them with. A
     saccade's own location is not used. Before the first and after the last fixation of a trial,
     the nearest location is held. Events with trial columns are generated trial by trial. An
-    event of zero duration gets no samples and stays in the attached events. A fixation that no
-    sample falls inside is rejected, since its location would be lost.
+    event of zero duration gets no samples and stays in the attached events, but a trial whose
+    events all have a duration of zero is rejected, as it would go missing from the output. A
+    fixation that no sample falls inside is rejected, since its location would be lost.
 
     A small scatter of the fixation samples can be added with ``fixation_deviation``, in the unit
     of the locations: per fixation, a deviation is drawn from the range and used as the standard
@@ -188,11 +190,11 @@ class GeometricalSampleGenerator(SampleGenerator):
         TypeError
             If ``events`` is not an ``Events`` object.
         ValueError
-            If the events are empty, overlap, all have a duration of zero, contain a null onset,
-            a null or negative duration, an event type other than fixations and saccades, or a
-            fixation without a usable location, if a trial has no fixation, if no sample falls
-            inside a fixation, or if a trial column has the name of a generated or ``Gaze``
-            column.
+            If the events are empty, overlap, all have a duration of zero, contain a trial whose
+            events all have a duration of zero, a null onset, a null or negative duration, an
+            event type other than fixations and saccades, or a fixation without a usable
+            location, if a trial has no fixation, if no sample falls inside a fixation, or if a
+            trial column has the name of a generated or ``Gaze`` column.
         """
         if not isinstance(events, Events):
             raise TypeError(
@@ -209,15 +211,7 @@ class GeometricalSampleGenerator(SampleGenerator):
 
         check_durations(events, generator=self.name)
 
-        # An event of zero duration selects no samples. A separate copy is rendered, since the
-        # events are attached to the output as they came.
-        rendered = events.clone()
-        rendered.frame = rendered.frame.filter(pl.col('duration') > pl.duration(microseconds=0))
-        if rendered.frame.is_empty() and not events.frame.is_empty():
-            raise ValueError(
-                f"generator '{self.name}': all events have a duration of zero, so there is "
-                'nothing to generate samples for',
-            )
+        rendered = drop_zero_durations(events, generator=self.name)
 
         def synthesize(trial: pl.DataFrame) -> pl.DataFrame:
             return self._synthesize_trial(trial, rng)
