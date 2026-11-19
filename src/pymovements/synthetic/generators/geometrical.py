@@ -21,17 +21,8 @@
 
 The generator holds each fixation at its location and interpolates the gaze between fixations,
 linearly or with a cubic spline, the two methods recommended for filling gaps in recorded gaze
-positions by:
-
-    Grootjen, J. W., Weingärtner, H., & Mayer, S. (2024). Uncovering and Addressing Blink-Related
-    Challenges in Using Eye Tracking for Interactive Systems. CHI '24.
-
-Using the fixation centres as the positions the gaze moves between follows the mapping step in
-section 3.7 of:
-
-    Fuhl, W., & Kasneci, E. (2018). Eye movement velocity and gaze data generator for evaluation,
-    robustness testing and assess of eye tracking software and visualization tools.
-    arXiv:1808.09296.
+positions by :cite:p:`Grootjen2024`. Using the fixation centres as the positions the gaze moves
+between follows the mapping step in section 3.7 of :cite:p:`FuhlKasneci2018`.
 """
 from __future__ import annotations
 
@@ -72,15 +63,16 @@ class GeometricalSampleGenerator(SampleGenerator):
     """Generates gaze positions that hold each fixation's location and move between them.
 
     Conditioned on fixations with a ``location``, every sample inside a fixation takes its
-    location, and every other sample is interpolated between the locations around it, per axis.
-    These are the gaps between fixations and the saccades ``bridge_gaps`` fills them with. A
-    saccade's own location is not used. Before the first and after the last fixation of a trial,
-    the nearest location is held. So a saccade there, or between two fixations at the same
-    location, gets no movement, and its samples do not match its label, which matters when the
-    events are used as ground truth. Events with trial columns are generated trial by trial. An
-    event of zero duration gets no samples and stays in the attached events, but a trial whose
-    events all have a duration of zero is rejected, as it would go missing from the output. A
-    fixation that no sample falls inside is rejected, since its location would be lost.
+    location, following :cite:p:`FuhlKasneci2018`, and every other sample is interpolated between
+    the locations around it, per axis. These are the gaps between fixations and the saccades
+    ``bridge_gaps`` fills them with. A saccade's own location is not used. Before the first and
+    after the last fixation of a trial, the nearest location is held. So a saccade there, or
+    between two fixations at the same location, gets no movement, and its samples do not match
+    its label, which matters when the events are used as ground truth. Events with trial columns
+    are generated trial by trial. An event of zero duration gets no samples and stays in the
+    attached events, but a trial whose events all have a duration of zero is rejected, as it
+    would go missing from the output. A fixation that no sample falls inside is rejected, since
+    its location would be lost.
 
     A small scatter of the fixation samples can be added with ``fixation_deviation``, in the unit
     of the locations: per fixation, a deviation is drawn from the range and used as the standard
@@ -88,12 +80,13 @@ class GeometricalSampleGenerator(SampleGenerator):
     the gaps follow the locations themselves. The default of zero gives noise-free output.
 
     The movement between fixations is interpolated, not modelled, and its duration is the gap the
-    events leave. Linear interpolation gives a constant velocity. A cubic spline is fitted per
-    gap, on up to three samples of each of the two fixations around it, so no other fixation
-    shapes the gap. It gives a smooth movement whose velocity peaks around mid-gap. Three samples
-    per side is our choice, as the source does not say how many to fit on. Not modelled are velocity
-    profiles along the path, saccades that deviate from the straight line, and saliency maps for
-    choosing fixation targets.
+    events leave. Linear interpolation and a cubic spline are the two methods recommended for
+    filling gaps in recorded gaze positions :cite:p:`Grootjen2024`. Linear interpolation gives a
+    constant velocity. A cubic spline is fitted per gap, on up to three samples of each of the
+    two fixations around it, so no other fixation shapes the gap. It gives a smooth movement whose
+    velocity peaks around mid-gap. Three samples per side is our choice, as the recommendation
+    does not say how many to fit on. Not modelled are velocity profiles along the path, saccades
+    that deviate from the straight line, and saliency maps for choosing fixation targets.
 
     Attributes
     ----------
