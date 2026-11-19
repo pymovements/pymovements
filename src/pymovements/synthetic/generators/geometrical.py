@@ -214,7 +214,7 @@ class GeometricalSampleGenerator(SampleGenerator):
         rendered = drop_zero_durations(events, generator=self.name)
 
         def synthesize(trial: pl.DataFrame) -> pl.DataFrame:
-            return self._synthesize_trial(trial, rng)
+            return self._synthesize_trial(trial, events.trial_columns or [], rng)
 
         samples = per_trial(rendered, synthesize, generator=self.name)
 
@@ -253,17 +253,30 @@ class GeometricalSampleGenerator(SampleGenerator):
 
         return np.array(locations, dtype=float).reshape(-1, 2)
 
-    def _synthesize_trial(self, trial: pl.DataFrame, rng: np.random.Generator) -> pl.DataFrame:
-        """Return the samples of one trial's ordered events."""
+    def _synthesize_trial(
+            self,
+            trial: pl.DataFrame,
+            trial_columns: list[str],
+            rng: np.random.Generator,
+    ) -> pl.DataFrame:
+        """Return the samples of one trial's ordered events.
+
+        A trial without a fixation is named by its trial columns, since several trials can start
+        at the same time.
+        """
         onsets = trial['onset'].dt.total_milliseconds(fractional=True).to_numpy()
         ends = onsets + trial['duration'].dt.total_milliseconds(fractional=True).to_numpy()
         times = sample_times(onsets[0], ends[-1], self.sampling_rate)
 
         is_fixation = (trial['name'] == 'fixation').to_numpy()
         if not is_fixation.any():
+            if trial_columns:
+                without = f'the trial {trial.select(trial_columns).row(0, named=True)} has'
+            else:
+                without = 'the events have'
             raise ValueError(
-                f"generator '{self.name}': the trial starting at {onsets[0]} ms has no fixation "
-                'of a non-zero duration, so there is no location to follow',
+                f"generator '{self.name}': {without} no fixation of a non-zero duration, so there "
+                'is no location to follow',
             )
 
         locations = self._locations(trial.filter(is_fixation))
