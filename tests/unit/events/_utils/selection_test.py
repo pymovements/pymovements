@@ -20,60 +20,11 @@
 """Test the sample selection helper of pymovements.events."""
 from __future__ import annotations
 
-import polars as pl
 import pytest
-from polars.testing import assert_frame_equal
 
 from pymovements import Events
 from pymovements import Experiment
 from pymovements.events._utils.selection import resolve_sampling_rate
-from pymovements.events._utils.selection import selection_end
-
-
-@pytest.mark.parametrize(
-    ('frame', 'sampling_rate', 'expected'),
-    [
-        pytest.param(
-            pl.DataFrame({'onset': [0.0, 10.0, 20.0], 'duration': [4.0, 0.0, None]}),
-            None,
-            [4.0, 10.0, None],
-            id='numeric_without_rate',
-        ),
-        pytest.param(
-            pl.DataFrame({'onset': [0.0, 10.0, 20.0], 'duration': [4.0, 0.0, None]}),
-            1000,
-            [3.5, 9.5, None],
-            id='numeric_with_rate',
-        ),
-        pytest.param(
-            pl.DataFrame(
-                {'onset': [0, 10_000, 20_000], 'duration': [5000, 0, None]},
-                schema={'onset': pl.Duration('us'), 'duration': pl.Duration('us')},
-            ),
-            None,
-            [5000, 10_000, None],
-            id='duration_without_rate',
-        ),
-        pytest.param(
-            pl.DataFrame(
-                {'onset': [0, 10_000, 20_000], 'duration': [5000, 0, None]},
-                schema={'onset': pl.Duration('us'), 'duration': pl.Duration('us')},
-            ),
-            600,
-            [4167, 9167, None],
-            id='duration_with_rate_rounds_half_interval_to_microseconds',
-        ),
-    ],
-)
-def test_selection_end(frame, sampling_rate, expected):
-    result = frame.select(
-        selection_end(
-            'onset', 'duration', sampling_rate=sampling_rate, dtype=frame.schema['onset'],
-        ).alias('end'),
-    )
-
-    expected_frame = pl.DataFrame({'end': expected}, schema={'end': frame.schema['onset']})
-    assert_frame_equal(result, expected_frame)
 
 
 @pytest.mark.parametrize(

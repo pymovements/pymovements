@@ -260,9 +260,7 @@ class EventSamplesProcessor:
                 else pl.col('duration').cast(pl.Float64)
             ).alias(_DURATION_MS),
         ).with_columns(
-            selection_end(
-                _ONSET_MS, _DURATION_MS, sampling_rate=sampling_rate, dtype=pl.Float64,
-            ).alias(_END_MS),
+            selection_end(_ONSET_MS, _DURATION_MS, sampling_rate=sampling_rate).alias(_END_MS),
         )
         samples_work = samples_work.with_columns(
             pl.int_range(pl.len()).alias(_ROW_ID),

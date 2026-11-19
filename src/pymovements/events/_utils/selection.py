@@ -36,7 +36,6 @@ def selection_end(
         duration: str | pl.Expr,
         *,
         sampling_rate: float | None,
-        dtype: pl.DataType,
 ) -> pl.Expr:
     """Return the end bound of the half-open sample selection of an event.
 
@@ -48,29 +47,23 @@ def selection_end(
     Parameters
     ----------
     onset: str | pl.Expr
-        The onset column, as a name or an expression.
+        The onset column in milliseconds, as a name or an expression.
     duration: str | pl.Expr
-        The duration column, as a name or an expression.
+        The duration column in milliseconds, as a name or an expression.
     sampling_rate: float | None
         The sampling rate in Hz, or ``None`` to apply the interval as is.
-    dtype: pl.DataType
-        The dtype of the onset column. For a ``polars.Duration`` column the half interval is
-        rounded to whole microseconds, for a numeric column it is applied in milliseconds.
 
     Returns
     -------
     pl.Expr
-        The end bound, in the dtype of the onset column.
+        The end bound in milliseconds.
     """
     onset_expr = pl.col(onset) if isinstance(onset, str) else onset
     duration_expr = pl.col(duration) if isinstance(duration, str) else duration
     end = onset_expr + duration_expr
     if sampling_rate is None:
         return end
-    half_interval_ms = sampling_interval_ms(sampling_rate) / 2
-    if isinstance(dtype, pl.Duration):
-        return end - pl.duration(microseconds=round(half_interval_ms * 1000))
-    return end - half_interval_ms
+    return end - sampling_interval_ms(sampling_rate) / 2
 
 
 def resolve_sampling_rate(events: Events, experiment: Experiment | None) -> float | None:
