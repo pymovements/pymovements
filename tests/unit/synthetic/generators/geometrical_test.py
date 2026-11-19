@@ -846,15 +846,24 @@ def test_geometrical_raises_error(hyperparameters, exception, msg_substrings):
                 names=['fixation', 'saccade'], trial=[1, 2],
             ),
             1000.0,
-            ('geometrical', 'starting at 0.0 ms', 'no fixation', 'no location'),
+            ('geometrical', "the trial {'trial': 2}", 'no fixation', 'no location'),
             id='trial_without_a_fixation',
+        ),
+        pytest.param(
+            _fixations(
+                onsets=(0, 0), offsets=(250, 50), locations=(LOCATIONS[0], None),
+                names=['fixation', 'saccade'], subject=['a', 'b'], trial=[1, 1],
+            ),
+            1000.0,
+            ('geometrical', "the trial {'subject': 'b', 'trial': 1}", 'no fixation'),
+            id='trial_of_two_trial_columns_without_a_fixation',
         ),
         pytest.param(
             _fixations(
                 onsets=(500,), offsets=(550,), locations=(None,), names=['saccade'],
             ),
             1000.0,
-            ('geometrical', 'starting at 500.0 ms', 'no fixation', 'no location'),
+            ('geometrical', 'the events have no fixation', 'no location'),
             id='only_a_saccade',
         ),
         pytest.param(
@@ -863,7 +872,7 @@ def test_geometrical_raises_error(hyperparameters, exception, msg_substrings):
                 names=['fixation', 'saccade'],
             ),
             1000.0,
-            ('geometrical', 'starting at 100.0 ms', 'no fixation', 'no location'),
+            ('geometrical', 'the events have no fixation', 'no location'),
             id='only_a_fixation_of_zero_duration',
         ),
         pytest.param(
