@@ -368,7 +368,7 @@ def _assign_samples_by_range(
 
     Within a group, the samples spanning an event form a contiguous range once the samples are
     sorted by time. The first sample at or after the onset and the last sample before the end
-    are found with forward and backward asof joins; the ranges are then expanded and joined back
+    are found with forward and backward asof joins. The ranges are then expanded and joined back
     onto the samples, so every overlapping event gets all of its samples. Events without samples
     produce no range and therefore keep null properties. Expects the events sorted by group and
     onset, and the samples sorted by group, time and row id.
