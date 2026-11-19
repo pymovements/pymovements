@@ -1591,6 +1591,11 @@ class Gaze:
             :ref:`event-measures` for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
+        TypeError
+            If an event measure is called without one of its required keyword arguments.
+        ValueError
+            If an event measure needs a sampling rate and neither the keyword arguments, the
+            events metadata nor the experiment give one.
         """
         if len(self.events) == 0:
             warn(
