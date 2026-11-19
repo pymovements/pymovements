@@ -32,6 +32,7 @@ from polars.testing import assert_series_equal
 from pymovements import Events
 from pymovements import Experiment
 from pymovements import Gaze
+from pymovements.exceptions import UnknownMeasure
 
 
 @pytest.fixture(name='make_gaze_with_events', scope='function')
@@ -1817,6 +1818,13 @@ def test_gaze_compute_event_properties_runs_event_measures_with_kwargs():
     assert_series_equal(
         gaze.events.frame['duration'], _duration_us([5000, 3000]).alias('duration'),
     )
+
+
+def test_gaze_compute_event_properties_unknown_measure_raises():
+    gaze = Gaze(events=Events(name=['fixation'], onsets=[0], durations=[5]))
+
+    with pytest.raises(UnknownMeasure, match="Measure 'foo' is unknown. Known measures are"):
+        gaze.compute_event_properties('foo')
 
 
 def test_gaze_compute_event_properties_offset_inclusive_without_rate_raises():
