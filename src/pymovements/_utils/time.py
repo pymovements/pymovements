@@ -260,6 +260,31 @@ def sampling_interval_ms(sampling_rate: float) -> float:
     return 1000 / sampling_rate
 
 
+def sampling_interval_us(sampling_rate: float) -> int:
+    """Return the nominal interval between two samples in whole microseconds.
+
+    This is the interval the ``polars.Duration('us')`` time columns of an events frame carry:
+    the constructor, the ``offset`` and ``duration`` measures and the sample selection derive
+    it here, so the rounding agrees everywhere.
+
+    Parameters
+    ----------
+    sampling_rate: float
+        The sampling rate in Hz.
+
+    Returns
+    -------
+    int
+        The nominal sampling interval ``1_000_000 / sampling_rate``, rounded to microseconds.
+
+    Raises
+    ------
+    ValueError
+        If the sampling rate is not positive.
+    """
+    return round(sampling_interval_ms(sampling_rate) * 1000)
+
+
 def durations_to_ms(frame: pl.DataFrame) -> pl.DataFrame:
     """Convert all Duration columns of a dataframe to numeric milliseconds.
 

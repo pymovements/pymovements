@@ -24,6 +24,8 @@ from collections.abc import Callable
 
 import polars as pl
 
+from pymovements._utils.time import sampling_interval_us
+
 EVENT_MEASURES: dict[str, Callable] = {}
 
 
@@ -82,8 +84,7 @@ def duration(*, offsets_inclusive: bool, sampling_rate: float | None = None) -> 
                 'offsets_inclusive=True requires a sampling_rate: '
                 'duration = offset - onset + 1 / sampling_rate.',
             )
-        # Rounded to microseconds like the durations the detectors derive.
-        result = result + pl.duration(microseconds=round(1_000_000 / sampling_rate))
+        result = result + pl.duration(microseconds=sampling_interval_us(sampling_rate))
     return result.alias('duration')
 
 
@@ -127,9 +128,9 @@ def offset(*, inclusive: bool, sampling_rate: float | None = None) -> pl.Expr:
             'inclusive=True requires a sampling_rate: the inclusive offset is '
             'onset + duration - 1 / sampling_rate.',
         )
-    # Rounded to microseconds like the durations the detectors derive, so the round trip
-    # through the duration measure is exact.
-    sampling_interval = pl.duration(microseconds=round(1_000_000 / sampling_rate))
+    # The same rounded interval the constructor adds, so the round trip through the duration
+    # measure is exact.
+    sampling_interval = pl.duration(microseconds=sampling_interval_us(sampling_rate))
     result = (
         pl.when(pl.col('duration') > pl.duration(microseconds=0))
         .then(end - sampling_interval)

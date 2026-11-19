@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
-from pymovements._utils.time import sampling_interval_ms
+from pymovements._utils.time import sampling_interval_us
 
 if TYPE_CHECKING:
     from pymovements.events.events import Events
@@ -63,7 +63,8 @@ def selection_end(
     end = onset_expr + duration_expr
     if sampling_rate is None:
         return end
-    return end - sampling_interval_ms(sampling_rate) / 2
+    # Half the interval the time columns carry, in milliseconds.
+    return end - sampling_interval_us(sampling_rate) / 2000
 
 
 def resolve_sampling_rate(events: Events, experiment: Experiment | None) -> float | None:
