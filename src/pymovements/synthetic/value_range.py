@@ -160,7 +160,7 @@ class Range:
         return float(self.draw_many(rng, 1)[0])
 
     def draw_many(self, rng: np.random.Generator, size: int) -> np.ndarray:
-        """Draw several values at once, the same values as as many single draws.
+        """Draw several values at once, the same values that ``size`` calls to ``draw`` would give.
 
         Parameters
         ----------
