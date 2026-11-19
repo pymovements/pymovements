@@ -75,7 +75,9 @@ class GeometricalSampleGenerator(SampleGenerator):
     location, and every other sample is interpolated between the locations around it, per axis.
     These are the gaps between fixations and the saccades ``bridge_gaps`` fills them with. A
     saccade's own location is not used. Before the first and after the last fixation of a trial,
-    the nearest location is held. Events with trial columns are generated trial by trial. An
+    the nearest location is held. So a saccade there, or between two fixations at the same
+    location, gets no movement, and its samples do not match its label, which matters when the
+    events are used as ground truth. Events with trial columns are generated trial by trial. An
     event of zero duration gets no samples and stays in the attached events, but a trial whose
     events all have a duration of zero is rejected, as it would go missing from the output. A
     fixation that no sample falls inside is rejected, since its location would be lost.

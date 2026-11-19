@@ -347,6 +347,27 @@ def test_holds_the_nearest_location_at_the_trial_ends(interpolation):
     np.testing.assert_array_equal(_positions(gaze), np.tile((1.0, 2.0), (350, 1)))
 
 
+@pytest.mark.parametrize(
+    'interpolation',
+    [
+        pytest.param('linear', id='linear'),
+        pytest.param('cubic_spline', id='cubic_spline'),
+    ],
+)
+def test_saccade_between_fixations_at_one_location_does_not_move(interpolation):
+    """Its samples do not match its label, which the docstring discloses."""
+    events = _fixations(
+        onsets=(0, 250, 300),
+        offsets=(250, 300, 560),
+        locations=((1.0, 2.0), None, (1.0, 2.0)),
+        names=['fixation', 'saccade', 'fixation'],
+    )
+
+    gaze = _generate(events, interpolation=interpolation)
+
+    np.testing.assert_array_equal(_positions(gaze), np.tile((1.0, 2.0), (560, 1)))
+
+
 def test_fixation_shorter_than_one_sample_gets_one_sample():
     events = _fixations(onsets=(0.0,), offsets=(0.25,), locations=((1.0, 2.0),))
 
