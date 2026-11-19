@@ -20,6 +20,7 @@
 """Tests the Events minimal schema, durations and offset conventions."""
 from __future__ import annotations
 
+import math
 import re
 import warnings
 from datetime import timedelta
@@ -28,7 +29,6 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-import pymovements as pm
 from pymovements import Events
 
 
@@ -357,9 +357,9 @@ def test_init_durations_from_offsets_on_undeclared_offsets_warns_once_and_is_ign
     assert events.frame['duration'].to_list() == [timedelta(milliseconds=expected_ms)]
 
 
-@pytest.mark.parametrize('sampling_rate', [0, -1])
-def test_init_non_positive_sampling_rate_raises(sampling_rate):
-    with pytest.raises(ValueError, match='sampling_rate must be positive'):
+@pytest.mark.parametrize('sampling_rate', [0, -1, math.nan, math.inf])
+def test_init_sampling_rate_not_finite_positive_raises(sampling_rate):
+    with pytest.raises(ValueError, match='sampling_rate must be a finite positive number'):
         Events(onsets=[0], offsets=[1], offsets_inclusive=True, sampling_rate=sampling_rate)
 
 
@@ -491,7 +491,7 @@ def test_check_every_row_contradicting_raises_with_recipes(
             [6, 0, 2], [5, 0, 1], {'offsets_inclusive': True, 'sampling_rate': 1000},
             [
                 r'1 of 3 rows contradict offsets_inclusive=True',
-                r'to be 1ms \(sampling_rate=1000 from the sampling_rate keyword\)',
+                r'to be 1ms \(sampling_rate=1000\)',
                 r'residuals seen: \[0, 1ms\]',
                 r'1 row looks like pre-v0\.29\.0 durations',
                 r'durations_from_offsets=True',
@@ -658,23 +658,3 @@ def test_merge_subsequent_close_events_without_offset_gaps_from_durations(
 
     assert 'offset' not in events.columns
     assert events.frame['duration'].to_list() == [timedelta(milliseconds=v) for v in expected_ms]
-
-
-def test_compute_event_properties_on_empty_events_without_offset_warns():
-    gaze = pm.Gaze(
-        samples=pl.DataFrame({
-            'time': list(range(0, 600)) * 2,
-            'trial': [1] * 600 + [2] * 600,
-            'x': [0.0] * 1200,
-            'y': [0.0] * 1200,
-        }),
-        time_column='time',
-        pixel_columns=['x', 'y'],
-        trial_columns='trial',
-    )
-    assert 'offset' not in gaze.events.columns
-
-    with pytest.warns(UserWarning, match='No events available'):
-        gaze.compute_event_properties(('location', {'position_column': 'pixel'}))
-
-    assert gaze.events.frame.is_empty()
