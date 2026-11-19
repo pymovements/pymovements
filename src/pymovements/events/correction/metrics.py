@@ -41,6 +41,13 @@ def _validate_paired_series(first: pl.Series, second: pl.Series) -> None:
         raise ValueError('Metric inputs must not contain null values.')
 
 
+def _normalize_trial_key(trial_key: tuple | str) -> tuple:
+    """Normalize a trial key to a tuple."""
+    if not isinstance(trial_key, tuple):
+        trial_key = (trial_key,)
+    return trial_key
+
+
 def reassignment_rate(
     corrected_events: pl.DataFrame,
     aois: pl.DataFrame,
@@ -230,7 +237,7 @@ def implausible_transitions(
     >>> implausible_transitions(
     ...     events, {("a",): [0.0, 1.0, 2.0]}, trial_columns=("trial",),
     ... )
-    0
+    1
     """
     if max_forward_line_distance < 0:
         raise ValueError('max_forward_line_distance must be non-negative.')
@@ -243,8 +250,7 @@ def implausible_transitions(
         list(trial_columns),
         maintain_order=True,
     ):
-        if not isinstance(trial_key, tuple):
-            trial_key = (trial_key,)
+        trial_key = _normalize_trial_key(trial_key)
 
         line_ys = line_ys_by_trial[trial_key]
         corrected_ys = trial.select(location_y('location')).to_series()

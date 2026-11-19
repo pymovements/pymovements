@@ -21,6 +21,7 @@
 import polars as pl
 import pytest
 
+from pymovements.events.correction.metrics import _normalize_trial_key
 from pymovements.events.correction.metrics import ensemble_agreement
 from pymovements.events.correction.metrics import implausible_transitions
 from pymovements.events.correction.metrics import mean_vertical_distance
@@ -202,6 +203,17 @@ def test_implausible_transitions_single_column_trial_key():
         lines,
         trial_columns=('trial',),
     ) == 2
+
+
+@pytest.mark.parametrize(
+    ('trial_key', 'expected'),
+    [
+        ('trial', ('trial',)),
+        (('trial',), ('trial',)),
+    ],
+)
+def test_normalize_trial_key(trial_key, expected):
+    assert _normalize_trial_key(trial_key) == expected
 
 
 def test_ensemble_agreement_counts_votes_per_fixation():
