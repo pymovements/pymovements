@@ -10,199 +10,265 @@
 
 ## TL;DR
 
-- Every data object carries `entities` beside `metadata`: what identifies it, kept apart from what
-  describes it. A value lives in exactly one of the two, and consumers read identity from
-  `entities` only.
+- Every data object carries `entities` beside `metadata`: what identifies an object is kept apart
+  from what describes it. A value lives in exactly one of the two, and consumers read identity
+  from `entities` only.
 - `Gaze`, `Events`, `Participants` and `Phenotype` adopt. An object derived from one source
   object carries its entities.
-- An `EntityDefinition` states an entity's name, format and padding. The BIDS entities come
-  declared, other keys such as `trial` can be declared. Every write to `entities` is checked.
+- An `EntityDeclaration` states an entity's name, format and padding. The BIDS entities come
+  declared, custom keys such as `trial` can be declared. The `entities` store checks each write
+  against the declarations: an undeclared key raises, a value is cast to its declared format.
 - `declare_entity` moves a key from `metadata` into `entities`.
-- A `PathTemplate` writes the path of a file below a root and parses a path back into entities.
-  Without a pattern it follows BIDS and raises on an entity BIDS does not define.
+- A `PathTemplate` builds the relative path of a file from entities and parses a path back into
+  entities. Without a pattern it follows the BIDS rules of the installed bidsschematools and
+  raises on an entity BIDS does not define.
 - `save` and `load` take a template. Dataset loaders route `filename_pattern` captures by
   declaration.
-- Reading identifiers from `metadata` is deprecated in v0.31.0 and removed in v0.36.0.
+- Keys a loader captured from a file name leave `metadata` in v0.31.0. The migration note names
+  the new place.
 
 ## What it looks like
 
-Loading PoTeC, before and after. The call does not change:
+A single BIDS file loads with its identity, with no dataset around it. `Events.load` and
+`Events.save` are proposed in issue #1563 and land before this proposal's implementation:
 
 ```python
-dataset = pymovements.Dataset('PoTeC', path='data/PoTeC')
-dataset.load()
-gaze = dataset.gaze[0]
+events = pymovements.Events.load('sub-01_ses-1_task-reading_run-2_events.tsv')
+events.entities
+# {'subject': '01', 'session': '1', 'task': 'reading', 'run': 2}
 ```
+
+The BIDS template builds the relative path back from the entities, directories included, and
+names the BIDS version it follows:
 
 ```python
-# before (v0.30): what the file name captured sits in metadata beside the rest
-gaze.metadata
-# {'subject_id': 1, 'text_id': 'b0', 'Sources': ['raw/reader1_b0_raw_data.tsv']}
+template = pymovements.PathTemplate()
+template.bids_version
+# '1.11.1'
+template.build(events.entities, datatype='beh', suffix='events', extension='tsv')
+# PurePosixPath('sub-01/ses-1/beh/sub-01_ses-1_task-reading_run-2_events.tsv')
 ```
+
+`save` and `load` take the template. `save(path)` writes exactly that file, as today, and
+`save(root=...)` writes to the path the template builds below the root:
 
 ```python
-# after: identity in entities, description in metadata
-gaze.entities
-# {'subject': '01', 'text_id': 'b0'}
-gaze.metadata
-# {'Sources': ['raw/reader1_b0_raw_data.tsv']}
+events.save('fixations.tsv')
+events.save(root='data/bids')
+# data/bids/sub-01/ses-1/beh/sub-01_ses-1_task-reading_run-2_events.tsv
 ```
 
-The definition names the captures after their entities and declares what BIDS does not:
+A split gives each part the entities of the whole plus the split value, declared on the fly. The
+BIDS template writes BIDS entities only, so a part raises on save, and the message names the two
+ways out:
 
-```yaml
-resources:
-  - content: gaze
-    filename_pattern: 'reader{subject:d}_{text_id}_raw_data.tsv'
-entity_definitions:
-  - name: subject      # a BIDS entity, comes declared, the dataset sets the padding
-    padding: 2
-  - name: text_id      # not a BIDS entity, declared by the dataset
-    format: label
+```python
+trials = events.split(by='trial')
+trials[0].entities
+# {'subject': '01', 'session': '1', 'task': 'reading', 'run': 2, 'trial': 1}
+
+trials[0].save(root='data/bids')
+# ValueError: the BIDS template cannot write the entity 'trial', which BIDS does not define.
+#   Use a template that writes it, or combine the objects by 'trial' first.
+```
+
+A custom template writes the others. Its placeholders can sit anywhere in the pattern, a
+`key-value` form is not required:
+
+```python
+custom = pymovements.PathTemplate(
+    'sub-{subject}/sub-{subject}_run-{run}_trial-{trial}_{suffix}.{extension}',
+)
+trials[0].save(root='data/trials', template=custom)
+# data/trials/sub-01/sub-01_run-2_trial-1_events.tsv
+```
+
+A custom template carries the declarations of its placeholders, and parses a path on load:
+
+```python
+template = pymovements.PathTemplate(
+    'reader{subject}/reader{subject}_{text_id}_{suffix}.{extension}',
+    declarations=[pymovements.EntityDeclaration('text_id')],
+)
+events = pymovements.Events.load('data/reader1/reader1_b0_fixations.tsv', template=template)
+events.entities
+# {'subject': '1', 'text_id': 'b0'}
+```
+
+Declaring an entity on an existing object moves a key of that name out of `metadata`:
+
+```python
+events.metadata
+# {'text_id': 'b0', 'Sources': ['data/reader1/reader1_b0_fixations.tsv']}
+events.declare_entity(pymovements.EntityDeclaration('text_id'))
+events.entities
+# {'subject': '1', 'text_id': 'b0'}
+events.metadata
+# {'Sources': ['data/reader1/reader1_b0_fixations.tsv']}
 ```
 
 An object derived from one source object carries its entities:
 
 ```python
 gaze.detect('ivt')
-gaze.events.entities
-# {'subject': '01', 'text_id': 'b0'}
+gaze.events.entities == gaze.entities
+# True
 ```
 
-A single file parses its path into entities, with no dataset:
+The dataset side does not change its calls. The definition declares what BIDS does not and
+names the captures after their entities:
 
-```python
-gaze = pymovements.gaze.from_csv('sub-01_ses-1_task-reading_run-2_physio.tsv')
-gaze.entities
-# {'subject': '01', 'session': '1', 'task': 'reading', 'run': 2}
-
-phenotype = Phenotype.load('phenotype/handedness.tsv')
-phenotype.entities
-# {'measurement_tool': 'handedness'}
+```yaml
+entity_declarations:          # declarations, dataset-wide
+  - name: subject             # a BIDS entity, comes declared, the dataset sets the padding
+    padding: 2
+  - name: text_id             # a custom entity, declared by the dataset
+    format: label
+resources:
+  - content: gaze
+    filename_pattern: 'reader{subject:d}_{text_id}_raw_data.tsv'
+  - content: precomputed_events
+    filename_pattern: 'reader{subject:d}_{text_id}_fixations.tsv'
+    entities:                 # values, fixed for every file of this resource
+      description: corrected
 ```
 
-The BIDS template writes BIDS entities only. A custom template writes the others:
-
 ```python
-PathTemplate().format(gaze.events.entities, suffix='events', extension='tsv')
-# ValueError: the BIDS template cannot write the entity 'text_id', which BIDS does not define.
-#   Use a template that writes it, or merge by 'text_id' first.
-
-template = PathTemplate('sub-{subject}/sub-{subject}_text-{text_id}_{suffix}.{extension}')
-template.format(gaze.events.entities, suffix='events', extension='tsv')
-# PurePosixPath('sub-01/sub-01_text-b0_events.tsv')
+dataset.load()
+dataset.precomputed_events[0].entities
+# {'subject': '01', 'text_id': 'b0', 'description': 'corrected'}
 ```
 
 ## Resulting signatures
+
+The terms, as BIDS defines them [1, 2]:
+
+| term | meaning | in `sub-01_task-reading_run-2_events.tsv` |
+|---|---|---|
+| entity | a key-value pair in a file name, hyphen-separated | `sub-01`, `task-reading`, `run-2` |
+| key | the short form of an entity's name | `sub`, `task`, `run` |
+| label | an entity value that is a string of letters and digits | `01`, `reading` |
+| index | an entity value that is a non-negative integer, optionally zero-padded | `2` |
+| suffix | what follows the last `_` before the extension, names the file's content | `events` |
+| extension | what follows the suffix, names the format | `.tsv` |
 
 The entities subpackage, `pymovements.entities`, holds the declaration, the store and the
 template:
 
 ```python
 @dataclass(frozen=True)
-class EntityDefinition:
+class EntityDeclaration:
     name: str                                   # the key in entities, and the placeholder in
                                                 # filename_pattern and in a template pattern
     format: Literal['label', 'index'] = 'label' # label: a string, index: a non-negative integer
-    padding: int | None = None                  # minimum number of digits of a value written
-                                                # from an integer
-    bids_key: str | None = None                 # the key in a BIDS path, such as 'sub', set on
-                                                # the BIDS declarations only
+    padding: int | None = None                  # minimum number of digits when an integer is
+                                                # written as a label, 1 becomes '01' with 2
 ```
 
 ```python
 class Entities(MutableMapping[str, str | int]):
-    definitions: Mapping[str, EntityDefinition]   # the declarations in effect, BIDS included
-    # every write is checked: an undeclared key raises, a value is cast to its declared format
+    declarations: Mapping[str, EntityDeclaration]   # the declarations in effect, BIDS included
+    # MutableMapping routes every write through __setitem__, where the check runs:
+    # an undeclared key raises, a value is cast to its declared format
 ```
 
 ```python
 class PathTemplate:
-    def __init__(self, pattern: str | None = None) -> None
-    # None: the BIDS template, rules from bidsschematools
-    # a pattern: '{name}' placeholders for entities, '{datatype}', '{suffix}' and
-    #            '{extension}' filled by the class that saves
-
-    def format(
+    def __init__(
         self,
-        entities: Mapping[str, str | int],
+        pattern: str | None = None,             # None: the BIDS template, rules from the
+                                                # installed bidsschematools, a pattern: '{name}'
+                                                # placeholders for entities, '{datatype}',
+                                                # '{suffix}' and '{extension}' filled by the
+                                                # class that saves
         *,
-        suffix: str,
-        extension: str,
-        datatype: str | None = None,
-    ) -> PurePosixPath                  # the path below a root, raises on an entity it cannot write
+        declarations: Sequence[EntityDeclaration] | None = None,
+                                                # custom template: declarations of its
+                                                # placeholders, an undeclared one is a label
+    ) -> None
 
-    def parse(self, path: str | PathLike[str]) -> dict[str, str | int]
-    # BIDS template: the file name, an empty dict when it is no BIDS name
-    # a pattern: the end of the path, as many levels as the pattern has, raises on a miss
+    bids_version: str                           # the BIDS version of the installed schema
+
+    def build(
+        self,
+        entities: Mapping[str, str | int],      # the entities of the object
+        *,
+        suffix: str,                            # the content of the file, such as 'events'
+        extension: str,                         # the format of the file, such as 'tsv'
+        datatype: str | None = None,            # the BIDS datatype directory, such as 'beh'
+    ) -> PurePosixPath                          # the relative path, raises on an entity the
+                                                # template cannot write
+
+    def parse(
+        self,
+        path: str | PathLike[str],              # the path of a file
+    ) -> Entities                               # BIDS template: from the file name, empty when
+                                                # it is no BIDS name, a pattern: from the end of
+                                                # the path, as many levels as the pattern has,
+                                                # raises on a miss
 ```
 
 Every data object that adopts carries the attributes and keywords below, whatever else its
 signatures hold. `Gaze`, `Events`, `Participants` and `Phenotype` adopt in this proposal:
 
 ```python
-entities: Entities                  # what identifies the object
-metadata: dict[str, Any]            # what describes it, unchanged
+entities: Entities                              # what identifies the object
+metadata: dict[str, Any]                        # what describes it, the plain dict of PMEP 2
 
-def declare_entity(self, definition: EntityDefinition) -> None
-# declares the entity, and moves a key of that name from metadata into entities
+def declare_entity(
+    self,
+    declaration: EntityDeclaration,             # the entity to declare
+) -> None                                       # moves a key of that name from metadata into
+                                                # entities
 
 def __init__(
     self,
     ...,
-    entities: Mapping[str, str | int] | None = None,
-    entity_definitions: Sequence[EntityDefinition] | None = None,
+    entities: Entities | Mapping[str, str | int] | None = None,
+                                                # the entities, an Entities instance brings its
+                                                # declarations along
+    entity_declarations: Sequence[EntityDeclaration] | None = None,
+                                                # declarations for a plain mapping
 ) -> None
 ```
 
-A class with a single-file `save` and `load` takes the template on both. `Phenotype` and the
-gaze loaders `pymovements.gaze.from_csv`, `from_ipc`, `from_asc` and `from_begaze` follow it
-here, `Events` and later classes with their own `save` and `load`:
+A class with a single-file `save` and `load` takes the template on both. `Events`,
+`Participants`, `Phenotype` and the gaze loaders `pymovements.gaze.from_csv`, `from_ipc`,
+`from_asc` and `from_begaze` follow it here, later classes with their own `save` and `load`:
 
 ```python
 def save(
     self,
-    path: Path | str | None = None,      # the file, as today
+    path: Path | str | None = None,             # the file, as today
     *,
-    root: Path | str | None = None,      # the root the template writes below, instead of path
-    template: PathTemplate | None = None,   # None: the BIDS template, used with root only
+    root: Path | str | None = None,             # the root the template builds below, instead
+                                                # of path
+    template: PathTemplate | None = None,       # None: the BIDS template, used with root only
     ...,
-) -> None
-# exactly one of path and root
+) -> None                                       # exactly one of path and root
 
 def load(
-    path: Path | str,
+    path: Path | str,                           # the file
     *,
-    template: PathTemplate | None = None,   # None: the BIDS template
-    entity_definitions: Sequence[EntityDefinition] | None = None,
+    template: PathTemplate | None = None,       # None: the BIDS template, parses the file name
     ...,
 ) -> Self
 ```
 
 The dataset definition declares entities, and a resource can fix an entity value for all its
-files:
+files. `entity_declarations` holds declarations, like the constructor keyword of the same name,
+and `entities` holds values, like the attribute of the same name:
 
 ```python
-DatasetDefinition(..., entity_definitions: Sequence[EntityDefinition] | None = None)
+DatasetDefinition(..., entity_declarations: Sequence[EntityDeclaration] | None = None)
 ResourceDefinition(..., entities: Mapping[str, str | int] | None = None)
-```
-
-```yaml
-entity_definitions:
-  - name: text_id
-    format: label
-resources:
-  - content: precomputed_events
-    filename_pattern: 'reader{subject:d}_{text_id}_fixations.tsv'
-    entities:
-      description: corrected
 ```
 
 ## Motivation
 
-`metadata` holds two kinds of value today. Loading PoTeC puts `subject_id` and `text_id` from
-the file name into `metadata`, beside `Sources` and every descriptive key. Nothing marks which
-keys say which object this is and which only describe it, so every consumer guesses:
+`metadata` holds two kinds of value today. A dataset loader puts what the file name captured
+into `metadata`, beside `Sources` and every descriptive key. Nothing marks which keys identify
+the object and which describe it, so every consumer guesses:
 
 | consumer | what it needs | what it finds today |
 |---|---|---|
@@ -211,10 +277,11 @@ keys say which object this is and which only describe it, so every consumer gues
 | saving a dataset | a path for each object | nothing, the caller composes names by hand |
 | `Phenotype.load` | the measurement tool the file is about | the file stem, kept nowhere |
 
-The guessing has consequences. A subject loaded as the integer `1` by one loader and the string
-`'1'` by another is coerced and merged into one subject. A split trial looks like a description
-and is lost when the metadata of two objects is combined. `Sources` gets read as identity when no
-key fits, although it records provenance.
+Three things go wrong. A subject loaded as the integer `1` by one loader and as the string
+`'1'` by another is either merged into one subject or kept as two, by accident. A split value
+sits beside descriptions, so combining the metadata of two parts treats it as a description and
+drops it. `Sources` records provenance, but a consumer that finds no identifying key reads the
+file name out of it.
 
 BIDS separates the two by construction: entities in the path identify a file, the sidecar
 describes it [1, 2]. pymovements saves into BIDS layouts, so its objects need the same separation
@@ -226,67 +293,105 @@ in memory and a way to write the path from it and parse it back.
 
 Every data object carries `entities` beside `metadata`. `entities` holds what identifies the
 object, `metadata` what describes it. A value lives in exactly one of the two. Consumers read
-identity from `entities` only, and `Sources` stays the provenance record of PMEP 2, never a
-stand-in for a missing entity. The separation is the end state, not a transition step.
+identity from `entities` only. `Sources` stays the provenance record of PMEP 2, and a consumer
+that finds no entity does not read the file name out of it.
 
 ### Declarations
 
-An `EntityDefinition` states an entity's name, its format and its padding:
+An `EntityDeclaration` states an entity's name, its format and its padding:
 
 | field | meaning |
 |---|---|
 | `name` | the key in `entities`, the `filename_pattern` placeholder and the template placeholder |
 | `format` | `label`, a string, or `index`, a non-negative integer, as in BIDS [1] |
-| `padding` | the minimum number of digits of a value written from an integer, so every template writes the same label for the same entity |
-| `bids_key` | the key in a BIDS path, set on the BIDS declarations only |
+| `padding` | the minimum number of digits when an integer is written as a label, so every template writes the same label for the same entity |
 
 The BIDS entities come declared under their names in the BIDS schema, read through
-bidsschematools [3]: `subject` with the key `sub`, `session`, `task`, `run`, `description` and the
-rest. A declaration that names a BIDS entity takes its format and key from the schema and sets
-the padding only. Any other key can be declared, such as `trial` or `text_id`. Declarations come
-from the dataset definition, from the caller at construction and load, and from `declare_entity`.
-There is no global registry.
+bidsschematools [3]. The schema fixes their names, keys, formats and order:
 
-`subject` is the BIDS name of the entity. The participants file keeps its BIDS column
-`participant_id`, whose values are `'sub-' + subject` [4]. That is the join between a
-`Participants` table and the objects of its subjects.
+| entity | key | format | | entity | key | format |
+|---|---|---|---|---|---|---|
+| `subject` | `sub` | label | | `mtransfer` | `mt` | label |
+| `template` | `tpl` | label | | `part` | `part` | label |
+| `session` | `ses` | label | | `processing` | `proc` | label |
+| `cohort` | `cohort` | label | | `hemisphere` | `hemi` | label |
+| `sample` | `sample` | label | | `space` | `space` | label |
+| `task` | `task` | label | | `split` | `split` | index |
+| `tracksys` | `tracksys` | label | | `recording` | `recording` | label |
+| `acquisition` | `acq` | label | | `chunk` | `chunk` | index |
+| `nucleus` | `nuc` | label | | `atlas` | `atlas` | label |
+| `volume` | `voi` | label | | `segmentation` | `seg` | label |
+| `ceagent` | `ce` | label | | `scale` | `scale` | label |
+| `tracer` | `trc` | label | | `resolution` | `res` | label |
+| `stain` | `stain` | label | | `density` | `den` | label |
+| `reconstruction` | `rec` | label | | `label` | `label` | label |
+| `direction` | `dir` | label | | `description` | `desc` | label |
+| `run` | `run` | index | | | | |
+| `modality` | `mod` | label | | | | |
+| `echo` | `echo` | index | | | | |
+| `flip` | `flip` | index | | | | |
+| `inversion` | `inv` | index | | | | |
+
+The table is the one of BIDS 1.11.1, read top-down and left-right. BIDS mandates this order in
+every file name [2], so a template that writes or parses a BIDS name needs it. The version in
+effect is the one the installed bidsschematools ships, exposed as `bids_version` on the
+template, pinned by the dependency lower bound, and a test fails when a bump changes the table.
+
+A declaration that names a BIDS entity takes its format from the schema and sets the padding
+only. The key, such as `sub`, is the BIDS template's business and is not part of a declaration.
+Any other key can be declared, such as `trial` or `text_id`. Declarations come from the dataset
+definition, from the caller at construction, from a custom template and from `declare_entity`.
+A registry of entity types beyond that is out of scope, see Scope.
+
+`subject` is the BIDS name of the entity. A participants file keeps its BIDS column
+`participant_id`, whose values are `'sub-' + subject` [4], and so does a phenotype file [5].
+That column is the join between a `Participants` or `Phenotype` table and the objects of its
+subjects. A value with its key prefix is not a second entity, it is the label written the way
+the file writes it.
 
 ### The store
 
 `entities` checks every write against the declarations in effect, whatever writes it: a loader,
 a split, `declare_entity` or the caller. An undeclared key raises. A value is cast to its
 declared format, and a value that cannot be cast raises. A consumer that meets two objects whose
-declarations for the same name differ raises instead of coercing.
+declarations for the same name differ, one as a label and one as an index, raises instead of
+coercing. Values are `str` or `int`, so there is no narrower type to coerce between.
+
+Validation against declarations is part of the in-memory model. The path a template writes is a
+file-level fact, so a class that saves with the BIDS template names "the written path follows
+the BIDS rules" as its adoption check, and the opt-in `verify_bids` of PMEP 2 runs it.
 
 ### Promotion through declaration
 
 `declare_entity` declares an entity on an existing object. A key of that name in `metadata`
-moves into `entities` and leaves `metadata`. There is no way back from `entities` into
-`metadata`.
+moves into `entities` and leaves `metadata`. Moving an entity back into `metadata` is out of
+scope, see Scope.
 
 ### Loading
 
-Dataset loaders route what `filename_pattern` captures by declaration: declared keys go into
-`entities`, cast to their format, the rest into `metadata`. A value a resource fixes in its
-`entities` goes into `entities` like a captured one. A captured value that contradicts a fixed
-one raises.
+A single file has to load with its identity, without a dataset around it. Dataset loaders do all
+of that work today, so a single-file workflow loses the entities.
 
 `load` and the gaze loaders parse the path they read with the template, the BIDS template by
 default. The BIDS template parses the file name, since a BIDS file name repeats every entity of
 its path [2]. A name that is not a BIDS name gives no entities, silently. A custom template
 parses the end of the path, as many levels as its pattern has, and raises when the path does not
-match. A placeholder without a declaration is declared as a label unless `entity_definitions`
-declares it. `entities=` on the constructor and on `load` adds to what the path gives, and a
-contradicting value raises.
+match. A placeholder is declared by the template, an undeclared one with the format `label`.
+`entities=` on the constructor and on `load` adds to what the path gives, and a contradicting
+value raises.
 
-`filename_pattern` stays the way non-BIDS datasets find their files. This proposal changes only
-where its captures go.
+Dataset loaders route what `filename_pattern` captures by declaration: declared keys go into
+`entities`, cast to their format, the rest into `metadata`. A value a resource fixes in its
+`entities` goes into `entities` like a captured one. A captured value that contradicts a fixed
+one raises. `filename_pattern` continues to work as it does, this proposal changes only where
+its captures go.
 
 ### Templates
 
-A `PathTemplate` writes the path of a file below a root from the object's entities and parses a
-path back into entities. It covers the whole path below the root, directories and file name, and
-its entity order is part of it:
+A `PathTemplate` builds the relative path of a file from entities and parses a path back into
+entities. The relative path covers directories and file name, and its entity order is part of
+the template. The template knows no root: the class that saves joins the root and the relative
+path, the class that loads hands the template the path it was given.
 
 | template | writes | entity order | parses |
 |---|---|---|---|
@@ -294,26 +399,30 @@ its entity order is part of it:
 | `PathTemplate(pattern)` | the placeholders of the pattern | the order of the pattern | the end of a path that matches the pattern |
 
 The rules of the BIDS template come from bidsschematools [3], never from code in pymovements.
-The BIDS template writes BIDS entities only. A template raises on an entity it cannot write,
-whether BIDS does not define it or the pattern has no placeholder for it, and the message names
-the two ways out: a template that writes it, or merging by that entity first. A save with a
-template therefore never puts two objects that differ in an entity on one path. A placeholder
-without a value raises too. The class that saves fills `datatype`, `suffix` and `extension`.
+One BIDS template serves every class: the schema selects the file rule by `datatype` and
+`suffix`, which the class that saves fills, so `events` and `physio` under one datatype are two
+rules of one template, and the fixed stems `participants.tsv` [4] and
+`phenotype/<measurement_tool>.tsv` [5] are two more. A template raises on an entity it cannot
+write, whether BIDS does not define it or the pattern has no placeholder for it, and the message
+names the two ways out: a template that writes it, or combining the objects by that entity
+first. A save with a template therefore never puts two objects that differ in an entity on one
+path. A placeholder without a value raises too.
 
 The template enters `save` through `root`: `save(root=..., template=...)` writes to the path the
 template builds below the root. `save(path)` writes exactly that file, as today.
 
 ### Adoption
 
-| class | entities |
-|---|---|
-| `Gaze` | from the loaders, kept while Recording replaces it |
-| `Events` | from the loaders and from the gaze object they are detected on |
-| `Phenotype` | `measurement_tool`, declared by the class, the stem of `phenotype/<measurement_tool>.tsv` [5] |
-| `Participants` | none, `participants.tsv` is dataset-level |
+| class | entities | BIDS template |
+|---|---|---|
+| `Gaze` | from the loaders | the `physio` rule |
+| `Events` | from the loaders and from the gaze object they are detected on | the `events` rule |
+| `Participants` | from the loaders when a resource captures them, otherwise empty | the fixed stem `participants.tsv` [4] |
+| `Phenotype` | `measurement_tool`, declared by the class, the stem of `phenotype/<measurement_tool>.tsv` [5] | the `phenotype` rule |
 
-The BIDS template writes and parses the phenotype path by the schema rule for that file, a
-template case and no new mechanism. Recording adopts in its own proposal, stimuli later.
+A dataset with one participants file per text captures `text_id` through its resource, and a
+custom template such as `participants_text-{text_id}.tsv` writes it back. Combining those files
+into one table is out of scope, see Scope.
 
 ### Derived objects
 
@@ -321,8 +430,7 @@ An object derived from one source object carries the source's entities. `Gaze.de
 events the entities of the gaze. `split` on `Gaze` and `Events` gives each part the entities of
 the whole plus the split value, and declares the split key when it is not declared yet: `index`
 for an integer column, `label` otherwise. Measures computed from one object carry its entities.
-The contract for operations in general belongs to the operation model, adding a split entity on
-merge to split and merge by entity.
+Operations that take several sources are out of scope, see Scope.
 
 ### Grouping
 
@@ -331,64 +439,85 @@ When no object has the entity, that level is left out without a warning.
 
 ### Scope
 
-Outside this proposal: scanning a dataset for its files and selecting among them, the dataset
-files and selection PMEP. The roots of a dataset and their configuration, the directory layout
-PMEP. The file layout `Dataset.save_events` and `Dataset.save_preprocessed` write today, which
-`Dataset.load_event_files` reads back, the events layout PMEP. Whether `filename_pattern` merges
-with the template. Splitting and merging by entity. A way to move an entity back into `metadata`.
+Outside this proposal, with where it goes:
+
+- Scanning a dataset for its files and selecting among them: the dataset files and selection
+  PMEP.
+- The roots of a dataset and their configuration: the directory layout PMEP.
+- The file layout `Dataset.save_events` and `Dataset.save_preprocessed` write today, which
+  `Dataset.load_event_files` reads back: the events layout PMEP.
+- Whether `filename_pattern` merges with the template: the dataset files and selection PMEP.
+- Splitting and merging by entity, including the entities of an object with several sources,
+  entities written as columns of a combined table, and combining per-text participants files:
+  the split and merge PMEP.
+- Splitting an object by a column on save, when the template has an entity the object lacks but
+  a column of that name exists: the `Dataset` save methods, issue #1388 and the events layout
+  PMEP.
+- The BIDS inheritance principle: entities are what a sidecar higher in the tree matches on,
+  consolidating sidecars on save and resolving them on load is a roadmap ticket beside the
+  directory layout PMEP.
+- A registry of entity types, a way to move an entity back into `metadata`, and a custom BIDS
+  schema path on the template: additive, each can follow as an issue.
 
 ## Rationale
 
 ### Why two stores
 
 A marker on some `metadata` keys would leave every consumer filtering one dict and every writer
-deciding again which keys count. Two stores make the decision once, at declaration, and a value in
-exactly one of them cannot be read both ways. A transition that keeps both filled was rejected:
-two copies of an identifier drift as soon as one is edited.
+deciding again which keys count. Two stores make the decision once, at declaration, and a value
+in exactly one of them cannot be read both ways. Keeping both stores filled during a transition
+would leave two copies of an identifier that drift as soon as one is edited.
 
 ### Why declarations
 
 An identifier's type has to be the same wherever the object came from, or `1` and `'1'` become
 two subjects or one by accident. The declaration fixes the type per entity, and the BIDS
 declarations fix it as BIDS does: `run` is an index, `subject` a label [1]. Padding sits in the
-declaration because it decides the label, so two templates write the same `sub-01` for the same
-subject.
+declaration, not in the template, because it decides the label: with it, two templates write the
+same `sub-01` for the same subject, with padding per template they would not.
 
 ### Why the BIDS names
 
 The template takes names, keys and order from the BIDS schema. A second name for the same entity,
 such as `participant` or `subject_id`, would need a mapping in every template and every consumer.
 `participant_id` is not a second name: it is a column whose values are the subject label with its
-prefix [4].
+prefix [4]. The order matters because BIDS mandates it, and a template that writes a BIDS name
+has to put `sub` before `ses` and `ses` before `task` to produce a valid one [2].
+
+### Why one BIDS template
+
+A BIDS dataset holds many file kinds, but the schema keys its file rules by `datatype` and
+`suffix`, and the class that saves knows both. One template object that reads the schema serves
+every class, where a template per file kind would repeat the schema lookup in pymovements.
 
 ### Why validation sits on the store
 
-Loaders, split, declaration and the caller all write entities. A check on each writer would be
-repeated and missed on the next one. A check on the store covers every write, the future ones
-included. Declarations are part of the in-memory model, not of file verification, so the
-opt-in `verify_bids` of PMEP 2 does not cover them.
+Loaders, split, declaration and the caller all write entities. A check in each of those writers
+would be repeated, and the next writer would miss it. A check in the store's `__setitem__`
+covers every write, the future ones included.
 
-### Why the BIDS template raises on other entities
+### Why a template raises on an entity it cannot write
 
-Dropping a non-BIDS entity on save would put every trial of a subject on one path, and the
-second write would replace the first. Writing it into a BIDS name would make the file
-nonconformant. Raising keeps a default save conformant by construction and names the two ways
-out.
+Dropping an entity on save would put every trial of a subject on one path, and the second write
+would replace the first. Writing a non-BIDS entity into a BIDS name would make the file
+nonconformant. Raising keeps a save conformant by construction and names the two ways out. This
+holds for any template: the BIDS template cannot write what BIDS does not define, a custom one
+cannot write what its pattern has no placeholder for.
 
-### Why the template covers the whole path
+### Why the template builds the whole relative path
 
 BIDS repeats entities in directories and file name, and which directories exist depends on which
-entities a file has [2]. Name and directory cannot be cut apart, so the template writes and parses
-the path below a root, the same cut `filename_pattern` makes today. Where the roots live is the
-directory layout PMEP's question.
+entities a file has [2]. Name and directory cannot be cut apart, so the template builds the path
+below a root, the same cut `filename_pattern` makes today. Where the roots live is out of scope,
+see Scope.
 
 ### Why load parses by default
 
-A single file has to load with its identity, without a dataset around it. Dataset loaders do all
-of that work today, so a single-file workflow loses the entities. A BIDS file name repeats every
-entity of its path, so the file name is enough for the default, and no root is needed. Most
-non-BIDS names do not parse as BIDS, so a miss of the default is silent. A custom template is the
-caller's explicit claim about the layout, so a miss raises.
+A BIDS file name repeats every entity of its path, so the file name is enough for the default,
+and no root is needed. Most non-BIDS names do not parse as BIDS, so a miss of the default is
+silent. A custom template is the caller's explicit claim about the layout, so a miss raises.
+Whether the default stays this way, or `load` parses only when a template is passed and every
+miss raises, is open in this draft.
 
 ### Why `root` on save
 
@@ -399,24 +528,34 @@ save could not mean the BIDS template, and the defaults of `save` and `load` wou
 
 The BIDS rules for entities, their order and directories are maintained in the BIDS schema, and
 bidsschematools reads it [3]. Hardcoding them would copy the specification and drift from its
-next version.
+next version. One installed pymovements writes one BIDS version, the one its bidsschematools
+ships, the same way bids-validator does. The entity table above and the test on it are the
+overview pymovements keeps: a bump that changes the table is noticed, not silently adopted.
+bidsschematools reads a schema from a directory as well, so a custom schema path on the template
+is additive and out of scope.
 
 ### Alternatives rejected
 
 - *Identifiers stay in `metadata` with a list of identifying keys.* Every consumer filters, and a
-  key can still be read both ways.
-- *Resource labels in `metadata`.* PoTeC's corrected and uncorrected fixations differ only in the
-  label, and a label that tells files apart is an entity, `description` in BIDS.
+  key can still be read both ways. See "Why two stores".
+- *A `Metadata` class that warns on a moved key.* PMEP 2 keeps `metadata` a plain dict, and the
+  keys that move are in `metadata` for two releases at most. See "Backwards compatibility".
+- *Resource labels in `metadata`.* A label that tells the files of two resources apart, such as
+  corrected and uncorrected fixations, identifies them, so it is an entity. See "Entities and
+  metadata".
 - *Dataset names mapped to BIDS keys,* `subject_id` declared with the key `sub`. Two names for one
-  entity in every consumer.
+  entity in every consumer. See "Why the BIDS names".
+- *A `bids_key` field on the declaration.* The BIDS template reads the key from the schema, and
+  a field would invite a custom declaration to claim a BIDS key. See "Declarations".
 - *A separate option for the entity order.* The order is part of the template, the BIDS order for
-  the BIDS template and the pattern's for a custom one.
-- *A global registry of entity types.* Declarations come from the definition and the caller, the
-  BIDS ones from the schema. A registry can follow as an issue.
-- *Moving an entity back into `metadata`.* A second way for identity to leave the path. It is
-  additive and can follow as an issue if a case comes up.
-- *Raising when a grouping meets an object without the entity.* It would block the data quality
-  report on common non-BIDS datasets.
+  the BIDS template and the pattern's for a custom one. See "Templates".
+- *Padding on the template.* Two templates could write two labels for one subject. See "Why
+  declarations".
+- *A template per file kind.* The schema selects the rule, one template suffices. See "Why one
+  BIDS template".
+- *Raising when a grouping meets an object without the entity.* A dataset whose files carry no
+  session is common, and a consumer that groups by session has to handle it, not refuse it. See
+  "Grouping".
 
 ## Backwards compatibility
 
@@ -424,37 +563,38 @@ What changes from v0.31.0:
 
 | where | what | before | from v0.31.0 |
 |---|---|---|---|
-| `metadata` | keys a loader captured from the file name, such as `subject_id` | in `metadata` | in `entities` under the declared name, reading them from `metadata` is deprecated |
-| `metadata` | the split value of `Gaze.split` and `Events.split` | `metadata['trial']` | `entities['trial']`, reading it from `metadata` is deprecated |
-| built-in definitions | `filename_pattern` placeholders of BIDS entities | `{subject_id:d}` | `{subject:d}` |
-| values | an identifier's type | whatever the loader gave | the declared format, `subject` `1` becomes `'01'` with padding 2 |
+| `metadata` | keys a dataset loader captured from the file name, such as `subject_id` | in `metadata` | in `entities` under the declared name, gone from `metadata`, breaking |
+| `metadata` | the split value of `Gaze.split` and `Events.split` | `metadata['trial']` | `entities['trial']`, gone from `metadata`, breaking |
+| built-in definitions | `filename_pattern` placeholders of BIDS entities | `{subject_id:d}` | `{subject:d}`, the parse spec stays, the declaration sets the type |
+| entity values | an identifier's type | whatever the loader gave | the declared format, `subject` `1` becomes `'01'` with padding 2 |
 | `filename_pattern_schema_overrides` | an override for a declared key | sets the type | deprecated, the declaration sets it |
-| API | `entities`, `declare_entity`, `entity_definitions`, `PathTemplate`, `EntityDefinition` | none | additive |
+| API | `entities`, `declare_entity`, `entity_declarations`, `PathTemplate`, `EntityDeclaration` | none | additive |
 | API | `root` and `template` on `save`, `template` on `load` | none | additive |
 | dependencies | bidsschematools | none | required |
 
-Reading a moved key from `metadata` returns the entity value with a deprecation warning that
-names the new place, from v0.31.0 until its removal in v0.36.0. The value is stored in `entities`
-only. A user definition that keeps a placeholder such as `subject_id` still loads, with the value
-in `metadata`, and the warning names the rename. The type change of identifiers shows in that
-warning and in the migration note.
+The captured keys reached `metadata` with the sources metadata of v0.29.0, only the dataset
+loaders write them, and the split value moves with the split rework. A read of a moved key from
+`metadata` raises `KeyError`, and the migration note names the new place and the type change.
+A user definition that keeps a placeholder such as `subject_id` still loads, with the value in
+`metadata`, and the note names the rename.
 
 ## Implementation
 
 Target release is v0.31.0. One issue per line, drafted once the PMEP is accepted:
 
-- [ ] `pymovements.entities`: `EntityDefinition`, the BIDS declarations from bidsschematools, the
-      `Entities` store and its checks, bidsschematools as a dependency
+- [ ] `pymovements.entities`: `EntityDeclaration`, the BIDS declarations from bidsschematools, the
+      `Entities` store and its checks, bidsschematools as a dependency, the entity table test
 - [ ] adoption on `Gaze`, `Events`, `Participants` and `Phenotype`: `entities`,
-      `entity_definitions`, `declare_entity`, `clone`
+      `entity_declarations`, `declare_entity`, `clone`
 - [ ] Dataset loaders: routing captures by declaration, fixed resource values, the built-in
       definitions renamed and declared
-- [ ] `PathTemplate`: the BIDS template, custom patterns, `format`, `parse`, the raise on an
-      entity a template cannot write
-- [ ] `save` and `load` with `root` and `template` on `Phenotype`, `template` on the gaze loaders
+- [ ] `PathTemplate`: the BIDS template with `bids_version`, custom patterns with declarations,
+      `build`, `parse`, the raise on an entity a template cannot write
+- [ ] `save` and `load` with `root` and `template` on `Events`, `Participants` and `Phenotype`,
+      `template` on the gaze loaders, the written path as an adoption check of `verify_bids`
 - [ ] derived objects: `Gaze.detect`, `split` with its declaration, measures
 - [ ] grouping consumers: the null group and its warning, conflicting declarations
-- [ ] deprecations: reading moved keys from `metadata`, overrides for declared keys
+- [ ] deprecation of overrides for declared keys
 - [ ] changelog entry and migration note
 
 ## References
