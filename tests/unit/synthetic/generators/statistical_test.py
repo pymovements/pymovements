@@ -1130,6 +1130,7 @@ def test_statistical_raises_error_on_generate(events, msg_substrings):
         generator.generate(events=events, seed=42)
 
     msg, = excinfo.value.args
+    assert msg.startswith("generator 'statistical': ")
     for msg_substring in msg_substrings:
         assert msg_substring in msg
 
@@ -1162,7 +1163,8 @@ def test_statistical_raises_type_error_on_events_of_wrong_type():
         StatisticalSampleGenerator(sampling_rate=1000.0).generate(events=None, seed=42)
 
     msg, = excinfo.value.args
-    for msg_substring in ('statistical', 'events', 'Events', 'NoneType'):
+    assert msg.startswith("generator 'statistical': ")
+    for msg_substring in ('events', 'Events', 'NoneType'):
         assert msg_substring in msg
 
 

@@ -36,6 +36,7 @@ import polars as pl
 
 from pymovements.events.events import Events
 from pymovements.gaze.gaze import Gaze
+from pymovements.synthetic._utils import _prefix
 from pymovements.synthetic._utils import check_contiguous
 from pymovements.synthetic._utils import check_name
 from pymovements.synthetic._utils import check_number
@@ -304,15 +305,15 @@ class StatisticalSampleGenerator(SampleGenerator):
         """
         if not isinstance(events, Events):
             raise TypeError(
-                f"generator '{self.name}' needs events of type Events to condition on, but got "
-                f'{type(events).__name__}',
+                f'{_prefix(self.name)}the events to condition on must be of type Events, but '
+                f'got {type(events).__name__}',
             )
 
         unknown = sorted(set(events.frame['name'].to_list()) - set(EVENT_TYPES), key=str)
         if unknown:
             raise ValueError(
-                f"generator '{self.name}' has no velocity profile for the event types {unknown}. "
-                f'Supported event types are: {list(EVENT_TYPES)}',
+                f'{_prefix(self.name)}there is no velocity profile for the event types '
+                f'{unknown}. Supported event types are: {list(EVENT_TYPES)}',
             )
 
         unknown_end = events.frame.filter(pl.col('duration').is_null())
@@ -321,7 +322,7 @@ class StatisticalSampleGenerator(SampleGenerator):
                 pl.col('onset').dt.total_milliseconds(fractional=True),
             ).row(0, named=True)
             raise ValueError(
-                f"generator '{self.name}': a {first['name']} at {first['onset']} ms has no known "
+                f"{_prefix(self.name)}a {first['name']} at {first['onset']} ms has no known "
                 'duration, so the time after it cannot be generated; set its duration or drop it',
             )
 
@@ -331,7 +332,7 @@ class StatisticalSampleGenerator(SampleGenerator):
                 pl.col('onset', 'duration').dt.total_milliseconds(fractional=True),
             ).row(0, named=True)
             raise ValueError(
-                f"generator '{self.name}': a {first['name']} at {first['onset']} ms has a "
+                f"{_prefix(self.name)}a {first['name']} at {first['onset']} ms has a "
                 f"negative duration of {first['duration']} ms; correct its duration or drop it",
             )
 
@@ -348,14 +349,14 @@ class StatisticalSampleGenerator(SampleGenerator):
             if skipped.height:
                 trial = skipped.drop('has_duration').row(0, named=True)
                 raise ValueError(
-                    f"generator '{self.name}': all events of the trial {trial} have a duration "
-                    'of zero, so there is nothing to generate samples for; drop the trial',
+                    f'{_prefix(self.name)}all events of the trial {trial} have a duration of '
+                    'zero, so there is nothing to generate samples for; drop the trial',
                 )
 
         if rendered.frame.is_empty() and not events.frame.is_empty():
             raise ValueError(
-                f"generator '{self.name}': all events have a duration of zero, so there is "
-                'nothing to generate samples for',
+                f'{_prefix(self.name)}all events have a duration of zero, so there is nothing '
+                'to generate samples for',
             )
 
         check_contiguous(rendered, generator=self.name)
