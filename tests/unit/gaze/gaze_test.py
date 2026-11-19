@@ -1770,33 +1770,31 @@ def _duration_us(values):
 
 
 @pytest.mark.parametrize(
-    'rate_source',
+    ('events', 'experiment'),
     [
-        pytest.param('entry', id='rate_from_events_entry'),
-        pytest.param('experiment', id='rate_from_experiment'),
+        pytest.param(
+            Events(
+                name=['fixation', 'saccade'], onsets=[0, 10], durations=[5, 3],
+                sampling_rate=1000,
+            ),
+            None,
+            id='rate_from_events_entry',
+        ),
+        pytest.param(
+            Events(name=['fixation', 'saccade'], onsets=[0, 10], durations=[5, 3]),
+            Experiment(sampling_rate=1000),
+            id='rate_from_experiment',
+        ),
     ],
 )
-def test_gaze_compute_event_properties_offset_reproduces_stored_offsets(rate_source):
-    # Events built the way the detectors build them: inclusive offsets on a 1000 Hz grid.
-    stored = Events(
-        name=['fixation', 'saccade'], onsets=[0, 10], offsets=[4, 12],
-        offsets_inclusive=True, sampling_rate=1000,
-    )
-    stored_offsets = stored.frame['offset']
-
-    if rate_source == 'entry':
-        events = stored
-        events.drop('offset')
-        experiment = None
-    else:
-        events = Events(name=['fixation', 'saccade'], onsets=[0, 10], durations=[5, 3])
-        experiment = Experiment(sampling_rate=1000)
-    assert 'sampling_rate' not in events.metadata or rate_source == 'entry'
+def test_gaze_compute_event_properties_offset_reproduces_stored_offsets(events, experiment):
+    # The offsets the detectors stored before v0.29.0 for these events on a 1000 Hz grid: the
+    # timestamp of the last sample, 4 ms and 12 ms.
     gaze = Gaze(events=events, experiment=experiment)
 
     gaze.compute_event_properties(('offset', {'inclusive': True}))
 
-    assert_series_equal(gaze.events.frame['offset'], stored_offsets)
+    assert_series_equal(gaze.events.frame['offset'], _duration_us([4000, 12000]).alias('offset'))
 
 
 def test_gaze_compute_event_properties_runs_event_measures_with_kwargs():
