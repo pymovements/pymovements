@@ -189,7 +189,7 @@ def make_entry_events():
 @pytest.fixture(name='entry_events')
 def fixture_entry_events():
     # The construction warns about the null duration, see the test below. The rebuild sites
-    # construct with validate=False, so the warning must not repeat there.
+    # construct from the frame the events already hold, so the warning must not repeat there.
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', message='.*null duration')
         return make_entry_events()
@@ -257,6 +257,15 @@ def test_clone_rebuilds_entries_without_warning(entry_events):
 
     assert_rebuilt([cloned], _REBUILD_ENTRY_COLUMNS)
     assert_frame_equal(cloned.frame, entry_events.frame)
+
+
+def test_clone_rebuilds_with_a_deep_copy_of_the_metadata(entry_events):
+    cloned = entry_events.clone()
+
+    cloned.metadata['offset']['inclusive'] = True
+    cloned.metadata['key'] = 'changed'
+
+    assert entry_events.metadata == _REBUILD_METADATA
 
 
 def test_split_rebuilds_entries_without_warning(entry_events):
