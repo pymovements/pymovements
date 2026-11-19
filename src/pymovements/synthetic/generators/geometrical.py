@@ -86,9 +86,10 @@ class GeometricalSampleGenerator(SampleGenerator):
     the gaps follow the locations themselves. The default of zero gives noise-free output.
 
     The movement between fixations is interpolated, not modelled, and its duration is the gap the
-    events leave. Linear interpolation gives a constant velocity. A cubic spline, fitted over all
-    fixations of a trial, gives a smooth movement whose velocity peaks around mid-gap, and it can
-    overshoot a location at low rates or around very short fixations. Not modelled are velocity
+    events leave. Linear interpolation gives a constant velocity. A cubic spline is fitted per
+    gap, on up to three samples of each of the two fixations around it, so no other fixation
+    shapes the gap. It gives a smooth movement whose velocity peaks around mid-gap. Three samples
+    per side is our choice, as the source does not say how many to fit on. Not modelled are velocity
     profiles along the path, saccades that deviate from the straight line, and saliency maps for
     choosing fixation targets.
 
@@ -299,7 +300,7 @@ class GeometricalSampleGenerator(SampleGenerator):
                 'location would be lost; raise the sampling rate or drop the fixation',
             )
 
-        positions = self._interpolate(times, locations[fixation], held)
+        positions = self._interpolate(times, locations, fixation, held)
         positions = self._scatter(positions, fixation[held], held, rng)
 
         return pl.DataFrame({'time': times, self.location_column_group: positions.tolist()})
@@ -308,25 +309,41 @@ class GeometricalSampleGenerator(SampleGenerator):
             self,
             times: np.ndarray,
             locations: np.ndarray,
+            fixation: np.ndarray,
             held: np.ndarray,
     ) -> np.ndarray:
         """Return the positions, interpolating the samples outside fixations per axis.
 
-        Outside the held samples, the nearest location is held. The cubic spline is fitted on all
-        held samples of the trial and used only between them.
+        Outside the held samples, the nearest location is held. A cubic spline is fitted per gap,
+        on the last three held samples of the fixation before it and the first three of the one
+        after, or fewer if a fixation has fewer.
         """
-        known_times = times[held]
-        known = locations[held]
-
         positions = np.column_stack([
-            np.interp(times, known_times, known[:, axis]) for axis in range(2)
+            np.interp(times, times[held], locations[fixation[held], axis]) for axis in range(2)
         ])
 
-        if self.interpolation == 'cubic_spline' and known_times.size > 1:
-            scipy_interpolate = importlib.import_module('scipy.interpolate')
-            between = ~held & (times > known_times[0]) & (times < known_times[-1])
-            spline = scipy_interpolate.CubicSpline(known_times, known)
-            positions[between] = spline(times[between])
+        if self.interpolation != 'cubic_spline':
+            return positions
+
+        scipy_interpolate = importlib.import_module('scipy.interpolate')
+
+        # A gap starts where the held samples stop and ends where they resume, so the samples
+        # before the first fixation and after the last one belong to no gap.
+        edges = np.diff(held.astype(np.int8))
+        starts = np.flatnonzero(edges == -1) + 1
+        ends = np.flatnonzero(edges == 1) + 1
+        if not held[0]:
+            ends = ends[1:]
+
+        for start, end in zip(starts.tolist(), ends.tolist()):
+            before = np.arange(max(start - 3, 0), start)
+            after = np.arange(end, min(end + 3, times.size))
+            known = np.concatenate((
+                before[held[before] & (fixation[before] == fixation[start - 1])],
+                after[held[after] & (fixation[after] == fixation[end])],
+            ))
+            spline = scipy_interpolate.CubicSpline(times[known], locations[fixation[known]])
+            positions[start:end] = spline(times[start:end])
 
         return positions
 

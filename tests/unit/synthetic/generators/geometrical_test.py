@@ -177,19 +177,55 @@ def test_cubic_gap_peaks_at_its_middle():
     assert abs(int(np.argmax(speeds)) - 25) <= 1
 
 
-def test_cubic_gap_can_overshoot_around_a_short_fixation():
-    """The disclosed limitation: the spline is fitted over the trial, not per gap."""
+def test_cubic_gap_is_fitted_on_three_samples_of_each_fixation():
+    """Grootjen et al.: the spline is applied over each gap, here on three samples per side.
+
+    The spline through 0 at 17, 18 and 19 ms and 10 at 25, 26 and 27 ms gives 35/36, 25/9, 5,
+    65/9 and 325/36 degrees at 20 to 24 ms. A fit on all 40 fixation samples gives other values
+    (0.948 at 20 ms).
+    """
+    events = _fixations(onsets=(0, 25), offsets=(20, 45), locations=LOCATIONS[:2])
+
+    gap = _positions(_generate(events))[20:25]
+
+    np.testing.assert_allclose(gap[:, 0], [0.972222, 2.777778, 5.0, 7.222222, 9.027778], atol=1e-6)
+    np.testing.assert_array_equal(gap[:, 1], 0.0)
+
+
+def test_cubic_gap_depends_only_on_its_two_fixations():
+    """Moving the first fixation leaves the gap after a short second one unchanged."""
+    def second_gap(first_location):
+        events = _fixations(
+            onsets=(0, 300, 500),
+            offsets=(100, 320, 600),
+            locations=(first_location, *LOCATIONS[1:]),
+        )
+        return _positions(_generate(events, sampling_rate=100.0))[32:50]
+
+    np.testing.assert_array_equal(second_gap((-50.0, 30.0)), second_gap(LOCATIONS[0]))
+
+
+def test_cubic_gap_between_two_fixations_at_one_location_stays_there():
+    """A short fixation before does not make the spline overshoot, as one fit per trial did."""
     events = _fixations(
         onsets=(0, 300, 600),
         offsets=(100, 310, 700),
         locations=((0.0, 0.0), (10.0, 0.0), (10.0, 0.0)),
     )
 
-    cubic = _positions(_generate(events, sampling_rate=100.0))
-    linear = _positions(_generate(events, sampling_rate=100.0, interpolation='linear'))
+    positions = _positions(_generate(events, sampling_rate=100.0))
 
-    assert cubic[:, 0].max() == pytest.approx(11.86, abs=0.01)
-    assert linear[:, 0].max() == 10.0
+    np.testing.assert_array_equal(positions[31:60], np.tile((10.0, 0.0), (29, 1)))
+    assert positions[:, 0].max() == 10.0
+
+
+def test_cubic_gap_after_a_fixation_of_one_sample_is_a_straight_line():
+    """With one sample on each side, the spline through the two points is a straight line."""
+    events = _fixations(onsets=(0, 50), offsets=(10, 60), locations=LOCATIONS[:2])
+
+    positions = _positions(_generate(events, sampling_rate=100.0))
+
+    np.testing.assert_allclose(positions[:6, 0], [0.0, 2.0, 4.0, 6.0, 8.0, 10.0])
 
 
 def test_attaches_a_copy_of_the_events():
