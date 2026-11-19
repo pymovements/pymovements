@@ -38,19 +38,21 @@ from pymovements.events.events import Events
 from pymovements.gaze.gaze import Gaze
 from pymovements.synthetic._utils import _prefix
 from pymovements.synthetic._utils import check_contiguous
+from pymovements.synthetic._utils import check_durations
 from pymovements.synthetic._utils import check_name
 from pymovements.synthetic._utils import check_number
 from pymovements.synthetic._utils import check_positive
+from pymovements.synthetic._utils import drop_zero_durations
 from pymovements.synthetic._utils import per_trial
 from pymovements.synthetic._utils import sample_times
 from pymovements.synthetic.generator import SampleGenerator
 from pymovements.synthetic.registry import register_generator
+from pymovements.synthetic.value_range import _range
 from pymovements.synthetic.value_range import Range
+from pymovements.synthetic.value_range import RangeLike
 
 #: The event types a velocity profile is defined for.
 EVENT_TYPES = ('fixation', 'saccade', 'smooth_pursuit')
-
-RangeLike = Range | tuple[float, float] | float
 
 
 @register_generator
@@ -316,48 +318,9 @@ class StatisticalSampleGenerator(SampleGenerator):
                 f'{unknown}. Supported event types are: {list(EVENT_TYPES)}',
             )
 
-        unknown_end = events.frame.filter(pl.col('duration').is_null())
-        if unknown_end.height:
-            first = unknown_end.with_columns(
-                pl.col('onset').dt.total_milliseconds(fractional=True),
-            ).row(0, named=True)
-            raise ValueError(
-                f"{_prefix(self.name)}a {first['name']} at {first['onset']} ms has no known "
-                'duration, so the time after it cannot be generated; set its duration or drop it',
-            )
+        check_durations(events, generator=self.name)
 
-        negative = events.frame.filter(pl.col('duration') < pl.duration(microseconds=0))
-        if negative.height:
-            first = negative.with_columns(
-                pl.col('onset', 'duration').dt.total_milliseconds(fractional=True),
-            ).row(0, named=True)
-            raise ValueError(
-                f"{_prefix(self.name)}a {first['name']} at {first['onset']} ms has a "
-                f"negative duration of {first['duration']} ms; correct its duration or drop it",
-            )
-
-        # An event of zero duration selects no samples. A separate copy is rendered, since the
-        # events are attached to the output as they came.
-        has_duration = pl.col('duration') > pl.duration(microseconds=0)
-        rendered = events.clone()
-        rendered.frame = rendered.frame.filter(has_duration)
-
-        if events.trial_columns:
-            skipped = events.frame.group_by(events.trial_columns, maintain_order=True).agg(
-                has_duration.any().alias('has_duration'),
-            ).filter(~pl.col('has_duration'))
-            if skipped.height:
-                trial = skipped.drop('has_duration').row(0, named=True)
-                raise ValueError(
-                    f'{_prefix(self.name)}all events of the trial {trial} have a duration of '
-                    'zero, so there is nothing to generate samples for; drop the trial',
-                )
-
-        if rendered.frame.is_empty() and not events.frame.is_empty():
-            raise ValueError(
-                f'{_prefix(self.name)}all events have a duration of zero, so there is nothing '
-                'to generate samples for',
-            )
+        rendered = drop_zero_durations(events, generator=self.name)
 
         check_contiguous(rendered, generator=self.name)
 
@@ -504,15 +467,6 @@ class StatisticalSampleGenerator(SampleGenerator):
         noisy_norms = norms.copy()
         noisy_norms[noisy] = np.abs(noisy_norms[noisy] + changes)
         return noisy_norms
-
-
-def _range(value: RangeLike) -> Range:
-    """Return the value as a range.
-
-    The range fields are annotated with what ``__init__`` accepts, so this narrows them to a
-    ``Range`` for mypy, and it keeps a field usable after it was reassigned with a pair.
-    """
-    return Range.from_value(value)
 
 
 def _resample(profile: np.ndarray, profile_times: np.ndarray, times: np.ndarray) -> np.ndarray:

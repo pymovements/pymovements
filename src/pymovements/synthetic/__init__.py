@@ -23,6 +23,7 @@ from pymovements.synthetic.generate import generate_events
 from pymovements.synthetic.generate import generate_samples
 from pymovements.synthetic.generator import EventGenerator
 from pymovements.synthetic.generator import SampleGenerator
+from pymovements.synthetic.generators import GeometricalSampleGenerator
 from pymovements.synthetic.generators import StatisticalSampleGenerator
 from pymovements.synthetic.registry import EventGeneratorRegistry
 from pymovements.synthetic.registry import register_generator
@@ -37,6 +38,7 @@ __all__ = [
     'EventGeneratorRegistry',
     'SampleGeneratorRegistry',
     'Range',
+    'GeometricalSampleGenerator',
     'StatisticalSampleGenerator',
     'register_generator',
     'generate_events',

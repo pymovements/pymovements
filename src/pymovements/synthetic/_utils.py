@@ -95,6 +95,63 @@ def check_contiguous(events: Events, *, generator: str | None = None) -> None:
         )
 
 
+def check_durations(events: Events, *, generator: str | None = None) -> None:
+    """Reject an event without a known duration, or with a negative one.
+
+    Without a duration, the end of an event, and so the time after it, is unknown.
+    """
+    unknown_end = events.frame.filter(pl.col('duration').is_null())
+    if unknown_end.height:
+        first = unknown_end.with_columns(
+            pl.col('onset').dt.total_milliseconds(fractional=True),
+        ).row(0, named=True)
+        raise ValueError(
+            f"{_prefix(generator)}a {first['name']} at {first['onset']} ms has no known "
+            'duration, so the time after it cannot be generated; set its duration or drop it',
+        )
+
+    negative = events.frame.filter(pl.col('duration') < pl.duration(microseconds=0))
+    if negative.height:
+        first = negative.with_columns(
+            pl.col('onset', 'duration').dt.total_milliseconds(fractional=True),
+        ).row(0, named=True)
+        raise ValueError(
+            f"{_prefix(generator)}a {first['name']} at {first['onset']} ms has a "
+            f"negative duration of {first['duration']} ms; correct its duration or drop it",
+        )
+
+
+def drop_zero_durations(events: Events, *, generator: str | None = None) -> Events:
+    """Return a copy of the events without those of zero duration.
+
+    An event of zero duration selects no samples. The copy is what a generator renders, since the
+    events are attached to the output as they came. A trial whose events all have a duration of
+    zero would vanish from the output, so it is rejected, and so are events that all have one.
+    """
+    has_duration = pl.col('duration') > pl.duration(microseconds=0)
+    rendered = events.clone()
+    rendered.frame = rendered.frame.filter(has_duration)
+
+    if events.trial_columns:
+        skipped = events.frame.group_by(events.trial_columns, maintain_order=True).agg(
+            has_duration.any().alias('has_duration'),
+        ).filter(~pl.col('has_duration'))
+        if skipped.height:
+            trial = skipped.drop('has_duration').row(0, named=True)
+            raise ValueError(
+                f'{_prefix(generator)}all events of the trial {trial} have a duration of zero, '
+                'so there is nothing to generate samples for; drop the trial',
+            )
+
+    if rendered.frame.is_empty() and not events.frame.is_empty():
+        raise ValueError(
+            f'{_prefix(generator)}all events have a duration of zero, so there is nothing to '
+            'generate samples for',
+        )
+
+    return rendered
+
+
 def per_trial(
         events: Events,
         synthesize: Callable[[pl.DataFrame], pl.DataFrame],
