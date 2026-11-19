@@ -22,6 +22,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import timedelta
 
 import numpy as np
 import polars as pl
@@ -33,6 +34,7 @@ from pymovements import Events
 from pymovements import Experiment
 from pymovements import Gaze
 from pymovements.exceptions import UnknownMeasure
+from pymovements.gaze import from_numpy
 
 
 @pytest.fixture(name='make_gaze_with_events', scope='function')
@@ -1796,6 +1798,24 @@ def test_gaze_compute_event_properties_offset_reproduces_stored_offsets(events, 
     gaze.compute_event_properties(('offset', {'inclusive': True}))
 
     assert_series_equal(gaze.events.frame['offset'], _duration_us([4000, 12000]).alias('offset'))
+
+
+def test_gaze_compute_event_properties_offset_reproduces_detected_last_samples():
+    # Two fixations on a 1000 Hz grid, samples 0 to 39 and 60 to 99, parted by a movement.
+    velocity = np.zeros((2, 100))
+    velocity[:, 40:60] = 100
+    gaze = from_numpy(
+        time=np.arange(100), velocity=velocity, experiment=Experiment(sampling_rate=1000),
+    )
+    gaze.detect('ivt', minimum_duration=1)
+    assert gaze.events.frame['onset'].to_list() == [timedelta(0), timedelta(milliseconds=60)]
+    last_samples = _duration_us([39000, 99000]).alias('offset')
+    assert_series_equal(gaze.events.frame['offset'], last_samples)
+    gaze.events.drop('offset')
+
+    gaze.compute_event_properties(('offset', {'inclusive': True}))
+
+    assert_series_equal(gaze.events.frame['offset'], last_samples)
 
 
 def test_gaze_compute_event_properties_runs_event_measures_with_kwargs():
