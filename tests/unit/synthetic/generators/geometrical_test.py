@@ -897,6 +897,7 @@ def test_geometrical_raises_error_on_generate(events, sampling_rate, msg_substri
         GeometricalSampleGenerator(sampling_rate=sampling_rate).generate(events=events, seed=42)
 
     msg, = excinfo.value.args
+    assert msg.startswith("generator 'geometrical': ")
     for msg_substring in msg_substrings:
         assert msg_substring in msg
 
@@ -928,7 +929,7 @@ def test_trial_column_named_like_a_gaze_column_raises_error(location_column_grou
         _generate(events, location_column_group=location_column_group)
 
     msg, = excinfo.value.args
-    assert 'geometrical' in msg
+    assert msg.startswith("generator 'geometrical': ")
     assert f"['{trial_column}']" in msg
     assert 'Gaze' in msg
     assert 'rename' in msg
@@ -959,6 +960,7 @@ def test_location_that_is_not_finite_raises_error(interpolation, component):
         _generate(events, interpolation=interpolation)
 
     msg, = excinfo.value.args
+    assert msg.startswith("generator 'geometrical': ")
     assert 'finite number' in msg
     assert str(component) in msg
 
@@ -974,7 +976,7 @@ def test_location_that_is_not_finite_raises_error(interpolation, component):
         ),
         pytest.param(
             {'events': None},
-            ('geometrical', 'events', 'Events', 'NoneType'),
+            ("generator 'geometrical': ", 'events', 'Events', 'NoneType'),
             id='events_of_wrong_type',
         ),
     ],

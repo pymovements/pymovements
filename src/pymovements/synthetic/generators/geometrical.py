@@ -46,6 +46,7 @@ import polars as pl
 
 from pymovements.events.events import Events
 from pymovements.gaze.gaze import Gaze
+from pymovements.synthetic._utils import _prefix
 from pymovements.synthetic._utils import check_durations
 from pymovements.synthetic._utils import check_name
 from pymovements.synthetic._utils import drop_zero_durations
@@ -198,14 +199,14 @@ class GeometricalSampleGenerator(SampleGenerator):
         """
         if not isinstance(events, Events):
             raise TypeError(
-                f"generator '{self.name}' needs events of type Events to condition on, but got "
-                f'{type(events).__name__}',
+                f'{_prefix(self.name)}the events to condition on must be of type Events, but '
+                f'got {type(events).__name__}',
             )
 
         unknown = sorted(set(events.frame['name'].to_list()) - set(EVENT_TYPES), key=str)
         if unknown:
             raise ValueError(
-                f"generator '{self.name}' cannot render the event types {unknown}. "
+                f'{_prefix(self.name)}the event types {unknown} cannot be rendered. '
                 f'Supported event types are: {list(EVENT_TYPES)}',
             )
 
@@ -229,17 +230,17 @@ class GeometricalSampleGenerator(SampleGenerator):
         """Return the locations of the fixations, rejecting any that is not two finite numbers."""
         if LOCATION_COLUMN not in fixations.columns:
             raise ValueError(
-                f"generator '{self.name}' needs a '{LOCATION_COLUMN}' column holding the position "
-                f'of each fixation, for example from the location event property, but the '
-                f'columns are: {fixations.columns}',
+                f"{_prefix(self.name)}the events need a '{LOCATION_COLUMN}' column holding the "
+                'position of each fixation, for example from the location event property, but '
+                f'the columns are: {fixations.columns}',
             )
 
         locations = fixations[LOCATION_COLUMN].to_list()
         for location in locations:
             if not isinstance(location, list) or len(location) != 2:
                 raise ValueError(
-                    f"generator '{self.name}' needs a '{LOCATION_COLUMN}' of two components for "
-                    f'every fixation, but one has: {location}',
+                    f"{_prefix(self.name)}every fixation needs a '{LOCATION_COLUMN}' of two "
+                    f'components, but one has: {location}',
                 )
             if not all(
                 isinstance(value, numbers.Real) and not isinstance(value, bool)
@@ -247,8 +248,8 @@ class GeometricalSampleGenerator(SampleGenerator):
                 for value in location
             ):
                 raise ValueError(
-                    f"generator '{self.name}' needs a finite number for both components of a "
-                    f"'{LOCATION_COLUMN}', but one fixation has: {location}",
+                    f"{_prefix(self.name)}both components of a '{LOCATION_COLUMN}' must be a "
+                    f'finite number, but one fixation has: {location}',
                 )
 
         return np.array(locations, dtype=float).reshape(-1, 2)
@@ -275,8 +276,8 @@ class GeometricalSampleGenerator(SampleGenerator):
             else:
                 without = 'the events have'
             raise ValueError(
-                f"generator '{self.name}': {without} no fixation of a non-zero duration, so there "
-                'is no location to follow',
+                f'{_prefix(self.name)}{without} no fixation of a non-zero duration, so there is '
+                'no location to follow',
             )
 
         locations = self._locations(trial.filter(is_fixation))
@@ -293,7 +294,7 @@ class GeometricalSampleGenerator(SampleGenerator):
         unsampled = np.setdiff1d(np.arange(len(locations)), fixation[held])
         if unsampled.size:
             raise ValueError(
-                f"generator '{self.name}': no sample falls inside the fixation at "
+                f'{_prefix(self.name)}no sample falls inside the fixation at '
                 f'{onsets[is_fixation][unsampled[0]]} ms at {self.sampling_rate} Hz, so its '
                 'location would be lost; raise the sampling rate or drop the fixation',
             )
