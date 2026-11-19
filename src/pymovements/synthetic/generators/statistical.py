@@ -45,12 +45,12 @@ from pymovements.synthetic._utils import per_trial
 from pymovements.synthetic._utils import sample_times
 from pymovements.synthetic.generator import SampleGenerator
 from pymovements.synthetic.registry import register_generator
+from pymovements.synthetic.value_range import _range
 from pymovements.synthetic.value_range import Range
+from pymovements.synthetic.value_range import RangeLike
 
 #: The event types a velocity profile is defined for.
 EVENT_TYPES = ('fixation', 'saccade', 'smooth_pursuit')
-
-RangeLike = Range | tuple[float, float] | float
 
 
 @register_generator
@@ -504,15 +504,6 @@ class StatisticalSampleGenerator(SampleGenerator):
         noisy_norms = norms.copy()
         noisy_norms[noisy] = np.abs(noisy_norms[noisy] + changes)
         return noisy_norms
-
-
-def _range(value: RangeLike) -> Range:
-    """Return the value as a range.
-
-    The range fields are annotated with what ``__init__`` accepts, so this narrows them to a
-    ``Range`` for mypy, and it keeps a field usable after it was reassigned with a pair.
-    """
-    return Range.from_value(value)
 
 
 def _resample(profile: np.ndarray, profile_times: np.ndarray, times: np.ndarray) -> np.ndarray:
