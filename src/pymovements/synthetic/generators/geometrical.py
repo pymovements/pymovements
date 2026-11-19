@@ -84,9 +84,10 @@ class GeometricalSampleGenerator(SampleGenerator):
     filling gaps in recorded gaze positions :cite:p:`Grootjen2024`. Linear interpolation gives a
     constant velocity. A cubic spline is fitted per gap, on up to three samples of each of the
     two fixations around it, so no other fixation shapes the gap. It gives a smooth movement whose
-    velocity peaks around mid-gap. Three samples per side is our choice, as the recommendation
-    does not say how many to fit on. Not modelled are velocity profiles along the path, saccades
-    that deviate from the straight line, and saliency maps for choosing fixation targets.
+    velocity peaks around mid-gap. The paper gives no window, and three samples per side follow
+    the authors' code for their comparison of the methods. Stopping the window at the two
+    fixations is our choice. Not modelled are velocity profiles along the path, saccades that
+    deviate from the straight line, and saliency maps for choosing fixation targets.
 
     Attributes
     ----------
