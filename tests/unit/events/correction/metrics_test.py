@@ -60,6 +60,28 @@ def test_reassignment_rate_rejects_invalid_inputs(events):
         reassignment_rate(events, pl.DataFrame({'start_y': [0.0], 'height': [1.0]}))
 
 
+def test_reassignment_rate_rejects_trials_without_aois():
+    events = pl.DataFrame({
+        'trial': ['a'],
+        'name': ['fixation'],
+        'location_original': [[0.0, 100.0]],
+        'location': [[0.0, 100.0]],
+    })
+
+    with pytest.raises(ValueError, match='No AOIs found'):
+        reassignment_rate(
+            events,
+            pl.DataFrame(
+                schema={
+                    'trial': pl.String,
+                    'start_y': pl.Float64,
+                    'height': pl.Float64,
+                },
+            ),
+            trial_columns=['trial'],
+        )
+
+
 def test_mean_vertical_distance_uses_physical_coordinates():
     distance = mean_vertical_distance(
         pl.Series([100.0, 200.0]),
@@ -78,6 +100,20 @@ def test_mean_vertical_distance_empty_inputs():
 def test_mean_vertical_distance_rejects_mismatched_inputs():
     with pytest.raises(ValueError, match=r'.+'):
         mean_vertical_distance(pl.Series([100.0]), pl.Series([100.0, 200.0]))
+
+
+def test_mean_vertical_distance_rejects_null_values():
+    with pytest.raises(ValueError, match=r'.+'):
+        mean_vertical_distance(
+            pl.Series([100.0, None]),
+            pl.Series([100.0, 200.0]),
+        )
+
+    with pytest.raises(ValueError, match=r'.+'):
+        mean_vertical_distance(
+            pl.Series([100.0, 200.0]),
+            pl.Series([100.0, None]),
+        )
 
 
 def test_implausible_transitions_uses_threshold_and_includes_backward_jumps():
@@ -107,13 +143,34 @@ def test_implausible_transitions_empty_and_single_value_inputs():
     assert implausible_transitions(single, lines, trial_columns=('trial',)) == 0
 
 
-@pytest.mark.parametrize('forward', [-1])
-def test_implausible_transitions_rejects_invalid_threshold(forward):
-    events = pl.DataFrame({'trial': ['trial'], 'location': [[0.0, 100.0]]})
-    with pytest.raises(ValueError, match=r'.+'):
+@pytest.mark.parametrize(
+    ('threshold_kwargs', 'error_message'),
+    [
+        (
+            {'max_forward_line_distance': -1},
+            'max_forward_line_distance',
+        ),
+        (
+            {'max_backward_line_distance': -1},
+            'max_backward_line_distance',
+        ),
+    ],
+)
+def test_implausible_transitions_rejects_invalid_threshold(
+    threshold_kwargs,
+    error_message,
+):
+    events = pl.DataFrame({
+        'trial': ['trial'],
+        'location': [[0.0, 100.0]],
+    })
+
+    with pytest.raises(ValueError, match=error_message):
         implausible_transitions(
-            events, {('trial',): [100.0]}, trial_columns=('trial',),
-            max_forward_line_distance=forward,
+            events,
+            {('trial',): [100.0]},
+            trial_columns=('trial',),
+            **threshold_kwargs,
         )
 
 
@@ -126,6 +183,25 @@ def test_implausible_transitions_rejects_nulls():
         implausible_transitions(
             events, {('trial',): [100.0]}, trial_columns=('trial',),
         )
+
+
+def test_implausible_transitions_single_column_trial_key():
+    events = pl.DataFrame({
+        'trial': ['trial', 'trial', 'trial'],
+        'location': [
+            [0.0, 100.0],
+            [0.0, 300.0],
+            [0.0, 100.0],
+        ],
+    })
+
+    lines = {('trial',): [100.0, 200.0, 300.0]}
+
+    assert implausible_transitions(
+        events,
+        lines,
+        trial_columns=('trial',),
+    ) == 2
 
 
 def test_ensemble_agreement_counts_votes_per_fixation():

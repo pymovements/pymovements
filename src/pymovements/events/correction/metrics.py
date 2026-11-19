@@ -225,7 +225,7 @@ def implausible_transitions(
     --------
     >>> events = pl.DataFrame({
     ...     "trial": ["a", "a"],
-    ...     "location": [{"x": 0.0, "y": 0.0}, {"x": 0.0, "y": 2.0}],
+    ...     "location": [[0.0, 0.0], [0.0, 2.0]],
     ... })
     >>> implausible_transitions(
     ...     events, {("a",): [0.0, 1.0, 2.0]}, trial_columns=("trial",),
