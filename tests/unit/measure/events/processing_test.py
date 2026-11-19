@@ -1508,6 +1508,45 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             ),
             id='adjacent_events_share_no_sample_without_sampling_rate',
         ),
+
+        pytest.param(
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1], 'name': ['fixation', 'saccade'],
+                    'onset': [0, 2], 'duration': [8, 4],
+                },
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
+                },
+            ),
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1, 1, 1, 1, 1, 1, 1],
+                    'time': [0, 1, 2, 3, 4, 5.9, 6, 7],
+                    'velocity': [[0, 0], [0, 0], [1, 0], [1, 0], [1, 0], [9, 0], [0, 0], [0, 0]],
+                },
+                schema={
+                    'subject_id': pl.Int64, 'time': pl.Float64, 'velocity': pl.List(pl.Float64),
+                },
+            ),
+            {'measures': 'peak_velocity'},
+            {'identifiers': 'subject_id', 'sampling_rate': 1000},
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1],
+                    'name': ['fixation', 'saccade'],
+                    'onset': [0, 2],
+                    'duration': [8, 4],
+                    'peak_velocity': [9.0, 1.0],
+                },
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64,
+                    'duration': pl.Int64, 'peak_velocity': pl.Float64,
+                },
+            ),
+            id='overlapping_events_jittered_early_sample_stays_out_with_sampling_rate',
+        ),
     ],
 )
 def test_event_samples_processor_process_correct_result(
