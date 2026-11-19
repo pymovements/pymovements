@@ -1785,12 +1785,11 @@ def test_gaze_detect_unknown_method_leaves_events_metadata_unchanged(gaze_with_s
 
 def _velocity_gaze(trial=None, **kwargs):
     """Build a gaze with a resting velocity signal, so 'ivt' finds one fixation per trial."""
-    return pm.gaze.from_numpy(
-        time=np.arange(100),
-        velocity=np.zeros((2, 100)),
-        trial=trial,
-        **kwargs,
-    )
+    samples = pl.DataFrame({'time': range(100), 'velocity': [[0.0, 0.0]] * 100})
+    if trial is None:
+        return pm.Gaze(samples, time_column='time', **kwargs)
+    samples = samples.with_columns(pl.Series('trial', trial))
+    return pm.Gaze(samples, time_column='time', trial_columns='trial', **kwargs)
 
 
 def _detected_entries(sampling_rate):
@@ -1847,7 +1846,7 @@ def test_gaze_detect_sampling_rate_none_falls_back_to_experiment():
     'trial',
     [
         pytest.param(None, id='trial_less'),
-        pytest.param(np.array(['A'] * 50 + ['B'] * 50), id='grouped'),
+        pytest.param(['A'] * 50 + ['B'] * 50, id='grouped'),
     ],
 )
 def test_gaze_detect_carries_entries_and_keeps_them_at_the_same_rate(trial):
@@ -1865,7 +1864,7 @@ def test_gaze_detect_carries_entries_and_keeps_them_at_the_same_rate(trial):
     'trial',
     [
         pytest.param(None, id='trial_less'),
-        pytest.param(np.array(['A'] * 50 + ['B'] * 50), id='grouped'),
+        pytest.param(['A'] * 50 + ['B'] * 50, id='grouped'),
     ],
 )
 def test_gaze_detect_differing_sampling_rate_raises_naming_clear(trial):
@@ -1884,7 +1883,7 @@ def test_gaze_detect_differing_sampling_rate_raises_naming_clear(trial):
     ('trial', 'trials'),
     [
         pytest.param(None, None, id='trial_less'),
-        pytest.param(np.array(['A'] * 50 + ['B'] * 50), ['A'], id='grouped'),
+        pytest.param(['A'] * 50 + ['B'] * 50, ['A'], id='grouped'),
     ],
 )
 def test_gaze_detect_differing_sampling_rate_raise_leaves_the_metadata_unchanged(trial, trials):
@@ -1916,7 +1915,7 @@ def test_gaze_detect_existing_exclusive_events_raise_naming_clear():
     ('trial', 'trials'),
     [
         pytest.param(None, None, id='trial_less'),
-        pytest.param(np.array(['A'] * 50 + ['B'] * 50), ['A'], id='grouped'),
+        pytest.param(['A'] * 50 + ['B'] * 50, ['A'], id='grouped'),
     ],
 )
 def test_gaze_detect_existing_undeclared_offsets_raise_naming_clear(trial, trials):
