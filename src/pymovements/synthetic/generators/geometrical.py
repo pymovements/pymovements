@@ -46,6 +46,7 @@ import polars as pl
 
 from pymovements.events.events import Events
 from pymovements.gaze.gaze import Gaze
+from pymovements.synthetic._utils import check_durations
 from pymovements.synthetic._utils import check_name
 from pymovements.synthetic._utils import per_trial
 from pymovements.synthetic._utils import sample_times
@@ -206,25 +207,7 @@ class GeometricalSampleGenerator(SampleGenerator):
                 f'Supported event types are: {list(EVENT_TYPES)}',
             )
 
-        unknown_end = events.frame.filter(pl.col('duration').is_null())
-        if unknown_end.height:
-            first = unknown_end.with_columns(
-                pl.col('onset').dt.total_milliseconds(fractional=True),
-            ).row(0, named=True)
-            raise ValueError(
-                f"generator '{self.name}': a {first['name']} at {first['onset']} ms has no known "
-                'duration, so the time after it cannot be generated; set its duration or drop it',
-            )
-
-        negative = events.frame.filter(pl.col('duration') < pl.duration(microseconds=0))
-        if negative.height:
-            first = negative.with_columns(
-                pl.col('onset', 'duration').dt.total_milliseconds(fractional=True),
-            ).row(0, named=True)
-            raise ValueError(
-                f"generator '{self.name}': a {first['name']} at {first['onset']} ms has a "
-                f"negative duration of {first['duration']} ms; correct its duration or drop it",
-            )
+        check_durations(events, generator=self.name)
 
         # An event of zero duration selects no samples. A separate copy is rendered, since the
         # events are attached to the output as they came.
