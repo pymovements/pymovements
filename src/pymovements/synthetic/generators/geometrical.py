@@ -36,6 +36,7 @@ section 3.7 of:
 from __future__ import annotations
 
 import dataclasses
+import importlib
 import math
 import numbers
 from typing import cast
@@ -43,7 +44,6 @@ from typing import ClassVar
 
 import numpy as np
 import polars as pl
-from scipy.interpolate import CubicSpline
 
 from pymovements.events.events import Events
 from pymovements.gaze.gaze import Gaze
@@ -333,8 +333,10 @@ class GeometricalSampleGenerator(SampleGenerator):
         ])
 
         if self.interpolation == 'cubic_spline' and known_times.size > 1:
+            scipy_interpolate = importlib.import_module('scipy.interpolate')
             between = ~held & (times > known_times[0]) & (times < known_times[-1])
-            positions[between] = CubicSpline(known_times, known)(times[between])
+            spline = scipy_interpolate.CubicSpline(known_times, known)
+            positions[between] = spline(times[between])
 
         return positions
 
