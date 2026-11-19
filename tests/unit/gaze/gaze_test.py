@@ -1940,6 +1940,62 @@ def test_gaze_compute_event_properties_event_measure_with_name():
     assert_series_equal(gaze.events.frame['offset'], _duration_us([5000, None]).alias('offset'))
 
 
+def test_gaze_compute_event_properties_event_measure_with_name_keeps_other_rows():
+    # A stored offset column with the same convention: the fixation row is recomputed, the
+    # saccade row keeps its stored value, which is deliberately off the grid to tell them apart.
+    gaze = Gaze(
+        events=Events(
+            name=['fixation', 'saccade'], onsets=[0, 10], offsets=[4, 99],
+            offsets_inclusive=True, sampling_rate=1000,
+        ),
+    )
+    gaze.events.frame = gaze.events.frame.with_columns(
+        pl.Series('offset', [0, 99000]).cast(pl.Duration('us')),
+    )
+
+    with pytest.warns(
+            UserWarning,
+            match=r"already exist in event and will be overwritten: \['offset'\]",
+    ):
+        gaze.compute_event_properties(('offset', {'inclusive': True}), name='fixation')
+
+    assert_series_equal(gaze.events.frame['offset'], _duration_us([4000, 99000]).alias('offset'))
+    assert gaze.events.metadata['offset'] == {'inclusive': True}
+
+
+@pytest.mark.parametrize(
+    ('events', 'message'),
+    [
+        pytest.param(
+            Events(
+                name=['fixation', 'saccade'], onsets=[0, 10], offsets=[4, 12],
+                offsets_inclusive=True, sampling_rate=1000,
+            ),
+            r"metadata\['offset'\] = \{'inclusive': True\}, but inclusive=False is requested "
+            r"for the 'fixation' events only, which would mix conventions in one column. "
+            r"Drop name to recompute 'offset' for every event.",
+            id='differing_convention',
+        ),
+        pytest.param(
+            Events(name=['fixation', 'saccade'], onsets=[0, 10], offsets=[5, 13]),
+            r"the existing 'offset' column is undeclared, but inclusive=False is requested "
+            r"for the 'fixation' events only",
+            id='undeclared_column',
+        ),
+    ],
+)
+def test_gaze_compute_event_properties_offset_with_name_on_other_convention_raises(
+        events, message,
+):
+    gaze = Gaze(events=events)
+    expected_frame = gaze.events.frame.clone()
+
+    with pytest.raises(ValueError, match=message):
+        gaze.compute_event_properties(('offset', {'inclusive': False}), name='fixation')
+
+    assert_frame_equal(gaze.events.frame, expected_frame)
+
+
 @pytest.mark.parametrize(
     ('trial_data', 'kwargs', 'expected_samples_kept', 'expected_events_kept'),
     [

@@ -1595,7 +1595,8 @@ class Gaze:
             If an event measure is called without one of its required keyword arguments.
         ValueError
             If an event measure needs a sampling rate and neither the keyword arguments, the
-            events metadata nor the experiment give one.
+            events metadata nor the experiment give one, or if ``name`` restricts the ``offset``
+            measure to some events while the existing column carries another convention or none.
         """
         if len(self.events) == 0:
             warn(
@@ -1658,7 +1659,9 @@ class Gaze:
         result is written in place instead of joined: a recomputed ``duration`` would otherwise
         have to serve as its own join key. The measures apply in the given order, each seeing
         the columns the previous ones wrote. With ``name`` given, rows of other events keep
-        their existing value, or get null in a new column.
+        their existing value, or get null in a new column. An offset column holds one
+        convention, so the ``offset`` measure under ``name`` requires the existing column to be
+        declared with the requested one.
 
         Parameters
         ----------
@@ -1666,9 +1669,34 @@ class Gaze:
             The event measures, each a registry name with its keyword arguments.
         name: str | None
             Process only events that match the name.
+
+        Raises
+        ------
+        ValueError
+            If ``name`` restricts the ``offset`` measure to some events while the existing
+            column carries another convention or none.
         """
         processor = EventProcessor(measures)
         output_names = [measure.meta.output_name() for measure in processor.measures]
+
+        if name is not None:
+            for (measure_name, measure_kwargs), column in zip(
+                    measures_with_kwargs(measures), output_names,
+            ):
+                if measure_name != 'offset' or column not in self.events.columns:
+                    continue
+                entry = self.events.metadata.get(column)
+                declared = entry.get('inclusive') if isinstance(entry, dict) else None
+                if declared != measure_kwargs['inclusive']:
+                    existing = (
+                        f"metadata['{column}'] = {entry!r}" if declared is not None
+                        else f"the existing '{column}' column is undeclared"
+                    )
+                    raise ValueError(
+                        f"{existing}, but inclusive={measure_kwargs['inclusive']!r} is "
+                        f'requested for the {name!r} events only, which would mix conventions '
+                        f"in one column. Drop name to recompute '{column}' for every event.",
+                    )
 
         overwrite_columns = [column for column in output_names if column in self.events.columns]
         if overwrite_columns:
