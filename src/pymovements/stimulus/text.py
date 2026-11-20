@@ -35,7 +35,6 @@ from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import polars as pl
-from matplotlib import patches
 
 from pymovements._utils import checks
 from pymovements._utils.html import repr_html

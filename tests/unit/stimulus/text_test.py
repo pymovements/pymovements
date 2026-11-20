@@ -18,22 +18,20 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Text stimulus class."""
-import math
-<<<<<<< HEAD
-from copy import deepcopy
-=======
->>>>>>> origin/main
-from dataclasses import replace
-
-import matplotlib.pyplot as plt
-import polars as pl
-import pytest
-from polars.testing import assert_frame_equal
-
-from pymovements.plotting import make_screen_axes
-from pymovements.stimulus import text
-from pymovements.stimulus import TextStimulus
 from pymovements.stimulus import WritingSystem
+from pymovements.stimulus import TextStimulus
+from pymovements.stimulus import text
+from pymovements.plotting import make_screen_axes
+from polars.testing import assert_frame_equal
+import pytest
+import polars as pl
+import matplotlib.pyplot as plt
+from dataclasses import replace
+from copy import deepcopy
+import math
+<< << << < HEAD
+== == == =
+>>>>>> > origin / main
 
 
 @pytest.fixture(name='sample_aoi_dataframe')
@@ -1332,8 +1330,10 @@ def test_text_stimulus_plot_uses_provided_ax(sample_aoi_dataframe):
     assert returned_fig is existing_fig
 
 
-<<<<<<< HEAD
-=======
+<< << << < HEAD
+== == == =
+
+
 def test_text_stimulus_plot_keeps_provided_ax_limits(sample_aoi_dataframe):
     stimulus = TextStimulus(
         aois=sample_aoi_dataframe,
@@ -1351,7 +1351,9 @@ def test_text_stimulus_plot_keeps_provided_ax_limits(sample_aoi_dataframe):
     assert ax.get_ylim() == (1024, 0)
 
 
->>>>>>> origin/main
+>>>>>> > origin / main
+
+
 def test_text_stimulus_plot_show_boxes_false_draws_labels_only(sample_aoi_dataframe):
     stimulus = TextStimulus(
         aois=sample_aoi_dataframe,
