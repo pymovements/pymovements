@@ -663,6 +663,9 @@ def bcea(
     This implementation uses sample variance (dividing by :math:`n-1`) for
     computing the variances and correlation coefficient.
 
+    For perfectly correlated samples the BCEA is zero. Floating-point rounding can
+    leave a value close to zero instead, but never a negative value or ``NaN``.
+
     The relationship between confidence level :math:`P` and scaling factor
     :math:`k` comes from the chi-square distribution. For a bivariate normal
     distribution, the contours of constant Mahalanobis distance form ellipses.
@@ -764,7 +767,8 @@ def bcea(
         * pl.lit(pi)
         * sigma_x
         * sigma_y
-        * (1.0 - rho_sq).sqrt(),
+        # Rounding can push rho_sq just above 1 for perfectly correlated samples.
+        * (1.0 - rho_sq).clip(lower_bound=0.0).sqrt(),
     )
 
     return result.alias('bcea')
