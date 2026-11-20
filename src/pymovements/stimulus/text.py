@@ -664,11 +664,7 @@ class TextStimulus:
             )
 
         return df.filter(~defective & ~nonpositive).select(
-<<<<<<< HEAD
-            pl.col(self.aoi_column).alias('text'),
-=======
             pl.col(self.aoi_column).cast(pl.String).alias('text'),
->>>>>>> origin/main
             start_x.alias('start_x'),
             start_y.alias('start_y'),
             width.alias('width'),
@@ -708,11 +704,7 @@ class TextStimulus:
 
         Returns
         -------
-<<<<<<< HEAD
-        tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]
-=======
         tuple[plt.Figure, plt.Axes]
->>>>>>> origin/main
             The figure and axes containing the plot.
 
         Raises
@@ -721,12 +713,9 @@ class TextStimulus:
             If the configured writing system is not horizontal
             left-to-right.
         """
-<<<<<<< HEAD
-=======
         plt = importlib.import_module('matplotlib.pyplot')
         patches = importlib.import_module('matplotlib.patches')
 
->>>>>>> origin/main
         if (
             self.writing_system.directionality != 'left-to-right'
             or self.writing_system.axis != 'horizontal'
