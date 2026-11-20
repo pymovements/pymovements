@@ -209,3 +209,17 @@ def test_bcea_has_expected_result(init_kwargs, input_df, expected_df):
     result_df = input_df.select([expression])
 
     assert_frame_equal(result_df, expected_df)
+
+
+@pytest.mark.parametrize(
+    'position',
+    [
+        pytest.param([[0.1, 0.51], [0.2, 0.52], [0.3, 0.53]], id='rounding_above_one'),
+        pytest.param([[0.1, 0.11], [0.2, 0.12], [0.3, 0.13]], id='rounding_below_one'),
+    ],
+)
+def test_bcea_perfect_correlation_is_close_to_zero(position):
+    input_df = pl.DataFrame({'position': position}, schema={'position': pl.List(pl.Float64)})
+    result = input_df.select(bcea()).item()
+
+    assert result == pytest.approx(0.0, abs=1e-8)
