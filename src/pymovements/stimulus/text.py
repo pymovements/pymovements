@@ -33,6 +33,7 @@ from typing import ClassVar
 from typing import Literal
 from typing import TYPE_CHECKING
 
+import matplotlib.pyplot as plt
 import polars as pl
 
 from pymovements._utils import checks
@@ -537,7 +538,10 @@ class TextStimulus:
 
         Warns
         -----
+<<<<<<< HEAD
+=======
         UserWarning
+>>>>>>> origin/main
             If a row has null/NaN geometry
             If an AOI has a non-positive extent
 
