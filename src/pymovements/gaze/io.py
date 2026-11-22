@@ -413,6 +413,50 @@ def metadata_to_val_frame(metadata: dict[str, Any]) -> pl.DataFrame:
     )
 
 
+_EYELINK_EVENT_TYPES = ('fixation', 'saccade', 'blink')
+
+
+def _select_eyelink_events(
+        event_data: pl.DataFrame,
+        events: bool | str | list[str],
+) -> Events | None:
+    """Keep the parsed EyeLink events of the requested types.
+
+    Parameters
+    ----------
+    event_data: pl.DataFrame
+        Events parsed from the asc file.
+    events: bool | str | list[str]
+        ``True`` keeps all events, ``False`` keeps none. An event type or a list of event types
+        keeps only events of these types.
+
+    Returns
+    -------
+    Events | None
+        The selected events, or ``None`` if no events are requested.
+
+    Raises
+    ------
+    ValueError
+        If an unknown event type is requested.
+    """
+    if isinstance(events, bool):
+        return Events(event_data) if events else None
+
+    event_types = [events] if isinstance(events, str) else list(events)
+    unknown = [event_type for event_type in event_types if event_type not in _EYELINK_EVENT_TYPES]
+    if unknown:
+        raise ValueError(
+            f'unknown event types {unknown} for events, '
+            f'supported are: {list(_EYELINK_EVENT_TYPES)}',
+        )
+    if not event_types:
+        return None
+
+    names = [f'{event_type}_eyelink' for event_type in event_types]
+    return Events(event_data.filter(pl.col('name').is_in(names)))
+
+
 def from_asc(
         file: str | Path | IO[str] | IO[bytes],
         *,
@@ -424,7 +468,7 @@ def from_asc(
         add_columns: dict[str, str] | None = None,
         column_schema_overrides: dict[str, Any] | None = None,
         encoding: str | None = None,
-        events: bool = False,
+        events: bool | str | list[str] = False,
         messages: bool | list[str] = False,
         metadata: dict[str, Any] | None = None,
         extend_resolution: bool | None = None,
@@ -465,8 +509,10 @@ def from_asc(
         Text encoding of the file. If None, the locale encoding is used.
         Only applies to file paths and binary file objects; text file objects
         are already decoded. (default: None)
-    events: bool
-        Flag indicating if events should be parsed from the asc file. (default: False)
+    events: bool | str | list[str]
+        Flag indicating if events should be parsed from the asc file. If ``True``, all
+        fixations, saccades and blinks are parsed. Pass one of ``'fixation'``, ``'saccade'``
+        and ``'blink'``, or a list of them, to parse only these event types. (default: False)
     messages: bool | list[str]
         Flag indicating if any additional messages should be parsed from the asc file
         and stored in :py:class:`pymovements.gaze.experiment.Experiment`.
@@ -643,7 +689,7 @@ def from_asc(
     gaze = Gaze(
         samples=samples,
         experiment=experiment,
-        events=Events(event_data) if events else None,
+        events=_select_eyelink_events(event_data, events),
         messages=messages_df,
         trial_columns=trial_columns,
         time_column='time',
