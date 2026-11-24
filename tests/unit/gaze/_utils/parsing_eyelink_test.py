@@ -196,6 +196,7 @@ EXPECTED_EVENT_DF = pl.from_dict(
         'eye': ['right', 'right', 'right'],
         'onset': [10000000.0, 10000020.0, 10000011.0],
         'offset': [10000008.0, 10000022.0, 10000022.0],
+        'duration': [9.0, 3.0, 12.0],
         'task': [None, None, 'B'],
         'trial_id': [None, None, '2'],
     },
@@ -1583,6 +1584,7 @@ def test_unmatched_blink_no_patterns_warns_and_records_param(make_text_file, eye
     assert event_df['eye'][0] == expected_eye
     assert event_df['onset'][0] == float(onset)
     assert event_df['offset'][0] == float(offset)
+    assert event_df['duration'][0] == 3.0
 
     messages = [str(rec.message) for rec in warn]
     assert any('Missing start marker before end for event' in m for m in messages)
@@ -1762,12 +1764,12 @@ def test_parse_eyelink_event_start_helper(line, expected):
 @pytest.mark.parametrize(
     ('line', 'expected'),
     [
-        ('EFIX L 100 200 100 1.0 1.0 100', ('fixation', 'left', 100.0, 200.0)),
-        ('EFIX R 100 200 100 1.0 1.0 100', ('fixation', 'right', 100.0, 200.0)),
-        ('ESACC L 100 200 100 1.0 1.0 2.0 2.0 1.0 100', ('saccade', 'left', 100.0, 200.0)),
-        ('ESACC R 100 200 100 1.0 1.0 2.0 2.0 1.0 100', ('saccade', 'right', 100.0, 200.0)),
-        ('EBLINK L 100 200 100', ('blink', 'left', 100.0, 200.0)),
-        ('EBLINK R 100 200 100', ('blink', 'right', 100.0, 200.0)),
+        ('EFIX L 100 200 101 1.0 1.0 100', ('fixation', 'left', 100.0, 200.0, 101.0)),
+        ('EFIX R 100 200 101 1.0 1.0 100', ('fixation', 'right', 100.0, 200.0, 101.0)),
+        ('ESACC L 100 200 101 1.0 1.0 2.0 2.0 1.0 100', ('saccade', 'left', 100.0, 200.0, 101.0)),
+        ('ESACC R 100 200 101 1.0 1.0 2.0 2.0 1.0 100', ('saccade', 'right', 100.0, 200.0, 101.0)),
+        ('EBLINK L 100 200 101', ('blink', 'left', 100.0, 200.0, 101.0)),
+        ('EBLINK R 100 200 101', ('blink', 'right', 100.0, 200.0, 101.0)),
         ('INVALID', None),
     ],
 )
