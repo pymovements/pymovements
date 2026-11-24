@@ -247,22 +247,6 @@ def test_from_begaze_has_correct_samples(
             None,
             id='right_preset_matches_parsed_no_warning',
         ),
-        pytest.param(
-            {},
-            {'sampling_rate': 'n/a'},
-            None,
-            (None, None),
-            None,
-            id='non_numeric_sampling_rate_not_filled',
-        ),
-        pytest.param(
-            {},
-            {},
-            None,
-            (None, None),
-            None,
-            id='missing_sampling_rate_not_filled',
-        ),
     ],
 )
 def test_fill_experiment_from_parsing_begaze_metadata(
@@ -349,6 +333,14 @@ def test_from_begaze_event_durations_from_experiment_sampling_rate(make_text_fil
 
 def test_from_begaze_events_without_sampling_rate_raise(make_text_file):
     body = BEGAZE_EVENTS.replace('## Sample Rate:\t500\n', '')
+    filepath = make_text_file('begaze_events.txt', header='', body=body, encoding='ascii')
+
+    with pytest.raises(ValueError, match='requires a sampling rate'):
+        from_begaze(filepath)
+
+
+def test_from_begaze_events_with_non_numeric_sampling_rate_raise(make_text_file):
+    body = BEGAZE_EVENTS.replace('## Sample Rate:\t500\n', '## Sample Rate:\tn/a\n')
     filepath = make_text_file('begaze_events.txt', header='', body=body, encoding='ascii')
 
     with pytest.raises(ValueError, match='requires a sampling rate'):
