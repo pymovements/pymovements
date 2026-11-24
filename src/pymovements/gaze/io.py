@@ -506,8 +506,8 @@ def from_asc(
     Raises
     ------
     ValueError
-        If ``parse_offset`` is ``True`` and neither the file nor ``experiment`` gives a sampling
-        rate, or if every parsed end timestamp contradicts its reported duration.
+        If ``parse_offset`` is ``True`` and every parsed end timestamp contradicts its reported
+        duration.
 
     Notes
     -----
@@ -604,6 +604,12 @@ def from_asc(
     else:
         _patterns = patterns
 
+    if parse_offset and not events:
+        warnings.warn(
+            'parse_offset=True ignored: events=False, so no events are parsed.',
+            UserWarning,
+        )
+
     # Read data.
     samples, event_data, parsed_metadata, messages_df = parse_eyelink(
         file,
@@ -655,24 +661,12 @@ def from_asc(
     calibrations = metadata_to_cal_frame(parsed_metadata)
     validations = metadata_to_val_frame(parsed_metadata)
 
-    if parse_offset and not events:
-        warnings.warn(
-            'parse_offset=True ignored: events=False, so no events are parsed.',
-            UserWarning,
-        )
-
     parsed_events = None
     if events:
-        sampling_rate = experiment.eyetracker.sampling_rate
-        if parse_offset and sampling_rate is None:
-            raise ValueError(
-                'from_asc requires a sampling rate to check the parsed offsets against the event '
-                'durations, but the file gives none. Pass an experiment with a sampling_rate.',
-            )
         parsed_events = Events(
             event_data if parse_offset else event_data.drop('offset'),
             offsets_inclusive=True if parse_offset else None,
-            sampling_rate=sampling_rate,
+            sampling_rate=experiment.eyetracker.sampling_rate,
         )
 
     gaze = Gaze(

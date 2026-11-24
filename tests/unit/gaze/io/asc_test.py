@@ -1037,15 +1037,21 @@ def test_from_asc_parse_offset_without_events_warns(make_example_file):
 @pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
-def test_from_asc_parse_offset_without_sampling_rate_raises(make_text_file):
+def test_from_asc_parse_offset_without_sampling_rate_keeps_offset(make_text_file):
     body = (
         'SFIX R 1000\n'
         'EFIX R 1000 1100 101 500.0 500.0 1000\n'
     )
     filepath = make_text_file(filename='no_rate.asc', body=body)
 
-    with pytest.raises(ValueError, match='requires a sampling rate'):
-        from_asc(filepath, events=True, parse_offset=True)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('error', message='.*contradict.*')
+        gaze = from_asc(filepath, events=True, parse_offset=True)
+
+    assert gaze.events.frame['offset'].to_list() == [timedelta(milliseconds=1100)]
+    assert gaze.events.frame['duration'].to_list() == [timedelta(milliseconds=101)]
+    assert gaze.events.metadata['offset'] == {'inclusive': True}
+    assert 'sampling_rate' not in gaze.events.metadata
 
 
 @pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
