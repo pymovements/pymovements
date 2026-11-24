@@ -2,10 +2,13 @@
  Migrating to v0.29.0
 =====================
 
-v0.29.0 implements :doc:`PMEP 1 </pmep/pmep-001-events-minimal-schema>`, the minimal event schema.
-It ships one breaking change: an event is described by its onset and its duration, and the
-duration counts every sample of the event. The change is silent for code that reads durations,
-so this note starts with the values and then walks through every call that behaves differently.
+v0.29.0 raises the requirements of pymovements, stores every time column as ``polars.Duration``
+and implements :doc:`PMEP 1 </pmep/pmep-001-events-minimal-schema>`, the minimal event schema. The
+schema change is the one that alters values silently: an event is described by its onset and its
+duration, the duration counts every sample of the event, and the same input yields durations one
+sampling interval longer without an error or a warning. This note starts with the requirements and
+the time columns, then walks through every call of the schema change that behaves differently, and
+closes with the deprecations outside the schema change.
 
 .. list-table::
    :header-rows: 1
@@ -13,6 +16,10 @@ so this note starts with the values and then walks through every call that behav
 
    * - What changes
      - Where to look
+   * - Python 3.11, polars 2, numpy 2, the ``datasets`` and ``pandas`` extras
+     - :ref:`migration_0_29_requirements`
+   * - ``time``, ``onset`` and ``duration`` are ``polars.Duration`` columns
+     - :ref:`migration_0_29_time_columns`
    * - Detected and parsed durations grow by one sampling interval
      - :ref:`migration_0_29_durations`
    * - ``offset`` leaves detected and parsed frames, the column order changes
@@ -33,6 +40,96 @@ so this note starts with the values and then walks through every call that behav
      - :ref:`migration_0_29_detectors`
    * - ``offset_column`` and ``onset_column`` are deprecated
      - :ref:`migration_0_29_deprecations`
+   * - ``verbose`` on ``map_to_aois`` and the ``annotate_events`` default are deprecated
+     - :ref:`migration_0_29_other_deprecations`
+
+
+.. _migration_0_29_requirements:
+
+Requirements and extras
+=======================
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 30 30
+
+   * - Requirement
+     - Before v0.29.0
+     - From v0.29.0
+   * - Python
+     - 3.10 or newer
+     - 3.11 or newer
+   * - polars
+     - 1.42.1 or newer
+     - 2.0 or newer
+   * - numpy
+     - 1.x
+     - 2.0 or newer
+   * - matplotlib, pandas, pyarrow, scikit-learn, scipy
+     - earlier releases
+     - the first releases built against numpy 2
+
+pyreadr, fastexcel and pandas are no longer installed with pymovements. The ``datasets`` extra
+holds pyreadr and fastexcel, which the four MECO datasets and ChineseReading need for their
+``.rda`` and ``.xlsx`` files. The ``pandas`` extra holds pandas, which only
+:py:func:`~pymovements.gaze.from_pandas` needs. Without the extra the call raises an
+``ImportError`` that names the install command. ``import pymovements`` and every other feature work
+without them, and ``pymovements[all]`` includes both. The extras are listed in
+:doc:`/user-guide/getting-started/installation`.
+
+.. code-block:: bash
+
+   pip install 'pymovements[datasets]'
+   pip install 'pymovements[pandas]'
+
+polars 2 orders the output of ``read_csv`` by its ``columns`` argument. A dataset definition that
+passes a ``columns`` list to :py:func:`~pymovements.gaze.from_csv` loads the columns in the order
+of that list instead of the order in the file, so code that accesses columns by position sees the
+list order. Listing the columns in file order keeps the previous result. The bundled definitions
+keep their previous order.
+
+
+.. _migration_0_29_time_columns:
+
+Time columns are polars Duration
+================================
+
+Before v0.29.0, ``time`` in :py:class:`~pymovements.Gaze` and ``onset``, ``offset`` and
+``duration`` in :py:class:`~pymovements.Events` were ``Float64`` columns holding milliseconds by
+convention. From v0.29.0 they are ``polars.Duration('us')`` columns, so the unit travels with the
+data and the half-millisecond timestamps of a 2 kHz recording are exact.
+
+Numeric input keeps working. ``time_unit`` on the constructors, on
+:py:func:`~pymovements.gaze.from_csv` and :py:func:`~pymovements.gaze.from_numpy` and on the
+dataset definition names the unit of the numbers, ``'s'``, ``'ms'`` or ``'us'``, with milliseconds
+as the default. Files saved before v0.29.0 hold plain numbers in milliseconds and load with that
+default. Thresholds stay plain numbers in milliseconds: ``minimum_duration``, ``maximum_duration``
+and ``max_gap`` take the same values as before.
+
+Code that reads the values changes. A single value comes back as ``datetime.timedelta``, not as a
+float, and an aggregate such as a mean duration is a ``timedelta`` too. Adding or subtracting a
+plain number raises. A comparison with a plain number does not raise: polars compares the stored
+microsecond count, so ``pl.col('time') > 500`` selects times above 500 microseconds.
+
+.. code-block:: python
+
+   import polars as pl
+
+   gaze.frame['time'][0]
+   # before v0.29.0: 148207.0
+   # from v0.29.0:   datetime.timedelta(seconds=148, microseconds=207000)
+
+   # numbers back, as integers
+   gaze.frame['time'].dt.total_milliseconds()
+   gaze.events.frame['duration'].dt.total_microseconds()
+
+   # before v0.29.0
+   gaze.frame.filter(pl.col('time') > 500)
+   gaze.events.frame.filter(pl.col('duration') - 100 > 0)
+
+   # from v0.29.0, a duration on both sides
+   gaze.frame.filter(pl.col('time') > pl.duration(milliseconds=500))
+   gaze.events.frame.filter(pl.col('duration') - pl.duration(milliseconds=100) > 0)
 
 
 .. _migration_0_29_durations:
@@ -370,3 +467,25 @@ them, and both take a column name or a polars expression.
 
 The ratio functions no longer add one interval to the event durations, since the durations
 already cover every sample.
+
+
+.. _migration_0_29_other_deprecations:
+
+Deprecations outside the schema change
+======================================
+
+Both are deprecated in v0.29.0 and change in v0.34.0.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 60
+
+   * - Deprecated
+     - What to do
+   * - ``verbose`` on :py:meth:`~pymovements.Events.map_to_aois` and
+       :py:meth:`~pymovements.Gaze.map_to_aois`
+     - Drop the argument. The mapping is a join without a progress bar. The argument is removed in
+       v0.34.0.
+   * - the default of ``annotate_events`` on :py:meth:`~pymovements.Dataset.measure_reading`
+     - Pass ``annotate_events=True`` to keep adding the AOI columns to the events of the dataset,
+       or ``False`` to leave them untouched. The default changes to ``False`` in v0.34.0.
