@@ -170,6 +170,7 @@ def events2segmentation(
         If the onset or duration column is missing from the events.
         If any duration is negative.
         If any padding value is negative.
+        If the deprecated ``offset_column`` holds an offset before its onset.
 
     Notes
     -----
@@ -180,7 +181,8 @@ def events2segmentation(
     The onset and duration values in the ``events`` DataFrame are compared directly
     against the values in the ``time_column`` of the samples DataFrame. If the
     ``time_column`` contains indices, then onsets are indices and durations count samples.
-    If the ``time_column`` contains timestamps, then onsets and durations are timestamps.
+    If the ``time_column`` contains timestamps, then onsets are timestamps and durations are
+    spans in the same unit.
 
     Examples
     --------

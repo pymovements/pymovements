@@ -1950,10 +1950,9 @@ class Gaze:
         ------
         ValueError
             If `name` is not a non-empty string.
+            If `time_column` is not present in the samples DataFrame.
         TypeError
             If `time_column` is not a string.
-        KeyError
-            If `time_column` is not present in the samples DataFrame.
         """
         if not isinstance(name, str) or not name:
             raise ValueError(

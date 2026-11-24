@@ -51,9 +51,10 @@ def fill(
         shape (N, )
         Continuous 1D timestep time series. Each event covers the timesteps with
         ``onset <= t < onset + duration - Δ/2``, with ``Δ`` the nominal sampling interval of
-        ``sampling_rate``. The event ``onset`` and ``duration`` values must be in the same unit
-        as ``timesteps``. When ``events`` stores ``polars.Duration`` time columns,
-        ``timesteps`` are expected to be in milliseconds.
+        ``sampling_rate``. An event whose end falls exactly on a timestep less than half an
+        interval after its last timestep can lose that last timestep. The event ``onset`` and
+        ``duration`` values must be in the same unit as ``timesteps``. When ``events`` stores
+        ``polars.Duration`` time columns, ``timesteps`` are expected to be in milliseconds.
     minimum_duration: int
         Minimum fixation duration. The duration is specified in the units used in ``timesteps``.
         (default: 1)
