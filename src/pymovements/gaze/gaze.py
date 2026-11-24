@@ -1679,24 +1679,38 @@ class Gaze:
         processor = EventProcessor(measures)
         output_names = [measure.meta.output_name() for measure in processor.measures]
 
-        if name is not None:
-            for (measure_name, measure_kwargs), column in zip(
-                    measures_with_kwargs(measures), output_names,
-            ):
-                if measure_name != 'offset' or column not in self.events.columns:
-                    continue
-                entry = self.events.metadata.get(column)
-                declared = entry.get('inclusive') if isinstance(entry, dict) else None
-                if declared != measure_kwargs['inclusive']:
-                    existing = (
-                        f"metadata['{column}'] = {entry!r}" if declared is not None
-                        else f"the existing '{column}' column is undeclared"
-                    )
-                    raise ValueError(
-                        f"{existing}, but inclusive={measure_kwargs['inclusive']!r} is "
-                        f'requested for the {name!r} events only, which would mix conventions '
-                        f"in one column. Drop name to recompute '{column}' for every event.",
-                    )
+        mask = polars.col('name').str.contains(f'^{name}$') if name is not None else None
+        frame = self.events.frame
+        entries = {}
+        for (measure_name, measure_kwargs), measure, column in zip(
+                measures_with_kwargs(measures), processor.measures, output_names,
+        ):
+            if measure_name == 'offset':
+                if mask is not None and column in self.events.columns:
+                    entry = self.events.metadata.get(column)
+                    declared = entry.get('inclusive') if isinstance(entry, dict) else None
+                    if declared != measure_kwargs['inclusive']:
+                        existing = (
+                            f"metadata['{column}'] = {entry!r}" if declared is not None
+                            else f"the existing '{column}' column is undeclared"
+                        )
+                        raise ValueError(
+                            f"{existing}, but inclusive={measure_kwargs['inclusive']!r} is "
+                            f'requested for the {name!r} events only, which would mix '
+                            f"conventions in one column. Drop name to recompute '{column}' for "
+                            'every event.',
+                        )
+                entries[column] = {'inclusive': measure_kwargs['inclusive']}
+
+            expression = measure
+            if mask is not None:
+                expression = (
+                    polars.when(mask)
+                    .then(measure)
+                    .otherwise(polars.col(column) if column in frame.columns else None)
+                    .alias(column)
+                )
+            frame = frame.with_columns(expression)
 
         overwrite_columns = [column for column in output_names if column in self.events.columns]
         if overwrite_columns:
@@ -1704,22 +1718,8 @@ class Gaze:
                 'The following columns already exist in event and will be overwritten: '
                 f'{overwrite_columns}',
             )
-
-        mask = polars.col('name').str.contains(f'^{name}$') if name is not None else None
-        for (measure_name, measure_kwargs), measure, column in zip(
-                measures_with_kwargs(measures), processor.measures, output_names,
-        ):
-            expression = measure
-            if mask is not None:
-                expression = (
-                    polars.when(mask)
-                    .then(measure)
-                    .otherwise(polars.col(column) if column in self.events.columns else None)
-                    .alias(column)
-                )
-            self.events.frame = self.events.frame.with_columns(expression)
-            if measure_name == 'offset':
-                self.events.metadata[column] = {'inclusive': measure_kwargs['inclusive']}
+        self.events.frame = frame
+        self.events.metadata.update(entries)
 
     def measure_samples(
             self,
