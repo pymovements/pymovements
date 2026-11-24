@@ -83,7 +83,6 @@ def fixture_mapped_events(stimulus):
     events_df = pl.DataFrame({
         'name': ['fixation', 'fixation'],
         'onset': [0, 200],
-        'offset': [200, 400],
         'duration': [200, 200],
         'location': [[15., 15.], [55., 15.]],
         'trial': ['trial_1', 'trial_1'],
@@ -178,7 +177,6 @@ def test_compute_reading_measures_is_invariant_to_input_row_order(stimulus):
     events_df = pl.DataFrame({
         'name': ['fixation'] * 4,
         'onset': [0, 100, 200, 300],
-        'offset': [100, 200, 300, 400],
         'duration': [100, 100, 100, 100],
         # word 0 char 0, word 1 char 5, word 0 char 2 (regression), word 1 char 4
         'location': [[15., 20.], [65., 20.], [35., 20.], [55., 20.]],

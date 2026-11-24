@@ -1688,7 +1688,7 @@ def test_load_gaze_files_preprocessed_sources_point_to_preprocessed_file(
 def test_load_event_files_adds_relative_sources(tmp_path):
     events_dirpath = tmp_path / 'events'
     events_dirpath.mkdir()
-    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [1]})
+    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'duration': [1]})
     events_df.write_ipc(events_dirpath / 'sub_1.feather')
 
     resource_definition = ResourceDefinition(content='gaze')
@@ -1714,7 +1714,7 @@ def test_load_event_files_adds_relative_sources(tmp_path):
 def test_load_event_files_keeps_user_sources_list_unmutated(tmp_path):
     events_dirpath = tmp_path / 'events'
     events_dirpath.mkdir()
-    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [1]})
+    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'duration': [1]})
     events_df.write_ipc(events_dirpath / 'sub_1.feather')
 
     absolute_source = (events_dirpath / 'sub_1.feather').as_posix()
@@ -1740,7 +1740,7 @@ def test_load_event_files_keeps_user_sources_list_unmutated(tmp_path):
 def test_load_event_files_relativizes_relative_user_source(tmp_path, monkeypatch):
     events_dirpath = tmp_path / 'events'
     events_dirpath.mkdir()
-    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [1]})
+    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'duration': [1]})
     events_df.write_ipc(events_dirpath / 'sub_1.feather')
 
     # A standalone load from inside the events directory records the path as given.
@@ -1765,7 +1765,7 @@ def test_load_event_files_relativizes_relative_user_source(tmp_path, monkeypatch
 def test_load_event_files_respects_empty_user_sources(tmp_path):
     events_dirpath = tmp_path / 'events'
     events_dirpath.mkdir()
-    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [1]})
+    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'duration': [1]})
     events_df.write_ipc(events_dirpath / 'sub_1.feather')
 
     resource_definition = ResourceDefinition(content='gaze')
@@ -1822,7 +1822,7 @@ def test_load_event_files_writes_sampling_rate_from_experiment(tmp_path):
     files, paths = write_legacy_event_file(tmp_path)
     definition = DatasetDefinition(experiment=Experiment(sampling_rate=1000))
 
-    events_list = load_event_files(definition, files, paths, verbose=False)
+    events_list = load_event_files(definition, files, paths, verbose=False, offsets_inclusive=False)
 
     assert events_list[0].metadata['sampling_rate'] == 1000
 
@@ -1839,7 +1839,9 @@ class TestLoadEventFilesWithoutExperimentRate:
         files, paths = write_legacy_event_file(tmp_path)
         definition = DatasetDefinition(experiment=experiment)
 
-        events_list = load_event_files(definition, files, paths, verbose=False)
+        events_list = load_event_files(
+            definition, files, paths, verbose=False, offsets_inclusive=False,
+        )
 
         assert 'sampling_rate' not in events_list[0].metadata
 
@@ -1898,6 +1900,14 @@ def test_load_event_files_validates_by_default(tmp_path):
         load_event_files(definition, files, paths, verbose=False, offsets_inclusive=True)
 
 
+def test_load_event_files_raises_without_declared_convention(tmp_path):
+    files, paths = write_legacy_event_file(tmp_path)
+    definition = DatasetDefinition(experiment=Experiment(sampling_rate=1000))
+
+    with pytest.raises(ValueError, match='no declared convention'):
+        load_event_files(definition, files, paths, verbose=False)
+
+
 @pytest.mark.parametrize(
     'extension',
     [
@@ -1909,7 +1919,7 @@ def test_save_events_and_preprocessed_round_trip_preserves_duration_values(tmp_p
     paths = DatasetPaths(root=tmp_path, dataset='.')
     fileinfo = pl.DataFrame({'filepath': ['subject_1.csv']})
 
-    events = Events(name=['fixation'], onsets=[0.5], offsets=[2.25])
+    events = Events(name=['fixation'], onsets=[0.5], durations=[1.75])
     gaze = Gaze(
         pl.DataFrame({'time': [0.0, 0.5, 1.0], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}),
         time_column='time',

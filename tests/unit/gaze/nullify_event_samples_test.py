@@ -283,7 +283,6 @@ def test_detected_frame_without_offset_column():
         experiment=pm.Experiment(sampling_rate=250),
     )
     gaze.detect('ivt', velocity_threshold=20, minimum_duration=8)
-    gaze.events = pm.Events(gaze.events.frame.drop('offset'), metadata={'sampling_rate': 250})
 
     gaze.nullify_event_samples('fixation', padding=0)
 

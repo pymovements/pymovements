@@ -305,7 +305,7 @@ def test_events_correct_fixations_matches_reference_ensemble(
         pl.DataFrame({
             'name': ['fixation'] * len(fixation_xy),
             'onset': list(range(len(fixation_xy))),
-            'offset': [onset + 1 for onset in range(len(fixation_xy))],
+            'duration': [1] * len(fixation_xy),
             'location': fixation_xy.tolist(),
         }),
     )

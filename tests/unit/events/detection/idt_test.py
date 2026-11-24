@@ -187,7 +187,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 'dispersion_threshold': 1,
                 'minimum_duration': 10,
             },
-            Events(onsets=[], offsets=[]),
+            Events(),
             id='constant_velocity_no_fixation',
         ),
         pytest.param(
@@ -197,7 +197,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 'dispersion_threshold': 1,
                 'minimum_duration': 10,
             },
-            Events(onsets=[], offsets=[]),
+            Events(),
             id='constant_velocity_no_fixation_numpy',
         ),
         pytest.param(
@@ -213,8 +213,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0],
-                offsets=[99],
-                offsets_inclusive=True,
+                durations=[100],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation',
@@ -229,8 +228,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0],
-                offsets=[99],
-                offsets_inclusive=True,
+                durations=[100],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_numpy',
@@ -249,8 +247,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='custom_fixation',
                 onsets=[0],
-                offsets=[99],
-                offsets_inclusive=True,
+                durations=[100],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_custom_name',
@@ -266,8 +263,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='custom_fixation',
                 onsets=[0],
-                offsets=[99],
-                offsets_inclusive=True,
+                durations=[100],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_custom_name_numpy',
@@ -290,8 +286,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0, 50],
-                offsets=[49, 99],
-                offsets_inclusive=True,
+                durations=[50, 50],
                 sampling_rate=1000,
             ),
             id='three_steps_two_fixations',
@@ -311,8 +306,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0, 50],
-                offsets=[49, 99],
-                offsets_inclusive=True,
+                durations=[50, 50],
                 sampling_rate=1000,
             ),
             id='three_steps_two_fixations_numpy',
@@ -334,8 +328,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0, 20],
-                offsets=[9, 89],
-                offsets_inclusive=True,
+                durations=[10, 70],
                 sampling_rate=1000,
             ),
             id='two_fixations_nan_delete_leading_ending',
@@ -356,8 +349,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0, 20],
-                offsets=[9, 89],
-                offsets_inclusive=True,
+                durations=[10, 70],
                 sampling_rate=1000,
             ),
             id='two_fixations_nan_delete_leading_ending_numpy',
@@ -380,8 +372,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0],
-                offsets=[89],
-                offsets_inclusive=True,
+                durations=[90],
                 sampling_rate=1000,
             ),
             id='one_fixation_nan_delete_leading_ending',
@@ -401,8 +392,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0],
-                offsets=[89],
-                offsets_inclusive=True,
+                durations=[90],
                 sampling_rate=1000,
             ),
             id='one_fixation_nan_delete_leading_ending_numpy',
@@ -421,8 +411,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[1000],
-                offsets=[1099],
-                offsets_inclusive=True,
+                durations=[100],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps',
@@ -438,8 +427,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[1000],
-                offsets=[1099],
-                offsets_inclusive=True,
+                durations=[100],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps_numpy',
@@ -455,8 +443,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[1000],
-                offsets=[1099],
-                offsets_inclusive=True,
+                durations=[100],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_duration_timesteps',
@@ -472,8 +459,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0],
-                offsets=[49.5],
-                offsets_inclusive=True,
+                durations=[50],
                 sampling_rate=2000,
             ),
             id='constant_position_single_fixation_with_2khz_duration_timesteps',
@@ -492,8 +478,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[1000],
-                offsets=[1099],
-                offsets_inclusive=True,
+                durations=[100],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps_extra_dim',
@@ -509,8 +494,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[1000],
-                offsets=[1099],
-                offsets_inclusive=True,
+                durations=[100],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps_extra_dim_numpy',
@@ -529,8 +513,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[1000],
-                offsets=[1099],
-                offsets_inclusive=True,
+                durations=[100],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps_float_no_decimal',
@@ -546,8 +529,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[1000],
-                offsets=[1099],
-                offsets_inclusive=True,
+                durations=[100],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps_float_no_decimal_numpy',
@@ -566,8 +548,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[1000],
-                offsets=[1009.9],
-                offsets_inclusive=True,
+                durations=[10.9],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps_float_with_decimal',
@@ -583,8 +564,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[1000],
-                offsets=[1009.9],
-                offsets_inclusive=True,
+                durations=[10.9],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps_float_with_decimal_numpy',
@@ -600,8 +580,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0],
-                offsets=[9.9],
-                offsets_inclusive=True,
+                durations=[10.9],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_10khz_duration_timesteps',
@@ -617,8 +596,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0],
-                offsets=[148.5],
-                offsets_inclusive=True,
+                durations=[149.5],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps_interval_not_dividing_duration',
@@ -636,8 +614,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0],
-                offsets=[11],
-                offsets_inclusive=True,
+                durations=[12],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_non_constant_timesteps_interval',
@@ -653,8 +630,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0],
-                offsets=[100],
-                offsets_inclusive=True,
+                durations=[101],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_sparse_timesteps_covering_duration',
@@ -670,8 +646,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0],
-                offsets=[99],
-                offsets_inclusive=True,
+                durations=[100],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_sparse_timesteps_tail_covering_duration',
@@ -684,7 +659,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 'dispersion_threshold': 1,
                 'minimum_duration': 100,
             },
-            Events(onsets=[], offsets=[]),
+            Events(),
             id='constant_position_no_fixation_with_timesteps_shorter_than_duration',
         ),
         pytest.param(
@@ -694,7 +669,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 'dispersion_threshold': 1,
                 'minimum_duration': 1,
             },
-            Events(onsets=[], offsets=[]),
+            Events(),
             id='constant_position_no_fixation_with_single_sample',
         ),
         pytest.param(
@@ -710,8 +685,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0, 8],
-                offsets=[4, 10],
-                offsets_inclusive=True,
+                durations=[5, 3],
                 sampling_rate=1000,
             ),
             id='two_fixations_single_sample_between_nans_dropped',
@@ -727,8 +701,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0],
-                offsets=[27],
-                offsets_inclusive=True,
+                durations=[28],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps_interval_longer_than_duration',
@@ -743,8 +716,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0],
-                offsets=[99],
-                offsets_inclusive=True,
+                durations=[100],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_minimum_duration_one_interval',
@@ -760,8 +732,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0],
-                offsets=[49.5],
-                offsets_inclusive=True,
+                durations=[50.5],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_float_minimum_duration',
@@ -777,8 +748,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0],
-                offsets=[8],
-                offsets_inclusive=True,
+                durations=[9],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_repeated_timestep',
@@ -792,9 +762,9 @@ def test_idt_detects_fixations(kwargs, expected):
     assert_frame_equal(events.frame, expected.frame)
 
 
-def test_idt_onsets_and_offsets_on_a_constant_interval_grid():
+def test_idt_onsets_and_durations_on_a_constant_interval_grid():
     # Two fixations on a 1 ms grid: the sampling rate extends each duration by one interval
-    # and leaves the onset and offset samples where the dispersion window puts them.
+    # and leaves the onset samples where the dispersion window puts them.
     positions = step_function(
         length=100, steps=[49, 50], values=[(9, 9), (1, 1)], start_value=(0, 0),
     )
@@ -805,9 +775,6 @@ def test_idt_onsets_and_offsets_on_a_constant_interval_grid():
     )
 
     assert events.frame['onset'].to_list() == [timedelta(0), timedelta(milliseconds=50)]
-    assert events.frame['offset'].to_list() == [
-        timedelta(milliseconds=49), timedelta(milliseconds=99),
-    ]
     assert events.frame['duration'].to_list() == [
         timedelta(milliseconds=50), timedelta(milliseconds=50),
     ]

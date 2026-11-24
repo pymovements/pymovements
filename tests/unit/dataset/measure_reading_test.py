@@ -39,7 +39,6 @@ def fixture_dummy_dataset(tmp_path):
     fixation_data = pl.DataFrame({
         'name': ['fixation', 'fixation', 'fixation', 'fixation'],
         'onset': [0, 200, 400, 600],
-        'offset': [100, 300, 500, 700],
         'duration': [100, 100, 100, 100],
         'location_x': [100, 140, 200, 10000],  # 100->AOI 1, 140->AOI 2, 200->AOI 3
         'location_y': [50, 50, 50, 50],
@@ -292,7 +291,6 @@ def test_compute_reading_measures_empty_dataset(tmp_path):
             schema={
                 'name': pl.String,
                 'onset': pl.Int64,
-                'offset': pl.Int64,
                 'duration': pl.Int64,
                 'location_x': pl.Float64,
                 'location_y': pl.Float64,

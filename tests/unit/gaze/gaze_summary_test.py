@@ -63,7 +63,7 @@ def test_gaze_summary_counts_events_by_name(capsys):
         events=Events(
             name=['saccade', 'fixation', 'fixation'],
             onsets=[0, 1, 2],
-            offsets=[1, 2, 3],
+            durations=[1, 1, 1],
         ),
     )
 

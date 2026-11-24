@@ -66,7 +66,6 @@ def fixture_fixation_events():
         pl.DataFrame({
             'name': ['fixation', 'fixation'],
             'onset': [0, 200],
-            'offset': [200, 400],
             'duration': [200, 200],
             'location': [[15.0, 15.0], [25.0, 15.0]],
             'trial': ['trial_1', 'trial_1'],
@@ -81,7 +80,6 @@ def fixture_two_trial_events():
         pl.DataFrame({
             'name': ['fixation'] * 3,
             'onset': [0, 200, 400],
-            'offset': [200, 400, 600],
             'duration': [200, 200, 200],
             'location': [[15.0, 15.0], [25.0, 15.0], [15.0, 15.0]],
             'trial': ['trial_1', 'trial_1', 'trial_2'],
@@ -212,7 +210,6 @@ def test_events_measure_reading_multiple_stimuli_null_key_raises():
         pl.DataFrame({
             'name': ['fixation', 'fixation'],
             'onset': [0, 200],
-            'offset': [200, 400],
             'duration': [200, 200],
             'location': [[15.0, 15.0], [25.0, 15.0]],
             'trial': ['trial_1', None],
@@ -264,7 +261,6 @@ def fixture_int_trial_events():
         pl.DataFrame({
             'name': ['fixation', 'fixation'],
             'onset': [0, 200],
-            'offset': [200, 400],
             'duration': [200, 200],
             'location': [[15.0, 15.0], [25.0, 15.0]],
             'trial': [1, 1],
@@ -321,7 +317,6 @@ def test_events_measure_reading_multiple_stimuli_requires_sequence_column(stimul
         pl.DataFrame({
             'name': ['fixation'],
             'onset': [0],
-            'offset': [200],
             'duration': [200],
             'location': [[15.0, 15.0]],
         }),

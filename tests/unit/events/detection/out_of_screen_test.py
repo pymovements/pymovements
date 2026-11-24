@@ -185,7 +185,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
             },
-            Events(onsets=[], offsets=[]),
+            Events(),
             id='all_within_screen_no_events',
         ),
         pytest.param(
@@ -195,7 +195,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
             },
-            Events(onsets=[], offsets=[]),
+            Events(),
             id='all_within_screen_no_events_numpy',
         ),
         pytest.param(
@@ -204,7 +204,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 'pixels': pl.Series([[0, 0], [1919.9, 1079.9], [960, 540]]),
                 'x_max': 1920, 'y_max': 1080,
             },
-            Events(onsets=[], offsets=[]),
+            Events(),
             id='on_boundary_inclusive_min_exclusive_max_no_events',
         ),
         pytest.param(
@@ -213,7 +213,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
                 'pixels': np.array([[0, 0], [1919.9, 1079.9], [960, 540]]),
                 'x_max': 1920, 'y_max': 1080,
             },
-            Events(onsets=[], offsets=[]),
+            Events(),
             id='on_boundary_inclusive_min_exclusive_max_no_events_numpy',
         ),
         pytest.param(
@@ -225,8 +225,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='out_of_screen',
                 onsets=[1],
-                offsets=[1],
-                offsets_inclusive=True,
+                durations=[1],
                 sampling_rate=1000,
             ),
             id='at_max_boundary_exclusive_detected',
@@ -240,8 +239,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='out_of_screen',
                 onsets=[1],
-                offsets=[1],
-                offsets_inclusive=True,
+                durations=[1],
                 sampling_rate=1000,
             ),
             id='at_max_boundary_exclusive_detected_numpy',
@@ -256,8 +254,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='out_of_screen',
                 onsets=[0],
-                offsets=[0],
-                offsets_inclusive=True,
+                durations=[1],
                 sampling_rate=1000,
             ),
             id='single_sample_below_x_min',
@@ -272,8 +269,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='out_of_screen',
                 onsets=[0],
-                offsets=[0],
-                offsets_inclusive=True,
+                durations=[1],
                 sampling_rate=1000,
             ),
             id='single_sample_below_x_min_numpy',
@@ -288,8 +284,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='out_of_screen',
                 onsets=[1],
-                offsets=[1],
-                offsets_inclusive=True,
+                durations=[1],
                 sampling_rate=1000,
             ),
             id='single_sample_above_x_max',
@@ -304,8 +299,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='out_of_screen',
                 onsets=[1],
-                offsets=[1],
-                offsets_inclusive=True,
+                durations=[1],
                 sampling_rate=1000,
             ),
             id='single_sample_above_x_max_numpy',
@@ -320,8 +314,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='out_of_screen',
                 onsets=[0],
-                offsets=[0],
-                offsets_inclusive=True,
+                durations=[1],
                 sampling_rate=1000,
             ),
             id='single_sample_below_y_min',
@@ -336,8 +329,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='out_of_screen',
                 onsets=[0],
-                offsets=[0],
-                offsets_inclusive=True,
+                durations=[1],
                 sampling_rate=1000,
             ),
             id='single_sample_below_y_min_numpy',
@@ -352,8 +344,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='out_of_screen',
                 onsets=[2],
-                offsets=[2],
-                offsets_inclusive=True,
+                durations=[1],
                 sampling_rate=1000,
             ),
             id='single_sample_above_y_max',
@@ -368,8 +359,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='out_of_screen',
                 onsets=[2],
-                offsets=[2],
-                offsets_inclusive=True,
+                durations=[1],
                 sampling_rate=1000,
             ),
             id='single_sample_above_y_max_numpy',
@@ -388,8 +378,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='out_of_screen',
                 onsets=[0, 4],
-                offsets=[2, 5],
-                offsets_inclusive=True,
+                durations=[3, 2],
                 sampling_rate=1000,
             ),
             id='two_consecutive_out_of_screen_events',
@@ -408,8 +397,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='out_of_screen',
                 onsets=[0, 4],
-                offsets=[2, 5],
-                offsets_inclusive=True,
+                durations=[3, 2],
                 sampling_rate=1000,
             ),
             id='two_consecutive_out_of_screen_events_numpy',
@@ -427,8 +415,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='out_of_screen',
                 onsets=[1000, 1002],
-                offsets=[1000, 1002],
-                offsets_inclusive=True,
+                durations=[1, 1],
                 sampling_rate=1000,
             ),
             id='with_timesteps',
@@ -446,8 +433,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='out_of_screen',
                 onsets=[1000, 1002],
-                offsets=[1000, 1002],
-                offsets_inclusive=True,
+                durations=[1, 1],
                 sampling_rate=1000,
             ),
             id='with_duration_timesteps',
@@ -465,8 +451,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='out_of_screen',
                 onsets=[1000, 1002],
-                offsets=[1000, 1002],
-                offsets_inclusive=True,
+                durations=[1, 1],
                 sampling_rate=1000,
             ),
             id='with_timesteps_numpy',
@@ -482,8 +467,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='noise',
                 onsets=[0],
-                offsets=[0],
-                offsets_inclusive=True,
+                durations=[1],
                 sampling_rate=1000,
             ),
             id='custom_name',
@@ -499,8 +483,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='noise',
                 onsets=[0],
-                offsets=[0],
-                offsets_inclusive=True,
+                durations=[1],
                 sampling_rate=1000,
             ),
             id='custom_name_numpy',
@@ -515,8 +498,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='out_of_screen',
                 onsets=[0],
-                offsets=[2],
-                offsets_inclusive=True,
+                durations=[3],
                 sampling_rate=1000,
             ),
             id='all_out_of_screen_single_event',
@@ -531,8 +513,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='out_of_screen',
                 onsets=[0],
-                offsets=[2],
-                offsets_inclusive=True,
+                durations=[3],
                 sampling_rate=1000,
             ),
             id='all_out_of_screen_single_event_numpy',

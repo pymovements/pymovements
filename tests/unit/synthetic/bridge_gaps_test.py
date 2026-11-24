@@ -31,76 +31,76 @@ from pymovements.synthetic import bridge_gaps
     ('events', 'max_gap', 'expected'),
     [
         pytest.param(
-            Events(name=['fixation'] * 2, onsets=[0, 250], offsets=[250, 500]),
+            Events(name=['fixation'] * 2, onsets=[0, 250], durations=[250, 250]),
             None,
-            Events(name=['fixation'] * 2, onsets=[0, 250], offsets=[250, 500]),
+            Events(name=['fixation'] * 2, onsets=[0, 250], durations=[250, 250]),
             id='touching_events_are_unchanged',
         ),
         pytest.param(
-            Events(name=['fixation'], onsets=[0], offsets=[250]),
+            Events(name=['fixation'], onsets=[0], durations=[250]),
             None,
-            Events(name=['fixation'], onsets=[0], offsets=[250]),
+            Events(name=['fixation'], onsets=[0], durations=[250]),
             id='single_fixation_is_unchanged',
         ),
         pytest.param(
-            Events(name=['fixation'], onsets=[0], offsets=[250]),
+            Events(name=['fixation'], onsets=[0], durations=[250]),
             100,
-            Events(name=['fixation'], onsets=[0], offsets=[250]),
+            Events(name=['fixation'], onsets=[0], durations=[250]),
             id='single_fixation_with_max_gap_is_unchanged',
         ),
         pytest.param(
-            Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560]),
+            Events(name=['fixation'] * 2, onsets=[0, 300], durations=[250, 260]),
             None,
             Events(
                 name=['fixation', 'saccade', 'fixation'],
                 onsets=[0, 250, 300],
-                offsets=[250, 300, 560],
+                durations=[250, 50, 260],
             ),
             id='gap_becomes_saccade',
         ),
         pytest.param(
-            Events(name=['fixation'] * 3, onsets=[0, 300, 2400], offsets=[250, 560, 2700]),
+            Events(name=['fixation'] * 3, onsets=[0, 300, 2400], durations=[250, 260, 300]),
             100,
             Events(
                 name=['fixation', 'saccade', 'fixation', 'fixation'],
                 onsets=[0, 250, 300, 2400],
-                offsets=[250, 300, 560, 2700],
+                durations=[250, 50, 260, 300],
             ),
             id='gap_longer_than_max_gap_is_kept',
         ),
         pytest.param(
-            Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560]),
+            Events(name=['fixation'] * 2, onsets=[0, 300], durations=[250, 260]),
             50,
             Events(
                 name=['fixation', 'saccade', 'fixation'],
                 onsets=[0, 250, 300],
-                offsets=[250, 300, 560],
+                durations=[250, 50, 260],
             ),
             id='gap_equal_to_max_gap_is_bridged',
         ),
         pytest.param(
-            Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560]),
+            Events(name=['fixation'] * 2, onsets=[0, 300], durations=[250, 260]),
             0,
-            Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560]),
+            Events(name=['fixation'] * 2, onsets=[0, 300], durations=[250, 260]),
             id='zero_max_gap_bridges_nothing',
         ),
         pytest.param(
-            Events(name=['fixation'] * 2, onsets=[300, 0], offsets=[560, 250]),
+            Events(name=['fixation'] * 2, onsets=[300, 0], durations=[260, 250]),
             None,
             Events(
                 name=['fixation', 'saccade', 'fixation'],
                 onsets=[0, 250, 300],
-                offsets=[250, 300, 560],
+                durations=[250, 50, 260],
             ),
             id='unsorted_events_are_sorted',
         ),
         pytest.param(
-            Events(name=['fixation'] * 2, onsets=[0.0, 300.5], offsets=[250.25, 560.0]),
+            Events(name=['fixation'] * 2, onsets=[0.0, 300.5], durations=[250.25, 259.5]),
             None,
             Events(
                 name=['fixation', 'saccade', 'fixation'],
                 onsets=[0.0, 250.25, 300.5],
-                offsets=[250.25, 300.5, 560.0],
+                durations=[250.25, 50.25, 259.5],
             ),
             id='sub_millisecond_times_are_kept',
         ),
@@ -108,14 +108,14 @@ from pymovements.synthetic import bridge_gaps
             Events(
                 name=['fixation'] * 4,
                 onsets=[0, 300, 0, 500],
-                offsets=[250, 560, 200, 700],
+                durations=[250, 260, 200, 200],
                 trials=[1, 1, 2, 2],
             ),
             None,
             Events(
                 name=['fixation', 'saccade', 'fixation', 'fixation', 'saccade', 'fixation'],
                 onsets=[0, 250, 300, 0, 200, 500],
-                offsets=[250, 300, 560, 200, 500, 700],
+                durations=[250, 50, 260, 200, 300, 200],
                 trials=[1, 1, 1, 2, 2, 2],
             ),
             id='trials_are_bridged_separately',
@@ -124,22 +124,22 @@ from pymovements.synthetic import bridge_gaps
             Events(
                 name=['fixation'] * 3,
                 onsets=[0, 0, 300],
-                offsets=[200, 250, 560],
+                durations=[200, 250, 260],
                 trials=[2, 1, 1],
             ),
             None,
             Events(
                 name=['fixation', 'saccade', 'fixation', 'fixation'],
                 onsets=[0, 250, 300, 0],
-                offsets=[250, 300, 560, 200],
+                durations=[250, 50, 260, 200],
                 trials=[1, 1, 1, 2],
             ),
             id='trials_are_sorted',
         ),
         pytest.param(
-            Events(name=[], onsets=[], offsets=[]),
+            Events(),
             None,
-            Events(name=[], onsets=[], offsets=[]),
+            Events(),
             id='empty_events',
         ),
     ],
@@ -147,7 +147,7 @@ from pymovements.synthetic import bridge_gaps
 def test_bridge_gaps_returns(events, max_gap, expected):
     bridged = bridge_gaps(events, max_gap=max_gap)
 
-    assert_frame_equal(bridged.frame.drop('offset'), expected.frame.drop('offset'))
+    assert_frame_equal(bridged.frame, expected.frame)
     assert bridged.trial_columns == expected.trial_columns
 
 
@@ -165,7 +165,9 @@ def test_bridge_gaps_reads_the_end_of_an_event_from_its_duration():
 
 
 def test_bridge_gaps_writes_no_offset_for_the_inserted_saccades():
-    events = Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560])
+    events = Events(
+        name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560], offsets_inclusive=False,
+    )
 
     bridged = bridge_gaps(events)
 
@@ -173,7 +175,7 @@ def test_bridge_gaps_writes_no_offset_for_the_inserted_saccades():
 
 
 def test_bridge_gaps_leaves_extra_columns_null_for_saccades():
-    events = Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560])
+    events = Events(name=['fixation'] * 2, onsets=[0, 300], durations=[250, 260])
     events.frame = events.frame.with_columns(pl.Series('location', [[0.0, 0.0], [10.0, 0.0]]))
 
     bridged = bridge_gaps(events)
@@ -182,7 +184,7 @@ def test_bridge_gaps_leaves_extra_columns_null_for_saccades():
 
 
 def test_bridge_gaps_does_not_modify_the_input():
-    events = Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560])
+    events = Events(name=['fixation'] * 2, onsets=[0, 300], durations=[250, 260])
     original = events.frame.clone()
 
     bridge_gaps(events)
@@ -192,7 +194,7 @@ def test_bridge_gaps_does_not_modify_the_input():
 
 def test_bridge_gaps_keeps_the_metadata():
     events = Events(
-        name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560], metadata={'note': 'kept'},
+        name=['fixation'] * 2, onsets=[0, 300], durations=[250, 260], metadata={'note': 'kept'},
     )
 
     bridged = bridge_gaps(events)
@@ -210,7 +212,7 @@ def test_bridge_gaps_keeps_the_metadata():
     ],
 )
 def test_bridge_gaps_accepts_real_numbers(max_gap):
-    events = Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560])
+    events = Events(name=['fixation'] * 2, onsets=[0, 300], durations=[250, 260])
 
     assert bridge_gaps(events, max_gap=max_gap).frame.height == 3
 
@@ -219,7 +221,7 @@ def test_bridge_gaps_accepts_real_numbers(max_gap):
     ('events', 'max_gap', 'exception', 'msg_substrings'),
     [
         pytest.param(
-            Events(name=['fixation'] * 2, onsets=[0, 200], offsets=[250, 560]),
+            Events(name=['fixation'] * 2, onsets=[0, 200], durations=[250, 360]),
             None,
             ValueError,
             ('overlap', 'fixation', '200.0 ms', '250.0 ms'),
@@ -235,28 +237,28 @@ def test_bridge_gaps_accepts_real_numbers(max_gap):
             id='overlap_is_read_from_the_duration',
         ),
         pytest.param(
-            Events(name=['fixation'] * 2, onsets=[0.0, 200.25], offsets=[250.5, 560.0]),
+            Events(name=['fixation'] * 2, onsets=[0.0, 200.25], durations=[250.5, 359.75]),
             None,
             ValueError,
             ('overlap', '200.25 ms', '250.5 ms'),
             id='overlap_message_keeps_sub_millisecond_times',
         ),
         pytest.param(
-            Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560]),
+            Events(name=['fixation'] * 2, onsets=[0, 300], durations=[250, 260]),
             -1,
             ValueError,
             ('max_gap', 'negative'),
             id='negative_max_gap_raises_value_error',
         ),
         pytest.param(
-            Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560]),
+            Events(name=['fixation'] * 2, onsets=[0, 300], durations=[250, 260]),
             '100',
             TypeError,
             ('max_gap', 'number', 'str'),
             id='string_max_gap_raises_type_error',
         ),
         pytest.param(
-            Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560]),
+            Events(name=['fixation'] * 2, onsets=[0, 300], durations=[250, 260]),
             True,
             TypeError,
             ('max_gap', 'number', 'bool'),
@@ -275,7 +277,7 @@ def test_bridge_gaps_raises_error(events, max_gap, exception, msg_substrings):
 
 def test_overlap_across_trials_is_allowed():
     events = Events(
-        name=['fixation'] * 2, onsets=[0, 100], offsets=[250, 560], trials=[1, 2],
+        name=['fixation'] * 2, onsets=[0, 100], durations=[250, 460], trials=[1, 2],
     )
 
     assert bridge_gaps(events).frame.height == 2

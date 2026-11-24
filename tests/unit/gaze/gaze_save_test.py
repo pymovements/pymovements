@@ -395,16 +395,20 @@ def test_gaze_save_load_round_trip_preserves_sub_millisecond_values(tmp_path, ex
         time_column='time',
         time_unit='ms',
         pixel_columns=['x', 'y'],
-        events=Events(name=['fixation'], onsets=[0.5], offsets=[1.5]),
+        events=Events(name=['fixation'], onsets=[0.5], offsets=[1.5], offsets_inclusive=False),
     )
     gaze.save(dirpath=tmp_path, extension=extension, save_experiment=False)
 
     if extension == 'csv':
         loaded = from_csv(tmp_path / f'samples.{extension}', time_column='time', time_unit='ms')
-        loaded_events = Events(pl.read_csv(tmp_path / f'events.{extension}'))
+        loaded_events = Events(
+            pl.read_csv(tmp_path / f'events.{extension}'), offsets_inclusive=False,
+        )
     else:
         loaded = from_ipc(tmp_path / f'samples.{extension}')
-        loaded_events = Events(pl.read_ipc(tmp_path / f'events.{extension}'))
+        loaded_events = Events(
+            pl.read_ipc(tmp_path / f'events.{extension}'), offsets_inclusive=False,
+        )
 
     assert loaded.samples['time'].to_list() == gaze.samples['time'].to_list()
     assert loaded.samples.schema['time'] == pl.Duration('us')

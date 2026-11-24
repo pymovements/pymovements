@@ -78,7 +78,7 @@ def _build_events(*, keyed: bool = False) -> Events:
     data: dict[str, object] = {
         'name': ['fixation'] * _N_EVENTS,
         'onset': list(range(_N_EVENTS)),
-        'offset': [index + 1 for index in range(_N_EVENTS)],
+        'duration': [1] * _N_EVENTS,
         'location': locations,
     }
     if keyed:

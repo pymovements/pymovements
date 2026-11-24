@@ -57,7 +57,7 @@ def test_events_metadata_is_deepcopied_on_construction():
 
 def test_events_clone_deepcopies_metadata():
     events = Events(
-        name=['fixation'], onsets=[0], offsets=[1],
+        name=['fixation'], onsets=[0], durations=[1],
         metadata={'Sources': ['raw/sub_1.csv']},
     )
 
@@ -70,7 +70,7 @@ def test_events_clone_deepcopies_metadata():
 
 def test_events_split_list_propagates_metadata():
     events = Events(
-        name=['fixation', 'fixation'], onsets=[0, 2], offsets=[1, 3], trials=[1, 2],
+        name=['fixation', 'fixation'], onsets=[0, 2], durations=[1, 1], trials=[1, 2],
         metadata={'Sources': ['raw/sub_1.csv']},
     )
 
@@ -83,7 +83,7 @@ def test_events_split_list_propagates_metadata():
 
 def test_events_split_dict_propagates_metadata():
     events = Events(
-        name=['fixation', 'fixation'], onsets=[0, 2], offsets=[1, 3], trials=[1, 2],
+        name=['fixation', 'fixation'], onsets=[0, 2], durations=[1, 1], trials=[1, 2],
         metadata={'Sources': ['raw/sub_1.csv']},
     )
 
@@ -99,7 +99,7 @@ def make_correction_events():
         pl.DataFrame({
             'name': ['fixation'],
             'onset': [0],
-            'offset': [100],
+            'duration': [100],
             'location': [[100.0, 105.0]],
         }),
         metadata={'Sources': ['raw/sub_1.csv']},
@@ -153,7 +153,7 @@ def test_events_map_to_aois_merges_stimulus_sources(simple_stimulus: TextStimulu
         data=pl.DataFrame({
             'name': ['fixation'],
             'onset': [0],
-            'offset': [1],
+            'duration': [1],
             'location': [[5, 5]],
         }),
         metadata={'Sources': ['raw/sub_1.csv']},
@@ -188,8 +188,7 @@ def make_entry_events(inclusive=True):
     )
 
 
-# The rebuild sites of Events run on both conventions. Gaze.detect stays inclusive: the
-# detectors declare inclusive offsets, so existing exclusive events raise there by design.
+# The rebuild sites of Events run on both conventions.
 @pytest.fixture(name='inclusive', params=[True, False], ids=['inclusive', 'exclusive'])
 def fixture_inclusive(request):
     return request.param
@@ -316,19 +315,18 @@ def test_gaze_detect_rebuilds_shared_empty_events_without_warning():
     with no_warnings():
         gaze.detect('fill')
 
-    # The fill detector appends its offsets to the empty events.
-    assert_rebuilt([gaze.events], ['trial', 'onset', 'duration', 'name', 'offset'])
+    # The fill detector appends its events to the empty events.
+    assert_rebuilt([gaze.events], ['trial', 'onset', 'duration', 'name'])
 
 
-@pytest.mark.parametrize('inclusive', [True], ids=['inclusive'])
-def test_gaze_detect_rebuilds_per_group_events_without_warning(entry_events):
+def test_gaze_detect_rebuilds_per_group_events_without_warning(entry_events, inclusive):
     gaze = make_gaze()
     gaze.events = entry_events
 
     with no_warnings():
         gaze.detect('fill')
 
-    assert_rebuilt([gaze.events], _REBUILD_ENTRY_COLUMNS)
+    assert_rebuilt([gaze.events], _REBUILD_ENTRY_COLUMNS, inclusive)
 
 
 def test_bridge_gaps_rebuilds_entries_without_warning(entry_events, inclusive):

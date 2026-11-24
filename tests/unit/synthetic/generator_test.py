@@ -72,7 +72,7 @@ def test_event_generator_returns_events(uniform_event_generator):
     events = uniform_event_generator().generate(duration=1.0, seed=42)
 
     assert isinstance(events, Events)
-    assert events.frame['offset'].dt.total_milliseconds().max() == 1000
+    assert (events.frame['onset'] + events.frame['duration']).dt.total_milliseconds().max() == 1000
 
 
 #: Each level's toy generator fixture, the hyperparameters and the run parameters it needs.
@@ -656,7 +656,7 @@ def test_run_defaults_are_recorded(uniform_event_generator):
     events = DefaultDurationGenerator().generate(seed=42)
 
     assert events.metadata['synthetic']['run'] == {'duration': 1.5}
-    assert events.frame['offset'].dt.total_milliseconds().max() == 1500
+    assert (events.frame['onset'] + events.frame['duration']).dt.total_milliseconds().max() == 1500
 
 
 def test_event_generator_records_provenance(uniform_event_generator):
