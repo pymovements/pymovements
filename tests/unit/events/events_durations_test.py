@@ -87,7 +87,7 @@ def test_init_durations_respect_time_unit():
     ],
 )
 def test_init_supplied_offset_column_stays_stored_as_supplied(kwargs):
-    events = Events(**kwargs)
+    events = Events(**kwargs, offsets_inclusive=True, sampling_rate=1000)
 
     assert events.frame['offset'].to_list() == [
         timedelta(milliseconds=5), timedelta(milliseconds=20),
@@ -192,13 +192,13 @@ def test_init_column_order_trial_columns_then_minimal_schema_then_extras():
         'offset': [5], 'extra': ['a'], 'name': ['fixation'], 'trial': [1], 'onset': [0],
     })
 
-    events = Events(data, trial_columns='trial')
+    events = Events(data, trial_columns='trial', offsets_inclusive=False)
 
     assert events.columns == ['trial', 'onset', 'duration', 'name', 'offset', 'extra']
 
 
 def test_init_keyword_column_order():
-    events = Events(name='blink', onsets=[2], offsets=[3], trials=[1])
+    events = Events(name='blink', onsets=[2], offsets=[3], trials=[1], offsets_inclusive=False)
 
     assert events.columns == ['trial', 'onset', 'duration', 'name', 'offset']
 
@@ -208,29 +208,73 @@ def test_init_keyword_column_order():
     [
         pytest.param({'onsets': [0, 10], 'offsets': [5, 20]}, id='keywords'),
         pytest.param({'data': pl.DataFrame({'onset': [0, 10], 'offset': [5, 20]})}, id='frame'),
-    ],
-)
-def test_init_undeclared_offsets_without_durations_keep_todays_values(kwargs):
-    events = Events(**kwargs)
-
-    assert events.frame['duration'].to_list() == [
-        timedelta(milliseconds=5), timedelta(milliseconds=10),
-    ]
-
-
-@pytest.mark.parametrize(
-    'kwargs',
-    [
-        pytest.param({'onsets': [0], 'offsets': [5], 'durations': [99]}, id='keywords'),
+        pytest.param({'onsets': [0], 'offsets': [5], 'durations': [99]}, id='durations'),
         pytest.param(
-            {'data': pl.DataFrame({'onset': [0], 'offset': [5], 'duration': [99]})}, id='frame',
+            {'data': pl.DataFrame({'onset': [0], 'offset': [5], 'duration': [99]})},
+            id='frame_durations',
+        ),
+        pytest.param(
+            {'onsets': [0], 'offsets': [5], 'durations': [5], 'durations_from_offsets': True},
+            id='durations_from_offsets',
+        ),
+        pytest.param({'onsets': [0], 'offsets': [5], 'validate': False}, id='validate_false'),
+        pytest.param({'onsets': [0], 'offsets': [5], 'sampling_rate': 1000}, id='sampling_rate'),
+        pytest.param(
+            {'onsets': [0], 'offsets': [5], 'metadata': {'offset': {'inclusive': None}}},
+            id='entry_none',
         ),
     ],
 )
-def test_init_undeclared_offsets_keep_supplied_durations_unchecked(kwargs):
-    events = Events(**kwargs)
+def test_init_undeclared_offsets_raise_with_recipes(kwargs):
+    with pytest.raises(ValueError) as excinfo:
+        Events(**kwargs)
 
-    assert events.frame['duration'].to_list() == [timedelta(milliseconds=99)]
+    message = str(excinfo.value)
+    assert message.startswith("the 'offset' column has no declared convention")
+    assert 'offsets_inclusive=True, durations_from_offsets=True, sampling_rate=' in message
+    assert 'load_event_files(offsets_inclusive=True, durations_from_offsets=True)' in message
+
+
+class TestLegacyFile:
+    """A file saved before v0.29.0 stores duration == offset - onset on every row."""
+
+    frame = pl.DataFrame({
+        'onset': [0, 10], 'duration': [5, 10], 'name': ['saccade', 'fixation'], 'offset': [5, 20],
+    })
+
+    @pytest.mark.parametrize(
+        ('kwargs', 'match'),
+        [
+            pytest.param({}, 'no declared convention', id='no_keywords'),
+            pytest.param(
+                {'offsets_inclusive': True}, 'every row contradicts offsets_inclusive=True',
+                id='inclusive',
+            ),
+        ],
+    )
+    def test_raises(self, kwargs, match):
+        with pytest.raises(ValueError, match=match):
+            Events(self.frame, sampling_rate=1000, **kwargs)
+
+    @pytest.mark.parametrize(
+        ('kwargs', 'expected_ms'),
+        [
+            pytest.param(
+                {'offsets_inclusive': True, 'durations_from_offsets': True}, [6, 11],
+                id='inclusive_durations_from_offsets',
+            ),
+            pytest.param({'offsets_inclusive': False}, [5, 10], id='exclusive'),
+            pytest.param(
+                {'offsets_inclusive': True, 'validate': False}, [5, 10], id='inclusive_unchecked',
+            ),
+        ],
+    )
+    def test_durations(self, kwargs, expected_ms):
+        events = Events(self.frame, sampling_rate=1000, **kwargs)
+
+        assert events.frame['duration'].to_list() == [
+            timedelta(milliseconds=ms) for ms in expected_ms
+        ]
 
 
 @pytest.mark.parametrize(
@@ -254,7 +298,7 @@ def test_init_declared_offsets_without_durations_derive(
 ):
     events = Events(**kwargs, offsets_inclusive=offsets_inclusive, sampling_rate=sampling_rate)
 
-    assert events.frame['duration'].to_list() == [timedelta(milliseconds=v) for v in expected_ms]
+    assert events.frame['duration'].to_list() == [timedelta(milliseconds=ms) for ms in expected_ms]
 
 
 def test_init_inclusive_derivation_rounds_sampling_interval_to_microseconds():
@@ -294,7 +338,7 @@ def test_init_durations_from_offsets_replaces_durations(
         durations_from_offsets=True, validate=validate,
     )
 
-    assert events.frame['duration'].to_list() == [timedelta(milliseconds=v) for v in expected_ms]
+    assert events.frame['duration'].to_list() == [timedelta(milliseconds=ms) for ms in expected_ms]
 
 
 @pytest.mark.parametrize('offsets_inclusive', [True, False])
@@ -335,27 +379,6 @@ def test_init_offset_keywords_without_offset_column_warn_once_and_are_ignored(
     assert len(record) == 1
     assert events.frame['duration'].to_list() == [timedelta(milliseconds=5)]
     assert 'offset' not in events.columns
-
-
-@pytest.mark.parametrize('validate', [True, False])
-@pytest.mark.parametrize(
-    ('durations', 'expected_ms'),
-    [
-        pytest.param(None, 5, id='no_durations'),
-        pytest.param([99], 99, id='durations'),
-    ],
-)
-def test_init_durations_from_offsets_on_undeclared_offsets_warns_once_and_is_ignored(
-        validate, durations, expected_ms,
-):
-    with pytest.warns(UserWarning, match="'offset' column is undeclared") as record:
-        events = Events(
-            onsets=[0], offsets=[5], durations=durations,
-            durations_from_offsets=True, validate=validate,
-        )
-
-    assert len(record) == 1
-    assert events.frame['duration'].to_list() == [timedelta(milliseconds=expected_ms)]
 
 
 @pytest.mark.parametrize('sampling_rate', [0, -1, math.nan, math.inf])
@@ -607,7 +630,7 @@ def test_check_skipped_with_validate_false():
 
 
 def test_drop_removes_offset_column():
-    events = Events(onsets=[0], offsets=[5])
+    events = Events(onsets=[0], offsets=[5], offsets_inclusive=False)
 
     events.drop('offset')
 
@@ -638,6 +661,7 @@ def test_event_property_columns_exclude_columns_present_at_init(events):
 def test_merge_subsequent_close_events_keeps_durations():
     events = Events(
         name='fixation', onsets=[0, 20, 100], offsets=[10, 30, 110], durations=[12, 40, 5],
+        offsets_inclusive=False, validate=False,
     )
 
     events.merge_subsequent_close_events(max_gap=15)
@@ -673,4 +697,4 @@ def test_merge_subsequent_close_events_without_offset_gaps_from_durations(
     events.merge_subsequent_close_events(max_gap=15)
 
     assert 'offset' not in events.columns
-    assert events.frame['duration'].to_list() == [timedelta(milliseconds=v) for v in expected_ms]
+    assert events.frame['duration'].to_list() == [timedelta(milliseconds=ms) for ms in expected_ms]

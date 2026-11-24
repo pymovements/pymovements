@@ -130,7 +130,7 @@ THRESHOLD_DETECTORS = [param for param in DETECTORS if param.id != 'out_of_scree
 
 
 def _entries(sampling_rate):
-    return {'offset': {'inclusive': True}, 'sampling_rate': sampling_rate}
+    return {'sampling_rate': sampling_rate}
 
 
 @pytest.mark.parametrize(('detector', 'build_kwargs', 'event_samples'), DETECTORS)
@@ -163,7 +163,6 @@ class TestEveryDetector:
         first, last = int(event_timesteps[0]), int(event_timesteps[-1])
         assert events.frame['onset'].to_list() == [timedelta(milliseconds=first)]
         assert events.frame['duration'].to_list() == [timedelta(milliseconds=last - first + 2)]
-        assert events.frame['offset'].to_list() == [timedelta(milliseconds=last)]
         assert events.metadata == _entries(500)
 
 
@@ -177,7 +176,6 @@ def test_single_sample_event_lasts_one_nominal_interval(
     nominal_interval = timedelta(microseconds=round(1_000_000 / sampling_rate))
     assert events.frame['onset'].to_list() == [timedelta(milliseconds=1)]
     assert events.frame['duration'].to_list() == [nominal_interval]
-    assert events.frame['offset'].to_list() == [timedelta(milliseconds=1)]
     assert events.metadata == _entries(sampling_rate)
 
 
@@ -235,7 +233,6 @@ def test_timesteps_none_builds_the_grid_from_the_sampling_rate(detector, kwargs)
 
     assert events.frame['onset'].to_list() == [timedelta(0)]
     assert events.frame['duration'].to_list() == [timedelta(milliseconds=18)]
-    assert events.frame['offset'].to_list() == [timedelta(milliseconds=16)]
     assert events.metadata == _entries(500)
 
 
@@ -298,7 +295,7 @@ def test_idt_duplicate_last_timestamp_ends_on_the_nominal_interval():
         pytest.param(blink, {'pupil': [1.0, 1.0, 1.0]}, id='blink'),
         pytest.param(
             fill,
-            {'events': Events(onsets=[0], offsets=[3]), 'timesteps': np.arange(3)},
+            {'events': Events(onsets=[0], durations=[3]), 'timesteps': np.arange(3)},
             id='fill',
         ),
         pytest.param(

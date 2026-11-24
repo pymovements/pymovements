@@ -540,7 +540,8 @@ class Events:
     offsets_inclusive: bool | None
         The convention of the offsets. True if an offset is the last sample of the event, False
         if it is the first sample after the event. None leaves the convention to the convention
-        entry in ``metadata``, see the notes below. (default: None)
+        entry in ``metadata``, see the notes below. An ``offset`` column with neither this
+        argument nor the metadata entry raises. (default: None)
     durations_from_offsets: bool
         If True, durations are derived from declared offsets and replace supplied durations.
         (default: False)
@@ -599,10 +600,10 @@ class Events:
         match the length of ``onsets``, if ``time_unit`` is not one of ``'s'``, ``'ms'`` or
         ``'us'``, if ``sampling_rate`` or the sampling-rate entry in ``metadata`` is not a
         finite positive number, if the ``offset`` entry in ``metadata`` is not a dict or its
-        ``inclusive`` value is neither a bool nor ``None``, if durations are derived
-        from inclusive offsets without a sampling rate, if every row contradicts the declared
-        offset convention, or if ``offsets_inclusive`` or ``sampling_rate`` differs from its entry
-        in ``metadata``.
+        ``inclusive`` value is neither a bool nor ``None``, if the frame has an ``offset``
+        column without a declared convention, if durations are derived from inclusive offsets
+        without a sampling rate, if every row contradicts the declared offset convention, or if
+        ``offsets_inclusive`` or ``sampling_rate`` differs from its entry in ``metadata``.
 
     Notes
     -----
@@ -635,12 +636,9 @@ class Events:
             otherwise the durations are kept and checked unless ``validate=False``
         * - yes
           - undeclared
-          - no
-          - the durations are derived as ``offset - onset``
-        * - yes
-          - undeclared
-          - yes
-          - the durations are kept unchecked
+          - any
+          - a ``ValueError`` names the ways to declare the convention and the recipe for
+            files saved before v0.29.0
 
     An inclusive offset adds one sampling interval to ``offset - onset``, an exclusive offset
     adds nothing. The check compares each row with both values non-null against this rule and
@@ -650,6 +648,12 @@ class Events:
     names the ways to fix it. If some rows do, one warning names them. A null ``duration``
     beside a non-null ``offset`` is reported with one warning and stays null, with
     ``validate=True`` and ``validate=False`` alike.
+
+    An event file saved before v0.29.0 stores ``duration == offset - onset`` on every row beside
+    inclusive offsets, and no stored convention will ever exist for it, so the constructor never
+    guesses. ``offsets_inclusive=True`` together with ``durations_from_offsets=True`` and a
+    ``sampling_rate`` derives its durations again, here and in
+    :py:meth:`~pymovements.Dataset.load_event_files`, which takes the rate from the experiment.
 
     ``metadata`` carries the convention and the sampling rate, so a frame rebuilt from
     ``frame`` and ``metadata`` needs neither keyword:
@@ -683,29 +687,29 @@ class Events:
 
     Examples
     --------
-    We define an event dataframe with given names of events and lists of onsets and offsets.
-    Without a declared convention, durations are computed as ``offset - onset``.
+    We define events by their names, onsets and durations:
 
     >>> event = Events(
     ...    name=['fixation', 'fixation', 'fixation', 'fixation', ],
     ...    onsets=[1988147, 1988351, 1988592, 1988788],
-    ...    offsets=[1988322, 1988546, 1988736, 1989013]
+    ...    durations=[175, 195, 144, 225],
     ... )
     >>> event
-    shape: (4, 4)
-    ┌──────────────┬──────────────┬──────────┬──────────────┐
-    │ onset        ┆ duration     ┆ name     ┆ offset       │
-    │ ---          ┆ ---          ┆ ---      ┆ ---          │
-    │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
-    ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 33m 8s 147ms ┆ 175ms        ┆ fixation ┆ 33m 8s 322ms │
-    │ 33m 8s 351ms ┆ 195ms        ┆ fixation ┆ 33m 8s 546ms │
-    │ 33m 8s 592ms ┆ 144ms        ┆ fixation ┆ 33m 8s 736ms │
-    │ 33m 8s 788ms ┆ 225ms        ┆ fixation ┆ 33m 9s 13ms  │
-    └──────────────┴──────────────┴──────────┴──────────────┘
+    shape: (4, 3)
+    ┌──────────────┬──────────────┬──────────┐
+    │ onset        ┆ duration     ┆ name     │
+    │ ---          ┆ ---          ┆ ---      │
+    │ duration[μs] ┆ duration[μs] ┆ str      │
+    ╞══════════════╪══════════════╪══════════╡
+    │ 33m 8s 147ms ┆ 175ms        ┆ fixation │
+    │ 33m 8s 351ms ┆ 195ms        ┆ fixation │
+    │ 33m 8s 592ms ┆ 144ms        ┆ fixation │
+    │ 33m 8s 788ms ┆ 225ms        ┆ fixation │
+    └──────────────┴──────────────┴──────────┘
 
-    If the offsets are the last sample of each event, we declare them inclusive and pass the
-    sampling rate. Each duration then includes the last sample:
+    Offsets are stored as an additional ``offset`` column, as supplied, and their convention has
+    to be declared. If the offsets are the last sample of each event, we declare them inclusive
+    and pass the sampling rate. Each duration then includes the last sample:
 
     >>> Events(
     ...     name='blink', onsets=[2], offsets=[3], offsets_inclusive=True, sampling_rate=1000,
@@ -719,17 +723,12 @@ class Events:
     │ 2ms          ┆ 2ms          ┆ blink ┆ 3ms          │
     └──────────────┴──────────────┴───────┴──────────────┘
 
-    Events can also be defined by onsets and durations alone, without an offset column:
+    An ``offset`` column without a declared convention raises:
 
-    >>> Events(name='blink', onsets=[2], durations=[2])
-    shape: (1, 3)
-    ┌──────────────┬──────────────┬───────┐
-    │ onset        ┆ duration     ┆ name  │
-    │ ---          ┆ ---          ┆ ---   │
-    │ duration[μs] ┆ duration[μs] ┆ str   │
-    ╞══════════════╪══════════════╪═══════╡
-    │ 2ms          ┆ 2ms          ┆ blink │
-    └──────────────┴──────────────┴───────┘
+    >>> Events(name='blink', onsets=[2], offsets=[3])  # doctest: +ELLIPSIS
+    Traceback (most recent call last):
+    ...
+    ValueError: the 'offset' column has no declared convention. ...
 
     If both durations and declared offsets are given, the durations are checked against the
     offsets. Durations computed as ``offset - onset`` for inclusive offsets are one sample short:
@@ -1085,19 +1084,19 @@ class Events:
             return
 
         if offsets_inclusive is None:
-            # Undeclared offsets keep the pre-v0.29.0 behavior until an undeclared offset raises.
-            if durations_from_offsets:
-                warn(
-                    "durations_from_offsets=True ignored: the 'offset' column is undeclared. "
-                    'Pass offsets_inclusive to declare its convention.',
-                    UserWarning,
-                    stacklevel=3,
-                )
-            if not durations_supplied:
-                self.frame = self.frame.with_columns(
-                    (polars.col('offset') - polars.col('onset')).alias('duration'),
-                )
-            return
+            # The convention is never guessed: a file saved before v0.29.0 stores
+            # duration == offset - onset beside inclusive offsets, and so does a correct file
+            # with exclusive offsets.
+            raise ValueError(
+                "the 'offset' column has no declared convention. Pass offsets_inclusive=True "
+                'if an offset is the last sample of its event, or offsets_inclusive=False if it '
+                'is the first sample after it. Event files saved before v0.29.0 store durations '
+                'that are one sampling interval short of their inclusive offsets, so derive the '
+                'durations again: Events(frame, offsets_inclusive=True, '
+                'durations_from_offsets=True, sampling_rate=...) or '
+                'dataset.load_event_files(offsets_inclusive=True, durations_from_offsets=True), '
+                'which takes the sampling rate from the experiment.',
+            )
 
         sampling_interval = None
         if sampling_rate is not None:
@@ -1395,118 +1394,118 @@ class Events:
         ...         'microsaccade', 'microsaccade', 'saccade',
         ...     ],
         ...     onsets=[90, 99, 99, 100, 101, 115, 145, 175],
-        ...     offsets=[100, 176, 175, 178, 175, 124, 157, 199],
+        ...     durations=[10, 77, 76, 78, 74, 9, 12, 24],
         ... )
         >>> events
-        shape: (8, 4)
-        ┌──────────────┬──────────────┬──────────────────┬──────────────┐
-        │ onset        ┆ duration     ┆ name             ┆ offset       │
-        │ ---          ┆ ---          ┆ ---              ┆ ---          │
-        │ duration[μs] ┆ duration[μs] ┆ str              ┆ duration[μs] │
-        ╞══════════════╪══════════════╪══════════════════╪══════════════╡
-        │ 90ms         ┆ 10ms         ┆ saccade          ┆ 100ms        │
-        │ 99ms         ┆ 77ms         ┆ fixation         ┆ 176ms        │
-        │ 99ms         ┆ 76ms         ┆ fixation_idt     ┆ 175ms        │
-        │ 100ms        ┆ 78ms         ┆ fixation_ivt     ┆ 178ms        │
-        │ 101ms        ┆ 74ms         ┆ fixation_eyelink ┆ 175ms        │
-        │ 115ms        ┆ 9ms          ┆ microsaccade     ┆ 124ms        │
-        │ 145ms        ┆ 12ms         ┆ microsaccade     ┆ 157ms        │
-        │ 175ms        ┆ 24ms         ┆ saccade          ┆ 199ms        │
-        └──────────────┴──────────────┴──────────────────┴──────────────┘
+        shape: (8, 3)
+        ┌──────────────┬──────────────┬──────────────────┐
+        │ onset        ┆ duration     ┆ name             │
+        │ ---          ┆ ---          ┆ ---              │
+        │ duration[μs] ┆ duration[μs] ┆ str              │
+        ╞══════════════╪══════════════╪══════════════════╡
+        │ 90ms         ┆ 10ms         ┆ saccade          │
+        │ 99ms         ┆ 77ms         ┆ fixation         │
+        │ 99ms         ┆ 76ms         ┆ fixation_idt     │
+        │ 100ms        ┆ 78ms         ┆ fixation_ivt     │
+        │ 101ms        ┆ 74ms         ┆ fixation_eyelink │
+        │ 115ms        ┆ 9ms          ┆ microsaccade     │
+        │ 145ms        ┆ 12ms         ┆ microsaccade     │
+        │ 175ms        ┆ 24ms         ┆ saccade          │
+        └──────────────┴──────────────┴──────────────────┘
 
         All fixations:
 
         >>> events.filter_by_name('fixation')
-        shape: (4, 4)
-        ┌──────────────┬──────────────┬──────────────────┬──────────────┐
-        │ onset        ┆ duration     ┆ name             ┆ offset       │
-        │ ---          ┆ ---          ┆ ---              ┆ ---          │
-        │ duration[μs] ┆ duration[μs] ┆ str              ┆ duration[μs] │
-        ╞══════════════╪══════════════╪══════════════════╪══════════════╡
-        │ 99ms         ┆ 77ms         ┆ fixation         ┆ 176ms        │
-        │ 99ms         ┆ 76ms         ┆ fixation_idt     ┆ 175ms        │
-        │ 100ms        ┆ 78ms         ┆ fixation_ivt     ┆ 178ms        │
-        │ 101ms        ┆ 74ms         ┆ fixation_eyelink ┆ 175ms        │
-        └──────────────┴──────────────┴──────────────────┴──────────────┘
+        shape: (4, 3)
+        ┌──────────────┬──────────────┬──────────────────┐
+        │ onset        ┆ duration     ┆ name             │
+        │ ---          ┆ ---          ┆ ---              │
+        │ duration[μs] ┆ duration[μs] ┆ str              │
+        ╞══════════════╪══════════════╪══════════════════╡
+        │ 99ms         ┆ 77ms         ┆ fixation         │
+        │ 99ms         ┆ 76ms         ┆ fixation_idt     │
+        │ 100ms        ┆ 78ms         ┆ fixation_ivt     │
+        │ 101ms        ┆ 74ms         ┆ fixation_eyelink │
+        └──────────────┴──────────────┴──────────────────┘
 
         Exact match for fixation:
 
         >>> events.filter_by_name('^fixation$')
-        shape: (1, 4)
-        ┌──────────────┬──────────────┬──────────┬──────────────┐
-        │ onset        ┆ duration     ┆ name     ┆ offset       │
-        │ ---          ┆ ---          ┆ ---      ┆ ---          │
-        │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
-        ╞══════════════╪══════════════╪══════════╪══════════════╡
-        │ 99ms         ┆ 77ms         ┆ fixation ┆ 176ms        │
-        └──────────────┴──────────────┴──────────┴──────────────┘
+        shape: (1, 3)
+        ┌──────────────┬──────────────┬──────────┐
+        │ onset        ┆ duration     ┆ name     │
+        │ ---          ┆ ---          ┆ ---      │
+        │ duration[μs] ┆ duration[μs] ┆ str      │
+        ╞══════════════╪══════════════╪══════════╡
+        │ 99ms         ┆ 77ms         ┆ fixation │
+        └──────────────┴──────────────┴──────────┘
 
         Prefix match:
 
         >>> events.filter_by_name('^fixation_')
-        shape: (3, 4)
-        ┌──────────────┬──────────────┬──────────────────┬──────────────┐
-        │ onset        ┆ duration     ┆ name             ┆ offset       │
-        │ ---          ┆ ---          ┆ ---              ┆ ---          │
-        │ duration[μs] ┆ duration[μs] ┆ str              ┆ duration[μs] │
-        ╞══════════════╪══════════════╪══════════════════╪══════════════╡
-        │ 99ms         ┆ 76ms         ┆ fixation_idt     ┆ 175ms        │
-        │ 100ms        ┆ 78ms         ┆ fixation_ivt     ┆ 178ms        │
-        │ 101ms        ┆ 74ms         ┆ fixation_eyelink ┆ 175ms        │
-        └──────────────┴──────────────┴──────────────────┴──────────────┘
+        shape: (3, 3)
+        ┌──────────────┬──────────────┬──────────────────┐
+        │ onset        ┆ duration     ┆ name             │
+        │ ---          ┆ ---          ┆ ---              │
+        │ duration[μs] ┆ duration[μs] ┆ str              │
+        ╞══════════════╪══════════════╪══════════════════╡
+        │ 99ms         ┆ 76ms         ┆ fixation_idt     │
+        │ 100ms        ┆ 78ms         ┆ fixation_ivt     │
+        │ 101ms        ┆ 74ms         ┆ fixation_eyelink │
+        └──────────────┴──────────────┴──────────────────┘
 
         Suffix match:
 
         >>> events.filter_by_name('ivt$')
-        shape: (1, 4)
-        ┌──────────────┬──────────────┬──────────────┬──────────────┐
-        │ onset        ┆ duration     ┆ name         ┆ offset       │
-        │ ---          ┆ ---          ┆ ---          ┆ ---          │
-        │ duration[μs] ┆ duration[μs] ┆ str          ┆ duration[μs] │
-        ╞══════════════╪══════════════╪══════════════╪══════════════╡
-        │ 100ms        ┆ 78ms         ┆ fixation_ivt ┆ 178ms        │
-        └──────────────┴──────────────┴──────────────┴──────────────┘
+        shape: (1, 3)
+        ┌──────────────┬──────────────┬──────────────┐
+        │ onset        ┆ duration     ┆ name         │
+        │ ---          ┆ ---          ┆ ---          │
+        │ duration[μs] ┆ duration[μs] ┆ str          │
+        ╞══════════════╪══════════════╪══════════════╡
+        │ 100ms        ┆ 78ms         ┆ fixation_ivt │
+        └──────────────┴──────────────┴──────────────┘
 
         All saccade variants:
 
         >>> events.filter_by_name('saccade')
-        shape: (4, 4)
-        ┌──────────────┬──────────────┬──────────────┬──────────────┐
-        │ onset        ┆ duration     ┆ name         ┆ offset       │
-        │ ---          ┆ ---          ┆ ---          ┆ ---          │
-        │ duration[μs] ┆ duration[μs] ┆ str          ┆ duration[μs] │
-        ╞══════════════╪══════════════╪══════════════╪══════════════╡
-        │ 90ms         ┆ 10ms         ┆ saccade      ┆ 100ms        │
-        │ 115ms        ┆ 9ms          ┆ microsaccade ┆ 124ms        │
-        │ 145ms        ┆ 12ms         ┆ microsaccade ┆ 157ms        │
-        │ 175ms        ┆ 24ms         ┆ saccade      ┆ 199ms        │
-        └──────────────┴──────────────┴──────────────┴──────────────┘
+        shape: (4, 3)
+        ┌──────────────┬──────────────┬──────────────┐
+        │ onset        ┆ duration     ┆ name         │
+        │ ---          ┆ ---          ┆ ---          │
+        │ duration[μs] ┆ duration[μs] ┆ str          │
+        ╞══════════════╪══════════════╪══════════════╡
+        │ 90ms         ┆ 10ms         ┆ saccade      │
+        │ 115ms        ┆ 9ms          ┆ microsaccade │
+        │ 145ms        ┆ 12ms         ┆ microsaccade │
+        │ 175ms        ┆ 24ms         ┆ saccade      │
+        └──────────────┴──────────────┴──────────────┘
 
         Only microsaccades:
 
         >>> events.filter_by_name('microsaccade')
-        shape: (2, 4)
-        ┌──────────────┬──────────────┬──────────────┬──────────────┐
-        │ onset        ┆ duration     ┆ name         ┆ offset       │
-        │ ---          ┆ ---          ┆ ---          ┆ ---          │
-        │ duration[μs] ┆ duration[μs] ┆ str          ┆ duration[μs] │
-        ╞══════════════╪══════════════╪══════════════╪══════════════╡
-        │ 115ms        ┆ 9ms          ┆ microsaccade ┆ 124ms        │
-        │ 145ms        ┆ 12ms         ┆ microsaccade ┆ 157ms        │
-        └──────────────┴──────────────┴──────────────┴──────────────┘
+        shape: (2, 3)
+        ┌──────────────┬──────────────┬──────────────┐
+        │ onset        ┆ duration     ┆ name         │
+        │ ---          ┆ ---          ┆ ---          │
+        │ duration[μs] ┆ duration[μs] ┆ str          │
+        ╞══════════════╪══════════════╪══════════════╡
+        │ 115ms        ┆ 9ms          ┆ microsaccade │
+        │ 145ms        ┆ 12ms         ┆ microsaccade │
+        └──────────────┴──────────────┴──────────────┘
 
         Exact match for saccade:
 
         >>> events.filter_by_name('^saccade$')
-        shape: (2, 4)
-        ┌──────────────┬──────────────┬─────────┬──────────────┐
-        │ onset        ┆ duration     ┆ name    ┆ offset       │
-        │ ---          ┆ ---          ┆ ---     ┆ ---          │
-        │ duration[μs] ┆ duration[μs] ┆ str     ┆ duration[μs] │
-        ╞══════════════╪══════════════╪═════════╪══════════════╡
-        │ 90ms         ┆ 10ms         ┆ saccade ┆ 100ms        │
-        │ 175ms        ┆ 24ms         ┆ saccade ┆ 199ms        │
-        └──────────────┴──────────────┴─────────┴──────────────┘
+        shape: (2, 3)
+        ┌──────────────┬──────────────┬─────────┐
+        │ onset        ┆ duration     ┆ name    │
+        │ ---          ┆ ---          ┆ ---     │
+        │ duration[μs] ┆ duration[μs] ┆ str     │
+        ╞══════════════╪══════════════╪═════════╡
+        │ 90ms         ┆ 10ms         ┆ saccade │
+        │ 175ms        ┆ 24ms         ┆ saccade │
+        └──────────────┴──────────────┴─────────┘
 
         Returns
         -------
@@ -1680,7 +1679,7 @@ class Events:
         ...     polars.DataFrame({
         ...         'name': ['fixation', 'fixation', 'fixation'],
         ...         'onset': [0, 110, 165],
-        ...         'offset': [100, 150, 200],
+        ...         'duration': [100, 40, 35],
         ...         'trial': [1, None, None],
         ...         'page': [1, 2, None],
         ...     }),
@@ -1691,29 +1690,29 @@ class Events:
 
         >>> events.drop_nulls(subset=['trial', 'page'], how='all')
         >>> events
-        shape: (2, 6)
-        ┌──────────────┬──────────────┬──────────┬──────────────┬───────┬──────┐
-        │ onset        ┆ duration     ┆ name     ┆ offset       ┆ trial ┆ page │
-        │ ---          ┆ ---          ┆ ---      ┆ ---          ┆ ---   ┆ ---  │
-        │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] ┆ i64   ┆ i64  │
-        ╞══════════════╪══════════════╪══════════╪══════════════╪═══════╪══════╡
-        │ 0µs          ┆ 100ms        ┆ fixation ┆ 100ms        ┆ 1     ┆ 1    │
-        │ 110ms        ┆ 40ms         ┆ fixation ┆ 150ms        ┆ null  ┆ 2    │
-        └──────────────┴──────────────┴──────────┴──────────────┴───────┴──────┘
+        shape: (2, 5)
+        ┌──────────────┬──────────────┬──────────┬───────┬──────┐
+        │ onset        ┆ duration     ┆ name     ┆ trial ┆ page │
+        │ ---          ┆ ---          ┆ ---      ┆ ---   ┆ ---  │
+        │ duration[μs] ┆ duration[μs] ┆ str      ┆ i64   ┆ i64  │
+        ╞══════════════╪══════════════╪══════════╪═══════╪══════╡
+        │ 0µs          ┆ 100ms        ┆ fixation ┆ 1     ┆ 1    │
+        │ 110ms        ┆ 40ms         ┆ fixation ┆ null  ┆ 2    │
+        └──────────────┴──────────────┴──────────┴───────┴──────┘
 
         Under the default ``how='any'``, a single null value suffices, removing the second
         fixation too:
 
         >>> events.drop_nulls(subset=['trial', 'page'])
         >>> events
-        shape: (1, 6)
-        ┌──────────────┬──────────────┬──────────┬──────────────┬───────┬──────┐
-        │ onset        ┆ duration     ┆ name     ┆ offset       ┆ trial ┆ page │
-        │ ---          ┆ ---          ┆ ---      ┆ ---          ┆ ---   ┆ ---  │
-        │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] ┆ i64   ┆ i64  │
-        ╞══════════════╪══════════════╪══════════╪══════════════╪═══════╪══════╡
-        │ 0µs          ┆ 100ms        ┆ fixation ┆ 100ms        ┆ 1     ┆ 1    │
-        └──────────────┴──────────────┴──────────┴──────────────┴───────┴──────┘
+        shape: (1, 5)
+        ┌──────────────┬──────────────┬──────────┬───────┬──────┐
+        │ onset        ┆ duration     ┆ name     ┆ trial ┆ page │
+        │ ---          ┆ ---          ┆ ---      ┆ ---   ┆ ---  │
+        │ duration[μs] ┆ duration[μs] ┆ str      ┆ i64   ┆ i64  │
+        ╞══════════════╪══════════════╪══════════╪═══════╪══════╡
+        │ 0µs          ┆ 100ms        ┆ fixation ┆ 1     ┆ 1    │
+        └──────────────┴──────────────┴──────────┴───────┴──────┘
         """
         if subset is None:
             subset = self.frame.columns
@@ -2025,7 +2024,7 @@ class Events:
         ...     polars.DataFrame({
         ...         'name': ['fixation', 'fixation', 'fixation'],
         ...         'onset': [0, 200, 400],
-        ...         'offset': [100, 300, 500],
+        ...         'duration': [100, 100, 100],
         ...         'location': [[100.0, 105.0], [110.0, 195.0], [120.0, 302.0]],
         ...     }),
         ... )
@@ -2193,7 +2192,7 @@ class Events:
         ...     polars.DataFrame({
         ...         'name': ['fixation', 'fixation'],
         ...         'onset': [0, 200],
-        ...         'offset': [200, 400],
+        ...         'duration': [200, 200],
         ...         'location': [[15.0, 15.0], [25.0, 15.0]],
         ...     }),
         ... )
@@ -2386,7 +2385,7 @@ class Events:
         Examples
         --------
         >>> from pymovements import Events
-        >>> events = Events(name=['saccade', 'fixation'], onsets=[0, 1], offsets=[1, 2])
+        >>> events = Events(name=['saccade', 'fixation'], onsets=[0, 1], durations=[1, 1])
         >>> events.summary()
         total events: 2
           fixation: 1
@@ -2429,23 +2428,23 @@ class Events:
         >>> events = Events(
         ...     name='fixation',
         ...     onsets=[0, 2, 5, 13, 21, 22, 30, 40, 53, 73],
-        ...     offsets=[1, 3, 10, 20, 22, 29, 35, 49, 70, 90],
+        ...     durations=[1, 1, 5, 7, 1, 7, 5, 9, 17, 17],
         ... )
         >>> events.frame.shape
-        (10, 4)
+        (10, 3)
 
         Merging all events with particular name with a gap smaller than 10 ms:
 
         >>> events.merge_subsequent_close_events(name='fixation', max_gap=10)
         >>> events.frame
-        shape: (1, 4)
-        ┌──────────────┬──────────────┬──────────┬──────────────┐
-        │ onset        ┆ duration     ┆ name     ┆ offset       │
-        │ ---          ┆ ---          ┆ ---      ┆ ---          │
-        │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
-        ╞══════════════╪══════════════╪══════════╪══════════════╡
-        │ 0µs          ┆ 90ms         ┆ fixation ┆ 90ms         │
-        └──────────────┴──────────────┴──────────┴──────────────┘
+        shape: (1, 3)
+        ┌──────────────┬──────────────┬──────────┐
+        │ onset        ┆ duration     ┆ name     │
+        │ ---          ┆ ---          ┆ ---      │
+        │ duration[μs] ┆ duration[μs] ┆ str      │
+        ╞══════════════╪══════════════╪══════════╡
+        │ 0µs          ┆ 90ms         ┆ fixation │
+        └──────────────┴──────────────┴──────────┘
 
         This combined all the smaller events into a single event with longer duration.
 
@@ -2544,6 +2543,8 @@ def _carry_detected_entries(events: Events, detected: Events) -> None:
         elif isinstance(value, dict) and value.get('inclusive') is not None:
             existing = metadata.get(key)
             if key not in metadata:
+                # The constructor refuses undeclared offsets, this guard covers a frame
+                # assigned directly.
                 if key in events.frame.columns:
                     raise ValueError(
                         f"detected events declare metadata['{key}'] = {value!r}, but the "

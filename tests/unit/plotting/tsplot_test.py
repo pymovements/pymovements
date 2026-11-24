@@ -83,7 +83,7 @@ def gaze_fixture(request):
             {
                 'name': ['fixation', 'saccade'],
                 'onset': [100, 200],
-                'offset': [150, 250],
+                'duration': [50, 50],
             },
         ),
     )
@@ -352,7 +352,7 @@ def test_tsplot_events_duration_only_frame():
 )
 def test_tsplot_without_time_column_uses_sample_index(show_events, expected_n_patches):
     events = Events(
-        pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [2]}),
+        pl.DataFrame({'name': ['fixation'], 'onset': [0], 'duration': [2]}),
     )
     gaze = Gaze(
         samples=pl.DataFrame({'x': [0.0, 1.0, 2.0], 'y': [3.0, 4.0, 5.0]}),
@@ -400,7 +400,7 @@ def test_tsplot_events_cycles_colors_beyond_ten_event_names():
             {
                 'name': event_names,
                 'onset': [i * 10 for i in range(11)],
-                'offset': [i * 10 + 5 for i in range(11)],
+                'duration': [5] * 11,
             },
         ),
     )
@@ -427,7 +427,7 @@ def test_tsplot_events_duplicate_event_names_deduplicated_in_legend():
             {
                 'name': ['fixation', 'fixation', 'saccade'],
                 'onset': [0, 20, 40],
-                'offset': [10, 30, 50],
+                'duration': [10, 10, 10],
             },
         ),
     )

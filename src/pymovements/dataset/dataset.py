@@ -143,6 +143,9 @@ class Dataset:
             events_dirname: str | None = None,
             preprocessed_dirname: str | None = None,
             extension: str = 'feather',
+            offsets_inclusive: bool | None = None,
+            durations_from_offsets: bool = False,
+            validate: bool = True,
     ) -> Dataset:
         """Parse file information and load all gaze files.
 
@@ -161,7 +164,8 @@ class Dataset:
             available.
             (default: None)
         events: bool | None
-            If ``True``, load previously saved event data. (default: None)
+            If ``True``, load previously saved event data through
+            :py:meth:`~pymovements.Dataset.load_event_files`. (default: None)
         preprocessed: bool
             If ``True``, load previously saved preprocessed data, otherwise load raw data.
             (default: False)
@@ -182,6 +186,20 @@ class Dataset:
             Specifies the file format for loading data. Valid options are: `csv`, `feather`,
             `tsv`, `txt`, `asc`.
             (default: 'feather')
+        offsets_inclusive: bool | None
+            Convention of the ``offset`` column of the saved files, forwarded to
+            :py:class:`~pymovements.Events` per file: ``True`` if the offset is the last sample
+            of the event, ``False`` if it is the first sample after it. ``None`` leaves the
+            convention to the ``offset`` entry of the metadata. A saved ``offset`` column without
+            an entry raises. (default: None)
+        durations_from_offsets: bool
+            If ``True``, replace the saved durations by the ones derived from the offsets under
+            the declared convention, forwarded to :py:class:`~pymovements.Events` per file.
+            Migrates files saved before v0.29.0 together with ``offsets_inclusive=True``.
+            (default: False)
+        validate: bool
+            If ``True``, check the saved durations against the declared offsets, forwarded to
+            :py:class:`~pymovements.Events` per file. (default: True)
 
         Returns
         -------
@@ -224,6 +242,9 @@ class Dataset:
             self.load_event_files(
                 events_dirname=events_dirname,
                 extension=extension,
+                offsets_inclusive=offsets_inclusive,
+                durations_from_offsets=durations_from_offsets,
+                validate=validate,
             )
 
         # Load stimulus files if desired and if present
@@ -544,8 +565,17 @@ class Dataset:
             self,
             events_dirname: str | None = None,
             extension: str = 'feather',
+            *,
+            offsets_inclusive: bool | None = None,
+            durations_from_offsets: bool = False,
+            validate: bool = True,
     ) -> Dataset:
         """Load all available event files.
+
+        Each file is loaded as one :py:class:`~pymovements.Events`. The sampling rate of the
+        definition's experiment is written to its ``metadata`` as the sampling-rate entry. A
+        definition without an experiment, or an experiment without a sampling rate, writes no
+        entry.
 
         Parameters
         ----------
@@ -555,6 +585,20 @@ class Dataset:
         extension: str
             Specifies the file format for loading data. Valid options are: `csv`, `feather`.
             (default: 'feather')
+        offsets_inclusive: bool | None
+            Convention of the ``offset`` column of the saved files, forwarded to
+            :py:class:`~pymovements.Events` per file: ``True`` if the offset is the last sample
+            of the event, ``False`` if it is the first sample after it. ``None`` leaves the
+            convention to the ``offset`` entry of the metadata. A saved ``offset`` column without
+            an entry raises. (default: None)
+        durations_from_offsets: bool
+            If ``True``, replace the saved durations by the ones derived from the offsets under
+            the declared convention, forwarded to :py:class:`~pymovements.Events` per file.
+            Migrates files saved before v0.29.0 together with ``offsets_inclusive=True``.
+            (default: False)
+        validate: bool
+            If ``True``, check the saved durations against the declared offsets, forwarded to
+            :py:class:`~pymovements.Events` per file. (default: True)
 
         Returns
         -------
@@ -566,14 +610,20 @@ class Dataset:
         AttributeError
             If `fileinfo` is None or the `fileinfo` dataframe is empty.
         ValueError
-            If extension is not in list of valid extensions.
+            If extension is not in list of valid extensions, if durations are derived from
+            inclusive offsets and the definition's experiment has no sampling rate, or if every
+            row of a file contradicts the declared offset convention.
         """
         self._check_fileinfo()
         events = dataset_files.load_event_files(
+            definition=self.definition,
             files=[file for file in self._files if file.definition.content == 'gaze'],
             paths=self.paths,
             events_dirname=events_dirname,
             extension=extension,
+            offsets_inclusive=offsets_inclusive,
+            durations_from_offsets=durations_from_offsets,
+            validate=validate,
         )
         self.events = events
         return self
@@ -1375,7 +1425,7 @@ class Dataset:
         ...     pl.DataFrame({
         ...         'name': ['fixation', 'fixation', 'fixation'],
         ...         'onset': [0, 200, 400],
-        ...         'offset': [100, 300, 500],
+        ...         'duration': [100, 100, 100],
         ...         'location': [[100.0, 105.0], [110.0, 195.0], [120.0, 302.0]],
         ...     }),
         ... )

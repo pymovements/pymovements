@@ -20,6 +20,7 @@
 """Tests functionality of the IHMM algorithm."""
 # pylint: disable=too-many-lines
 import copy
+from datetime import timedelta
 
 import numpy as np
 import polars as pl
@@ -820,10 +821,7 @@ def test_ihmm_detects_fixation_event_on_synthetic_data():
 
     first_event = events.frame.row(0, named=True)
 
-    onset = first_event['onset']
-    offset = first_event['offset']
-
-    assert onset <= offset
+    assert first_event['duration'] > timedelta(0)
 
 
 def test_ihmm_accepts_integer_timesteps():
@@ -1180,9 +1178,9 @@ def test_ihmm_handles_nan_velocities():
     # the low-velocity segment spans the interior NaN and yields a single fixation.
     assert len(events.frame) == 1
     onset = events.frame['onset'].dt.total_milliseconds().to_list()[0]
-    offset = events.frame['offset'].dt.total_milliseconds().to_list()[0]
+    duration = events.frame['duration'].dt.total_milliseconds().to_list()[0]
     assert onset == 0
-    assert offset == 2
+    assert duration == 3
 
 
 def test_ihmm_returns_no_events_for_all_nan_velocities():
@@ -1282,7 +1280,7 @@ def test_ihmm_state_order_independent_of_parameter_order_without_reestimation():
 
     assert len(fixation_first.frame) >= 1
     assert fixation_first.frame['onset'].to_list() == saccade_first.frame['onset'].to_list()
-    assert fixation_first.frame['offset'].to_list() == saccade_first.frame['offset'].to_list()
+    assert fixation_first.frame['duration'].to_list() == saccade_first.frame['duration'].to_list()
 
 
 def test_ihmm_accepts_hmm_parameters_dict():
@@ -1413,9 +1411,9 @@ def test_ihmm_removes_leading_trailing_nans():
     # extending onto the trimmed leading (index 0) or trailing (index 4) samples.
     assert len(events.frame) == 1
     onset = events.frame['onset'].dt.total_milliseconds().to_list()[0]
-    offset = events.frame['offset'].dt.total_milliseconds().to_list()[0]
+    duration = events.frame['duration'].dt.total_milliseconds().to_list()[0]
     assert onset == 1
-    assert offset == 3
+    assert duration == 3
 
 
 def test_ihmm_runs_with_reestimation_enabled():
@@ -1543,12 +1541,12 @@ sampling_rate = 1000.0
 
 
 def _spans(events):
-    """Return a list of (onset, offset) tuples in milliseconds for every detected event."""
+    """Return a list of (onset, end) tuples in milliseconds for every detected event."""
     frame = events.frame.with_columns(
         pl.col('onset').dt.total_milliseconds(),
-        pl.col('offset').dt.total_milliseconds(),
+        (pl.col('onset') + pl.col('duration')).dt.total_milliseconds().alias('end'),
     )
-    return list(zip(frame['onset'].to_list(), frame['offset'].to_list()))
+    return list(zip(frame['onset'].to_list(), frame['end'].to_list()))
 
 
 def test_ihmm_detects_no_fixations_for_saccade_only_signal():
@@ -1607,8 +1605,8 @@ def test_ihmm_detects_fixation_spanning_whole_recording():
     # The single fixation should cover (nearly) the whole recording.
     min_span = length_big_fix * 0.9
     for events in (ihmm_events, idt_events):
-        onset, offset = _spans(events)[0]
-        assert offset - onset >= min_span
+        onset, end = _spans(events)[0]
+        assert end - onset >= min_span
 
 
 def test_ihmm_detects_fixations_at_recording_start_and_end():
@@ -1636,11 +1634,11 @@ def test_ihmm_detects_fixations_at_recording_start_and_end():
     for events in (ihmm_events, idt_events):
         event_spans = sorted(_spans(events))
         first_onset = event_spans[0][0]
-        last_offset = event_spans[-1][1]
+        last_end = event_spans[-1][1]
         # first fixation starts at the trial start (1 sample of slack, ms at 1000 Hz).
         assert first_onset <= 1
         # last fixation ends at the trial end.
-        assert last_offset >= (length_edges - 1) * (1000.0 / sampling_rate) - 1
+        assert last_end >= (length_edges - 1) * (1000.0 / sampling_rate) - 1
 
 
 @pytest.mark.network

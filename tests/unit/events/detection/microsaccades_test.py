@@ -138,7 +138,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 ).select(pl.concat_list(['x', 'y']).alias('position'))['position'],
                 'threshold': 10,
             },
-            Events(onsets=[], offsets=[]),
+            Events(),
             id='two_steps_one_saccade_high_threshold_no_events',
         ),
         pytest.param(
@@ -152,7 +152,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 ),
                 'threshold': 10,
             },
-            Events(onsets=[], offsets=[]),
+            Events(),
             id='two_steps_one_saccade_high_threshold_no_events_numpy',
         ),
         pytest.param(
@@ -172,8 +172,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='saccade',
                 onsets=[40],
-                offsets=[49],
-                offsets_inclusive=True,
+                durations=[10],
                 sampling_rate=1000,
             ),
             id='two_steps_one_saccade',
@@ -192,8 +191,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='saccade',
                 onsets=[40],
-                offsets=[49],
-                offsets_inclusive=True,
+                durations=[10],
                 sampling_rate=1000,
             ),
             id='two_steps_one_saccade_numpy',
@@ -216,8 +214,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='custom_saccade',
                 onsets=[40],
-                offsets=[49],
-                offsets_inclusive=True,
+                durations=[10],
                 sampling_rate=1000,
             ),
             id='two_steps_one_saccade_custom_name',
@@ -237,8 +234,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='custom_saccade',
                 onsets=[40],
-                offsets=[49],
-                offsets_inclusive=True,
+                durations=[10],
                 sampling_rate=1000,
             ),
             id='two_steps_one_saccade_custom_name_numpy',
@@ -260,8 +256,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='saccade',
                 onsets=[20, 70],
-                offsets=[29, 79],
-                offsets_inclusive=True,
+                durations=[10, 10],
                 sampling_rate=1000,
             ),
             id='four_steps_two_saccades',
@@ -280,8 +275,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='saccade',
                 onsets=[20, 70],
-                offsets=[29, 79],
-                offsets_inclusive=True,
+                durations=[10, 10],
                 sampling_rate=1000,
             ),
             id='four_steps_two_saccades_numpy',
@@ -304,8 +298,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='saccade',
                 onsets=[20, 70],
-                offsets=[29, 79],
-                offsets_inclusive=True,
+                durations=[10, 10],
                 sampling_rate=1000,
             ),
             id='two_saccades_nan_delete_ending_leading_nan',
@@ -325,8 +318,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='saccade',
                 onsets=[20, 70],
-                offsets=[29, 79],
-                offsets_inclusive=True,
+                durations=[10, 10],
                 sampling_rate=1000,
             ),
             id='two_saccades_nan_delete_ending_leading_nan_numpy',
@@ -349,8 +341,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='saccade',
                 onsets=[20, 28, 70],
-                offsets=[24, 29, 79],
-                offsets_inclusive=True,
+                durations=[5, 2, 10],
                 sampling_rate=1000,
             ),
             id='three_saccades_nan_delete_ending_leading_nan',
@@ -370,8 +361,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='saccade',
                 onsets=[20, 28, 70],
-                offsets=[24, 29, 79],
-                offsets_inclusive=True,
+                durations=[5, 2, 10],
                 sampling_rate=1000,
             ),
             id='three_saccades_nan_delete_ending_leading_nan_numpy',
@@ -390,7 +380,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 ).select(pl.concat_list(['x', 'y']).alias('position'))['position'],
                 'threshold': 'std',
             },
-            Events(onsets=[], offsets=[]),
+            Events(),
             id='string_based_threshold',
         ),
         pytest.param(
@@ -404,7 +394,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 ),
                 'threshold': 'std',
             },
-            Events(onsets=[], offsets=[]),
+            Events(),
             id='string_based_threshold_numpy',
         ),
         pytest.param(
@@ -425,8 +415,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='saccade',
                 onsets=[1040],
-                offsets=[1049],
-                offsets_inclusive=True,
+                durations=[10],
                 sampling_rate=1000,
             ),
             id='two_steps_one_saccade_timesteps',
@@ -446,8 +435,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='saccade',
                 onsets=[1040],
-                offsets=[1049],
-                offsets_inclusive=True,
+                durations=[10],
                 sampling_rate=1000,
             ),
             id='two_steps_one_saccade_timesteps_numpy',
@@ -467,8 +455,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='saccade',
                 onsets=[1040],
-                offsets=[1049],
-                offsets_inclusive=True,
+                durations=[10],
                 sampling_rate=1000,
             ),
             id='two_steps_one_saccade_with_duration_timesteps',
@@ -489,8 +476,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='saccade',
                 onsets=[20],
-                offsets=[24.5],
-                offsets_inclusive=True,
+                durations=[5],
                 sampling_rate=2000,
             ),
             id='two_steps_one_saccade_with_2khz_duration_timesteps',

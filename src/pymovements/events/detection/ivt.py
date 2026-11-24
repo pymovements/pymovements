@@ -116,26 +116,26 @@ def ivt(
     Apply event detection algorithm on numpy array:
 
     >>> ivt(velocities, sampling_rate=1000)
-    shape: (1, 4)
-    ┌──────────────┬──────────────┬──────────┬──────────────┐
-    │ onset        ┆ duration     ┆ name     ┆ offset       │
-    │ ---          ┆ ---          ┆ ---      ┆ ---          │
-    │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
-    ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 9ms          ┆ 102ms        ┆ fixation ┆ 110ms        │
-    └──────────────┴──────────────┴──────────┴──────────────┘
+    shape: (1, 3)
+    ┌──────────────┬──────────────┬──────────┐
+    │ onset        ┆ duration     ┆ name     │
+    │ ---          ┆ ---          ┆ ---      │
+    │ duration[μs] ┆ duration[μs] ┆ str      │
+    ╞══════════════╪══════════════╪══════════╡
+    │ 9ms          ┆ 102ms        ┆ fixation │
+    └──────────────┴──────────────┴──────────┘
 
     Run fixation detection with custom parameters:
 
     >>> ivt(velocities, minimum_duration = 50, velocity_threshold=30, sampling_rate=1000)
-    shape: (1, 4)
-    ┌──────────────┬──────────────┬──────────┬──────────────┐
-    │ onset        ┆ duration     ┆ name     ┆ offset       │
-    │ ---          ┆ ---          ┆ ---      ┆ ---          │
-    │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
-    ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 9ms          ┆ 191ms        ┆ fixation ┆ 199ms        │
-    └──────────────┴──────────────┴──────────┴──────────────┘
+    shape: (1, 3)
+    ┌──────────────┬──────────────┬──────────┐
+    │ onset        ┆ duration     ┆ name     │
+    │ ---          ┆ ---          ┆ ---      │
+    │ duration[μs] ┆ duration[μs] ┆ str      │
+    ╞══════════════╪══════════════╪══════════╡
+    │ 9ms          ┆ 191ms        ┆ fixation │
+    └──────────────┴──────────────┴──────────┘
 
     Polars series are also supported as input. Let's create a nested position series from our numpy
     array:
@@ -162,14 +162,14 @@ def ivt(
     Apply event detection algorithm on polars series:
 
     >>> ivt(velocity_series, sampling_rate=1000)
-    shape: (1, 4)
-    ┌──────────────┬──────────────┬──────────┬──────────────┐
-    │ onset        ┆ duration     ┆ name     ┆ offset       │
-    │ ---          ┆ ---          ┆ ---      ┆ ---          │
-    │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
-    ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 9ms          ┆ 102ms        ┆ fixation ┆ 110ms        │
-    └──────────────┴──────────────┴──────────┴──────────────┘
+    shape: (1, 3)
+    ┌──────────────┬──────────────┬──────────┐
+    │ onset        ┆ duration     ┆ name     │
+    │ ---          ┆ ---          ┆ ---      │
+    │ duration[μs] ┆ duration[μs] ┆ str      │
+    ╞══════════════╪══════════════╪══════════╡
+    │ 9ms          ┆ 102ms        ┆ fixation │
+    └──────────────┴──────────────┴──────────┘
 
     We can also apply the detection on a :py:class:`~pymovements.Gaze` object.
 
@@ -206,27 +206,27 @@ def ivt(
 
     >>> gaze.detect('ivt')
     >>> gaze.events
-    shape: (1, 4)
-    ┌──────────────┬──────────────┬──────────┬──────────────┐
-    │ onset        ┆ duration     ┆ name     ┆ offset       │
-    │ ---          ┆ ---          ┆ ---      ┆ ---          │
-    │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
-    ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 9ms          ┆ 102ms        ┆ fixation ┆ 110ms        │
-    └──────────────┴──────────────┴──────────┴──────────────┘
+    shape: (1, 3)
+    ┌──────────────┬──────────────┬──────────┐
+    │ onset        ┆ duration     ┆ name     │
+    │ ---          ┆ ---          ┆ ---      │
+    │ duration[μs] ┆ duration[μs] ┆ str      │
+    ╞══════════════╪══════════════╪══════════╡
+    │ 9ms          ┆ 102ms        ┆ fixation │
+    └──────────────┴──────────────┴──────────┘
 
     Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
 
     >>> gaze.detect('ivt', minimum_duration = 50, velocity_threshold=30, name='fixation_ivt')
     >>> gaze.events.filter_by_name('fixation_ivt')
-    shape: (1, 4)
-    ┌──────────────┬──────────────┬──────────────┬──────────────┐
-    │ onset        ┆ duration     ┆ name         ┆ offset       │
-    │ ---          ┆ ---          ┆ ---          ┆ ---          │
-    │ duration[μs] ┆ duration[μs] ┆ str          ┆ duration[μs] │
-    ╞══════════════╪══════════════╪══════════════╪══════════════╡
-    │ 9ms          ┆ 191ms        ┆ fixation_ivt ┆ 199ms        │
-    └──────────────┴──────────────┴──────────────┴──────────────┘
+    shape: (1, 3)
+    ┌──────────────┬──────────────┬──────────────┐
+    │ onset        ┆ duration     ┆ name         │
+    │ ---          ┆ ---          ┆ ---          │
+    │ duration[μs] ┆ duration[μs] ┆ str          │
+    ╞══════════════╪══════════════╪══════════════╡
+    │ 9ms          ┆ 191ms        ┆ fixation_ivt │
+    └──────────────┴──────────────┴──────────────┘
     """
     if isinstance(velocities, polars.Series):
         if not isinstance(velocities.dtype, polars.List):
@@ -287,6 +287,6 @@ def ivt(
 
     events = Events(
         name=name, onsets=onsets, durations=durations,
-        offsets=offsets, offsets_inclusive=True, sampling_rate=sampling_rate,
+        sampling_rate=sampling_rate,
     )
     return events

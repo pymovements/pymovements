@@ -188,16 +188,27 @@ def scan_dataset(
 
 
 def load_event_files(
+        definition: DatasetDefinition,
         files: list[DatasetFile],
         paths: DatasetPaths,
         events_dirname: str | None = None,
         extension: str = 'feather',
         verbose: bool = True,
+        *,
+        offsets_inclusive: bool | None = None,
+        durations_from_offsets: bool = False,
+        validate: bool = True,
 ) -> list[Events]:
     """Load all event files associated with a gaze sample file.
 
+    The sampling rate of the definition's experiment is written to each
+    :py:class:`~pymovements.Events` as the sampling-rate entry. A definition without an
+    experiment, or an experiment without a sampling rate, writes no entry.
+
     Parameters
     ----------
+    definition: DatasetDefinition
+        The dataset definition.
     files: list[DatasetFile]
         Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
     paths: DatasetPaths
@@ -210,6 +221,20 @@ def load_event_files(
         (default: 'feather')
     verbose : bool
         If ``True``, show a progress bar. (default: True)
+    offsets_inclusive: bool | None
+        Convention of the ``offset`` column of the saved files, forwarded to
+        :py:class:`~pymovements.Events` per file: ``True`` if the offset is the last sample
+        of the event, ``False`` if it is the first sample after it. ``None`` leaves the
+        convention to the ``offset`` entry of the metadata. A saved ``offset`` column without
+        an entry raises. (default: None)
+    durations_from_offsets: bool
+        If ``True``, replace the saved durations by the ones derived from the offsets under
+        the declared convention, forwarded to :py:class:`~pymovements.Events` per file.
+        Migrates files saved before v0.29.0 together with ``offsets_inclusive=True``.
+        (default: False)
+    validate: bool
+        If ``True``, check the saved durations against the declared offsets, forwarded to
+        :py:class:`~pymovements.Events` per file. (default: True)
 
     Returns
     -------
@@ -221,9 +246,17 @@ def load_event_files(
     AttributeError
         If `fileinfo` is None or the `fileinfo` dataframe is empty.
     ValueError
-        If the extension is not in list of valid extensions.
+        If the extension is not in list of valid extensions, if durations are derived from
+        inclusive offsets and the definition's experiment has no sampling rate, or if every
+        row of a file contradicts the declared offset convention.
     """
     list_of_events: list[Events] = []
+
+    # Saved event files are derivatives of the gaze recording, so their sampling rate is the
+    # experiment's. Without an experiment or without a rate there is none to write.
+    sampling_rate = None
+    if definition.experiment is not None:
+        sampling_rate = definition.experiment.sampling_rate
 
     # read and preprocess input files
     for file in tqdm(
@@ -248,7 +281,16 @@ def load_event_files(
 
         metadata = add_source(file.metadata, filepath)
         metadata = relativize_sources(metadata, paths.dataset)
-        list_of_events.append(Events(events, metadata=metadata))
+        list_of_events.append(
+            Events(
+                events,
+                offsets_inclusive=offsets_inclusive,
+                durations_from_offsets=durations_from_offsets,
+                sampling_rate=sampling_rate,
+                validate=validate,
+                metadata=metadata,
+            ),
+        )
 
     return list_of_events
 

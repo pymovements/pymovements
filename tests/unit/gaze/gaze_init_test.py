@@ -1817,13 +1817,13 @@ def test_gaze_copy_init_has_same_n_components():
         ),
 
         pytest.param(
-            Events(name='saccade', onsets=[0], offsets=[10]),
+            Events(name='saccade', onsets=[0], durations=[10]),
             {},
             id='no_samples_with_saccades',
         ),
 
         pytest.param(
-            Events(name='fixation', onsets=[100], offsets=[910]),
+            Events(name='fixation', onsets=[100], durations=[810]),
             {
                 'samples': pl.from_dict(
                     {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
@@ -1880,7 +1880,7 @@ def test_gaze_init_without_sources_leaves_events_metadata_empty():
 
 def test_gaze_init_merges_sources_into_passed_events():
     events = Events(
-        name='fixation', onsets=[0], offsets=[1],
+        name='fixation', onsets=[0], durations=[1],
         metadata={'Sources': ['events/sub_1.feather']},
     )
     gaze = Gaze(

@@ -24,6 +24,7 @@ import os
 import re
 import shutil
 from collections.abc import Callable
+from copy import deepcopy
 from dataclasses import dataclass
 from dataclasses import replace
 from pathlib import Path
@@ -437,13 +438,11 @@ def mock_toy(
                 'onset': np.arange(0, 100_000, 10_000),
                 'duration': np.array([5_000] * 10),
                 'name': ['saccade', 'fixation'] * 5,
-                'offset': np.arange(5_000, 105_000, 10_000),
             },
             schema={
                 'onset': pl.Duration('us'),
                 'duration': pl.Duration('us'),
                 'name': pl.String,
-                'offset': pl.Duration('us'),
             },
         )
         events_list.append(events)
@@ -1306,7 +1305,6 @@ def test_detect_events_auto_eye(detect_event_kwargs, gaze_dataset_configuration)
         'onset': pl.Duration('us'),
         'duration': pl.Duration('us'),
         'name': pl.String,
-        'offset': pl.Duration('us'),
     }
     for result_events in dataset.events:
         assert result_events.schema == expected_schema
@@ -1355,7 +1353,6 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
             'onset': pl.Duration('us'),
             'duration': pl.Duration('us'),
             'name': pl.String,
-            'offset': pl.Duration('us'),
         }
 
         for result_events in dataset.events:
@@ -1387,7 +1384,6 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
                 'onset': pl.Duration('us'),
                 'duration': pl.Duration('us'),
                 'name': pl.String,
-                'offset': pl.Duration('us'),
             },
             id='two-saccade-runs',
         ),
@@ -1408,7 +1404,6 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
                 'onset': pl.Duration('us'),
                 'duration': pl.Duration('us'),
                 'name': pl.String,
-                'offset': pl.Duration('us'),
             },
             id='one-saccade-one-fixation-run',
         ),
@@ -1549,14 +1544,14 @@ def test_detect_events_raises_column_not_found_error(
             id='empty_df_stays_empty_df',
         ),
         pytest.param(
-            [Events(name='event', onsets=[0], offsets=[99])],
+            [Events(name='event', onsets=[0], durations=[99])],
             [Events()],
             id='single_instance_filled_df_gets_cleared_to_empty_df',
         ),
         pytest.param(
             [
-                Events(name='event', onsets=[0], offsets=[99]),
-                Events(name='event', onsets=[0], offsets=[99]),
+                Events(name='event', onsets=[0], durations=[99]),
+                Events(name='event', onsets=[0], durations=[99]),
             ],
             [Events(), Events()],
             id='two_instance_filled_df_gets_cleared_to_two_empty_dfs',
@@ -1699,6 +1694,191 @@ def test_load_previously_saved_events_gaze(
         events_dirname=events_dirname, **load_save_kwargs,
     )
     assert dataset.events
+
+
+mono_configuration = pytest.mark.parametrize(
+    'gaze_dataset_configuration', ['ToyMono'], indirect=['gaze_dataset_configuration'],
+)
+
+
+def load_via_load(dataset, **kwargs):
+    return dataset.load(events=True, stimuli=False, **kwargs)
+
+
+def load_via_load_event_files(dataset, **kwargs):
+    dataset.load(stimuli=False)
+    return dataset.load_event_files(**kwargs)
+
+
+both_loaders = pytest.mark.parametrize(
+    'load_events', [load_via_load, load_via_load_event_files], ids=['load', 'load_event_files'],
+)
+
+
+def without_experiment(definition):
+    return replace(definition, experiment=None)
+
+
+def without_rate(definition):
+    experiment = deepcopy(definition.experiment)
+    experiment.sampling_rate = None
+    return replace(definition, experiment=experiment)
+
+
+no_experiment_rate = pytest.mark.parametrize(
+    'strip_rate', [without_experiment, without_rate], ids=['no_experiment', 'no_rate'],
+)
+
+
+@pytest.fixture(name='legacy_dataset_configuration')
+def fixture_legacy_dataset_configuration(gaze_dataset_configuration):
+    # Event files saved before v0.29.0: duration == offset - onset on every row, 1000 Hz.
+    legacy_events = pl.from_dict(
+        {
+            'onset': np.arange(0, 100_000, 10_000),
+            'duration': np.array([5_000] * 10),
+            'name': ['saccade', 'fixation'] * 5,
+            'offset': np.arange(5_000, 105_000, 10_000),
+        },
+        schema={
+            'onset': pl.Duration('us'),
+            'duration': pl.Duration('us'),
+            'name': pl.String,
+            'offset': pl.Duration('us'),
+        },
+    )
+    fileinfo = gaze_dataset_configuration['fileinfo']['gaze']
+    paths = gaze_dataset_configuration['init_kwargs']['path']
+    create_event_files_from_fileinfo([legacy_events] * fileinfo.height, fileinfo, paths.events)
+    return gaze_dataset_configuration
+
+
+@mono_configuration
+@both_loaders
+class TestLoadLegacyEventFiles:
+    """Event files saved before v0.29.0 store duration == offset - onset on every row."""
+
+    @pytest.mark.parametrize(
+        ('kwargs', 'match'),
+        [
+            pytest.param({}, 'no declared convention', id='no_keywords'),
+            pytest.param(
+                {'offsets_inclusive': True},
+                'every row contradicts offsets_inclusive=True',
+                id='validates_by_default',
+            ),
+        ],
+    )
+    def test_raises(self, load_events, legacy_dataset_configuration, kwargs, match):
+        dataset = Dataset(**legacy_dataset_configuration['init_kwargs'])
+
+        with pytest.raises(ValueError, match=match):
+            load_events(dataset, **kwargs)
+
+    @pytest.mark.parametrize(
+        ('kwargs', 'expected_offset_entry', 'expected_durations'),
+        [
+            pytest.param(
+                {'offsets_inclusive': True, 'durations_from_offsets': True},
+                {'inclusive': True},
+                [6_000] * 10,
+                id='durations_from_offsets',
+            ),
+            pytest.param(
+                {'offsets_inclusive': False},
+                {'inclusive': False},
+                [5_000] * 10,
+                id='offsets_inclusive',
+            ),
+            pytest.param(
+                {'offsets_inclusive': True, 'validate': False},
+                {'inclusive': True},
+                [5_000] * 10,
+                id='validate',
+            ),
+        ],
+    )
+    def test_forwards_keywords(
+            self, load_events, legacy_dataset_configuration,
+            kwargs, expected_offset_entry, expected_durations,
+    ):
+        dataset = Dataset(**legacy_dataset_configuration['init_kwargs'])
+
+        load_events(dataset, **kwargs)
+
+        assert dataset.events
+        for events in dataset.events:
+            assert events.metadata['offset'] == expected_offset_entry
+            durations = events.frame['duration'].dt.total_microseconds().to_list()
+            assert durations == expected_durations
+
+
+@mono_configuration
+@both_loaders
+def test_load_events_writes_sampling_rate_from_experiment(load_events, gaze_dataset_configuration):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+
+    load_events(dataset)
+
+    assert dataset.events
+    for events in dataset.events:
+        assert events.metadata['sampling_rate'] == 1000
+
+
+@mono_configuration
+@both_loaders
+@no_experiment_rate
+def test_load_events_writes_no_sampling_rate_without_experiment_rate(
+        load_events, strip_rate, gaze_dataset_configuration,
+):
+    init_kwargs = gaze_dataset_configuration['init_kwargs']
+    definition = strip_rate(init_kwargs['definition'])
+    dataset = Dataset(**{**init_kwargs, 'definition': definition})
+
+    load_events(dataset)
+
+    assert dataset.events
+    for events in dataset.events:
+        assert 'sampling_rate' not in events.metadata
+
+
+@mono_configuration
+@both_loaders
+@no_experiment_rate
+def test_load_events_migration_raises_without_experiment_rate(
+        load_events, strip_rate, legacy_dataset_configuration,
+):
+    init_kwargs = legacy_dataset_configuration['init_kwargs']
+    definition = strip_rate(init_kwargs['definition'])
+    dataset = Dataset(**{**init_kwargs, 'definition': definition})
+
+    with pytest.raises(ValueError, match='requires a sampling_rate'):
+        load_events(dataset, offsets_inclusive=True, durations_from_offsets=True)
+
+
+@mono_configuration
+@both_loaders
+def test_load_events_without_offset_column_keeps_frame(load_events, gaze_dataset_configuration):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+    fileinfo = gaze_dataset_configuration['fileinfo']['gaze']
+    saved_frame = pl.DataFrame(
+        {
+            'onset': [0, 10_000],
+            'duration': [5_000, 7_000],
+            'name': ['saccade', 'fixation'],
+        },
+        schema={'onset': pl.Duration('us'), 'duration': pl.Duration('us'), 'name': pl.String},
+    )
+    create_event_files_from_fileinfo(
+        [saved_frame] * fileinfo.height, fileinfo, dataset.path / 'events',
+    )
+
+    load_events(dataset)
+
+    assert dataset.events
+    for events in dataset.events:
+        assert_frame_equal(events.frame, saved_frame)
+        assert 'offset' not in events.metadata
 
 
 @pytest.mark.parametrize(
@@ -2131,7 +2311,6 @@ def test_event_dataframe_add_property_has_expected_height(
                 'onset': pl.Duration('us'),
                 'duration': pl.Duration('us'),
                 'name': pl.String,
-                'offset': pl.Duration('us'),
                 'peak_velocity': pl.Float64,
             },
             id='single_event_peak_velocity',
@@ -2142,7 +2321,6 @@ def test_event_dataframe_add_property_has_expected_height(
                 'onset': pl.Duration('us'),
                 'duration': pl.Duration('us'),
                 'name': pl.String,
-                'offset': pl.Duration('us'),
                 'location': pl.List(pl.Float64),
             },
             id='single_event_position',
@@ -2297,7 +2475,7 @@ def test_compute_event_properties_alias(gaze_dataset_configuration, property_kwa
         ),
         pytest.param(
             {
-                'subset': ['onset', 'offset'],
+                'subset': ['onset', 'duration'],
                 'samples': False,
             },
             0,
@@ -2709,7 +2887,7 @@ def test_events_setter_identity_preserved(tmp_path):
             ),
         )
 
-    ev = Events(pl.DataFrame({'onset': [2], 'offset': [3], 'name': ['saccade']}))
+    ev = Events(pl.DataFrame({'onset': [2], 'duration': [1], 'name': ['saccade']}))
     dataset.gaze[2].events = ev
     assert dataset.gaze[2].events is ev
     assert dataset.events[2] is ev

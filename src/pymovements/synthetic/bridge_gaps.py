@@ -64,7 +64,7 @@ def bridge_gaps(events: Events, *, max_gap: float | None = None) -> Events:
     >>> fixations = pm.Events(
     ...     name=['fixation', 'fixation', 'fixation'],
     ...     onsets=[0, 300, 2400],
-    ...     offsets=[250, 560, 2700],
+    ...     durations=[250, 260, 300],
     ... )
     >>> pm.synthetic.bridge_gaps(fixations, max_gap=100).frame['name'].to_list()
     ['fixation', 'saccade', 'fixation', 'fixation']

@@ -519,21 +519,11 @@ def fixture_detected_gaze() -> pm.Gaze:
     return gaze
 
 
-def test_measure_events_ratio_detected_frame_keeps_totals(detected_gaze):
-    # The inclusive offsets of the detected fixations lasted offset - onset + Δ before.
-    with pytest.warns(DeprecationWarning, match="argument 'offset_column' is deprecated"):
-        before = detected_gaze.samples.select(
-            detected_gaze.measure_events_ratio('fixation', offset_column='offset'),
-        ).item()
-    detected_gaze.events = pm.Events(
-        detected_gaze.events.frame.drop('offset'), metadata={'sampling_rate': 250},
-    )
-
-    after = detected_gaze.samples.select(detected_gaze.measure_events_ratio('fixation')).item()
+def test_measure_events_ratio_detected_frame(detected_gaze):
+    ratio = detected_gaze.samples.select(detected_gaze.measure_events_ratio('fixation')).item()
 
     # Fixations [0, 20) and [32, 56) ms over the 56 ms the samples span.
-    assert after == pytest.approx(44 / 56)
-    assert after == pytest.approx(before)
+    assert ratio == pytest.approx(44 / 56)
 
 
 @pytest.mark.parametrize(

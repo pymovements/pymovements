@@ -3,7 +3,8 @@
 Events
 ======
 
-All events have a starting time (onset) and an ending time (offset, inclusive).
+All events have a starting time (onset) and a duration. An ending time (offset) is stored only
+when offsets are supplied or computed, together with its convention (inclusive or exclusive).
 
 
 .. currentmodule:: pymovements

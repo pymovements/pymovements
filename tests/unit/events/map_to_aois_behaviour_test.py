@@ -66,13 +66,13 @@ def test_map_to_aois_ignores_non_fixations(
     names = [n for n, _, _ in names_locations_expected]
     locations = [loc for _, loc, _ in names_locations_expected]
     onsets = list(range(0, len(names)))
-    offsets = list(range(1, len(names) + 1))
+    durations = [1] * len(names)
 
     df = pl.DataFrame(
         {
             'name': names,
             'onset': onsets,
-            'offset': offsets,
+            'duration': durations,
             'location': locations,
         },
     )
@@ -92,15 +92,15 @@ def test_map_to_aois_ignores_non_fixations(
         pytest.param(
             [
                 {
-                    'name': 'fixation', 'onset': 0, 'offset': 1,
+                    'name': 'fixation', 'onset': 0, 'duration': 1,
                     'location': [5, 5], 'trial': 1, 'page': 'X',
                 },
                 {
-                    'name': 'saccade', 'onset': 1, 'offset': 2,
+                    'name': 'saccade', 'onset': 1, 'duration': 1,
                     'location': [5, 5], 'trial': 1, 'page': 'X',
                 },
                 {
-                    'name': 'fixation', 'onset': 2, 'offset': 3,
+                    'name': 'fixation', 'onset': 2, 'duration': 1,
                     'location': [5, 5], 'trial': 1, 'page': 'Y',
                 },
             ],
@@ -129,7 +129,7 @@ def test_map_to_aois_null_key_uses_per_row_lookup(stimulus_with_trials: TextStim
         {
             'name': ['fixation'],
             'onset': [0],
-            'offset': [1],
+            'duration': [1],
             'location': [[5.0, 5.0]],
             'trial': [None],
         },
@@ -165,7 +165,7 @@ def test_map_to_aois_uses_first_overlapping_aoi_without_misalignment() -> None:
                 'name': ['fixation', 'fixation', 'fixation', 'fixation'],
                 'location': [(50, 50), (150, 150), (250, 250), (350, 350)],
                 'onset': [0, 1000, 2000, 3000],
-                'offset': [500, 1500, 2500, 3500],
+                'duration': [500, 500, 500, 500],
             },
         ),
     )
@@ -183,7 +183,7 @@ def test_map_to_aois_fixation_missing_coordinates(simple_stimulus: TextStimulus)
         {
             'name': ['fixation'],
             'onset': [0],
-            'offset': [1],
+            'duration': [1],
             'location': [[None, None]],  # explicit List[None, None] to satisfy schema
         },
     )
@@ -214,7 +214,7 @@ def test_map_to_aois_get_aoi_exception_sets_none_without_crash(
         {
             'name': ['fixation'],
             'onset': [0],
-            'offset': [1],
+            'duration': [1],
             'location': [[5, 5]],
             'trial': [1],
             'page': [None],
@@ -240,7 +240,7 @@ def test_events_map_to_aois_preserves_location_column(simple_stimulus: TextStimu
         {
             'name': ['fixation', 'saccade', 'fixation'],
             'onset': [0, 1, 2],
-            'offset': [1, 2, 3],
+            'duration': [1, 1, 1],
             'location': [[5, 5], [5, 5], [15, 15]],
         },
     )
@@ -261,9 +261,18 @@ def test_events_map_to_aois_preserves_location_column(simple_stimulus: TextStimu
 def test_events_map_to_aois_grouped_by_trial_page(stimulus_with_trial_page: TextStimulus) -> None:
     """Grouped mapping by trial/page yields correct AOIs and preserves structure."""
     rows = [
-        {'name': 'fixation', 'onset': 0, 'offset': 1, 'location': [5, 5], 'trial': 1, 'page': 'X'},
-        {'name': 'fixation', 'onset': 1, 'offset': 2, 'location': [5, 5], 'trial': 1, 'page': 'Y'},
-        {'name': 'saccade', 'onset': 2, 'offset': 3, 'location': [5, 5], 'trial': 2, 'page': 'X'},
+        {
+            'name': 'fixation', 'onset': 0, 'duration': 1,
+            'location': [5, 5], 'trial': 1, 'page': 'X',
+        },
+        {
+            'name': 'fixation', 'onset': 1, 'duration': 1,
+            'location': [5, 5], 'trial': 1, 'page': 'Y',
+        },
+        {
+            'name': 'saccade', 'onset': 2, 'duration': 1,
+            'location': [5, 5], 'trial': 2, 'page': 'X',
+        },
     ]
     df = pl.DataFrame(rows)
     events = Events(data=df, trial_columns=['trial', 'page'])  # store grouping keys
@@ -286,7 +295,7 @@ def test_events_map_to_aois_preserve_structure_true(
         {
             'name': ['fixation', 'saccade'],
             'onset': [0, 1],
-            'offset': [1, 2],
+            'duration': [1, 1],
             'location': [[5, 5], [5, 5]],
         },
     )
@@ -312,7 +321,7 @@ def test_events_map_to_aois_preserve_structure_false(
         {
             'name': ['fixation', 'saccade'],
             'onset': [0, 1],
-            'offset': [1, 2],
+            'duration': [1, 1],
             'location': [[5, 5], [5, 5]],
         },
     )
@@ -344,7 +353,7 @@ def test_end_drop_location_when_components_exist_preserve_true(
         {
             'name': ['fixation', 'fixation'],
             'onset': [0, 1],
-            'offset': [1, 2],
+            'duration': [1, 1],
             # list column (legacy pipelines might keep it around)
             'location': [[5.0, 5.0], [15.0, 5.0]],
             # pre-existing component columns
@@ -379,7 +388,7 @@ def test_end_drop_location_when_components_exist_preserve_false(
         {
             'name': ['fixation', 'fixation'],
             'onset': [0, 1],
-            'offset': [1, 2],
+            'duration': [1, 1],
             # list column (legacy pipelines might keep it around)
             'location': [[5.0, 5.0], [15.0, 5.0]],
             # pre-existing component columns
@@ -461,7 +470,7 @@ def test_map_to_aois_preserves_saccades_with_structure(
         },
     )
 
-    events = Events(data=base)
+    events = Events(data=base, offsets_inclusive=False)
     original = events.frame.clone()
     events.map_to_aois(simple_stimulus, preserve_structure=True)
     labels = events.frame.get_column('label').to_list()
@@ -505,7 +514,7 @@ def test_map_to_aois_preserves_saccades_without_structure(
         },
     )
 
-    events = Events(data=base)
+    events = Events(data=base, offsets_inclusive=False)
     original = events.frame.clone()
     events.map_to_aois(simple_stimulus, preserve_structure=False)
     labels = events.frame.get_column('label').to_list()
@@ -539,7 +548,7 @@ def test_map_to_aois_key_that_changes_on_cast_gets_no_aoi(
         {
             'name': ['fixation'],
             'onset': [0],
-            'offset': [1],
+            'duration': [1],
             'location': [[5.0, 5.0]],
             'trial': [trial_value],
         },
@@ -569,7 +578,7 @@ def test_map_to_aois_numeric_string_key_matches_integer_key(
         {
             'name': ['fixation'],
             'onset': [0],
-            'offset': [1],
+            'duration': [1],
             'location': [location],
             'trial': [trial_value],
         },
@@ -605,7 +614,7 @@ def test_map_to_aois_integer_key_matches_string_key() -> None:
         {
             'name': ['fixation', 'fixation'],
             'onset': [0, 1],
-            'offset': [1, 2],
+            'duration': [1, 1],
             'location': [[5.0, 5.0], [25.0, 25.0]],
             'trial': [1, 2],
         },
@@ -623,7 +632,7 @@ def test_map_to_aois_valid_key_still_matches(stimulus_with_trials: TextStimulus)
         {
             'name': ['fixation'],
             'onset': [0],
-            'offset': [1],
+            'duration': [1],
             'location': [[5.0, 5.0]],
             'trial': [1],
         },
@@ -643,7 +652,7 @@ def test_map_to_aois_non_numeric_coordinates_get_no_match_and_warn(
         {
             'name': ['fixation', 'fixation'],
             'onset': [0, 1],
-            'offset': [1, 2],
+            'duration': [1, 1],
             'location_x': ['5', '5'],
             'location_y': ['5', '5'],
         },
@@ -662,7 +671,7 @@ def test_map_to_aois_nan_coordinates_warn_once(simple_stimulus: TextStimulus) ->
         {
             'name': ['fixation', 'fixation'],
             'onset': [0, 1],
-            'offset': [1, 2],
+            'duration': [1, 1],
             'location_x': [5.0, math.nan],
             'location_y': [5.0, 5.0],
         },
@@ -681,7 +690,7 @@ def test_map_to_aois_no_matches_returns_all_none(simple_stimulus: TextStimulus) 
         {
             'name': ['fixation', 'fixation'],
             'onset': [0, 1],
-            'offset': [1, 2],
+            'duration': [1, 1],
             'location': [[50.0, 50.0], [60.0, 60.0]],
         },
     )
@@ -717,15 +726,15 @@ def test_map_to_aois_overlap_with_keyed_null_key_and_unmatched_rows() -> None:
     df = pl.DataFrame(
         [
             {
-                'name': 'fixation', 'onset': 0, 'offset': 1,
+                'name': 'fixation', 'onset': 0, 'duration': 1,
                 'location': [7.0, 7.0], 'trial': 1, 'page': 'X',
             },
             {
-                'name': 'fixation', 'onset': 1, 'offset': 2,
+                'name': 'fixation', 'onset': 1, 'duration': 1,
                 'location': [7.0, 7.0], 'trial': 1, 'page': None,
             },
             {
-                'name': 'fixation', 'onset': 2, 'offset': 3,
+                'name': 'fixation', 'onset': 2, 'duration': 1,
                 'location': [50.0, 50.0], 'trial': 1, 'page': 'X',
             },
         ],
@@ -766,7 +775,7 @@ def test_map_to_aois_raises_for_mismatched_bounds(
             {
                 'name': ['fixation'],
                 'onset': [0],
-                'offset': [1],
+                'duration': [1],
                 'location': [[5, 5]],
             },
         ),
@@ -784,7 +793,7 @@ def test_map_to_aois_numeric_string_list_coordinates_get_no_match(
         {
             'name': ['fixation'],
             'onset': [0],
-            'offset': [1],
+            'duration': [1],
             'location': [['5', '5']],
         },
     )
@@ -820,7 +829,7 @@ def test_map_to_aois_categorical_key_matches_string_key() -> None:
         {
             'name': ['fixation'],
             'onset': [0],
-            'offset': [1],
+            'duration': [1],
             'location': [[5.0, 5.0]],
             'trial': pl.Series(['1'], dtype=pl.Categorical),
         },
@@ -840,7 +849,7 @@ def test_map_to_aois_non_numeric_list_without_structure_gets_no_match(
         {
             'name': ['fixation'],
             'onset': [0],
-            'offset': [1],
+            'duration': [1],
             'location': [['5', '5']],
         },
     )
@@ -860,7 +869,7 @@ def test_map_to_aois_missing_coordinate_columns_get_no_match(
         {
             'name': ['fixation'],
             'onset': [0],
-            'offset': [1],
+            'duration': [1],
         },
     )
     events = Events(data=df)
@@ -877,7 +886,7 @@ def test_map_to_aois_verbose_is_deprecated(
 ):
     events = Events(
         data=pl.DataFrame(
-            {'name': ['fixation'], 'onset': [0], 'offset': [1], 'location': [[5.0, 5.0]]},
+            {'name': ['fixation'], 'onset': [0], 'duration': [1], 'location': [[5.0, 5.0]]},
         ),
     )
 

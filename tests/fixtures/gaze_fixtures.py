@@ -74,7 +74,7 @@ def fixture_gaze_all():
                 {
                     'name': ['fixation', 'fixation', 'saccade', 'fixation'],
                     'onset': [0, 1, 2, 3],
-                    'offset': [1, 2, 3, 4],
+                    'duration': [1, 1, 1, 1],
                     'trial_id': [0, 1, 1, 2],
                 },
             ),
@@ -93,7 +93,7 @@ def fixture_gaze_minimal():
             {
                 'name': ['saccade', 'saccade', 'fixation'],
                 'onset': [0, 10, 20],
-                'offset': [10, 20, 30],
+                'duration': [10, 10, 10],
             },
         ),
     )

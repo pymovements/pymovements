@@ -186,7 +186,7 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
                 'velocity_threshold': 1,
                 'minimum_duration': 10,
             },
-            Events(onsets=[], offsets=[]),
+            Events(),
             id='constant_velocity_no_fixation',
         ),
         pytest.param(
@@ -199,8 +199,7 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0],
-                offsets=[99],
-                offsets_inclusive=True,
+                durations=[100],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation',
@@ -216,8 +215,7 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='custom_fixation',
                 onsets=[0],
-                offsets=[99],
-                offsets_inclusive=True,
+                durations=[100],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_custom_name',
@@ -237,8 +235,7 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0, 51],
-                offsets=[48, 99],
-                offsets_inclusive=True,
+                durations=[49, 49],
                 sampling_rate=1000,
             ),
             id='three_steps_two_fixations',
@@ -259,8 +256,7 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0, 21],
-                offsets=[9, 89],
-                offsets_inclusive=True,
+                durations=[10, 69],
                 sampling_rate=1000,
             ),
             id='two_fixations_nan_remove_leading_ending',
@@ -282,8 +278,7 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0],
-                offsets=[89],
-                offsets_inclusive=True,
+                durations=[90],
                 sampling_rate=1000,
             ),
             id='one_fixation_nan_remove_leading_ending',
@@ -299,8 +294,7 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[1000],
-                offsets=[1099],
-                offsets_inclusive=True,
+                durations=[100],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps',
@@ -316,8 +310,7 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[1000],
-                offsets=[1099],
-                offsets_inclusive=True,
+                durations=[100],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_duration_timesteps',
@@ -333,8 +326,7 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0],
-                offsets=[49.5],
-                offsets_inclusive=True,
+                durations=[50],
                 sampling_rate=2000,
             ),
             id='constant_position_single_fixation_with_2khz_duration_timesteps',
@@ -368,7 +360,7 @@ def test_ivt_detects_fixations_numpy(kwargs, expected):
                 'velocity_threshold': 1,
                 'minimum_duration': 10,
             },
-            Events(onsets=[], offsets=[]),
+            Events(),
             id='constant_velocity_no_fixation',
         ),
         pytest.param(
@@ -384,8 +376,7 @@ def test_ivt_detects_fixations_numpy(kwargs, expected):
             Events(
                 name='fixation',
                 onsets=[1],  # polars pos2vel set undefined samples to null, numpy to 0
-                offsets=[99],
-                offsets_inclusive=True,
+                durations=[99],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation',
@@ -404,8 +395,7 @@ def test_ivt_detects_fixations_numpy(kwargs, expected):
             Events(
                 name='custom_fixation',
                 onsets=[1],
-                offsets=[99],
-                offsets_inclusive=True,
+                durations=[99],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_custom_name',
@@ -428,8 +418,7 @@ def test_ivt_detects_fixations_numpy(kwargs, expected):
             Events(
                 name='fixation',
                 onsets=[1, 51],
-                offsets=[48, 99],
-                offsets_inclusive=True,
+                durations=[48, 49],
                 sampling_rate=1000,
             ),
             id='three_steps_two_fixations',
@@ -451,8 +440,7 @@ def test_ivt_detects_fixations_numpy(kwargs, expected):
             Events(
                 name='fixation',
                 onsets=[1, 21],
-                offsets=[9, 89],
-                offsets_inclusive=True,
+                durations=[9, 69],
                 sampling_rate=1000,
             ),
             id='two_fixations_nan_remove_leading_ending',
@@ -475,8 +463,7 @@ def test_ivt_detects_fixations_numpy(kwargs, expected):
             Events(
                 name='fixation',
                 onsets=[1],
-                offsets=[89],
-                offsets_inclusive=True,
+                durations=[89],
                 sampling_rate=1000,
             ),
             id='one_fixation_nan_remove_leading_ending',
@@ -495,8 +482,7 @@ def test_ivt_detects_fixations_numpy(kwargs, expected):
             Events(
                 name='fixation',
                 onsets=[1001],
-                offsets=[1099],
-                offsets_inclusive=True,
+                durations=[99],
                 sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps',

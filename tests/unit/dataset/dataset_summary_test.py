@@ -68,12 +68,12 @@ def _two_recording_dataset(tmp_path):
         Gaze(
             samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}),
             pixel_columns=['x', 'y'],
-            events=Events(name=['fixation', 'saccade'], onsets=[0, 1], offsets=[1, 2]),
+            events=Events(name=['fixation', 'saccade'], onsets=[0, 1], durations=[1, 1]),
         ),
         Gaze(
             samples=pl.DataFrame({'time': [0, 1], 'x': [0.0, 1.0], 'y': [0.0, 1.0]}),
             pixel_columns=['x', 'y'],
-            events=Events(name=['fixation'], onsets=[0], offsets=[1]),
+            events=Events(name=['fixation'], onsets=[0], durations=[1]),
         ),
     ]
     return dataset

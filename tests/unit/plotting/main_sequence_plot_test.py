@@ -43,7 +43,6 @@ def events_fixture():
             'trial': [1, 1, 1],
             'name': ['saccade', 'saccade', 'saccade'],
             'onset': [0, 10, 20],
-            'offset': [5, 15, 25],
             'duration': [5, 5, 5],
             'amplitude': [2.0, 3.5, 1.0],
             'peak_velocity': [100.0, 250.0, 80.0],
@@ -113,7 +112,6 @@ def test_main_sequence_plot_raises_when_no_saccades():
         'trial': [1, 2],
         'name': ['fixation', 'blink'],
         'onset': [0, 10],
-        'offset': [5, 15],
         'duration': [5, 5],
         # Include columns to pass column presence checks if needed later
         'amplitude': [1.0, 1.0],
@@ -130,7 +128,6 @@ def test_main_sequence_plot_keyerror_when_missing_peak_velocity():
         'trial': [1, 1],
         'name': ['saccade', 'saccade'],
         'onset': [0, 10],
-        'offset': [5, 15],
         'duration': [5, 5],
         'amplitude': [2.0, 4.0],
         # 'peak_velocity' intentionally missing
@@ -146,7 +143,6 @@ def test_main_sequence_plot_keyerror_when_missing_amplitude():
         'trial': [1, 1],
         'name': ['saccade', 'saccade'],
         'onset': [0, 10],
-        'offset': [5, 15],
         'duration': [5, 5],
         # 'amplitude' intentionally missing
         'peak_velocity': [100.0, 200.0],
@@ -161,7 +157,6 @@ def test_main_sequence_plot_sets_title():
         'trial': [1, 1],
         'name': ['saccade', 'saccade'],
         'onset': [0, 10],
-        'offset': [5, 15],
         'duration': [5, 5],
         'amplitude': [2.0, 4.0],
         'peak_velocity': [100.0, 200.0],

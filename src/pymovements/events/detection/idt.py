@@ -140,27 +140,27 @@ def idt(
     Apply event detection algorithm on numpy array:
 
     >>> idt(positions, sampling_rate=1000)
-    shape: (1, 4)
-    ┌──────────────┬──────────────┬──────────┬──────────────┐
-    │ onset        ┆ duration     ┆ name     ┆ offset       │
-    │ ---          ┆ ---          ┆ ---      ┆ ---          │
-    │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
-    ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 9ms          ┆ 103ms        ┆ fixation ┆ 111ms        │
-    └──────────────┴──────────────┴──────────┴──────────────┘
+    shape: (1, 3)
+    ┌──────────────┬──────────────┬──────────┐
+    │ onset        ┆ duration     ┆ name     │
+    │ ---          ┆ ---          ┆ ---      │
+    │ duration[μs] ┆ duration[μs] ┆ str      │
+    ╞══════════════╪══════════════╪══════════╡
+    │ 9ms          ┆ 103ms        ┆ fixation │
+    └──────────────┴──────────────┴──────────┘
 
     Run fixation detection with custom parameters:
 
     >>> idt(positions, minimum_duration = 50, dispersion_threshold = 0.5, sampling_rate=1000)
-    shape: (2, 4)
-    ┌──────────────┬──────────────┬──────────┬──────────────┐
-    │ onset        ┆ duration     ┆ name     ┆ offset       │
-    │ ---          ┆ ---          ┆ ---      ┆ ---          │
-    │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
-    ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 9ms          ┆ 103ms        ┆ fixation ┆ 111ms        │
-    │ 150ms        ┆ 50ms         ┆ fixation ┆ 199ms        │
-    └──────────────┴──────────────┴──────────┴──────────────┘
+    shape: (2, 3)
+    ┌──────────────┬──────────────┬──────────┐
+    │ onset        ┆ duration     ┆ name     │
+    │ ---          ┆ ---          ┆ ---      │
+    │ duration[μs] ┆ duration[μs] ┆ str      │
+    ╞══════════════╪══════════════╪══════════╡
+    │ 9ms          ┆ 103ms        ┆ fixation │
+    │ 150ms        ┆ 50ms         ┆ fixation │
+    └──────────────┴──────────────┴──────────┘
 
     Polars series are also supported as input. Let's create a nested position series from our numpy
     array:
@@ -187,14 +187,14 @@ def idt(
     Apply event detection algorithm on polars series:
 
     >>> idt(position_series, sampling_rate=1000)
-    shape: (1, 4)
-    ┌──────────────┬──────────────┬──────────┬──────────────┐
-    │ onset        ┆ duration     ┆ name     ┆ offset       │
-    │ ---          ┆ ---          ┆ ---      ┆ ---          │
-    │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
-    ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 9ms          ┆ 103ms        ┆ fixation ┆ 111ms        │
-    └──────────────┴──────────────┴──────────┴──────────────┘
+    shape: (1, 3)
+    ┌──────────────┬──────────────┬──────────┐
+    │ onset        ┆ duration     ┆ name     │
+    │ ---          ┆ ---          ┆ ---      │
+    │ duration[μs] ┆ duration[μs] ┆ str      │
+    ╞══════════════╪══════════════╪══════════╡
+    │ 9ms          ┆ 103ms        ┆ fixation │
+    └──────────────┴──────────────┴──────────┘
 
     We can also apply the detection on a :py:class:`~pymovements.Gaze` object.
 
@@ -231,28 +231,28 @@ def idt(
 
     >>> gaze.detect('idt')
     >>> gaze.events
-    shape: (1, 4)
-    ┌──────────────┬──────────────┬──────────┬──────────────┐
-    │ onset        ┆ duration     ┆ name     ┆ offset       │
-    │ ---          ┆ ---          ┆ ---      ┆ ---          │
-    │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
-    ╞══════════════╪══════════════╪══════════╪══════════════╡
-    │ 9ms          ┆ 103ms        ┆ fixation ┆ 111ms        │
-    └──────────────┴──────────────┴──────────┴──────────────┘
+    shape: (1, 3)
+    ┌──────────────┬──────────────┬──────────┐
+    │ onset        ┆ duration     ┆ name     │
+    │ ---          ┆ ---          ┆ ---      │
+    │ duration[μs] ┆ duration[μs] ┆ str      │
+    ╞══════════════╪══════════════╪══════════╡
+    │ 9ms          ┆ 103ms        ┆ fixation │
+    └──────────────┴──────────────┴──────────┘
 
     Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
 
     >>> gaze.detect('idt', minimum_duration = 50, dispersion_threshold = 0.5, name='fixation_idt')
     >>> gaze.events.filter_by_name('fixation_idt')
-    shape: (2, 4)
-    ┌──────────────┬──────────────┬──────────────┬──────────────┐
-    │ onset        ┆ duration     ┆ name         ┆ offset       │
-    │ ---          ┆ ---          ┆ ---          ┆ ---          │
-    │ duration[μs] ┆ duration[μs] ┆ str          ┆ duration[μs] │
-    ╞══════════════╪══════════════╪══════════════╪══════════════╡
-    │ 9ms          ┆ 103ms        ┆ fixation_idt ┆ 111ms        │
-    │ 150ms        ┆ 50ms         ┆ fixation_idt ┆ 199ms        │
-    └──────────────┴──────────────┴──────────────┴──────────────┘
+    shape: (2, 3)
+    ┌──────────────┬──────────────┬──────────────┐
+    │ onset        ┆ duration     ┆ name         │
+    │ ---          ┆ ---          ┆ ---          │
+    │ duration[μs] ┆ duration[μs] ┆ str          │
+    ╞══════════════╪══════════════╪══════════════╡
+    │ 9ms          ┆ 103ms        ┆ fixation_idt │
+    │ 150ms        ┆ 50ms         ┆ fixation_idt │
+    └──────────────┴──────────────┴──────────────┘
     """
     if isinstance(positions, polars.Series):
         if not isinstance(positions.dtype, polars.List):
@@ -281,7 +281,7 @@ def idt(
     if len(timesteps) < 2:
         return Events(
             name=name, onsets=[], durations=[],
-            offsets=[], offsets_inclusive=True, sampling_rate=sampling_rate,
+            sampling_rate=sampling_rate,
         )
     end_times = numpy.append(timesteps, timesteps[-1] + sampling_interval)
 
@@ -359,6 +359,6 @@ def idt(
 
     events = Events(
         name=name, onsets=onsets_arr, durations=durations_arr,
-        offsets=offsets_arr, offsets_inclusive=True, sampling_rate=sampling_rate,
+        sampling_rate=sampling_rate,
     )
     return events

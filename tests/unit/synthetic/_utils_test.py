@@ -38,20 +38,20 @@ from pymovements.synthetic._utils import sample_times
     'events',
     [
         pytest.param(
-            Events(name=['fixation'] * 2, onsets=[0, 250], offsets=[250, 500]),
+            Events(name=['fixation'] * 2, onsets=[0, 250], durations=[250, 250]),
             id='touching_events',
         ),
         pytest.param(
-            Events(name=['fixation', 'saccade'], onsets=[0.0, 250.5], offsets=[250.5, 300.0]),
+            Events(name=['fixation', 'saccade'], onsets=[0.0, 250.5], durations=[250.5, 49.5]),
             id='touching_sub_millisecond_events',
         ),
         pytest.param(
-            Events(name=['fixation'] * 2, onsets=[0, 0], offsets=[250, 200], trials=[1, 2]),
+            Events(name=['fixation'] * 2, onsets=[0, 0], durations=[250, 200], trials=[1, 2]),
             id='trials_start_independently',
         ),
-        pytest.param(Events(name=[], onsets=[], offsets=[]), id='empty_events'),
+        pytest.param(Events(), id='empty_events'),
         pytest.param(
-            bridge_gaps(Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560])),
+            bridge_gaps(Events(name=['fixation'] * 2, onsets=[0, 300], durations=[250, 260])),
             id='bridged_events',
         ),
     ],
@@ -64,7 +64,7 @@ def test_check_contiguous_accepts(events):
     ('events', 'msg_substrings'),
     [
         pytest.param(
-            Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560]),
+            Events(name=['fixation'] * 2, onsets=[0, 300], durations=[250, 260]),
             ('gap', '250.0 ms', '300.0 ms', 'fixation', 'bridge_gaps'),
             id='gap',
         ),
@@ -76,12 +76,12 @@ def test_check_contiguous_accepts(events):
             id='gap_is_read_from_the_duration',
         ),
         pytest.param(
-            Events(name=['fixation', 'saccade'], onsets=[0.0, 250.75], offsets=[250.5, 300.0]),
+            Events(name=['fixation', 'saccade'], onsets=[0.0, 250.75], durations=[250.5, 49.25]),
             ('250.5 ms', '250.75 ms', 'saccade'),
             id='sub_millisecond_gap',
         ),
         pytest.param(
-            Events(name=['fixation'] * 2, onsets=[0, 200], offsets=[250, 560]),
+            Events(name=['fixation'] * 2, onsets=[0, 200], durations=[250, 360]),
             ('overlap',),
             id='overlap',
         ),
@@ -101,7 +101,7 @@ def _event_count(frame):
 
 
 def test_per_trial_without_trials_synthesizes_once():
-    events = Events(name=['saccade', 'fixation'], onsets=[300, 0], offsets=[400, 250])
+    events = Events(name=['saccade', 'fixation'], onsets=[300, 0], durations=[100, 250])
 
     samples = per_trial(events, _event_count)
 
@@ -112,7 +112,7 @@ def test_per_trial_prefixes_the_trial_columns():
     events = Events(
         name=['fixation', 'saccade', 'fixation'],
         onsets=[0, 0, 250],
-        offsets=[200, 250, 500],
+        durations=[200, 250, 250],
         trials=[2, 1, 1],
     )
 
@@ -126,7 +126,7 @@ def test_per_trial_prefixes_the_trial_columns():
 
 def test_per_trial_passes_each_trial_ordered():
     events = Events(
-        name=['fixation'] * 3, onsets=[300, 0, 0], offsets=[560, 250, 100], trials=[1, 1, 2],
+        name=['fixation'] * 3, onsets=[300, 0, 0], durations=[260, 250, 100], trials=[1, 1, 2],
     )
     seen = []
 
@@ -142,9 +142,9 @@ def test_per_trial_passes_each_trial_ordered():
 @pytest.mark.parametrize(
     ('events', 'msg_substring'),
     [
-        pytest.param(Events(name=[], onsets=[], offsets=[]), 'empty', id='empty_events'),
+        pytest.param(Events(), 'empty', id='empty_events'),
         pytest.param(
-            Events(name=['fixation'] * 2, onsets=[0, 200], offsets=[250, 560]),
+            Events(name=['fixation'] * 2, onsets=[0, 200], durations=[250, 360]),
             'overlap',
             id='overlapping_events',
         ),
@@ -176,12 +176,12 @@ def test_sample_times_returns(onset, offset, sampling_rate, expected):
     [
         pytest.param(
             check_contiguous,
-            Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560]),
+            Events(name=['fixation'] * 2, onsets=[0, 300], durations=[250, 260]),
             id='check_contiguous',
         ),
         pytest.param(
             lambda events, generator: per_trial(events, _event_count, generator=generator),
-            Events(name=[], onsets=[], offsets=[]),
+            Events(),
             id='per_trial',
         ),
     ],

@@ -134,13 +134,13 @@ def test_from_pandas_with_trial_columnms():
 
         pytest.param(
             pd.DataFrame(),
-            Events(name='fixation', onsets=[123], offsets=[345]),
+            Events(name='fixation', onsets=[123], durations=[222]),
             id='fixation',
         ),
 
         pytest.param(
             pd.DataFrame(),
-            Events(name='saccade', onsets=[34123], offsets=[67345]),
+            Events(name='saccade', onsets=[34123], durations=[33222]),
             id='saccade',
         ),
 

@@ -38,7 +38,6 @@ def fixture_offset_free_gaze():
         experiment=pm.Experiment(sampling_rate=250),
     )
     gaze.detect('ivt', velocity_threshold=20, minimum_duration=8)
-    gaze.events = pm.Events(gaze.events.frame.drop('offset'), metadata={'sampling_rate': 250})
     return gaze
 
 

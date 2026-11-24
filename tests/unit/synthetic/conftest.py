@@ -89,17 +89,17 @@ class UniformEventGenerator(EventGenerator):
     max_duration: float = 300.0
 
     def _generate(self, *, rng, duration):  # pylint: disable=arguments-differ
-        onsets, offsets = [], []
+        onsets, durations = [], []
         elapsed = 0.0
         while elapsed < duration * 1000.0:
             onsets.append(elapsed)
             elapsed = min(
                 elapsed + rng.uniform(self.min_duration, self.max_duration), duration * 1000.0,
             )
-            offsets.append(elapsed)
+            durations.append(elapsed - onsets[-1])
 
         return Events(
-            name=['fixation'] * len(onsets), onsets=onsets, offsets=offsets, time_unit='ms',
+            name=['fixation'] * len(onsets), onsets=onsets, durations=durations, time_unit='ms',
         )
 
 
@@ -124,7 +124,7 @@ def fixture_uniform_event_generator():
 @pytest.fixture(name='fixations')
 def fixture_fixations():
     """Return a sequence of two fixations to condition on."""
-    return Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560], time_unit='ms')
+    return Events(name=['fixation'] * 2, onsets=[0, 300], durations=[250, 260], time_unit='ms')
 
 
 @pytest.fixture(name='isolated_registry')

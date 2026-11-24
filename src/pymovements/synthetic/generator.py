@@ -335,8 +335,8 @@ class EventGenerator(_Generator[Events]):
     ...     def _generate(self, *, rng, duration):
     ...         count = int(duration * 1000 // self.fixation_duration)
     ...         onsets = [index * self.fixation_duration for index in range(count)]
-    ...         offsets = [onset + self.fixation_duration for onset in onsets]
-    ...         return pm.Events(name=['fixation'] * count, onsets=onsets, offsets=offsets)
+    ...         durations = [self.fixation_duration] * count
+    ...         return pm.Events(name=['fixation'] * count, onsets=onsets, durations=durations)
     >>> events = EvenFixations().generate(duration=1.0, seed=42)  # doctest: +IGNORE_WARNINGS
     >>> events.frame['name'].to_list()
     ['fixation', 'fixation', 'fixation', 'fixation']
@@ -431,7 +431,7 @@ class SampleGenerator(_Generator[Gaze]):
     ...             time_unit='ms',
     ...             position_columns=['x', 'y'],
     ...         )
-    >>> events = pm.Events(name=['fixation'], onsets=[0], offsets=[500])
+    >>> events = pm.Events(name=['fixation'], onsets=[0], durations=[500])
     >>> generator = StillGaze(sampling_rate=1000)
     >>> gaze = generator.generate(events=events, seed=42)  # doctest: +IGNORE_WARNINGS
     >>> gaze.samples.height

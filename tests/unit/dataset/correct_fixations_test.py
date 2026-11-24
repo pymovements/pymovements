@@ -64,7 +64,7 @@ def fixture_dummy_dataset(tmp_path):
         'trial': ['TRIAL1'] * 6,
         'name': ['fixation'] * 6,
         'onset': [0, 100, 200, 300, 400, 500],
-        'offset': [50, 150, 250, 350, 450, 550],
+        'duration': [50] * 6,
         'location': [
             [100.0, 105.0], [200.0, 102.0], [300.0, 198.0],
             [400.0, 201.0], [100.0, 305.0], [200.0, 301.0],
@@ -110,7 +110,7 @@ def test_dataset_correct_fixations_character_level(tmp_path, word_column):
     events_df = pl.DataFrame({
         'name': ['fixation'] * 6,
         'onset': [0, 100, 200, 300, 400, 500],
-        'offset': [50, 150, 250, 350, 450, 550],
+        'duration': [50] * 6,
         'location': [
             [110.0, 105.0], [130.0, 104.0], [150.0, 106.0],
             [110.0, 108.0], [130.0, 109.0], [150.0, 111.0],

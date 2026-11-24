@@ -45,7 +45,7 @@ def fixture_make_gaze_with_events():
         data = {
             'name': names,
             'onset': range(0, 2 * len(names), 2),
-            'offset': range(1, 2 * len(names) + 1, 2),
+            'duration': [1] * len(names),
         }
         events = Events(pl.from_dict(data))
         gaze = Gaze(events=events)
@@ -294,12 +294,12 @@ def test_gaze_position_columns(init_df, position_columns):
             Gaze(
                 samples=pl.from_dict({'time': [0, 1], 'x': [20, 21], 'y': [30, 34]}),
                 pixel_columns=['x', 'y'],
-                events=Events(name=['saccade'], onsets=[0], offsets=[1]),
+                events=Events(name=['saccade'], onsets=[0], durations=[1]),
             ),
             Gaze(
                 samples=pl.from_dict({'time': [0, 1], 'x': [20, 21], 'y': [30, 34]}),
                 pixel_columns=['x', 'y'],
-                events=Events(name=['saccade'], onsets=[0], offsets=[1]),
+                events=Events(name=['saccade'], onsets=[0], durations=[1]),
             ),
             True,
             id='same_samples_same_events',
@@ -308,12 +308,12 @@ def test_gaze_position_columns(init_df, position_columns):
             Gaze(
                 samples=pl.from_dict({'time': [0, 1], 'x': [20, 21], 'y': [30, 34]}),
                 pixel_columns=['x', 'y'],
-                events=Events(name=['saccade'], onsets=[0], offsets=[1]),
+                events=Events(name=['saccade'], onsets=[0], durations=[1]),
             ),
             Gaze(
                 samples=pl.from_dict({'time': [0, 1], 'x': [20, 21], 'y': [30, 34]}),
                 pixel_columns=['x', 'y'],
-                events=Events(name=['fixation'], onsets=[0], offsets=[1]),
+                events=Events(name=['fixation'], onsets=[0], durations=[1]),
             ),
             False,
             id='same_samples_different_events',
@@ -395,7 +395,7 @@ def test_gaze_is_copy():
                 events=Events(
                     name='saccade',
                     onsets=[0],
-                    offsets=[123],
+                    durations=[123],
                 ),
             ),
             id='simple_events_no_trials',
@@ -411,7 +411,7 @@ def test_gaze_is_copy():
                             'trial_id': [1],
                             'name': ['saccade'],
                             'onset': [0],
-                            'offset': [123],
+                            'duration': [123],
                             'custom_property': [42],
                         },
                     ),
@@ -847,7 +847,7 @@ def test_gaze_split_example():
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': [0], 'y': [1], 'trial': [1]}),
-                events=Events(onsets=[0], offsets=[10], trials=[1]),
+                events=Events(onsets=[0], durations=[10], trials=[1]),
                 pixel_columns=['x', 'y'],
                 trial_columns=['trial'],
             ),
@@ -855,7 +855,7 @@ def test_gaze_split_example():
             {
                 (1,): Gaze(
                     samples=pl.from_dict({'x': [0], 'y': [1], 'trial': [1]}),
-                    events=Events(onsets=[0], offsets=[10], trials=[1]),
+                    events=Events(onsets=[0], durations=[10], trials=[1]),
                     pixel_columns=['x', 'y'],
                     trial_columns=['trial'],
                 ),
@@ -866,7 +866,7 @@ def test_gaze_split_example():
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': [0], 'y': [1], 'trial': [1]}),
-                events=Events(onsets=[10], offsets=[100], trials=[2]),
+                events=Events(onsets=[10], durations=[90], trials=[2]),
                 pixel_columns=['x', 'y'],
                 trial_columns=['trial'],
             ),
@@ -880,7 +880,7 @@ def test_gaze_split_example():
                 ),
                 (2,): Gaze(
                     samples=pl.DataFrame(schema={'x': pl.Int64, 'y': pl.Int64, 'trial': pl.Int64}),
-                    events=Events(onsets=[10], offsets=[100], trials=[2]),
+                    events=Events(onsets=[10], durations=[90], trials=[2]),
                     pixel_columns=['x', 'y'],
                     trial_columns=['trial'],
                 ),
@@ -892,7 +892,9 @@ def test_gaze_split_example():
             Gaze(
                 samples=pl.from_dict({'x': [0, 1], 'y': [2, 3], 'trial': [1, 2]}),
                 events=Events(
-                    pl.DataFrame({'trial': [2], 'name': ['saccade'], 'onset': [0], 'offset': [1]}),
+                    pl.DataFrame(
+                        {'trial': [2], 'name': ['saccade'], 'onset': [0], 'duration': [1]},
+                    ),
                 ),
                 pixel_columns=['x', 'y'],
             ),
@@ -906,7 +908,7 @@ def test_gaze_split_example():
                     samples=pl.from_dict({'x': [1], 'y': [3], 'trial': [2]}),
                     events=Events(
                         pl.DataFrame(
-                            {'trial': [2], 'name': ['saccade'], 'onset': [0], 'offset': [1]},
+                            {'trial': [2], 'name': ['saccade'], 'onset': [0], 'duration': [1]},
                         ),
                     ),
                     pixel_columns=['x', 'y'],
@@ -922,7 +924,7 @@ def test_gaze_split_example():
                     pl.DataFrame(
                         {
                             'trial': [1, 2], 'name': ['fixation', 'saccade'],
-                            'onset': [0, 100], 'offset': [1, 200],
+                            'onset': [0, 100], 'duration': [1, 100],
                         },
                     ),
                 ),
@@ -934,7 +936,7 @@ def test_gaze_split_example():
                     samples=pl.from_dict({'x': [0], 'y': [2], 'trial': [1]}),
                     events=Events(
                         pl.DataFrame(
-                            {'trial': [1], 'name': ['fixation'], 'onset': [0], 'offset': [1]},
+                            {'trial': [1], 'name': ['fixation'], 'onset': [0], 'duration': [1]},
                         ),
                     ),
                     pixel_columns=['x', 'y'],
@@ -943,7 +945,7 @@ def test_gaze_split_example():
                     samples=pl.from_dict({'x': [1], 'y': [3], 'trial': [2]}),
                     events=Events(
                         pl.DataFrame(
-                            {'trial': [2], 'name': ['saccade'], 'onset': [100], 'offset': [200]},
+                            {'trial': [2], 'name': ['saccade'], 'onset': [100], 'duration': [100]},
                         ),
                     ),
                     pixel_columns=['x', 'y'],
@@ -959,7 +961,7 @@ def test_gaze_split_example():
                     pl.DataFrame(
                         {
                             'trial': [1, None], 'name': ['fixation', 'saccade'],
-                            'onset': [0, 100], 'offset': [1, 200],
+                            'onset': [0, 100], 'duration': [1, 100],
                         },
                     ),
                 ),
@@ -971,7 +973,7 @@ def test_gaze_split_example():
                     samples=pl.from_dict({'x': [0], 'y': [2], 'trial': [1]}),
                     events=Events(
                         pl.DataFrame(
-                            {'trial': [1], 'name': ['fixation'], 'onset': [0], 'offset': [1]},
+                            {'trial': [1], 'name': ['fixation'], 'onset': [0], 'duration': [1]},
                         ),
                     ),
                     pixel_columns=['x', 'y'],
@@ -980,7 +982,10 @@ def test_gaze_split_example():
                     samples=pl.from_dict({'x': [1], 'y': [3], 'trial': [None]}),
                     events=Events(
                         pl.DataFrame(
-                            {'trial': [None], 'name': ['saccade'], 'onset': [100], 'offset': [200]},
+                            {
+                                'trial': [None], 'name': ['saccade'],
+                                'onset': [100], 'duration': [100],
+                            },
                         ),
                     ),
                     pixel_columns=['x', 'y'],
@@ -992,7 +997,9 @@ def test_gaze_split_example():
         pytest.param(
             Gaze(
                 events=Events(
-                    pl.DataFrame({'trial': [1], 'name': ['saccade'], 'onset': [0], 'offset': [1]}),
+                    pl.DataFrame(
+                        {'trial': [1], 'name': ['saccade'], 'onset': [0], 'duration': [1]},
+                    ),
                 ),
             ),
             'trial',
@@ -1000,7 +1007,7 @@ def test_gaze_split_example():
                 (1,): Gaze(
                     events=Events(
                         pl.DataFrame(
-                            {'trial': [1], 'name': ['saccade'], 'onset': [0], 'offset': [1]},
+                            {'trial': [1], 'name': ['saccade'], 'onset': [0], 'duration': [1]},
                         ),
                     ),
                 ),
@@ -1014,7 +1021,7 @@ def test_gaze_split_example():
                     pl.DataFrame(
                         {
                             'trial': [1, 2], 'name': ['fixation', 'saccade'],
-                            'onset': [0, 100], 'offset': [1, 200],
+                            'onset': [0, 100], 'duration': [1, 100],
                         },
                     ),
                 ),
@@ -1024,14 +1031,14 @@ def test_gaze_split_example():
                 (1,): Gaze(
                     events=Events(
                         pl.DataFrame(
-                            {'trial': [1], 'name': ['fixation'], 'onset': [0], 'offset': [1]},
+                            {'trial': [1], 'name': ['fixation'], 'onset': [0], 'duration': [1]},
                         ),
                     ),
                 ),
                 (2,): Gaze(
                     events=Events(
                         pl.DataFrame(
-                            {'trial': [2], 'name': ['saccade'], 'onset': [100], 'offset': [200]},
+                            {'trial': [2], 'name': ['saccade'], 'onset': [100], 'duration': [100]},
                         ),
                     ),
                 ),
@@ -1070,7 +1077,9 @@ def test_gaze_split_as_dict(gaze, by, expected_splits):
         pytest.param(
             Gaze(
                 events=Events(
-                    pl.DataFrame({'trial': [1], 'name': ['saccade'], 'onset': [0], 'offset': [1]}),
+                    pl.DataFrame(
+                        {'trial': [1], 'name': ['saccade'], 'onset': [0], 'duration': [1]},
+                    ),
                 ),
             ),
             'task',
@@ -1084,7 +1093,9 @@ def test_gaze_split_as_dict(gaze, by, expected_splits):
                 samples=pl.from_dict({'x': [0], 'y': [1], 'task': ['A']}),
                 pixel_columns=['x', 'y'],
                 events=Events(
-                    pl.DataFrame({'trial': [1], 'name': ['saccade'], 'onset': [0], 'offset': [1]}),
+                    pl.DataFrame(
+                        {'trial': [1], 'name': ['saccade'], 'onset': [0], 'duration': [1]},
+                    ),
                 ),
             ),
             'task',
@@ -1111,7 +1122,7 @@ def test_gaze_split_as_dict(gaze, by, expected_splits):
                 samples=pl.from_dict({'x': [0], 'y': [1], 'task': ['A']}),
                 pixel_columns=['x', 'y'],
                 events=Events(
-                    pl.DataFrame({'task': [1], 'name': ['saccade'], 'onset': [0], 'offset': [1]}),
+                    pl.DataFrame({'task': [1], 'name': ['saccade'], 'onset': [0], 'duration': [1]}),
                 ),
             ),
             'task',
@@ -1222,7 +1233,9 @@ def test_gaze_split_as_dict_raises_exception(gaze, by, expected_exception, expec
             Gaze(
                 samples=pl.from_dict({'x': [0, 1], 'y': [2, 3], 'trial': [1, 2]}),
                 events=Events(
-                    pl.DataFrame({'trial': [2], 'name': ['saccade'], 'onset': [0], 'offset': [1]}),
+                    pl.DataFrame(
+                        {'trial': [2], 'name': ['saccade'], 'onset': [0], 'duration': [1]},
+                    ),
                 ),
                 pixel_columns=['x', 'y'],
             ),
@@ -1238,7 +1251,7 @@ def test_gaze_split_as_dict_raises_exception(gaze, by, expected_exception, expec
                     pl.DataFrame(
                         {
                             'trial': [1, None], 'name': ['fixation', 'saccade'],
-                            'onset': [0, 100], 'offset': [1, 200],
+                            'onset': [0, 100], 'duration': [1, 100],
                         },
                     ),
                 ),
@@ -1252,7 +1265,9 @@ def test_gaze_split_as_dict_raises_exception(gaze, by, expected_exception, expec
         pytest.param(
             Gaze(
                 events=Events(
-                    pl.DataFrame({'trial': [1], 'name': ['saccade'], 'onset': [0], 'offset': [1]}),
+                    pl.DataFrame(
+                        {'trial': [1], 'name': ['saccade'], 'onset': [0], 'duration': [1]},
+                    ),
                 ),
             ),
             ['trial'],
@@ -1266,7 +1281,7 @@ def test_gaze_split_as_dict_raises_exception(gaze, by, expected_exception, expec
                     pl.DataFrame(
                         {
                             'trial': [1, 2], 'name': ['fixation', 'saccade'],
-                            'onset': [0, 100], 'offset': [1, 200],
+                            'onset': [0, 100], 'duration': [1, 100],
                         },
                     ),
                 ),
@@ -1374,7 +1389,9 @@ def test_gaze_split_extend_metadata_correct(gaze, by, expected_metadata):
             Gaze(
                 samples=pl.from_dict({'x': [0, 1], 'y': [2, 3], 'trial': [1, 2]}),
                 events=Events(
-                    pl.DataFrame({'trial': [2], 'name': ['saccade'], 'onset': [0], 'offset': [1]}),
+                    pl.DataFrame(
+                        {'trial': [2], 'name': ['saccade'], 'onset': [0], 'duration': [1]},
+                    ),
                 ),
                 pixel_columns=['x', 'y'],
             ),
@@ -1389,7 +1406,7 @@ def test_gaze_split_extend_metadata_correct(gaze, by, expected_metadata):
                     pl.DataFrame(
                         {
                             'trial': [1, None], 'name': ['fixation', 'saccade'],
-                            'onset': [0, 100], 'offset': [1, 200],
+                            'onset': [0, 100], 'duration': [1, 100],
                         },
                     ),
                 ),
@@ -1402,7 +1419,9 @@ def test_gaze_split_extend_metadata_correct(gaze, by, expected_metadata):
         pytest.param(
             Gaze(
                 events=Events(
-                    pl.DataFrame({'trial': [1], 'name': ['saccade'], 'onset': [0], 'offset': [1]}),
+                    pl.DataFrame(
+                        {'trial': [1], 'name': ['saccade'], 'onset': [0], 'duration': [1]},
+                    ),
                 ),
             ),
             ['trial'],
@@ -1415,7 +1434,7 @@ def test_gaze_split_extend_metadata_correct(gaze, by, expected_metadata):
                     pl.DataFrame(
                         {
                             'trial': [1, 2], 'name': ['fixation', 'saccade'],
-                            'onset': [0, 100], 'offset': [1, 200],
+                            'onset': [0, 100], 'duration': [1, 100],
                         },
                     ),
                 ),
@@ -1475,7 +1494,7 @@ def test_gaze_split_events_by_str():
                 {
                     'name': ['fixation', 'fixation', 'saccade', 'fixation'],
                     'onset': [0, 1, 2, 3],
-                    'offset': [1, 2, 3, 4],
+                    'duration': [1, 1, 1, 1],
                     'trial_id': [0, 1, 1, 2],
                 },
             ),
@@ -1507,7 +1526,7 @@ def test_gaze_dataframe_split_events_by_list():
                 {
                     'name': ['fixation', 'fixation', 'saccade', 'fixation'],
                     'onset': [0, 1, 2, 3],
-                    'offset': [1, 2, 3, 4],
+                    'duration': [1, 1, 1, 1],
                     'trial_ida': [0, 1, 1, 2],
                     'trial_idb': [0, 1, 2, 2],
                 },
@@ -1633,7 +1652,7 @@ def test_gaze_dataframe_split_default():
                 {
                     'name': ['fixation', 'fixation', 'saccade', 'fixation'],
                     'onset': [0, 1, 2, 3],
-                    'offset': [1, 2, 3, 4],
+                    'duration': [1, 1, 1, 1],
                     'trial_id': [0, 1, 1, 2],
                 },
             ),
@@ -1666,7 +1685,7 @@ def test_gaze_dataframe_split_default_no_trial_columns():
                 {
                     'name': ['fixation', 'fixation', 'saccade', 'fixation'],
                     'onset': [0, 1, 2, 3],
-                    'offset': [1, 2, 3, 4],
+                    'duration': [1, 1, 1, 1],
                     'trial_id': [0, 1, 1, 2],
                 },
             ),
@@ -1809,13 +1828,12 @@ def test_gaze_compute_event_properties_offset_reproduces_detected_last_samples()
     )
     gaze.detect('ivt', minimum_duration=1)
     assert gaze.events.frame['onset'].to_list() == [timedelta(0), timedelta(milliseconds=60)]
-    last_samples = _duration_us([39000, 99000]).alias('offset')
-    assert_series_equal(gaze.events.frame['offset'], last_samples)
-    gaze.events.drop('offset')
 
     gaze.compute_event_properties(('offset', {'inclusive': True}))
 
-    assert_series_equal(gaze.events.frame['offset'], last_samples)
+    assert_series_equal(
+        gaze.events.frame['offset'], _duration_us([39000, 99000]).alias('offset'),
+    )
 
 
 def test_gaze_compute_event_properties_runs_event_measures_with_kwargs():
@@ -2018,34 +2036,37 @@ def test_gaze_compute_event_properties_sample_measure_with_name_keeps_other_rows
     )
 
 
-@pytest.mark.parametrize(
-    ('events', 'message'),
-    [
-        pytest.param(
-            Events(
-                name=['fixation', 'saccade'], onsets=[0, 10], offsets=[4, 12],
-                offsets_inclusive=True, sampling_rate=1000,
-            ),
-            r"metadata\['offset'\] = \{'inclusive': True\}, but inclusive=False is requested "
-            r"for the 'fixation' events only, which would mix conventions in one column. "
-            r"Drop name to recompute 'offset' for every event.",
-            id='differing_convention',
+def test_gaze_compute_event_properties_offset_with_name_on_other_convention_raises():
+    gaze = Gaze(
+        events=Events(
+            name=['fixation', 'saccade'], onsets=[0, 10], offsets=[4, 12],
+            offsets_inclusive=True, sampling_rate=1000,
         ),
-        pytest.param(
-            Events(name=['fixation', 'saccade'], onsets=[0, 10], offsets=[5, 13]),
-            r"the existing 'offset' column is undeclared, but inclusive=False is requested "
-            r"for the 'fixation' events only",
-            id='undeclared_column',
-        ),
-    ],
-)
-def test_gaze_compute_event_properties_offset_with_name_on_other_convention_raises(
-        events, message,
-):
-    gaze = Gaze(events=events)
+    )
     expected_frame = gaze.events.frame.clone()
 
-    with pytest.raises(ValueError, match=message):
+    with pytest.raises(
+            ValueError,
+            match=r"metadata\['offset'\] = \{'inclusive': True\}, but inclusive=False is requested "
+            r"for the 'fixation' events only, which would mix conventions in one column. "
+            r"Drop name to recompute 'offset' for every event.",
+    ):
+        gaze.compute_event_properties(('offset', {'inclusive': False}), name='fixation')
+
+    assert_frame_equal(gaze.events.frame, expected_frame)
+
+
+def test_gaze_compute_event_properties_offset_with_name_on_undeclared_column_raises():
+    gaze = Gaze(events=Events(name=['fixation', 'saccade'], onsets=[0, 10], durations=[5, 3]))
+    # The constructor refuses undeclared offsets, the guard covers a frame assigned directly.
+    gaze.events.frame = gaze.events.frame.with_columns(offset=pl.col('onset') + pl.col('duration'))
+    expected_frame = gaze.events.frame.clone()
+
+    with pytest.raises(
+            ValueError,
+            match=r"the existing 'offset' column is undeclared, but inclusive=False is requested "
+            r"for the 'fixation' events only",
+    ):
         gaze.compute_event_properties(('offset', {'inclusive': False}), name='fixation')
 
     assert_frame_equal(gaze.events.frame, expected_frame)
@@ -2132,7 +2153,7 @@ def test_gaze_drop_nulls(trial_data, kwargs, expected_samples_kept, expected_eve
                 {
                     'name': ['fixation'] * len(trial_data['trial']),
                     'onset': range(len(trial_data['trial'])),
-                    'offset': range(1, len(trial_data['trial']) + 1),
+                    'duration': [1] * len(trial_data['trial']),
                     **trial_data,
                 },
             ),
@@ -2160,7 +2181,7 @@ def test_gaze_drop_nulls_raises_missing_columns():
                 {
                     'name': ['fixation'] * 4,
                     'onset': range(4),
-                    'offset': range(1, 5),
+                    'duration': [1] * 4,
                     'trial': [1, 1, None, None],
                 },
             ),
@@ -2233,7 +2254,7 @@ def test_gaze_drop_nulls_empty_subset_is_noop():
                 {
                     'name': ['fixation', 'fixation'],
                     'onset': [0, 1],
-                    'offset': [1, 2],
+                    'duration': [1, 1],
                     'trial': [1, None],
                 },
             ),
@@ -2304,7 +2325,7 @@ def test_gaze_clear_events():
                 'page': [1],
                 'name': ['saccade'],
                 'onset': [0],
-                'offset': [1],
+                'duration': [1],
             }),
         ),
         pixel_columns=['x', 'y'],

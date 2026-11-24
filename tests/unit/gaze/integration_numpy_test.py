@@ -624,12 +624,12 @@ def test_from_numpy_all_none():
         ),
 
         pytest.param(
-            Events(name='fixation', onsets=[123], offsets=[345]),
+            Events(name='fixation', onsets=[123], durations=[222]),
             id='fixation',
         ),
 
         pytest.param(
-            Events(name='saccade', onsets=[34123], offsets=[67345]),
+            Events(name='saccade', onsets=[34123], durations=[33222]),
             id='saccade',
         ),
 

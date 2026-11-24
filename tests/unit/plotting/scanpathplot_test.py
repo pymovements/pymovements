@@ -43,7 +43,6 @@ def make_events_fixture():
                     'trial': pl.Int64,
                     'name': pl.String,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
                     'duration': pl.Int64,
                     'location': pl.List(pl.Int64),
                 },
@@ -54,7 +53,6 @@ def make_events_fixture():
                     'trial': [1],
                     'name': ['fixation'],
                     'onset': [0],
-                    'offset': [1],
                     'duration': [1],
                     'location': [(1, 2)],
                 },
@@ -65,7 +63,6 @@ def make_events_fixture():
                     'trial': [1, 1],
                     'name': ['fixation', 'fixation'],
                     'onset': [0, 2],
-                    'offset': [1, 3],
                     'duration': [1, 1],
                     'location': [(1, 2), (2, 3)],
                 },
@@ -76,7 +73,6 @@ def make_events_fixture():
                     'trial': [1, 1],
                     'name': ['fixation', 'fixation'],
                     'onset': [0, 2],
-                    'offset': [1, 3],
                     'duration': [1, 1],
                     'location': [(1, 2), None],
                 },
@@ -84,7 +80,6 @@ def make_events_fixture():
                     'trial': pl.Int64,
                     'name': pl.String,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
                     'duration': pl.Int64,
                     'location': pl.List(pl.Int64),
                 },
@@ -95,7 +90,6 @@ def make_events_fixture():
                     'trial': [1, 1, 1],
                     'name': ['fixation', 'saccade', 'foo'],
                     'onset': [0, 2, 5],
-                    'offset': [1, 3, 9],
                     'duration': [1, 1, 4],
                     'location': [(1, 2), (2, 3), (5, 5)],
                 },
@@ -307,7 +301,7 @@ def test_scanpathplot_numeric_duration_events(make_gaze):
     # Events mutated to numeric millisecond columns must still be plottable.
     gaze = make_gaze('1_fixation')
     gaze.events.frame = gaze.events.frame.with_columns(
-        pl.col('onset', 'offset', 'duration').dt.total_milliseconds(),
+        pl.col('onset', 'duration').dt.total_milliseconds(),
     )
 
     _, ax = scanpathplot(gaze=gaze, event_name='fixation')
@@ -396,7 +390,6 @@ def two_fixations_fixture():
     return pl.DataFrame({
         'name': ['fixation', 'fixation'],
         'onset': [0, 100],
-        'offset': [99, 199],
         'duration': [99, 99],
     })
 

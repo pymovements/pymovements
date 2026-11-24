@@ -72,8 +72,8 @@ def generate_events(name: str, *, seed: int | None = None, **kwargs: Any) -> Eve
     ...     def _generate(self, *, rng, duration):
     ...         count = int(duration * 1000 // self.fixation_duration)
     ...         onsets = [index * self.fixation_duration for index in range(count)]
-    ...         offsets = [onset + self.fixation_duration for onset in onsets]
-    ...         return pm.Events(name=['fixation'] * count, onsets=onsets, offsets=offsets)
+    ...         durations = [self.fixation_duration] * count
+    ...         return pm.Events(name=['fixation'] * count, onsets=onsets, durations=durations)
     >>> events = pm.synthetic.generate_events(
     ...     'regular_fixations', duration=1.0, seed=42, fixation_duration=500.0,
     ... )  # doctest: +IGNORE_WARNINGS
@@ -145,7 +145,7 @@ def generate_samples(name: str, *, seed: int | None = None, **kwargs: Any) -> Ga
     ...             time_unit='ms',
     ...             position_columns=['x', 'y'],
     ...         )
-    >>> events = pm.Events(name=['fixation'], onsets=[0], offsets=[500])
+    >>> events = pm.Events(name=['fixation'], onsets=[0], durations=[500])
     >>> gaze = pm.synthetic.generate_samples(
     ...     'resting_gaze', events=events, sampling_rate=500, seed=42, noise=0.5,
     ... )  # doctest: +IGNORE_WARNINGS

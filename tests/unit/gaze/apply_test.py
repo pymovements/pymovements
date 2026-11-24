@@ -53,8 +53,7 @@ from pymovements.synthetic import step_function
                 events=pm.events.Events(
                     name='fixation',
                     onsets=[0],
-                    offsets=[99],
-                    offsets_inclusive=True,
+                    durations=[100],
                     sampling_rate=1000,
                 ),
             ),
@@ -88,8 +87,7 @@ from pymovements.synthetic import step_function
                 events=pm.Events(
                     name='saccade',
                     onsets=[20, 70],
-                    offsets=[29, 79],
-                    offsets_inclusive=True,
+                    durations=[10, 10],
                     sampling_rate=1000,
                 ),
             ),
@@ -103,8 +101,8 @@ from pymovements.synthetic import step_function
                 time=np.arange(0, 100),
                 position=np.zeros((2, 100)),
                 events=pm.Events(
-                    name=['fixation', 'saccade'], onsets=[0, 50], offsets=[40, 100],
-                    offsets_inclusive=True, sampling_rate=1000,
+                    name=['fixation', 'saccade'], onsets=[0, 50], durations=[40, 50],
+                    sampling_rate=1000,
                 ),
             ),
             pm.gaze.from_numpy(
@@ -113,8 +111,7 @@ from pymovements.synthetic import step_function
                 events=pm.Events(
                     name=['fixation', 'saccade', 'unclassified'],
                     onsets=[0, 50, 40],
-                    offsets=[40, 100, 49],
-                    offsets_inclusive=True,
+                    durations=[40, 50, 10],
                     sampling_rate=1000,
                 ),
             ),

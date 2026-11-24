@@ -1688,7 +1688,7 @@ def test_load_gaze_files_preprocessed_sources_point_to_preprocessed_file(
 def test_load_event_files_adds_relative_sources(tmp_path):
     events_dirpath = tmp_path / 'events'
     events_dirpath.mkdir()
-    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [1]})
+    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'duration': [1]})
     events_df.write_ipc(events_dirpath / 'sub_1.feather')
 
     resource_definition = ResourceDefinition(content='gaze')
@@ -1701,7 +1701,7 @@ def test_load_event_files_adds_relative_sources(tmp_path):
     ]
     paths = DatasetPaths(root=tmp_path, dataset='.')
 
-    events_list = load_event_files(files, paths, verbose=False)
+    events_list = load_event_files(DatasetDefinition(), files, paths, verbose=False)
 
     assert events_list[0].metadata == {
         'subject_id': 1,
@@ -1714,7 +1714,7 @@ def test_load_event_files_adds_relative_sources(tmp_path):
 def test_load_event_files_keeps_user_sources_list_unmutated(tmp_path):
     events_dirpath = tmp_path / 'events'
     events_dirpath.mkdir()
-    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [1]})
+    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'duration': [1]})
     events_df.write_ipc(events_dirpath / 'sub_1.feather')
 
     absolute_source = (events_dirpath / 'sub_1.feather').as_posix()
@@ -1729,7 +1729,7 @@ def test_load_event_files_keeps_user_sources_list_unmutated(tmp_path):
     ]
     paths = DatasetPaths(root=tmp_path, dataset='.')
 
-    events_list = load_event_files(files, paths, verbose=False)
+    events_list = load_event_files(DatasetDefinition(), files, paths, verbose=False)
 
     # The user-supplied entry is respected and recorded relative to the dataset root.
     assert events_list[0].metadata == {'Sources': ['events/sub_1.feather']}
@@ -1740,7 +1740,7 @@ def test_load_event_files_keeps_user_sources_list_unmutated(tmp_path):
 def test_load_event_files_relativizes_relative_user_source(tmp_path, monkeypatch):
     events_dirpath = tmp_path / 'events'
     events_dirpath.mkdir()
-    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [1]})
+    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'duration': [1]})
     events_df.write_ipc(events_dirpath / 'sub_1.feather')
 
     # A standalone load from inside the events directory records the path as given.
@@ -1756,7 +1756,7 @@ def test_load_event_files_relativizes_relative_user_source(tmp_path, monkeypatch
     ]
     paths = DatasetPaths(root=tmp_path, dataset='.')
 
-    events_list = load_event_files(files, paths, verbose=False)
+    events_list = load_event_files(DatasetDefinition(), files, paths, verbose=False)
 
     # The relative entry is anchored at the working directory and then made root-relative.
     assert events_list[0].metadata == {'Sources': ['events/sub_1.feather']}
@@ -1765,7 +1765,7 @@ def test_load_event_files_relativizes_relative_user_source(tmp_path, monkeypatch
 def test_load_event_files_respects_empty_user_sources(tmp_path):
     events_dirpath = tmp_path / 'events'
     events_dirpath.mkdir()
-    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [1]})
+    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'duration': [1]})
     events_df.write_ipc(events_dirpath / 'sub_1.feather')
 
     resource_definition = ResourceDefinition(content='gaze')
@@ -1778,11 +1778,134 @@ def test_load_event_files_respects_empty_user_sources(tmp_path):
     ]
     paths = DatasetPaths(root=tmp_path, dataset='.')
 
-    events_list = load_event_files(files, paths, verbose=False)
+    events_list = load_event_files(DatasetDefinition(), files, paths, verbose=False)
 
     # An explicitly empty user-provided Sources entry expresses that no source shall be
     # recorded. Neither source recording nor relativization touches it.
     assert events_list[0].metadata == {'Sources': []}
+
+
+def write_legacy_event_file(tmp_path):
+    """Save one event file with duration == offset - onset per row at 1000 Hz.
+
+    Returns the files and paths that load it.
+    """
+    events_dirpath = tmp_path / 'events'
+    events_dirpath.mkdir()
+    events_df = pl.DataFrame(
+        {
+            'onset': [0, 10_000],
+            'duration': [5_000, 7_000],
+            'name': ['saccade', 'fixation'],
+            'offset': [5_000, 17_000],
+        },
+        schema={
+            'onset': pl.Duration('us'),
+            'duration': pl.Duration('us'),
+            'name': pl.String,
+            'offset': pl.Duration('us'),
+        },
+    )
+    events_df.write_ipc(events_dirpath / 'sub_1.feather')
+
+    files = [
+        DatasetFile(
+            path=tmp_path / 'raw' / 'sub_1.csv',
+            definition=ResourceDefinition(content='gaze'),
+        ),
+    ]
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+    return files, paths
+
+
+def test_load_event_files_writes_sampling_rate_from_experiment(tmp_path):
+    files, paths = write_legacy_event_file(tmp_path)
+    definition = DatasetDefinition(experiment=Experiment(sampling_rate=1000))
+
+    events_list = load_event_files(definition, files, paths, verbose=False, offsets_inclusive=False)
+
+    assert events_list[0].metadata['sampling_rate'] == 1000
+
+
+@pytest.mark.parametrize(
+    'experiment',
+    [
+        pytest.param(None, id='no_experiment'),
+        pytest.param(Experiment(sampling_rate=None), id='no_rate'),
+    ],
+)
+class TestLoadEventFilesWithoutExperimentRate:
+    def test_writes_no_sampling_rate(self, tmp_path, experiment):
+        files, paths = write_legacy_event_file(tmp_path)
+        definition = DatasetDefinition(experiment=experiment)
+
+        events_list = load_event_files(
+            definition, files, paths, verbose=False, offsets_inclusive=False,
+        )
+
+        assert 'sampling_rate' not in events_list[0].metadata
+
+    def test_migration_raises(self, tmp_path, experiment):
+        files, paths = write_legacy_event_file(tmp_path)
+        definition = DatasetDefinition(experiment=experiment)
+
+        with pytest.raises(ValueError, match='requires a sampling_rate'):
+            load_event_files(
+                definition, files, paths, verbose=False,
+                offsets_inclusive=True, durations_from_offsets=True,
+            )
+
+
+@pytest.mark.parametrize(
+    ('kwargs', 'expected_offset_entry', 'expected_durations'),
+    [
+        pytest.param(
+            {'offsets_inclusive': False},
+            {'inclusive': False},
+            [5_000, 7_000],
+            id='offsets_inclusive',
+        ),
+        pytest.param(
+            {'offsets_inclusive': True, 'durations_from_offsets': True},
+            {'inclusive': True},
+            [6_000, 8_000],
+            id='durations_from_offsets',
+        ),
+        pytest.param(
+            {'offsets_inclusive': True, 'validate': False},
+            {'inclusive': True},
+            [5_000, 7_000],
+            id='validate',
+        ),
+    ],
+)
+def test_load_event_files_forwards_keywords(
+        tmp_path, kwargs, expected_offset_entry, expected_durations,
+):
+    files, paths = write_legacy_event_file(tmp_path)
+    definition = DatasetDefinition(experiment=Experiment(sampling_rate=1000))
+
+    events_list = load_event_files(definition, files, paths, verbose=False, **kwargs)
+
+    assert events_list[0].metadata['offset'] == expected_offset_entry
+    durations = events_list[0].frame['duration'].dt.total_microseconds().to_list()
+    assert durations == expected_durations
+
+
+def test_load_event_files_validates_by_default(tmp_path):
+    files, paths = write_legacy_event_file(tmp_path)
+    definition = DatasetDefinition(experiment=Experiment(sampling_rate=1000))
+
+    with pytest.raises(ValueError, match='every row contradicts offsets_inclusive=True'):
+        load_event_files(definition, files, paths, verbose=False, offsets_inclusive=True)
+
+
+def test_load_event_files_raises_without_declared_convention(tmp_path):
+    files, paths = write_legacy_event_file(tmp_path)
+    definition = DatasetDefinition(experiment=Experiment(sampling_rate=1000))
+
+    with pytest.raises(ValueError, match='no declared convention'):
+        load_event_files(definition, files, paths, verbose=False)
 
 
 @pytest.mark.parametrize(
@@ -1796,7 +1919,7 @@ def test_save_events_and_preprocessed_round_trip_preserves_duration_values(tmp_p
     paths = DatasetPaths(root=tmp_path, dataset='.')
     fileinfo = pl.DataFrame({'filepath': ['subject_1.csv']})
 
-    events = Events(name=['fixation'], onsets=[0.5], offsets=[2.25])
+    events = Events(name=['fixation'], onsets=[0.5], durations=[1.75])
     gaze = Gaze(
         pl.DataFrame({'time': [0.0, 0.5, 1.0], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}),
         time_column='time',
