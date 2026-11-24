@@ -4,7 +4,7 @@ Events
 ======
 
 All events have a starting time (onset) and a duration. An ending time (offset) is stored only
-when offsets are supplied, together with its convention (inclusive or exclusive).
+when offsets are supplied or computed, together with its convention (inclusive or exclusive).
 
 
 .. currentmodule:: pymovements
