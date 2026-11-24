@@ -125,26 +125,26 @@ def microsaccades(
     Apply event detection algorithm on numpy array:
 
     >>> microsaccades(velocities, sampling_rate=1000)
-    shape: (1, 4)
-    ┌──────────────┬──────────────┬─────────┬──────────────┐
-    │ onset        ┆ duration     ┆ name    ┆ offset       │
-    │ ---          ┆ ---          ┆ ---     ┆ ---          │
-    │ duration[μs] ┆ duration[μs] ┆ str     ┆ duration[μs] │
-    ╞══════════════╪══════════════╪═════════╪══════════════╡
-    │ 2ms          ┆ 198ms        ┆ saccade ┆ 199ms        │
-    └──────────────┴──────────────┴─────────┴──────────────┘
+    shape: (1, 3)
+    ┌──────────────┬──────────────┬─────────┐
+    │ onset        ┆ duration     ┆ name    │
+    │ ---          ┆ ---          ┆ ---     │
+    │ duration[μs] ┆ duration[μs] ┆ str     │
+    ╞══════════════╪══════════════╪═════════╡
+    │ 2ms          ┆ 198ms        ┆ saccade │
+    └──────────────┴──────────────┴─────────┘
 
     Run saccade detection with custom parameters:
 
     >>> microsaccades(velocities, minimum_duration=10, threshold=0.1, sampling_rate=1000)
-    shape: (1, 4)
-    ┌──────────────┬──────────────┬─────────┬──────────────┐
-    │ onset        ┆ duration     ┆ name    ┆ offset       │
-    │ ---          ┆ ---          ┆ ---     ┆ ---          │
-    │ duration[μs] ┆ duration[μs] ┆ str     ┆ duration[μs] │
-    ╞══════════════╪══════════════╪═════════╪══════════════╡
-    │ 111ms        ┆ 39ms         ┆ saccade ┆ 149ms        │
-    └──────────────┴──────────────┴─────────┴──────────────┘
+    shape: (1, 3)
+    ┌──────────────┬──────────────┬─────────┐
+    │ onset        ┆ duration     ┆ name    │
+    │ ---          ┆ ---          ┆ ---     │
+    │ duration[μs] ┆ duration[μs] ┆ str     │
+    ╞══════════════╪══════════════╪═════════╡
+    │ 111ms        ┆ 39ms         ┆ saccade │
+    └──────────────┴──────────────┴─────────┘
 
     Polars series are also supported as input. Let's create a nested position series from our numpy
     array:
@@ -171,14 +171,14 @@ def microsaccades(
     Apply event detection algorithm on polars series:
 
     >>> microsaccades(velocity_series, sampling_rate=1000)
-    shape: (1, 4)
-    ┌──────────────┬──────────────┬─────────┬──────────────┐
-    │ onset        ┆ duration     ┆ name    ┆ offset       │
-    │ ---          ┆ ---          ┆ ---     ┆ ---          │
-    │ duration[μs] ┆ duration[μs] ┆ str     ┆ duration[μs] │
-    ╞══════════════╪══════════════╪═════════╪══════════════╡
-    │ 2ms          ┆ 198ms        ┆ saccade ┆ 199ms        │
-    └──────────────┴──────────────┴─────────┴──────────────┘
+    shape: (1, 3)
+    ┌──────────────┬──────────────┬─────────┐
+    │ onset        ┆ duration     ┆ name    │
+    │ ---          ┆ ---          ┆ ---     │
+    │ duration[μs] ┆ duration[μs] ┆ str     │
+    ╞══════════════╪══════════════╪═════════╡
+    │ 2ms          ┆ 198ms        ┆ saccade │
+    └──────────────┴──────────────┴─────────┘
 
     We can also apply the detection on a :py:class:`~pymovements.Gaze` object.
 
@@ -212,27 +212,27 @@ def microsaccades(
 
     >>> gaze.detect('microsaccades')
     >>> gaze.events
-    shape: (1, 4)
-    ┌──────────────┬──────────────┬─────────┬──────────────┐
-    │ onset        ┆ duration     ┆ name    ┆ offset       │
-    │ ---          ┆ ---          ┆ ---     ┆ ---          │
-    │ duration[μs] ┆ duration[μs] ┆ str     ┆ duration[μs] │
-    ╞══════════════╪══════════════╪═════════╪══════════════╡
-    │ 2ms          ┆ 198ms        ┆ saccade ┆ 199ms        │
-    └──────────────┴──────────────┴─────────┴──────────────┘
+    shape: (1, 3)
+    ┌──────────────┬──────────────┬─────────┐
+    │ onset        ┆ duration     ┆ name    │
+    │ ---          ┆ ---          ┆ ---     │
+    │ duration[μs] ┆ duration[μs] ┆ str     │
+    ╞══════════════╪══════════════╪═════════╡
+    │ 2ms          ┆ 198ms        ┆ saccade │
+    └──────────────┴──────────────┴─────────┘
 
     Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
 
     >>> gaze.detect('microsaccades', minimum_duration=10, threshold=0.1, name='microsaccade')
     >>> gaze.events.filter_by_name('microsaccade')
-    shape: (1, 4)
-    ┌──────────────┬──────────────┬──────────────┬──────────────┐
-    │ onset        ┆ duration     ┆ name         ┆ offset       │
-    │ ---          ┆ ---          ┆ ---          ┆ ---          │
-    │ duration[μs] ┆ duration[μs] ┆ str          ┆ duration[μs] │
-    ╞══════════════╪══════════════╪══════════════╪══════════════╡
-    │ 111ms        ┆ 39ms         ┆ microsaccade ┆ 149ms        │
-    └──────────────┴──────────────┴──────────────┴──────────────┘
+    shape: (1, 3)
+    ┌──────────────┬──────────────┬──────────────┐
+    │ onset        ┆ duration     ┆ name         │
+    │ ---          ┆ ---          ┆ ---          │
+    │ duration[μs] ┆ duration[μs] ┆ str          │
+    ╞══════════════╪══════════════╪══════════════╡
+    │ 111ms        ┆ 39ms         ┆ microsaccade │
+    └──────────────┴──────────────┴──────────────┘
 
     """
     if isinstance(velocities, polars.Series):
