@@ -1366,6 +1366,64 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
+                {'name': ['fixation', 'saccade'], 'onset': [0, 5], 'duration': [5, None]},
+                schema={'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64},
+            ),
+            pl.from_dict(
+                {
+                    'time': [0, 1, 2, 3, 4, 5, 6, 7],
+                    'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 1], [0, 0], [0, 0]],
+                },
+                schema={'time': pl.Int64, 'velocity': pl.List(pl.Float64)},
+            ),
+            {'measures': 'peak_velocity'},
+            {'identifiers': None, 'sampling_rate': 1000},
+            pl.from_dict(
+                {
+                    'name': ['fixation', 'saccade'],
+                    'onset': [0, 5],
+                    'duration': [5, None],
+                    'peak_velocity': [0.0, None],
+                },
+                schema={
+                    'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'peak_velocity': pl.Float64,
+                },
+            ),
+            id='null_duration_row_kept_with_null_properties_with_sampling_rate',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {'name': ['fixation', 'saccade'], 'onset': [0, 5], 'duration': [5, 0]},
+                schema={'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64},
+            ),
+            pl.from_dict(
+                {
+                    'time': [0, 1, 2, 3, 4, 5, 6, 7],
+                    'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 1], [0, 0], [0, 0]],
+                },
+                schema={'time': pl.Int64, 'velocity': pl.List(pl.Float64)},
+            ),
+            {'measures': 'peak_velocity'},
+            {'identifiers': None, 'sampling_rate': 1000},
+            pl.from_dict(
+                {
+                    'name': ['fixation', 'saccade'],
+                    'onset': [0, 5],
+                    'duration': [5, 0],
+                    'peak_velocity': [0.0, None],
+                },
+                schema={
+                    'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'peak_velocity': pl.Float64,
+                },
+            ),
+            id='zero_duration_row_selects_no_samples_with_sampling_rate',
+        ),
+
+        pytest.param(
+            pl.from_dict(
                 {'name': ['fixation', 'saccade'], 'onset': [0, 5], 'duration': [5, 3]},
                 schema={'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64},
             ),
