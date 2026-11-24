@@ -1011,7 +1011,7 @@ from pymovements.synthetic import step_function
             ),
             pm.Events(
                 name=['fixation', 'unclassified'],
-                onsets=[0, 90],
+                onsets=[0, 91],
                 offsets=[90, 99],
                 offsets_inclusive=True, sampling_rate=1000,
             ),
@@ -1031,7 +1031,7 @@ from pymovements.synthetic import step_function
             ),
             pm.Events(
                 name=['fixation', 'fixation', 'unclassified'],
-                onsets=[0, 50, 40],
+                onsets=[0, 50, 41],
                 offsets=[40, 100, 49],
                 offsets_inclusive=True, sampling_rate=1000,
             ),
@@ -1051,7 +1051,7 @@ from pymovements.synthetic import step_function
             ),
             pm.Events(
                 name=['fixation', 'saccade', 'unclassified'],
-                onsets=[0, 50, 40],
+                onsets=[0, 50, 41],
                 offsets=[40, 100, 49],
                 offsets_inclusive=True, sampling_rate=1000,
             ),
@@ -1072,7 +1072,7 @@ from pymovements.synthetic import step_function
             ),
             pm.Events(
                 name=['fixation', 'unclassified', 'unclassified', 'fixation'],
-                onsets=[0, 10, 50, 90],
+                onsets=[0, 11, 50, 90],
                 offsets=[10, 49, 89, 100],
                 trials=[1, 1, 2, 2],
                 offsets_inclusive=True, sampling_rate=1000,
@@ -1097,8 +1097,8 @@ from pymovements.synthetic import step_function
                     data={
                         'trial': [1, 1, 2, 2],
                         'name': ['fixation', 'unclassified', 'unclassified', 'fixation'],
-                        'onset': [0, 10, 0, 40],
-                        'duration': [11, 40, 40, 11],
+                        'onset': [0, 11, 0, 40],
+                        'duration': [11, 39, 40, 11],
                         'offset': [10, 49, 39, 50],
                     },
                 ),
@@ -1122,7 +1122,7 @@ from pymovements.synthetic import step_function
             ),
             pm.Events(
                 name=['fixation', 'saccade', 'unclassified'],
-                onsets=[0, 50, 100],
+                onsets=[0, 50, 101],
                 offsets=[40, 100, 199],
                 offsets_inclusive=True, sampling_rate=1000,
             ),
@@ -1162,7 +1162,7 @@ from pymovements.synthetic import step_function
             ),
             pm.Events(
                 name=['fixation', 'fixation', 'unclassified'],
-                onsets=[0, 120, 110],
+                onsets=[0, 120, 111],
                 offsets=[110, 220, 119],
                 offsets_inclusive=True, sampling_rate=1000,
             ),

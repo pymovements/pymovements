@@ -85,6 +85,8 @@ def test_from_asc_binocular_overlapping_blinks_events_ratio(make_text_file):
         gaze.measure_events_ratio('blink_eyelink', sampling_rate=1000.0),
     ).item()
 
-    # merging the overlapping intervals yields (1101 - 1005 + 1) / 105 = 97 / 105,
-    # the value the removed data_loss_ratio_blinks metadata field reported
-    assert ratio == pytest.approx(97 / 105)
+    # merging the overlapping intervals yields the duration of the left-eye blink. The parsed
+    # EyeLink durations are end - start, one sampling interval short of the 97 ms that the
+    # removed data_loss_ratio_blinks metadata field reported, until the parser takes the
+    # reported DUR as the duration: (1101 - 1005) / 105 = 96 / 105
+    assert ratio == pytest.approx(96 / 105)

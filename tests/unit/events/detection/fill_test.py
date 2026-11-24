@@ -228,12 +228,52 @@ def test_fill_with_numeric_event_frame():
 
     filled = fill(events, timesteps=np.arange(0, 100), sampling_rate=1000)
 
-    # The event covers timesteps 0..48 (fill treats the offset as exclusive here),
-    # so the remaining timesteps 49..99 become one unclassified event.
+    # The event lasts 49 ms and covers timesteps 0..48, so the remaining timesteps 49..99
+    # become one unclassified event.
     expected = Events(
         name='unclassified', onsets=[49], offsets=[99], offsets_inclusive=True, sampling_rate=1000,
     )
     assert_frame_equal(filled.frame, expected.frame)
+
+
+@pytest.mark.parametrize(
+    'dropped_columns',
+    [
+        pytest.param([], id='with_offset_column'),
+        pytest.param(['offset'], id='without_offset_column'),
+    ],
+)
+def test_fill_leaves_last_sample_of_detected_event_out(dropped_columns):
+    # A detected event declares its inclusive offset at its last sample, 48, and lasts 49 ms.
+    events = Events(
+        name='fixation', onsets=[0], offsets=[48], offsets_inclusive=True, sampling_rate=1000,
+    )
+    events.drop(dropped_columns)
+
+    filled = fill(events, timesteps=np.arange(0, 100), sampling_rate=1000)
+
+    expected = Events(
+        name='unclassified', onsets=[49], offsets=[99], offsets_inclusive=True, sampling_rate=1000,
+    )
+    assert_frame_equal(filled.frame, expected.frame)
+
+
+@pytest.mark.parametrize(
+    ('sampling_rate', 'expected_onset'),
+    [
+        pytest.param(250, 7000, id='250hz'),
+        pytest.param(1000, 12000, id='1000hz'),
+    ],
+)
+def test_fill_selects_by_sampling_rate(sampling_rate, expected_onset):
+    # Half an interval moves the event end from 8 ms to 6 ms at 250 Hz and to 7.5 ms at
+    # 1000 Hz, so only 250 Hz leaves the sample at 7 ms unclassified.
+    events = Events(name='fixation', onsets=[0], durations=[8])
+    timesteps = np.array([0.0, 4.0, 7.0, 12.0])
+
+    filled = fill(events, timesteps=timesteps, minimum_duration=0, sampling_rate=sampling_rate)
+
+    assert filled.frame['onset'].dt.total_microseconds().to_list() == [expected_onset]
 
 
 def test_fill_with_duration_only_events():

@@ -1524,6 +1524,37 @@ def test_merge_subsequent_close_events_subms_gap_and_float_max_gap(max_gap, expe
     assert len(events.frame) == expected_n_events
 
 
+@pytest.mark.parametrize(
+    'dropped_columns',
+    [
+        pytest.param([], id='with_offset_column'),
+        pytest.param(['offset'], id='without_offset_column'),
+    ],
+)
+@pytest.mark.parametrize(
+    ('onsets', 'offsets', 'max_gap', 'expected_n_events'),
+    [
+        # Inclusive offsets at 1000 Hz: [0, 4) and [4, 8) touch, the gap is 0 and not 1.
+        pytest.param([0, 4], [3, 7], 0, 1, id='adjacent_merged_at_zero'),
+        # [0, 4) and [10, 14) leave a gap of 6 ms, not the 7 ms from offset to onset.
+        pytest.param([0, 10], [3, 13], 6, 1, id='separated_merged_at_gap'),
+        pytest.param([0, 10], [3, 13], 5, 2, id='separated_kept_below_gap'),
+    ],
+)
+def test_merge_subsequent_close_events_gap_from_onset_and_duration(
+        onsets, offsets, max_gap, expected_n_events, dropped_columns,
+):
+    events = Events(
+        name='fixation', onsets=onsets, offsets=offsets, offsets_inclusive=True,
+        sampling_rate=1000,
+    )
+    events.drop(dropped_columns)
+
+    events.merge_subsequent_close_events('fixation', max_gap=max_gap)
+
+    assert len(events.frame) == expected_n_events
+
+
 @pytest.mark.parametrize('verbose', [True, False])
 @pytest.mark.parametrize(
     ('input_events', 'max_gap', 'expected_events'),

@@ -69,12 +69,12 @@ def _blink_kwargs(timesteps):
 
 
 def _fill_kwargs(timesteps):
-    # The existing events cover the first and the last sample, fill reads their offsets as
-    # exclusive.
+    # The existing events cover the first and the last sample, each lasting one sample interval.
+    interval = timesteps[1] - timesteps[0]
     return {
         'events': Events(
             onsets=[timesteps[0], timesteps[-1]],
-            offsets=[timesteps[1], timesteps[-1] + 1],
+            durations=[interval, interval],
         ),
         'timesteps': timesteps,
         'minimum_duration': 1,

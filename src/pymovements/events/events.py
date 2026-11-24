@@ -2415,7 +2415,9 @@ class Events:
             The name of the events to be merged. (default: 'fixation')
 
         max_gap: int | float
-            The maximum gap (in ms) between subsequent fixation events to be merged. (default: 50)
+            The maximum gap (in ms) between subsequent fixation events to be merged. The gap
+            runs from the end of an event, its onset plus its duration, to the onset of the
+            next one, so adjacent events have a gap of 0. (default: 50)
 
         verbose: bool
             If ``True``, print the number of events merged and the resulting number of events.
@@ -2455,12 +2457,10 @@ class Events:
 
         number_of_events = len(events)
 
-        # Step 2: Calculate the gap between the current onset and the previous offset. Without an
-        # offset column the previous event ends at its onset plus its duration.
+        # Step 2: Calculate the gap between the current onset and the end of the previous event,
+        # its onset plus its duration. Adjacent events have a gap of 0.
         has_offset = 'offset' in events.columns
-        previous_end = (
-            polars.col('offset') if has_offset else polars.col('onset') + polars.col('duration')
-        )
+        previous_end = polars.col('onset') + polars.col('duration')
         events = events.with_columns(gap=polars.col('onset') - previous_end.shift(1))
 
         # Step 3: Create a 'group' identifier for merging

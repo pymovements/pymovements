@@ -212,6 +212,9 @@ def scanpathplot(
 
     for row in fixations.iter_rows(named=True):
         duration = row['duration']
+        # A fixation without a duration has no size to draw.
+        if duration is None:
+            continue
         if isinstance(duration, datetime.timedelta):
             duration = duration / datetime.timedelta(milliseconds=1)
         fixation = mpl_patches.Circle(

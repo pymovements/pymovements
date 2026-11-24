@@ -47,20 +47,20 @@ class TestEventRatio:
             'event_name',
             'event_names',
             'event_onsets',
-            'event_offsets',
+            'event_durations',
             'expected_ratio',
         ),
         [
-            # Single blink event covering time range [1, 3] = 2 time units + 1 dt = 3
+            # Single blink event covering [1, 4) = 3 time units
             # Total time range = 7 - 0 + 1 = 8
             pytest.param('blink', ['blink'], [1.0], [3.0], 3 / 8, id='single_blink'),
-            # Two blink events: [1, 2] = 1 unit + 1 dt + [5, 6] = 1 unit + 1 dt = 4 total
+            # Two blink events: [1, 3) = 2 units + [5, 7) = 2 units = 4 total
             # Total time range = 8 (from 0 to 7 + dt)
             pytest.param(
                 'blink',
                 ['blink', 'blink'],
                 [1.0, 5.0],
-                [2.0, 6.0],
+                [2.0, 2.0],
                 4 / 8,
                 id='multiple_blinks',
             ),
@@ -73,7 +73,7 @@ class TestEventRatio:
                 0.0,
                 id='no_matching_events',
             ),
-            # Event covering single sample [1, 1] = 0 units + 1 dt = 1 unit
+            # Event covering single sample [1, 2) = 1 unit
             # Total time range = 8
             pytest.param('blink', ['blink'], [1.0], [1.0], 1 / 8, id='single_sample'),
         ],
@@ -84,11 +84,11 @@ class TestEventRatio:
         event_name,
         event_names,
         event_onsets,
-        event_offsets,
+        event_durations,
         expected_ratio,
     ):
         """Test event ratio calculation with various configurations."""
-        events = pm.Events(name=event_names, onsets=event_onsets, offsets=event_offsets)
+        events = pm.Events(name=event_names, onsets=event_onsets, durations=event_durations)
         gaze = pm.Gaze(samples=fixture_gaze_data.samples, events=events)
 
         result = gaze.samples.select(gaze.measure_events_ratio(event_name))
@@ -106,7 +106,7 @@ class TestEventRatio:
                     'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
                 }),
                 ['trial'],
-                [{'name': 'blink', 'onset': 1.0, 'offset': 2.0, 'trial': 1}],
+                [{'name': 'blink', 'onset': 1.0, 'duration': 2.0, 'trial': 1}],
                 {1: 1.0, 2: 0.0},
                 id='single_trial_with_event',
             ),
@@ -118,8 +118,8 @@ class TestEventRatio:
                 }),
                 ['trial'],
                 [
-                    {'name': 'blink', 'onset': 1.0, 'offset': 1.0, 'trial': 1},
-                    {'name': 'blink', 'onset': 1.0, 'offset': 1.0, 'trial': 2},
+                    {'name': 'blink', 'onset': 1.0, 'duration': 1.0, 'trial': 1},
+                    {'name': 'blink', 'onset': 1.0, 'duration': 1.0, 'trial': 2},
                 ],
                 {1: 0.5, 2: 0.5},
                 id='both_trials_with_event',
@@ -132,7 +132,7 @@ class TestEventRatio:
                 }),
                 ['trial'],
                 [
-                    {'name': 'blink', 'onset': 0.0, 'offset': 1.0, 'trial': 1},
+                    {'name': 'blink', 'onset': 0.0, 'duration': 2.0, 'trial': 1},
                 ],
                 {1: 2 / 3, 2: 0.0},
                 id='event_partial_trial',
@@ -146,7 +146,7 @@ class TestEventRatio:
                 }),
                 ['trial', 'session'],
                 [
-                    {'name': 'blink', 'onset': 0.0, 'offset': 0.0, 'trial': 1, 'session': 1},
+                    {'name': 'blink', 'onset': 0.0, 'duration': 1.0, 'trial': 1, 'session': 1},
                 ],
                 {(1, 1): 0.5, (2, 1): 0.0},
                 id='multiple_trial_columns',
@@ -159,8 +159,8 @@ class TestEventRatio:
                 }),
                 ['trial'],
                 [
-                    {'name': 'blink', 'onset': 0.0, 'offset': 1.0, 'trial': 1},
-                    {'name': 'blink', 'onset': 2.0, 'offset': 3.0, 'trial': 1},
+                    {'name': 'blink', 'onset': 0.0, 'duration': 2.0, 'trial': 1},
+                    {'name': 'blink', 'onset': 2.0, 'duration': 2.0, 'trial': 1},
                 ],
                 {1: 1.0},
                 id='adjacent_events',
@@ -173,8 +173,8 @@ class TestEventRatio:
                 }),
                 ['trial'],
                 [
-                    {'name': 'blink', 'onset': 0.0, 'offset': 2.0, 'trial': 1},
-                    {'name': 'blink', 'onset': 2.0, 'offset': 3.0, 'trial': 1},
+                    {'name': 'blink', 'onset': 0.0, 'duration': 3.0, 'trial': 1},
+                    {'name': 'blink', 'onset': 2.0, 'duration': 2.0, 'trial': 1},
                 ],
                 # overlapping intervals [0, 2] and [2, 3] are merged into [0, 3]
                 # before summing, so the ratio is (3 - 0 + 1) / (3 - 0 + 1) = 1.0
@@ -201,7 +201,7 @@ class TestEventRatio:
                     },
                 ),
                 ['trial'],
-                [{'name': 'blink', 'onset': 0.0, 'offset': 1.0, 'trial': 1}],
+                [{'name': 'blink', 'onset': 0.0, 'duration': 2.0, 'trial': 1}],
                 {1: 1.0, 2: 0.0},
                 id='partial_trials_with_events',
             ),
@@ -246,7 +246,7 @@ class TestEventRatio:
             # events exist but none match name
             pytest.param(
                 lambda g: setattr(
-                    g, 'events', pm.Events(name=['saccade'], onsets=[1.0], offsets=[2.0]),
+                    g, 'events', pm.Events(name=['saccade'], onsets=[1.0], durations=[2.0]),
                 ),
                 {'event_ratio_blink': [0.0]},
                 id='no_matching_name',
@@ -287,13 +287,13 @@ class TestEventRatio:
         ('sampling_rate_arg', 'experiment_rate', 'expected'),
         [
             # Sampling rate from experiment (1000.0 Hz -> dt = 1.0)
-            # Expected: (3-1+1) + (7-5+1) / (7-0+1) = 6/8 = 0.75
+            # Expected: (3 + 3) / (7-0+1) = 6/8 = 0.75
             pytest.param(None, 1000.0, 0.75, id='from_experiment'),
-            # Explicit override (500.0 Hz -> dt = 2.0)
-            # Expected: (3-1+2) + (7-5+2) / (7-0+2) = 8/9
-            pytest.param(500.0, 1000.0, 8 / 9, id='explicit_override'),
+            # Explicit override (500.0 Hz -> dt = 2.0), dt only extends the time range
+            # Expected: (3 + 3) / (7-0+2) = 6/9
+            pytest.param(500.0, 1000.0, 6 / 9, id='explicit_override'),
             # No experiment, no rate (dt = 1.0 inferred from mode)
-            # Expected: (3-1+1) + (7-5+1) / (7-0+1) = 6/8 = 0.75
+            # Expected: (3 + 3) / (7-0+1) = 6/8 = 0.75
             pytest.param(None, None, 0.75, id='no_experiment_no_rate'),
         ],
     )
@@ -311,7 +311,7 @@ class TestEventRatio:
         events = pm.Events(
             name=['blink', 'blink'],
             onsets=[1.0, 5.0],
-            offsets=[3.0, 7.0],
+            durations=[3.0, 3.0],
         )
         experiment = pm.Experiment(sampling_rate=experiment_rate) if experiment_rate else None
         gaze = pm.Gaze(samples=samples, events=events, experiment=experiment)
@@ -335,7 +335,7 @@ class TestEventRatio:
                     'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
                 }),
                 ['trial'],
-                [{'name': 'blink', 'onset': 1.0, 'offset': 2.0, 'trial': 1}],
+                [{'name': 'blink', 'onset': 1.0, 'duration': 2.0, 'trial': 1}],
                 0.5,
                 id='single_blink_session_ratio',
             ),
@@ -348,8 +348,8 @@ class TestEventRatio:
                 }),
                 ['trial'],
                 [
-                    {'name': 'blink', 'onset': 0.0, 'offset': 1.0, 'trial': 1},
-                    {'name': 'blink', 'onset': 2.0, 'offset': 3.0, 'trial': 2},
+                    {'name': 'blink', 'onset': 0.0, 'duration': 2.0, 'trial': 1},
+                    {'name': 'blink', 'onset': 2.0, 'duration': 2.0, 'trial': 2},
                 ],
                 1.0,
                 id='blinks_in_both_trials_session_ratio',
@@ -362,7 +362,7 @@ class TestEventRatio:
                     'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
                 }),
                 ['trial'],
-                [{'name': 'saccade', 'onset': 0.0, 'offset': 1.0, 'trial': 1}],
+                [{'name': 'saccade', 'onset': 0.0, 'duration': 2.0, 'trial': 1}],
                 0.0,
                 id='no_matching_events_session_ratio',
             ),
@@ -394,7 +394,7 @@ class TestEventRatio:
                     'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
                 }),
                 ['trial'],
-                [{'name': 'blink', 'onset': 1.0, 'offset': 2.0, 'trial': 1}],
+                [{'name': 'blink', 'onset': 1.0, 'duration': 2.0, 'trial': 1}],
                 {1: 1.0, 2: 0.0},
                 id='single_trial_with_event',
             ),
@@ -406,7 +406,7 @@ class TestEventRatio:
                 }),
                 ['trial'],
                 [
-                    {'name': 'blink', 'onset': 0.0, 'offset': 1.0, 'trial': 1},
+                    {'name': 'blink', 'onset': 0.0, 'duration': 2.0, 'trial': 1},
                 ],
                 {1: 2 / 3, 2: 0.0},
                 id='event_partial_trial',
@@ -463,7 +463,7 @@ class TestEventRatio:
                 ['trial', 'session'],
                 ['session'],
                 [
-                    {'name': 'blink', 'onset': 0.0, 'offset': 0.0, 'trial': 1, 'session': 1},
+                    {'name': 'blink', 'onset': 0.0, 'duration': 1.0, 'trial': 1, 'session': 1},
                 ],
                 {1: 0.5},
                 id='override_trial_columns_by_session',
@@ -502,3 +502,87 @@ class TestEventRatio:
 
         expected = pl.DataFrame(expected_data)
         assert_frame_equal(result, expected)
+
+
+@pytest.fixture(name='detected_gaze')
+def fixture_detected_gaze() -> pm.Gaze:
+    """Create gaze at 250 Hz with two fixations detected by I-VT around a saccade."""
+    velocities = [[0.0, 0.0]] * 5 + [[100.0, 100.0]] * 3 + [[0.0, 0.0]] * 6
+    gaze = pm.Gaze(
+        samples=pl.DataFrame({
+            'time': [float(i * 4) for i in range(14)],
+            'velocity': velocities,
+        }),
+        experiment=pm.Experiment(sampling_rate=250),
+    )
+    gaze.detect('ivt', velocity_threshold=20, minimum_duration=8)
+    return gaze
+
+
+def test_measure_events_ratio_detected_frame_keeps_totals(detected_gaze):
+    # The inclusive offsets of the detected fixations lasted offset - onset + Δ before.
+    with pytest.warns(DeprecationWarning, match="argument 'offset_column' is deprecated"):
+        before = detected_gaze.samples.select(
+            detected_gaze.measure_events_ratio('fixation', offset_column='offset'),
+        ).item()
+    detected_gaze.events = pm.Events(
+        detected_gaze.events.frame.drop('offset'), metadata={'sampling_rate': 250},
+    )
+
+    after = detected_gaze.samples.select(detected_gaze.measure_events_ratio('fixation')).item()
+
+    # Fixations [0, 20) and [32, 56) ms over the 56 ms the samples span.
+    assert after == pytest.approx(44 / 56)
+    assert after == pytest.approx(before)
+
+
+@pytest.mark.parametrize(
+    ('onset', 'duration'),
+    [
+        pytest.param('start', 'length', id='str'),
+        pytest.param(pl.col('start'), pl.col('length'), id='expr'),
+    ],
+)
+def test_measure_events_ratio_onset_and_duration_arguments(fixture_gaze_data, onset, duration):
+    events = pm.Events(name=['blink'], onsets=[1.0], durations=[3.0])
+    events.frame = events.frame.rename({'onset': 'start', 'duration': 'length'})
+    fixture_gaze_data.events = events
+
+    result = fixture_gaze_data.samples.select(
+        fixture_gaze_data.measure_events_ratio('blink', onset=onset, duration=duration),
+    )
+
+    assert result.item() == pytest.approx(3 / 8)
+
+
+def test_measure_events_ratio_null_duration_contributes_nothing(fixture_gaze_data):
+    fixture_gaze_data.events = pm.Events(
+        pl.DataFrame(
+            {'name': ['blink', 'blink'], 'onset': [1.0, 5.0], 'duration': [None, 2.0]},
+            schema={'name': pl.String, 'onset': pl.Float64, 'duration': pl.Float64},
+        ),
+    )
+
+    result = fixture_gaze_data.samples.select(fixture_gaze_data.measure_events_ratio('blink'))
+
+    assert result.item() == pytest.approx(2 / 8)
+
+
+@pytest.mark.parametrize(
+    ('kwargs', 'argument'),
+    [
+        pytest.param({'onset_column': 'onset'}, 'onset_column', id='onset_column'),
+        pytest.param({'offset_column': 'offset'}, 'offset_column', id='offset_column'),
+    ],
+)
+def test_measure_events_ratio_column_arguments_are_deprecated(
+        detected_gaze, kwargs, argument, assert_deprecation_is_removed,
+):
+    with pytest.raises(DeprecationWarning) as info:
+        detected_gaze.measure_events_ratio('fixation', **kwargs)
+
+    assert_deprecation_is_removed(
+        function_name=f"events2timeratio argument '{argument}'",
+        warning_message=info.value.args[0],
+        scheduled_version='0.34.0',
+    )

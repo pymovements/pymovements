@@ -20,11 +20,14 @@
 """Test segmentation utilities."""
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
+from pymovements.gaze.io import from_begaze
 from pymovements.transforms.segmentation import _has_overlap
 from pymovements.transforms.segmentation import events2segmentation
 from pymovements.transforms.segmentation import events2timeratio
@@ -36,7 +39,7 @@ def fixture_events_df():
     return pl.DataFrame({
         'name': ['blink', 'blink'],
         'onset': pl.Series([2, 7], dtype=pl.Int64),
-        'offset': pl.Series([5, 9], dtype=pl.Int64),
+        'duration': pl.Series([4, 3], dtype=pl.Int64),
     })
 
 
@@ -75,7 +78,7 @@ def test_events2segmentation_basic(events_df, name, time_column, expected):
             id='no_padding',
         ),
         # padding is interpreted as milliseconds for Duration columns: 1 ms extends the
-        # [3, 5] ms event to [2, 6] ms, marking the samples at 2 ms and 6 ms as well.
+        # [3, 6) ms event to [2, 7) ms, marking the samples at 2 ms and 6 ms as well.
         pytest.param(
             {'padding': 1},
             [False, False, True, True, True, True, True, False, False, False],
@@ -84,11 +87,11 @@ def test_events2segmentation_basic(events_df, name, time_column, expected):
     ],
 )
 def test_events2segmentation_duration_columns(kwargs, expected):
-    """Duration onset/offset and time columns are matched in milliseconds."""
+    """Duration onset/duration and time columns are matched in milliseconds."""
     events_df = pl.DataFrame({
         'name': ['blink'],
         'onset': pl.Series([3000], dtype=pl.Duration('us')),
-        'offset': pl.Series([5000], dtype=pl.Duration('us')),
+        'duration': pl.Series([3000], dtype=pl.Duration('us')),
     })
     gaze_df = pl.DataFrame({
         'time': pl.Series([i * 1000 for i in range(10)], dtype=pl.Duration('us')),
@@ -100,35 +103,35 @@ def test_events2segmentation_duration_columns(kwargs, expected):
 
 
 @pytest.mark.parametrize(
-    ('event_dtype', 'onset', 'offset', 'time_dtype', 'time_values'),
+    ('event_dtype', 'onset', 'duration', 'time_dtype', 'time_values'),
     [
         pytest.param(
-            pl.Int64, 3, 5, pl.Int64, list(range(7)),
+            pl.Int64, 3, 3, pl.Int64, list(range(7)),
             id='numeric_events_numeric_time',
         ),
         pytest.param(
-            pl.Duration('us'), 3000, 5000, pl.Duration('us'), [i * 1000 for i in range(7)],
+            pl.Duration('us'), 3000, 3000, pl.Duration('us'), [i * 1000 for i in range(7)],
             id='duration_events_duration_time',
         ),
         pytest.param(
-            pl.Duration('us'), 3000, 5000, pl.Int64, list(range(7)),
+            pl.Duration('us'), 3000, 3000, pl.Int64, list(range(7)),
             id='duration_events_numeric_time',
         ),
         pytest.param(
-            pl.Int64, 3, 5, pl.Duration('us'), [i * 1000 for i in range(7)],
+            pl.Int64, 3, 3, pl.Duration('us'), [i * 1000 for i in range(7)],
             id='numeric_events_duration_time',
         ),
     ],
 )
 def test_events2segmentation_coerces_mixed_dtypes(
-        event_dtype, onset, offset, time_dtype, time_values,
+        event_dtype, onset, duration, time_dtype, time_values,
 ):
     # Whether the event bounds and the sample time column are numeric ms or Duration, and even
     # if they disagree, the mask is computed in milliseconds and yields the same result.
     events_df = pl.DataFrame({
         'name': ['blink'],
         'onset': pl.Series([onset], dtype=event_dtype),
-        'offset': pl.Series([offset], dtype=event_dtype),
+        'duration': pl.Series([duration], dtype=event_dtype),
     })
     gaze_df = pl.DataFrame({'time': pl.Series(time_values, dtype=time_dtype)})
 
@@ -141,13 +144,13 @@ def test_events2segmentation_coerces_mixed_dtypes(
     'events_df, gaze_df, kwargs, expected',
     [
         pytest.param(
-            pl.DataFrame({'name': ['blink'], 'start': [2], 'end': [5]}),
+            pl.DataFrame({'name': ['blink'], 'start': [2], 'length': [4]}),
             pl.DataFrame({'timestamp': np.arange(10, dtype=np.int64)}),
             {
                 'name': 'blink',
                 'time_column': 'timestamp',
-                'onset_column': 'start',
-                'offset_column': 'end',
+                'onset': 'start',
+                'duration': 'length',
             },
             [False, False, True, True, True, True, False, False, False, False],
             id='custom_columns',
@@ -156,7 +159,7 @@ def test_events2segmentation_coerces_mixed_dtypes(
             pl.DataFrame({
                 'name': ['blink', 'blink'],
                 'onset': [2, 1],
-                'offset': [4, 5],
+                'duration': [3, 5],
                 'trial': [1, 2],
             }),
             pl.DataFrame({
@@ -171,7 +174,7 @@ def test_events2segmentation_coerces_mixed_dtypes(
             id='trialized',
         ),
         pytest.param(
-            pl.DataFrame({'name': ['blink'], 'onset': [-2], 'offset': [1]}),
+            pl.DataFrame({'name': ['blink'], 'onset': [-2], 'duration': [4]}),
             pl.DataFrame({'time': np.arange(-5, 5, dtype=np.int64)}),
             {'name': 'blink'},
             [False, False, False, True, True, True, True, False, False, False],
@@ -179,8 +182,8 @@ def test_events2segmentation_coerces_mixed_dtypes(
         ),
         pytest.param(
             pl.DataFrame(
-                {'name': [], 'onset': [], 'offset': []},
-                schema={'name': pl.String, 'onset': pl.Int64, 'offset': pl.Int64},
+                {'name': [], 'onset': [], 'duration': []},
+                schema={'name': pl.String, 'onset': pl.Int64, 'duration': pl.Int64},
             ),
             pl.DataFrame({'time': np.arange(5, dtype=np.int64)}),
             {'name': 'blink'},
@@ -188,14 +191,14 @@ def test_events2segmentation_coerces_mixed_dtypes(
             id='empty',
         ),
         pytest.param(
-            pl.DataFrame({'name': ['saccade'], 'onset': [2], 'offset': [5]}),
+            pl.DataFrame({'name': ['saccade'], 'onset': [2], 'duration': [4]}),
             pl.DataFrame({'time': np.arange(10, dtype=np.int64)}),
             {'name': 'blink'},
             [False] * 10,
             id='mismatched_name',
         ),
         pytest.param(
-            pl.DataFrame({'onset': [2], 'offset': [5]}),
+            pl.DataFrame({'onset': [2], 'duration': [4]}),
             pl.DataFrame({'time': np.arange(10, dtype=np.int64)}),
             {'name': 'blink'},
             [False, False, True, True, True, True, False, False, False, False],
@@ -212,7 +215,7 @@ def test_events2segmentation_advanced(events_df, gaze_df, kwargs, expected):
 
 
 def test_events2segmentation_overlap_warning():
-    events_df = pl.DataFrame({'name': ['blink', 'blink'], 'onset': [2, 4], 'offset': [5, 7]})
+    events_df = pl.DataFrame({'name': ['blink', 'blink'], 'onset': [2, 4], 'duration': [4, 4]})
     gaze_df = pl.DataFrame({'time': np.arange(10, dtype=np.int64)})
 
     with pytest.warns(UserWarning, match='Overlapping events detected'):
@@ -228,7 +231,7 @@ def test_events2segmentation_overlap_warning_trial_hint():
     events_df = pl.DataFrame({
         'name': ['blink', 'blink'],
         'onset': [2, 1],
-        'offset': [4, 5],
+        'duration': [3, 5],
         'trial': [1, 2],
     })
     with pytest.warns(UserWarning, match='Consider providing trial_columns'):
@@ -241,48 +244,48 @@ def test_events2segmentation_overlap_warning_trial_hint():
         pytest.param(
             np.array([0, 0, 1, 1, 1, 0, 0, 1, 1, 0], dtype=np.int32),
             'blink',
-            {'name': ['blink', 'blink'], 'onset': [2, 7], 'offset': [4, 8]},
+            {'name': ['blink', 'blink'], 'onset': [2, 7], 'duration': [3, 2]},
             id='int32',
         ),
         pytest.param(
             np.array([False, False, True, True, True, False, False, True, True, False]),
             'blink',
-            {'name': ['blink', 'blink'], 'onset': [2, 7], 'offset': [4, 8]},
+            {'name': ['blink', 'blink'], 'onset': [2, 7], 'duration': [3, 2]},
             id='bool',
         ),
         pytest.param(
             np.array([0, 0, 1, 1, 1, 0, 0, 1, 1, 0], dtype=np.int64),
             'blink',
-            {'name': ['blink', 'blink'], 'onset': [2, 7], 'offset': [4, 8]},
+            {'name': ['blink', 'blink'], 'onset': [2, 7], 'duration': [3, 2]},
             id='int64',
         ),
         pytest.param(
             pl.Series([0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0], dtype=pl.Float64),
             'blink',
-            {'name': ['blink', 'blink'], 'onset': [2, 7], 'offset': [4, 8]},
+            {'name': ['blink', 'blink'], 'onset': [2, 7], 'duration': [3, 2]},
             id='float64_series',
         ),
         pytest.param(
             np.array([0, 0, 0], dtype=np.int32),
             'blink',
-            {'name': [], 'onset': [], 'offset': []},
+            {'name': [], 'onset': [], 'duration': []},
             id='empty',
         ),
         pytest.param(
             np.array([1, 1, 1], dtype=np.int32),
             'fixation',
-            {'name': ['fixation'], 'onset': [0], 'offset': [2]},
+            {'name': ['fixation'], 'onset': [0], 'duration': [3]},
             id='full',
         ),
     ],
 )
 def test_segmentation2events(segmentation, name, expected_dict):
-    result_df = segmentation2events(segmentation, name=name)
+    result_df = segmentation2events(segmentation, name=name, sampling_rate=1000)
     expected_df = pl.DataFrame(
         expected_dict, schema={
             'name': pl.String,
             'onset': pl.Int64,
-            'offset': pl.Int64,
+            'duration': pl.Int64,
         },
     )
     assert_frame_equal(result_df, expected_df)
@@ -303,7 +306,7 @@ def test_segmentation2events(segmentation, name, expected_dict):
 )
 def test_roundtrip_indices(segmentation):
     name = 'event'
-    events_df = segmentation2events(segmentation, name=name)
+    events_df = segmentation2events(segmentation, name=name, sampling_rate=1000)
 
     gaze_df = pl.DataFrame({'time': np.arange(len(segmentation), dtype=np.int64)})
     result_expr = events2segmentation(events_df, name=name)
@@ -323,69 +326,80 @@ def test_roundtrip_indices(segmentation):
 )
 def test_segmentation2events_invalid_parameters(segmentation, time_column, expected_match):
     with pytest.raises(ValueError, match=expected_match):
-        segmentation2events(segmentation, name='blink', time_column=time_column)
+        segmentation2events(
+            segmentation, name='blink', time_column=time_column, sampling_rate=1000,
+        )
 
 
 @pytest.mark.parametrize(
-    'time_column, segmentation, expected_onset, expected_offset',
+    'time_column, segmentation, expected_onset, expected_duration',
     [
         pytest.param(
             pl.Series([1, 2, 3], dtype=pl.Int64),
             np.array([0, 1, 0]),
             2,
-            2,
+            1.0,
             id='series',
         ),
         pytest.param(
             np.array([1, 2, 3], dtype=np.int64),
             np.array([0, 1, 0]),
             2,
-            2,
+            1.0,
             id='numpy',
         ),
         pytest.param(
             np.array([100]),
             np.array([1]),
             100,
-            100,
+            1.0,
             id='single_sample_event',
         ),
     ],
 )
 def test_segmentation2events_time_column_types(
-    time_column, segmentation, expected_onset, expected_offset,
+    time_column, segmentation, expected_onset, expected_duration,
 ):
-    result_df = segmentation2events(segmentation, name='blink', time_column=time_column)
+    result_df = segmentation2events(
+        segmentation, name='blink', time_column=time_column, sampling_rate=1000,
+    )
     assert result_df.get_column('onset')[0] == expected_onset
-    assert result_df.get_column('offset')[0] == expected_offset
+    assert result_df.get_column('duration')[0] == expected_duration
 
 
 @pytest.mark.parametrize(
-    'segmentation, time',
+    'segmentation, time, sampling_rate',
     [
         pytest.param(
             np.array([0, 1, 1, 0, 1, 0, 0, 1, 1, 1], dtype=np.int32),
             np.arange(100, 110, dtype=np.int64),
+            1000,
             id='int_time',
         ),
         pytest.param(
             np.array([0, 1, 1, 0, 1, 0, 0, 1, 1, 1], dtype=np.int32),
             np.linspace(0, 1, 10),
+            9000,
             id='float_time',
         ),
         pytest.param(
             np.array([1, 0, 0, 1]),
             np.array([1.1, 2.2, 3.3, 4.4]),
+            1000 / 1.1,
             id='float_time_with_end_event',
         ),
     ],
 )
-def test_roundtrip_time(segmentation, time):
+def test_roundtrip_time(segmentation, time, sampling_rate):
     name = 'event'
-    events_df = segmentation2events(segmentation, name=name, time_column=time)
+    events_df = segmentation2events(
+        segmentation, name=name, time_column=time, sampling_rate=sampling_rate,
+    )
 
     gaze_df = pl.DataFrame({'time': time})
-    result_expr = events2segmentation(events_df, name=name, time_column='time')
+    result_expr = events2segmentation(
+        events_df, name=name, time_column='time', sampling_rate=sampling_rate,
+    )
     result_df = gaze_df.select(result_expr)
 
     np.testing.assert_array_equal(result_df[name].to_numpy(), segmentation.astype(bool))
@@ -395,7 +409,7 @@ def test_roundtrip_time(segmentation, time):
     'events, name, expected_exception, expected_match',
     [
         pytest.param(
-            pl.DataFrame({'foo': [2], 'offset': [5]}),
+            pl.DataFrame({'foo': [2], 'duration': [4]}),
             'blink',
             ValueError,
             'not found in events',
@@ -406,14 +420,14 @@ def test_roundtrip_time(segmentation, time):
             'blink',
             ValueError,
             'not found in events',
-            id='missing_offset_column',
+            id='missing_duration_column',
         ),
         pytest.param(
-            pl.DataFrame({'name': ['blink'], 'onset': [6], 'offset': [5]}),
+            pl.DataFrame({'name': ['blink'], 'onset': [6], 'duration': [-1]}),
             'blink',
             ValueError,
-            'Onset must be less than or equal to offset',
-            id='onset_greater_offset',
+            'Duration must be non-negative',
+            id='negative_duration',
         ),
     ],
 )
@@ -431,7 +445,7 @@ def test_events2segmentation_trialized_overlap_warning():
     events_df = pl.DataFrame({
         'name': ['blink', 'blink'],
         'onset': [2, 4],
-        'offset': [5, 7],
+        'duration': [4, 4],
         'trial': [1, 1],
     })
     gaze_df = pl.DataFrame({
@@ -500,26 +514,26 @@ def test_segmentation2events_invalid_values(
     faulty_segmentation, expected_exception, expected_match, kwargs,
 ):
     with pytest.raises(expected_exception, match=expected_match):
-        segmentation2events(faulty_segmentation, name='blink', **kwargs)
+        segmentation2events(faulty_segmentation, name='blink', sampling_rate=1000, **kwargs)
 
 
 @pytest.mark.parametrize(
-    'onsets, offsets, expected',
+    'starts, ends, expected',
     [
         pytest.param(np.array([]), np.array([]), False, id='empty'),
         pytest.param(np.array([1]), np.array([2]), False, id='single_event'),
         pytest.param(np.array([1, 3]), np.array([2, 4]), False, id='no_overlap'),
-        pytest.param(np.array([1, 2]), np.array([2, 3]), True, id='boundary_touch'),
+        pytest.param(np.array([1, 2]), np.array([2, 3]), False, id='boundary_touch'),
         pytest.param(np.array([1, 4]), np.array([3, 5]), False, id='gap'),
         pytest.param(np.array([1, 2]), np.array([4, 3]), True, id='overlap_basic'),
-        pytest.param(np.array([2, 1]), np.array([3, 2]), True, id='unsorted_no_overlap'),
+        pytest.param(np.array([2, 1]), np.array([3, 2]), False, id='unsorted_boundary_touch'),
         pytest.param(np.array([2, 1]), np.array([4, 3]), True, id='unsorted_overlap'),
         pytest.param(np.array([1, 2, 5]), np.array([3, 6, 7]), True, id='multiple_overlap'),
         pytest.param(np.array([1, 4, 7]), np.array([3, 6, 9]), False, id='multiple_no_overlap'),
     ],
 )
-def test_has_overlap(onsets, offsets, expected):
-    assert _has_overlap(onsets, offsets) == expected
+def test_has_overlap(starts, ends, expected):
+    assert _has_overlap(starts, ends) == expected
 
 
 @pytest.mark.parametrize(
@@ -532,7 +546,7 @@ def test_has_overlap(onsets, offsets, expected):
             {
                 'name': ['blink', 'blink'],
                 'onset': [1, 4],
-                'offset': [2, 5],
+                'duration': [2, 2],
                 'trial': [1, 2],
             },
             id='basic',
@@ -544,7 +558,7 @@ def test_has_overlap(onsets, offsets, expected):
             {
                 'name': [],
                 'onset': [],
-                'offset': [],
+                'duration': [],
                 'trial': [],
             },
             id='empty',
@@ -552,14 +566,16 @@ def test_has_overlap(onsets, offsets, expected):
     ],
 )
 def test_segmentation2events_trialized(segmentation, name, trial_columns, expected_dict):
-    result_df = segmentation2events(segmentation, name=name, trial_columns=trial_columns)
+    result_df = segmentation2events(
+        segmentation, name=name, trial_columns=trial_columns, sampling_rate=1000,
+    )
 
     expected_df = pl.DataFrame(
         expected_dict,
         schema={
             'name': pl.String,
             'onset': pl.Int64,
-            'offset': pl.Int64,
+            'duration': pl.Int64,
             **trial_columns.schema,
         },
     )
@@ -574,12 +590,12 @@ def test_segmentation2events_trialized(segmentation, name, trial_columns, expect
             pl.DataFrame({
                 'name': ['blink'],
                 'onset': pl.Series([200], dtype=pl.Int64),
-                'offset': pl.Series([300], dtype=pl.Int64),
+                'duration': pl.Series([150], dtype=pl.Int64),
             }),
             pl.DataFrame({'time': pl.Series(range(0, 500, 50), dtype=pl.Int64)}),
             50,
             # times: 0, 50, 100, 150, 200, 250, 300, 350, 400, 450
-            # padded range: 150-350 inclusive
+            # padded range: [150, 400)
             [False, False, False, True, True, True, True, True, False, False],
             id='symmetric_padding_50',
         ),
@@ -587,11 +603,11 @@ def test_segmentation2events_trialized(segmentation, name, trial_columns, expect
             pl.DataFrame({
                 'name': ['blink'],
                 'onset': pl.Series([200], dtype=pl.Int64),
-                'offset': pl.Series([300], dtype=pl.Int64),
+                'duration': pl.Series([150], dtype=pl.Int64),
             }),
             pl.DataFrame({'time': pl.Series(range(0, 500, 50), dtype=pl.Int64)}),
             (100, 50),
-            # padded range: 100-350 inclusive
+            # padded range: [100, 400)
             [False, False, True, True, True, True, True, True, False, False],
             id='asymmetric_padding',
         ),
@@ -599,7 +615,7 @@ def test_segmentation2events_trialized(segmentation, name, trial_columns, expect
             pl.DataFrame({
                 'name': ['blink'],
                 'onset': pl.Series([2], dtype=pl.Int64),
-                'offset': pl.Series([5], dtype=pl.Int64),
+                'duration': pl.Series([4], dtype=pl.Int64),
             }),
             pl.DataFrame({'time': np.arange(10, dtype=np.int64)}),
             0,
@@ -611,11 +627,11 @@ def test_segmentation2events_trialized(segmentation, name, trial_columns, expect
             pl.DataFrame({
                 'name': ['blink'],
                 'onset': pl.Series([2], dtype=pl.Int64),
-                'offset': pl.Series([5], dtype=pl.Int64),
+                'duration': pl.Series([4], dtype=pl.Int64),
             }),
             pl.DataFrame({'time': np.arange(10, dtype=np.int64)}),
             2,
-            # padded range: 0-7 inclusive
+            # padded range: [0, 8)
             [True, True, True, True, True, True, True, True, False, False],
             id='padding_extends_to_boundary',
         ),
@@ -631,7 +647,7 @@ def test_events2segmentation_padding_with_trials():
     events_df = pl.DataFrame({
         'name': ['blink', 'blink'],
         'onset': pl.Series([2, 1], dtype=pl.Int64),
-        'offset': pl.Series([3, 3], dtype=pl.Int64),
+        'duration': pl.Series([2, 3], dtype=pl.Int64),
         'trial': [1, 2],
     })
     gaze_df = pl.DataFrame({
@@ -642,8 +658,8 @@ def test_events2segmentation_padding_with_trials():
     result_expr = events2segmentation(events_df, name='blink', padding=1, trial_columns=['trial'])
     result_df = gaze_df.select(result_expr)
 
-    # Trial 1: event 2-3, padded 1-4 → [0:F, 1:T, 2:T, 3:T]
-    # Trial 2: event 1-3, padded 0-4 → [0:T, 1:T, 2:T, 3:T, 4:T]
+    # Trial 1: event [2, 4), padded [1, 5) → [0:F, 1:T, 2:T, 3:T]
+    # Trial 2: event [1, 4), padded [0, 5) → [0:T, 1:T, 2:T, 3:T, 4:T]
     assert result_df['blink'].to_list() == [False, True, True, True, True, True, True, True, True]
 
 
@@ -651,7 +667,7 @@ def test_events2segmentation_negative_padding_raises():
     events_df = pl.DataFrame({
         'name': ['blink'],
         'onset': pl.Series([2], dtype=pl.Int64),
-        'offset': pl.Series([5], dtype=pl.Int64),
+        'duration': pl.Series([4], dtype=pl.Int64),
     })
     with pytest.raises(ValueError, match='non-negative'):
         events2segmentation(events_df, name='blink', padding=-1)
@@ -661,7 +677,7 @@ def test_events2segmentation_negative_tuple_padding_raises():
     events_df = pl.DataFrame({
         'name': ['blink'],
         'onset': pl.Series([2], dtype=pl.Int64),
-        'offset': pl.Series([5], dtype=pl.Int64),
+        'duration': pl.Series([4], dtype=pl.Int64),
     })
     with pytest.raises(ValueError, match='non-negative'):
         events2segmentation(events_df, name='blink', padding=(1, -2))
@@ -671,7 +687,7 @@ def test_events2segmentation_invalid_padding_type_raises():
     events_df = pl.DataFrame({
         'name': ['blink'],
         'onset': pl.Series([2], dtype=pl.Int64),
-        'offset': pl.Series([5], dtype=pl.Int64),
+        'duration': pl.Series([4], dtype=pl.Int64),
     })
     with pytest.raises(TypeError, match='padding should be a number or a two-dimensional tuple'):
         events2segmentation(events_df, name='blink', padding='invalid')
@@ -682,17 +698,17 @@ def test_events2segmentation_padding_causes_overlap_warning():
     events_df = pl.DataFrame({
         'name': ['blink', 'blink'],
         'onset': pl.Series([2, 7], dtype=pl.Int64),
-        'offset': pl.Series([3, 8], dtype=pl.Int64),
+        'duration': pl.Series([2, 2], dtype=pl.Int64),
     })
     gaze_df = pl.DataFrame({'time': np.arange(12, dtype=np.int64)})
 
-    # Without padding: no overlap (3 < 7)
-    # With padding=2: padded intervals [0, 5] and [5, 10] → overlap at 5
+    # Without padding: no overlap (4 <= 7)
+    # With padding=2: padded intervals [0, 6) and [5, 11) → overlap at 5
     with pytest.warns(UserWarning, match='Overlapping events detected'):
         result_expr = events2segmentation(events_df, name='blink', padding=2)
 
     result_df = gaze_df.select(result_expr)
-    # padded: 0-5 and 5-10
+    # padded: [0, 6) and [5, 11)
     expected = [True, True, True, True, True, True, True, True, True, True, True, False]
     assert result_df['blink'].to_list() == expected
 
@@ -701,77 +717,77 @@ def test_events2segmentation_padding_causes_overlap_warning():
     ('events_data', 'samples_data', 'kwargs', 'expected'),
     [
         pytest.param(
-            {'name': ['blink'], 'onset': [1.0], 'offset': [3.0]},
+            {'name': ['blink'], 'onset': [1.0], 'duration': [3.0]},
             {'time': [0.0, 1.0, 2.0, 3.0]},
             {'name': 'blink'},
             0.75,
             id='basic',
         ),
         pytest.param(
-            {'name': [], 'onset': [], 'offset': []},
+            {'name': [], 'onset': [], 'duration': []},
             {'time': [0.0, 1.0, 2.0, 3.0]},
             {'name': 'blink'},
             0.0,
             id='empty_events',
         ),
         pytest.param(
-            {'name': ['saccade'], 'onset': [1.0], 'offset': [3.0]},
+            {'name': ['saccade'], 'onset': [1.0], 'duration': [3.0]},
             {'time': [0.0, 1.0, 2.0, 3.0]},
             {'name': 'blink'},
             0.0,
             id='no_matching_name',
         ),
         pytest.param(
-            {'name': ['blink', 'blink'], 'onset': [1.0, 5.0], 'offset': [3.0, 7.0]},
+            {'name': ['blink', 'blink'], 'onset': [1.0, 5.0], 'duration': [3.0, 3.0]},
             {'time': [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]},
             {'name': 'blink'},
             0.75,
             id='two_events_no_sampling_rate',
         ),
         pytest.param(
-            {'name': ['blink', 'blink'], 'onset': [1.0, 5.0], 'offset': [3.0, 7.0]},
+            {'name': ['blink', 'blink'], 'onset': [1.0, 5.0], 'duration': [3.0, 3.0]},
             {'time': [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]},
             {'name': 'blink', 'sampling_rate': 1000.0},
             0.75,
             id='two_events_with_sampling_rate',
         ),
         pytest.param(
-            {'name': ['blink'], 'onset': [1.0], 'offset': [3.0]},
+            {'name': ['blink'], 'onset': [1.0], 'duration': [3.0]},
             {'time': [0.0, 1.0, 2.0, 3.0]},
             {'name': 'blink'},
             3.0 / 4.0,
             id='basic_with_mode_dt',
         ),
         pytest.param(
-            {'name': ['blink'], 'onset': [1.0], 'offset': [1.0]},
+            {'name': ['blink'], 'onset': [1.0], 'duration': [1.0]},
             {'time': [1.0]},
             {'name': 'blink'},
             1.0,
             id='single_sample_with_event',
         ),
         pytest.param(
-            {'name': ['blink'], 'onset': [2.0], 'offset': [2.0]},
+            {'name': ['blink'], 'onset': [2.0], 'duration': [1.0]},
             {'time': [1.0]},
             {'name': 'blink'},
             0.0,
             id='single_sample_outside_event',
         ),
         pytest.param(
-            {'name': ['saccade'], 'onset': [1.0], 'offset': [1.0]},
+            {'name': ['saccade'], 'onset': [1.0], 'duration': [1.0]},
             {'time': [1.0]},
             {'name': 'blink'},
             0.0,
             id='single_sample_no_matching_name',
         ),
         pytest.param(
-            {'name': ['blink'], 'onset': [1.0], 'offset': [1.0], 'trial': [1]},
+            {'name': ['blink'], 'onset': [1.0], 'duration': [1.0], 'trial': [1]},
             {'time': [1.0], 'trial': [2]},
             {'name': 'blink', 'trial_columns': ['trial']},
             0.0,
             id='single_sample_trial_mismatch',
         ),
         pytest.param(
-            {'name': ['blink'], 'onset': [1.0], 'offset': [1.0], 'trial': [2]},
+            {'name': ['blink'], 'onset': [1.0], 'duration': [1.0], 'trial': [2]},
             {'time': [1.0], 'trial': [2]},
             {'name': 'blink', 'trial_columns': ['trial']},
             1.0,
@@ -787,7 +803,7 @@ def test_events2timeratio_basic(events_data, samples_data, kwargs, expected):
 
 
 def test_events2timeratio_empty_samples_returns_none():
-    events = pl.DataFrame({'name': ['blink'], 'onset': [1.0], 'offset': [3.0]})
+    events = pl.DataFrame({'name': ['blink'], 'onset': [1.0], 'duration': [3.0]})
     samples = pl.DataFrame({'time': []})
     result = samples.select(events2timeratio(events, samples, name='blink'))
     assert result.to_series()[0] is None
@@ -795,8 +811,8 @@ def test_events2timeratio_empty_samples_returns_none():
 
 def test_events2timeratio_fully_empty_events_returns_zero():
     events = pl.DataFrame(
-        {'name': [], 'onset': [], 'offset': []},
-        schema={'name': pl.String, 'onset': pl.Float64, 'offset': pl.Float64},
+        {'name': [], 'onset': [], 'duration': []},
+        schema={'name': pl.String, 'onset': pl.Float64, 'duration': pl.Float64},
     )
     samples = pl.DataFrame({'time': [1.0, 2.0]})
     result = samples.select(events2timeratio(events, samples, name='blink'))
@@ -811,11 +827,11 @@ def test_events2timeratio_fully_empty_events_returns_zero():
     ],
 )
 def test_events2timeratio_duration_columns(kwargs):
-    """Duration onset/offset and time columns yield the same ratio as numeric milliseconds."""
+    """Duration onset/duration and time columns yield the same ratio as numeric milliseconds."""
     events = pl.DataFrame({
         'name': ['blink', 'blink'],
         'onset': pl.Series([1000, 5000], dtype=pl.Duration('us')),
-        'offset': pl.Series([3000, 7000], dtype=pl.Duration('us')),
+        'duration': pl.Series([3000, 3000], dtype=pl.Duration('us')),
     })
     samples = pl.DataFrame({
         'time': pl.Series([i * 1000 for i in range(8)], dtype=pl.Duration('us')),
@@ -840,7 +856,7 @@ def test_events2timeratio_coerces_mixed_dtypes(event_dtype, event_scale, time_dt
     events = pl.DataFrame({
         'name': ['blink', 'blink'],
         'onset': pl.Series([1 * event_scale, 5 * event_scale], dtype=event_dtype),
-        'offset': pl.Series([3 * event_scale, 7 * event_scale], dtype=event_dtype),
+        'duration': pl.Series([3 * event_scale, 3 * event_scale], dtype=event_dtype),
     })
     samples = pl.DataFrame({
         'time': pl.Series([i * time_scale for i in range(8)], dtype=time_dtype),
@@ -855,7 +871,7 @@ def test_events2timeratio_coerces_mixed_dtypes(event_dtype, event_scale, time_dt
     ('events_data', 'samples_data', 'error_match'),
     [
         pytest.param(
-            {'name': ['blink'], 'offset': [3.0]},
+            {'name': ['blink'], 'duration': [3.0]},
             {'time': [0.0, 1.0, 2.0, 3.0]},
             'Onset column',
             id='missing_onset_column',
@@ -863,11 +879,11 @@ def test_events2timeratio_coerces_mixed_dtypes(event_dtype, event_scale, time_dt
         pytest.param(
             {'name': ['blink'], 'onset': [1.0]},
             {'time': [0.0, 1.0, 2.0, 3.0]},
-            'Offset column',
-            id='missing_offset_column',
+            'Duration column',
+            id='missing_duration_column',
         ),
         pytest.param(
-            {'name': ['blink'], 'onset': [1.0], 'offset': [3.0]},
+            {'name': ['blink'], 'onset': [1.0], 'duration': [3.0]},
             {'x': [0.0, 1.0, 2.0, 3.0]},
             'Time column',
             id='missing_time_column',
@@ -885,7 +901,7 @@ def test_events2timeratio_missing_column(events_data, samples_data, error_match)
     ('events_data', 'samples_data', 'trial_columns', 'expected_dict'),
     [
         pytest.param(
-            {'name': ['blink'], 'onset': [1.0], 'offset': [2.0], 'trial': [1]},
+            {'name': ['blink'], 'onset': [1.0], 'duration': [2.0], 'trial': [1]},
             {'time': [0.0, 1.0, 2.0], 'trial': [1, 1, 1]},
             ['trial'],
             {1: 2 / 3},
@@ -895,7 +911,7 @@ def test_events2timeratio_missing_column(events_data, samples_data, error_match)
             {
                 'name': ['blink', 'blink'],
                 'onset': [1.0, 1.0],
-                'offset': [2.0, 2.0],
+                'duration': [2.0, 2.0],
                 'trial': [1, 2],
             },
             {
@@ -907,7 +923,7 @@ def test_events2timeratio_missing_column(events_data, samples_data, error_match)
             id='multiple_trials',
         ),
         pytest.param(
-            {'name': ['blink'], 'onset': [1.0], 'offset': [2.0], 'trial': [1]},
+            {'name': ['blink'], 'onset': [1.0], 'duration': [2.0], 'trial': [1]},
             {
                 'time': [0.0, 1.0, 2.0, 0.0, 1.0, 2.0],
                 'trial': [1, 1, 1, 2, 2, 2],
@@ -917,21 +933,21 @@ def test_events2timeratio_missing_column(events_data, samples_data, error_match)
             id='partial_trials_with_events',
         ),
         pytest.param(
-            {'name': ['blink'], 'onset': [1.0], 'offset': [2.0], 'trial': [1]},
+            {'name': ['blink'], 'onset': [1.0], 'duration': [2.0], 'trial': [1]},
             {'time': [0.0, 1.0, 2.0], 'trial': [2, 2, 2]},
             ['trial'],
             {2: 0.0},
             id='non_overlapping_trials_events_only',
         ),
         pytest.param(
-            {'name': ['blink'], 'onset': [1.0], 'offset': [2.0], 'trial': [2]},
+            {'name': ['blink'], 'onset': [1.0], 'duration': [2.0], 'trial': [2]},
             {'time': [0.0, 1.0, 2.0], 'trial': [1, 1, 1]},
             ['trial'],
             {1: 0.0},
             id='non_overlapping_trials_samples_only',
         ),
         pytest.param(
-            {'name': ['saccade'], 'onset': [1.0], 'offset': [2.0], 'trial': [1]},
+            {'name': ['saccade'], 'onset': [1.0], 'duration': [2.0], 'trial': [1]},
             {
                 'time': [0.0, 1.0, 2.0, 0.0, 1.0, 2.0],
                 'trial': [1, 1, 1, 2, 2, 2],
@@ -941,7 +957,7 @@ def test_events2timeratio_missing_column(events_data, samples_data, error_match)
             id='empty_events_all_trials',
         ),
         pytest.param(
-            {'name': ['blink'], 'onset': [1.0], 'offset': [2.0], 'trial': [1]},
+            {'name': ['blink'], 'onset': [1.0], 'duration': [2.0], 'trial': [1]},
             {
                 'time': [1.0, 2.0, 1.0, 2.0],
                 'trial': [1, 1, 2, 2],
@@ -954,7 +970,7 @@ def test_events2timeratio_missing_column(events_data, samples_data, error_match)
             {
                 'name': ['blink', 'blink'],
                 'onset': [1.0, 1.0],
-                'offset': [2.0, 2.0],
+                'duration': [2.0, 2.0],
                 'trial': [1, 1],
                 'block': [1, 2],
             },
@@ -971,7 +987,7 @@ def test_events2timeratio_missing_column(events_data, samples_data, error_match)
             {
                 'name': ['blink', 'blink', 'blink'],
                 'onset': [0.0, 1.0, 4.0],
-                'offset': [6.0, 2.0, 5.0],
+                'duration': [7.0, 2.0, 2.0],
                 'trial': [1, 2, 2],
             },
             {
@@ -979,11 +995,11 @@ def test_events2timeratio_missing_column(events_data, samples_data, error_match)
                 'trial': [1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2],
             },
             ['trial'],
-            # trial 1 event [0, 6] covers all 7 samples: ratio 1.0
-            # trial 2 events [1, 2] and [4, 5] are disjoint and stay separate:
-            # ((2 - 1 + 1) + (5 - 4 + 1)) / (6 - 0 + 1) = 4 / 7
-            # trial 1's running offset 6 must not leak into trial 2, which would
-            # wrongly merge [1, 2] and [4, 5] into [1, 5] and yield 5 / 7
+            # trial 1 event [0, 7) covers all 7 samples: ratio 1.0
+            # trial 2 events [1, 3) and [4, 6) are disjoint and stay separate:
+            # (2 + 2) / (6 - 0 + 1) = 4 / 7
+            # trial 1's running end 7 must not leak into trial 2, which would
+            # wrongly merge [1, 3) and [4, 6) into [1, 6) and yield 5 / 7
             {1: 1.0, 2: 4 / 7},
             id='per_trial_merge_isolation',
         ),
@@ -1014,10 +1030,10 @@ def test_events2timeratio_with_trials(
             {
                 'name': ['blink', 'blink'],
                 'onset': [0.0, 6.0],
-                'offset': [96.0, 85.0],
+                'duration': [97.0, 80.0],
             },
-            # left-eye blink [0, 96] fully contains right-eye blink [6, 85],
-            # merging yields [0, 96]: (96 - 0 + 1) / 105 = 97 / 105
+            # left-eye blink [0, 97) fully contains right-eye blink [6, 86),
+            # merging yields [0, 97): 97 / 105
             97 / 105,
             id='contained_event_merged',
         ),
@@ -1025,11 +1041,11 @@ def test_events2timeratio_with_trials(
             {
                 'name': ['blink', 'blink', 'blink'],
                 'onset': [0.0, 6.0, 90.0],
-                'offset': [96.0, 85.0, 100.0],
+                'duration': [97.0, 80.0, 11.0],
             },
-            # the third event [90, 100] overlaps the running maximum offset 96,
-            # not the previous row's offset 85, so all three events merge into
-            # [0, 100]: (100 - 0 + 1) / 105 = 101 / 105
+            # the third event [90, 101) overlaps the running maximum end 97,
+            # not the previous row's end 86, so all three events merge into
+            # [0, 101): 101 / 105
             101 / 105,
             id='three_events_merged_via_running_max',
         ),
@@ -1043,8 +1059,8 @@ def test_events2timeratio_overlapping_events(events_data, expected_ratio):
     intervals of the matching events before summing durations, so the overlap is
     counted only once and the resulting ratio cannot exceed 1.0.
 
-    Merging tracks the running maximum offset across all events seen so far, not
-    just the previous event's offset, so a later event overlapping an earlier,
+    Merging tracks the running maximum end across all events seen so far, not
+    just the previous event's end, so a later event overlapping an earlier,
     longer event is absorbed even when it starts after an intermediate event ends.
 
     This matches the behavior of the removed ``data_loss_ratio_blinks`` metadata
@@ -1057,3 +1073,446 @@ def test_events2timeratio_overlapping_events(events_data, expected_ratio):
     result = samples.select(events2timeratio(events, samples, 'blink', sampling_rate=1000.0))
 
     assert result.to_series()[0] == pytest.approx(expected_ratio)
+
+
+@pytest.mark.parametrize(
+    ('onset', 'duration'),
+    [
+        pytest.param('start', 'length', id='str'),
+        pytest.param(pl.col('start'), pl.col('length'), id='expr'),
+        pytest.param(pl.col('start'), pl.col('end') - pl.col('start') + 1, id='derived_expr'),
+    ],
+)
+def test_events2segmentation_onset_and_duration_arguments(onset, duration):
+    events_df = pl.DataFrame({'name': ['blink'], 'start': [2], 'length': [3], 'end': [4]})
+    gaze_df = pl.DataFrame({'time': np.arange(7, dtype=np.int64)})
+
+    result_df = gaze_df.select(
+        events2segmentation(events_df, name='blink', onset=onset, duration=duration),
+    )
+
+    assert result_df['blink'].to_list() == [False, False, True, True, True, False, False]
+
+
+@pytest.mark.parametrize(
+    ('duration', 'padding', 'expected'),
+    [
+        pytest.param(
+            None, None, [False, False, False, False, False, True, False, False],
+            id='null_no_padding',
+        ),
+        pytest.param(
+            None, 1, [False, False, False, False, True, True, True, False],
+            id='null_padding',
+        ),
+        pytest.param(
+            0, None, [False, False, False, False, False, True, False, False],
+            id='zero_no_padding',
+        ),
+        pytest.param(
+            0, 1, [True, True, False, False, True, True, True, False],
+            id='zero_padding',
+        ),
+    ],
+)
+def test_events2segmentation_null_and_zero_duration(duration, padding, expected):
+    events_df = pl.DataFrame(
+        {'name': ['blink', 'blink'], 'onset': [1, 5], 'duration': [duration, 1]},
+        schema={'name': pl.String, 'onset': pl.Int64, 'duration': pl.Int64},
+    )
+    gaze_df = pl.DataFrame({'time': np.arange(8, dtype=np.int64)})
+
+    result_df = gaze_df.select(events2segmentation(events_df, name='blink', padding=padding))
+
+    assert result_df['blink'].to_list() == expected
+
+
+@pytest.mark.parametrize(
+    'sampling_rate',
+    [
+        pytest.param(None, id='no_sampling_rate'),
+        pytest.param(1000, id='sampling_rate'),
+    ],
+)
+def test_events2segmentation_zero_duration_inside_event_warns_no_overlap(sampling_rate):
+    events_df = pl.DataFrame({'name': ['blink', 'blink'], 'onset': [1, 3], 'duration': [5, 0]})
+    gaze_df = pl.DataFrame({'time': np.arange(8, dtype=np.int64)})
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        result_df = gaze_df.select(
+            events2segmentation(events_df, name='blink', sampling_rate=sampling_rate),
+        )
+
+    assert result_df['blink'].to_list() == [False, True, True, True, True, True, False, False]
+
+
+def test_events2segmentation_adjacent_events_share_no_sample():
+    events_df = pl.DataFrame({
+        'name': ['fixation', 'saccade'],
+        'onset': [0, 3],
+        'duration': [3, 3],
+    })
+    gaze_df = pl.DataFrame({'time': np.arange(6, dtype=np.int64)})
+
+    result_df = gaze_df.select(
+        events2segmentation(events_df, name='fixation'),
+        events2segmentation(events_df, name='saccade'),
+    )
+
+    assert result_df['fixation'].to_list() == [True, True, True, False, False, False]
+    assert result_df['saccade'].to_list() == [False, False, False, True, True, True]
+
+
+@pytest.mark.parametrize(
+    ('sampling_rate', 'expected'),
+    [
+        # Δ/2 = 2 ms moves the end from 8 to 6, so the early sample at 7.9 stays out.
+        pytest.param(250, [True, True, False, False], id='with_sampling_rate'),
+        pytest.param(None, [True, True, True, False], id='without_sampling_rate'),
+    ],
+)
+def test_events2segmentation_sampling_rate_moves_end_half_an_interval(sampling_rate, expected):
+    events_df = pl.DataFrame({'name': ['blink'], 'onset': [0.0], 'duration': [8.0]})
+    gaze_df = pl.DataFrame({'time': [0.0, 4.0, 7.9, 12.0]})
+
+    result_df = gaze_df.select(
+        events2segmentation(events_df, name='blink', sampling_rate=sampling_rate),
+    )
+
+    assert result_df['blink'].to_list() == expected
+
+
+@pytest.mark.parametrize(
+    ('sampling_rate', 'padding', 'expected'),
+    [
+        # [2, 4) padded by 1 is [1, 5): the sample at 5 stays out.
+        pytest.param(None, 1, [False, True, True, True, True, False, False], id='plain'),
+        # [2, 4) padded by 2 after is [2, 6): the sample at 6 stays out.
+        pytest.param(None, (0, 2), [False, False, True, True, True, True, False], id='after'),
+        # 1000 Hz moves the padded end 6 to 5.5, the sample at 5 stays in.
+        pytest.param(
+            1000, (0, 2), [False, False, True, True, True, True, False], id='after_with_rate',
+        ),
+        # 500 Hz moves the padded end 6 to 5, the sample at 5 drops out.
+        pytest.param(
+            500, (0, 2), [False, False, True, True, True, False, False], id='after_with_low_rate',
+        ),
+    ],
+)
+def test_events2segmentation_padding_half_open_end(sampling_rate, padding, expected):
+    events_df = pl.DataFrame({'name': ['blink'], 'onset': [2.0], 'duration': [2.0]})
+    gaze_df = pl.DataFrame({'time': np.arange(7, dtype=np.float64)})
+
+    result_df = gaze_df.select(
+        events2segmentation(
+            events_df, name='blink', padding=padding, sampling_rate=sampling_rate,
+        ),
+    )
+
+    assert result_df['blink'].to_list() == expected
+
+
+@pytest.fixture(name='begaze_times')
+def fixture_begaze_times(testfiles_dirpath):
+    # The intervals of this 250 Hz excerpt jitter around 4000 µs, the ones after the samples at
+    # index 1, 5 and 8 are shorter (3994, 3920, 3977 µs).
+    gaze = from_begaze(testfiles_dirpath / 'didec_example.txt')
+    return gaze.samples['time']
+
+
+@pytest.fixture(name='begaze_segmentation')
+def fixture_begaze_segmentation():
+    return np.array([1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0], dtype=bool)
+
+
+def test_segmentation_roundtrip_on_jittered_timestamps(begaze_times, begaze_segmentation):
+    first = segmentation2events(
+        begaze_segmentation, name='a', time_column=begaze_times, sampling_rate=250,
+    )
+    second = segmentation2events(
+        ~begaze_segmentation, name='b', time_column=begaze_times, sampling_rate=250,
+    )
+    events_df = pl.concat([first, second])
+    gaze_df = pl.DataFrame({'time': begaze_times})
+
+    result_df = gaze_df.select(
+        events2segmentation(events_df, name='a', sampling_rate=250),
+        events2segmentation(events_df, name='b', sampling_rate=250),
+    )
+
+    np.testing.assert_array_equal(result_df['a'].to_numpy(), begaze_segmentation)
+    np.testing.assert_array_equal(result_df['b'].to_numpy(), ~begaze_segmentation)
+
+
+def test_segmentation_without_sampling_rate_selects_early_sample(
+        begaze_times, begaze_segmentation,
+):
+    events_df = segmentation2events(
+        begaze_segmentation, name='a', time_column=begaze_times, sampling_rate=250,
+    )
+    gaze_df = pl.DataFrame({'time': begaze_times})
+
+    result_df = gaze_df.select(events2segmentation(events_df, name='a'))
+
+    # The samples after each event arrive before t_last + Δ and fall into the plain interval.
+    expected = begaze_segmentation.copy()
+    expected[[2, 9]] = True
+    np.testing.assert_array_equal(result_df['a'].to_numpy(), expected)
+
+
+@pytest.mark.parametrize(
+    ('kwargs', 'argument'),
+    [
+        pytest.param({'onset_column': 'onset'}, 'onset_column', id='onset_column'),
+        pytest.param({'offset_column': 'offset'}, 'offset_column', id='offset_column'),
+    ],
+)
+def test_events2segmentation_column_arguments_are_deprecated(
+        kwargs, argument, assert_deprecation_is_removed,
+):
+    events_df = pl.DataFrame({'name': ['blink'], 'onset': [2], 'duration': [3], 'offset': [4]})
+
+    with pytest.raises(DeprecationWarning) as info:
+        events2segmentation(events_df, name='blink', **kwargs)
+
+    assert_deprecation_is_removed(
+        function_name=f"events2segmentation argument '{argument}'",
+        warning_message=info.value.args[0],
+        scheduled_version='0.34.0',
+    )
+
+
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+@pytest.mark.parametrize(
+    ('kwargs', 'expected'),
+    [
+        pytest.param(
+            {'onset_column': 'start'},
+            [False, False, True, True, True, False, False],
+            id='onset_column',
+        ),
+        pytest.param(
+            {'onset_column': 'start', 'offset_column': 'end'},
+            [False, False, True, True, True, False, False],
+            id='inclusive_offset_column',
+        ),
+        pytest.param(
+            {'onset_column': 'start', 'offset_column': 'end', 'padding': 1},
+            [False, True, True, True, True, True, False],
+            id='inclusive_offset_column_padding',
+        ),
+    ],
+)
+def test_events2segmentation_deprecated_column_arguments_keep_working(kwargs, expected):
+    events_df = pl.DataFrame({'name': ['blink'], 'start': [2], 'duration': [3], 'end': [4]})
+    gaze_df = pl.DataFrame({'time': np.arange(7, dtype=np.int64)})
+
+    result_df = gaze_df.select(events2segmentation(events_df, name='blink', **kwargs))
+
+    assert result_df['blink'].to_list() == expected
+
+
+def test_events2segmentation_touching_events_do_not_overlap():
+    events_df = pl.DataFrame({'name': ['blink', 'blink'], 'onset': [0, 3], 'duration': [3, 3]})
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        events2segmentation(events_df, name='blink')
+
+
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+def test_events2segmentation_deprecated_offset_column_touching_events_overlap():
+    events_df = pl.DataFrame({'name': ['blink', 'blink'], 'start': [0, 3], 'end': [3, 5]})
+
+    with pytest.warns(UserWarning, match='Overlapping events detected'):
+        events2segmentation(events_df, name='blink', onset_column='start', offset_column='end')
+
+
+@pytest.mark.parametrize(
+    ('onset', 'duration'),
+    [
+        pytest.param('start', 'length', id='str'),
+        pytest.param(pl.col('start'), pl.col('length'), id='expr'),
+    ],
+)
+def test_events2timeratio_onset_and_duration_arguments(onset, duration):
+    events = pl.DataFrame({'name': ['blink'], 'start': [1.0], 'length': [3.0]})
+    samples = pl.DataFrame({'time': [0.0, 1.0, 2.0, 3.0]})
+
+    result = samples.select(
+        events2timeratio(events, samples, 'blink', onset=onset, duration=duration),
+    )
+
+    assert result.item() == pytest.approx(0.75)
+
+
+@pytest.mark.parametrize(
+    'trial_columns',
+    [
+        pytest.param(None, id='session'),
+        pytest.param(['trial'], id='trials'),
+    ],
+)
+def test_events2timeratio_null_duration_contributes_nothing(trial_columns):
+    events = pl.DataFrame({
+        'name': ['blink', 'blink'],
+        'onset': [0.0, 2.0],
+        'duration': [None, 1.0],
+        'trial': [1, 1],
+    })
+    samples = pl.DataFrame({'time': [0.0, 1.0, 2.0, 3.0], 'trial': [1, 1, 1, 1]})
+
+    result = samples.select(
+        events2timeratio(events, samples, 'blink', trial_columns=trial_columns),
+    )
+
+    assert result.to_series()[0] == pytest.approx(0.25)
+
+
+def test_events2timeratio_adds_no_interval_to_event_durations():
+    # A 2 ms event in a 10 ms recording at 1000 Hz: 2 / 10, not (2 + 1) / 10.
+    events = pl.DataFrame({'name': ['blink'], 'onset': [3.0], 'duration': [2.0]})
+    samples = pl.DataFrame({'time': [float(t) for t in range(10)]})
+
+    result = samples.select(events2timeratio(events, samples, 'blink', sampling_rate=1000))
+
+    assert result.item() == pytest.approx(0.2)
+
+
+@pytest.mark.parametrize(
+    ('sample_time', 'expected'),
+    [
+        pytest.param(1.5, 1.0, id='before_end'),
+        pytest.param(2.0, 0.0, id='on_end'),
+    ],
+)
+@pytest.mark.parametrize(
+    'sampling_rate',
+    [
+        pytest.param(None, id='without_sampling_rate'),
+        # Δ/2 = 2 ms would move the end before both samples.
+        pytest.param(250, id='with_sampling_rate'),
+    ],
+)
+def test_events2timeratio_single_sample_plain_interval(sampling_rate, sample_time, expected):
+    events = pl.DataFrame({'name': ['blink'], 'onset': [0.0], 'duration': [2.0]})
+    samples = pl.DataFrame({'time': [sample_time]})
+
+    result = samples.select(
+        events2timeratio(events, samples, 'blink', sampling_rate=sampling_rate),
+    )
+
+    assert result.item() == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    ('kwargs', 'argument'),
+    [
+        pytest.param({'onset_column': 'onset'}, 'onset_column', id='onset_column'),
+        pytest.param({'offset_column': 'offset'}, 'offset_column', id='offset_column'),
+    ],
+)
+def test_events2timeratio_column_arguments_are_deprecated(
+        kwargs, argument, assert_deprecation_is_removed,
+):
+    events = pl.DataFrame({'name': ['blink'], 'onset': [1.0], 'duration': [3.0], 'offset': [3.0]})
+    samples = pl.DataFrame({'time': [0.0, 1.0, 2.0, 3.0]})
+
+    with pytest.raises(DeprecationWarning) as info:
+        events2timeratio(events, samples, 'blink', **kwargs)
+
+    assert_deprecation_is_removed(
+        function_name=f"events2timeratio argument '{argument}'",
+        warning_message=info.value.args[0],
+        scheduled_version='0.34.0',
+    )
+
+
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+@pytest.mark.parametrize(
+    ('samples_data', 'expected'),
+    [
+        pytest.param({'time': [0.0, 1.0, 2.0, 3.0]}, 0.75, id='inclusive_offset'),
+        pytest.param({'time': [3.0]}, 1.0, id='single_sample_on_offset'),
+    ],
+)
+def test_events2timeratio_deprecated_offset_column_keeps_working(samples_data, expected):
+    events = pl.DataFrame({'name': ['blink'], 'start': [1.0], 'end': [3.0]})
+    samples = pl.DataFrame(samples_data)
+
+    result = samples.select(
+        events2timeratio(events, samples, 'blink', onset_column='start', offset_column='end'),
+    )
+
+    assert result.item() == pytest.approx(expected)
+
+
+def test_segmentation2events_requires_sampling_rate():
+    with pytest.raises(TypeError, match='sampling_rate'):
+        segmentation2events(np.array([0, 1, 0]), name='blink')  # pylint: disable=missing-kwoa
+
+
+def test_segmentation2events_rejects_non_positive_sampling_rate():
+    with pytest.raises(ValueError, match='sampling_rate must be positive'):
+        segmentation2events(np.array([0, 1, 0]), name='blink', sampling_rate=0)
+
+
+@pytest.mark.parametrize(
+    ('time_column', 'sampling_rate', 'expected'),
+    [
+        pytest.param(
+            None, 1000,
+            pl.DataFrame(
+                {'name': ['blink'], 'onset': [1], 'duration': [2]},
+                schema={'name': pl.String, 'onset': pl.Int64, 'duration': pl.Int64},
+            ),
+            id='index_mode_counts_samples',
+        ),
+        pytest.param(
+            pl.Series([0.0, 4.1, 7.9, 12.0]), 250,
+            pl.DataFrame(
+                {'name': ['blink'], 'onset': [4.1], 'duration': [7.8]},
+                schema={'name': pl.String, 'onset': pl.Float64, 'duration': pl.Float64},
+            ),
+            id='time_column_ms',
+        ),
+        pytest.param(
+            pl.Series([0, 4100, 7900, 12000], dtype=pl.Duration('us')), 250,
+            pl.DataFrame(
+                {
+                    'name': ['blink'],
+                    'onset': pl.Series([4100], dtype=pl.Duration('us')),
+                    'duration': pl.Series([7800], dtype=pl.Duration('us')),
+                },
+            ),
+            id='time_column_duration',
+        ),
+    ],
+)
+def test_segmentation2events_duration_adds_one_interval(time_column, sampling_rate, expected):
+    result = segmentation2events(
+        np.array([0, 1, 1, 0]), name='blink', time_column=time_column, sampling_rate=sampling_rate,
+    )
+
+    assert_frame_equal(result, expected)
+
+
+@pytest.mark.parametrize(
+    ('time_column', 'duration_dtype'),
+    [
+        pytest.param(None, pl.Int64, id='index_mode'),
+        pytest.param(pl.Series([0.0, 4.0]), pl.Float64, id='time_column_ms'),
+        pytest.param(
+            pl.Series([0, 4000], dtype=pl.Duration('us')), pl.Duration('us'),
+            id='time_column_duration',
+        ),
+    ],
+)
+def test_segmentation2events_empty_duration_dtype(time_column, duration_dtype):
+    result = segmentation2events(
+        np.array([0, 0]), name='blink', time_column=time_column, sampling_rate=250,
+    )
+
+    assert result.is_empty()
+    assert result.schema['duration'] == duration_dtype
