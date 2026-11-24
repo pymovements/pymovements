@@ -20,6 +20,8 @@
 """Module for event processing."""
 from __future__ import annotations
 
+import inspect
+from collections.abc import Callable
 from typing import Any
 from warnings import warn
 
@@ -35,10 +37,10 @@ from pymovements.measure.samples.library import SampleMeasureLibrary
 _EVENT_ID = '__pymovements_event_id'
 _ROW_ID = '__pymovements_row_id'
 _TRIAL_KEY = '__pymovements_trial_key'
-_TIME_MS = '__pymovements_time_ms'
-_ONSET_MS = '__pymovements_onset_ms'
-_DURATION_MS = '__pymovements_duration_ms'
-_END_MS = '__pymovements_end_ms'
+_TIME_US = '__pymovements_time_us'
+_ONSET_US = '__pymovements_onset_us'
+_DURATION_US = '__pymovements_duration_us'
+_END_US = '__pymovements_end_us'
 _SAMPLE_IDX = '__pymovements_sample_idx'
 _START_IDX = '__pymovements_start_idx'
 _END_IDX = '__pymovements_end_idx'
@@ -79,6 +81,9 @@ class EventProcessor:
     ----------
     measures: str | tuple[str, dict[str, Any]] | list[str | tuple[str, dict[str, Any]]]
         List of event measures, each a name or a tuple of a name and its keyword arguments.
+    sampling_rate: float | None
+        Sampling rate in Hz, passed to each measure that accepts ``sampling_rate`` and whose
+        keyword arguments give none. (default: None)
 
     Raises
     ------
@@ -91,6 +96,7 @@ class EventProcessor:
             self,
             measures: str | tuple[str, dict[str, Any]]
             | list[str | tuple[str, dict[str, Any]]],
+            sampling_rate: float | None = None,
     ):
         measures_parsed = measures_with_kwargs(measures)
 
@@ -102,12 +108,15 @@ class EventProcessor:
 
         self.measures = [
             # initialize measure functions to create polars expressions.
-            EVENT_MEASURES[measure_name](**measure_kwargs)
+            _init_measure(EVENT_MEASURES[measure_name], measure_kwargs, sampling_rate)
             for measure_name, measure_kwargs in measures_parsed
         ]
 
     def process(self, events: pl.DataFrame) -> pl.DataFrame:
         """Process event dataframe.
+
+        The measures apply in the given order, each seeing the columns the previous ones
+        computed, so a measure can read a column that an earlier measure recomputes.
 
         Parameters
         ----------
@@ -120,8 +129,10 @@ class EventProcessor:
             :py:class:`polars.DataFrame` with properties as columns and rows referring to the rows
             in the source dataframe.
         """
-        result = events.select(self.measures)
-        return result
+        output_names = [measure.meta.output_name() for measure in self.measures]
+        for measure in self.measures:
+            events = events.with_columns(measure)
+        return events.select(output_names)
 
 
 class EventSamplesProcessor:
@@ -131,6 +142,10 @@ class EventSamplesProcessor:
     ----------
     measures: str | tuple[str, dict[str, Any]] | list[str | tuple[str, dict[str, Any]]]
         List of sample measures, each a name or a tuple of a name and its keyword arguments.
+    sampling_rate: float | None
+        Sampling rate in Hz, passed to each measure that accepts ``sampling_rate`` and whose
+        keyword arguments give none, and setting the tolerance at the end of each event. Without
+        one the plain interval applies. (default: None)
 
     Raises
     ------
@@ -143,6 +158,7 @@ class EventSamplesProcessor:
             self,
             measures: str | tuple[str, dict[str, Any]]
             | list[str | tuple[str, dict[str, Any]]],
+            sampling_rate: float | None = None,
     ):
         measures_parsed = measures_with_kwargs(measures)
 
@@ -155,9 +171,10 @@ class EventSamplesProcessor:
 
         self.measures: list[pl.Expr] = [
             # initialize measure functions to create polars expressions.
-            SampleMeasureLibrary.get(measure_name)(**measure_kwargs)
+            _init_measure(SampleMeasureLibrary.get(measure_name), measure_kwargs, sampling_rate)
             for measure_name, measure_kwargs in measures_parsed
         ]
+        self.sampling_rate = sampling_rate
 
     def process(
             self,
@@ -165,7 +182,6 @@ class EventSamplesProcessor:
             samples: pl.DataFrame,
             identifiers: str | list[str] | None = None,
             name: str | None = None,
-            sampling_rate: float | None = None,
     ) -> pl.DataFrame:
         """Process event and gaze dataframe.
 
@@ -185,9 +201,6 @@ class EventSamplesProcessor:
             Column names to join on events and samples dataframes. (default: None)
         name: str | None
             Process only events that match the name. (default: None)
-        sampling_rate: float | None
-            Sampling rate in Hz for the tolerance at the end of each event. Without one the
-            plain interval applies. (default: None)
 
         Returns
         -------
@@ -221,17 +234,20 @@ class EventSamplesProcessor:
 
         # Sample measures expect the time column in numeric milliseconds. The samples handed to
         # the measures are converted below. Event bounds and sample times are additionally put
-        # on a common millisecond scale for the vectorized event membership assignment, so it
+        # on a common microsecond scale for the vectorized event membership assignment, so it
         # stays correct whether or not the events and samples time dtypes match (e.g. Duration
         # events against a numeric sample time column, or vice versa). Duration values are
         # converted by their physical unit; a numeric time column follows the codebase
-        # convention of already being in milliseconds.
+        # convention of being in milliseconds.
         time_is_duration = (
             'time' in samples.columns and isinstance(samples.schema['time'], pl.Duration)
         )
         samples_work = samples
         if time_is_duration:
-            samples_work = samples_work.with_columns(duration_to_ms('time').alias('time'))
+            samples_work = samples_work.with_columns(
+                _to_us('time', is_duration=True).alias(_TIME_US),
+                duration_to_ms('time').alias('time'),
+            )
 
         if len(events) == 0:
             warn(
@@ -245,27 +261,26 @@ class EventSamplesProcessor:
             ).collect()
 
         # Give each event a stable id that preserves the original row order, bring the onset and
-        # duration onto the common millisecond scale used for the sample assignment and derive
+        # duration onto the common microsecond scale used for the sample assignment and derive
         # the end bound of the half-open selection from them.
         events_work = events.with_columns(
             pl.int_range(pl.len()).alias(_EVENT_ID),
-            (
-                duration_to_ms('onset')
-                if isinstance(events.schema['onset'], pl.Duration)
-                else pl.col('onset').cast(pl.Float64)
-            ).alias(_ONSET_MS),
-            (
-                duration_to_ms('duration')
-                if isinstance(events.schema['duration'], pl.Duration)
-                else pl.col('duration').cast(pl.Float64)
-            ).alias(_DURATION_MS),
+            _to_us(
+                'onset', is_duration=isinstance(events.schema['onset'], pl.Duration),
+            ).alias(_ONSET_US),
+            _to_us(
+                'duration', is_duration=isinstance(events.schema['duration'], pl.Duration),
+            ).alias(_DURATION_US),
         ).with_columns(
-            selection_end(_ONSET_MS, _DURATION_MS, sampling_rate=sampling_rate).alias(_END_MS),
+            selection_end(
+                _ONSET_US, _DURATION_US, sampling_rate=self.sampling_rate,
+            ).alias(_END_US),
         )
-        samples_work = samples_work.with_columns(
-            pl.int_range(pl.len()).alias(_ROW_ID),
-            pl.col('time').cast(pl.Float64).alias(_TIME_MS),
-        )
+        samples_work = samples_work.with_columns(pl.int_range(pl.len()).alias(_ROW_ID))
+        if not time_is_duration:
+            samples_work = samples_work.with_columns(
+                _to_us('time', is_duration=False).alias(_TIME_US),
+            )
 
         # Assign each sample to the event it belongs to. Grouping by a hashed trial key makes the
         # asof join operate per trial and treats null identifiers as matching values. Overlapping
@@ -286,10 +301,10 @@ class EventSamplesProcessor:
         group_columns = by_columns or []
         events_sorted = (
             events_work
-            .filter(pl.col(_ONSET_MS).is_not_null() & pl.col(_END_MS).is_not_null())
-            .sort([*group_columns, _ONSET_MS, _END_MS])
+            .filter(pl.col(_ONSET_US).is_not_null() & pl.col(_END_US).is_not_null())
+            .sort([*group_columns, _ONSET_US, _END_US])
         )
-        samples_sorted = samples_work.sort([*group_columns, _TIME_MS, _ROW_ID])
+        samples_sorted = samples_work.sort([*group_columns, _TIME_US, _ROW_ID])
 
         # The cheap asof assignment gives every sample to exactly one event, which is only correct
         # when events do not overlap. That holds for the standard detectors, but not necessarily
@@ -318,6 +333,34 @@ class EventSamplesProcessor:
         )
 
 
+def _init_measure(
+        measure: Callable[..., pl.Expr],
+        kwargs: dict[str, Any],
+        sampling_rate: float | None,
+) -> pl.Expr:
+    """Return the measure expression, filling in ``sampling_rate`` where the measure takes one.
+
+    The rate applies only when the keyword arguments give none, so an explicit rate wins.
+    """
+    if (
+            sampling_rate is not None and kwargs.get('sampling_rate') is None
+            and 'sampling_rate' in inspect.signature(measure).parameters
+    ):
+        kwargs = {**kwargs, 'sampling_rate': sampling_rate}
+    return measure(**kwargs)
+
+
+def _to_us(column: str, *, is_duration: bool) -> pl.Expr:
+    """Return ``column`` in microseconds as ``Float64``, reading numeric values as milliseconds.
+
+    Both sides of the sample assignment share one dtype, which the asof joins require. A
+    ``Float64`` holds whole microseconds exactly, and the end bound may be fractional.
+    """
+    if is_duration:
+        return pl.col(column).dt.total_microseconds().cast(pl.Float64)
+    return pl.col(column).cast(pl.Float64) * 1000
+
+
 def _events_overlap(
         events_sorted: pl.DataFrame,
         by_columns: list[str] | None,
@@ -327,10 +370,10 @@ def _events_overlap(
     Expects the events sorted by group, onset and end, with no null onsets or ends. The selection
     is half-open, so an event ending where the next one starts does not overlap with it.
     """
-    previous_end = pl.col(_END_MS).shift(1)
+    previous_end = pl.col(_END_US).shift(1)
     if by_columns is not None:
         previous_end = previous_end.over(by_columns)
-    return bool(events_sorted.select((previous_end > pl.col(_ONSET_MS)).any()).item())
+    return bool(events_sorted.select((previous_end > pl.col(_ONSET_US)).any()).item())
 
 
 def _assign_samples_asof(
@@ -344,18 +387,18 @@ def _assign_samples_asof(
     it. This is the cheap path; it requires non-overlapping events. Expects the events sorted by
     group and onset, and the samples sorted by group, time and row id.
     """
-    right_columns = [_EVENT_ID, _ONSET_MS, _END_MS, *(by_columns or [])]
+    right_columns = [_EVENT_ID, _ONSET_US, _END_US, *(by_columns or [])]
     assigned = samples_sorted.join_asof(
         events_sorted.select(right_columns),
-        left_on=_TIME_MS,
-        right_on=_ONSET_MS,
+        left_on=_TIME_US,
+        right_on=_ONSET_US,
         by=by_columns,
         strategy='backward',
         check_sortedness=False,
     )
     # Drop samples before the first event and samples at or past the event end.
     return assigned.filter(
-        pl.col(_EVENT_ID).is_not_null() & (pl.col(_TIME_MS) < pl.col(_END_MS)),
+        pl.col(_EVENT_ID).is_not_null() & (pl.col(_TIME_US) < pl.col(_END_US)),
     )
 
 
@@ -375,14 +418,14 @@ def _assign_samples_by_range(
     """
     group_columns = by_columns or []
     samples_sorted = samples_sorted.with_columns(pl.int_range(pl.len()).alias(_SAMPLE_IDX))
-    sample_positions = samples_sorted.select([*group_columns, _TIME_MS, _SAMPLE_IDX])
+    sample_positions = samples_sorted.select([*group_columns, _TIME_US, _SAMPLE_IDX])
 
     starts = (
         events_sorted
         .join_asof(
             sample_positions,
-            left_on=_ONSET_MS,
-            right_on=_TIME_MS,
+            left_on=_ONSET_US,
+            right_on=_TIME_US,
             by=by_columns,
             strategy='forward',
             check_sortedness=False,
@@ -390,11 +433,11 @@ def _assign_samples_by_range(
         .select(_EVENT_ID, pl.col(_SAMPLE_IDX).alias(_START_IDX))
     )
     ends = (
-        events_sorted.sort([*group_columns, _END_MS])
+        events_sorted.sort([*group_columns, _END_US])
         .join_asof(
             sample_positions,
-            left_on=_END_MS,
-            right_on=_TIME_MS,
+            left_on=_END_US,
+            right_on=_TIME_US,
             by=by_columns,
             strategy='backward',
             allow_exact_matches=False,

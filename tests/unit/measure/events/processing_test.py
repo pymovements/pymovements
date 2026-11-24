@@ -1376,8 +1376,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 },
                 schema={'time': pl.Int64, 'velocity': pl.List(pl.Float64)},
             ),
-            {'measures': 'peak_velocity'},
-            {'identifiers': None, 'sampling_rate': 1000},
+            {'measures': 'peak_velocity', 'sampling_rate': 1000},
+            {'identifiers': None},
             pl.from_dict(
                 {
                     'name': ['fixation', 'saccade'],
@@ -1405,8 +1405,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 },
                 schema={'time': pl.Int64, 'velocity': pl.List(pl.Float64)},
             ),
-            {'measures': 'peak_velocity'},
-            {'identifiers': None, 'sampling_rate': 1000},
+            {'measures': 'peak_velocity', 'sampling_rate': 1000},
+            {'identifiers': None},
             pl.from_dict(
                 {
                     'name': ['fixation', 'saccade'],
@@ -1434,8 +1434,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 },
                 schema={'time': pl.Int64, 'velocity': pl.List(pl.Float64)},
             ),
-            {'measures': 'peak_velocity'},
-            {'identifiers': None, 'sampling_rate': 1000},
+            {'measures': 'peak_velocity', 'sampling_rate': 1000},
+            {'identifiers': None},
             pl.from_dict(
                 {
                     'name': ['fixation', 'saccade'],
@@ -1463,8 +1463,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 },
                 schema={'time': pl.Float64, 'velocity': pl.List(pl.Float64)},
             ),
-            {'measures': 'peak_velocity'},
-            {'identifiers': None, 'sampling_rate': 1000},
+            {'measures': 'peak_velocity', 'sampling_rate': 1000},
+            {'identifiers': None},
             pl.from_dict(
                 {
                     'name': ['fixation', 'saccade'],
@@ -1521,8 +1521,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 },
                 schema={'time': pl.Int64, 'velocity': pl.List(pl.Float64)},
             ),
-            {'measures': 'peak_velocity'},
-            {'identifiers': None, 'sampling_rate': 1000},
+            {'measures': 'peak_velocity', 'sampling_rate': 1000},
+            {'identifiers': None},
             pl.from_dict(
                 {
                     'name': ['fixation', 'saccade'],
@@ -1588,8 +1588,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': pl.Int64, 'time': pl.Float64, 'velocity': pl.List(pl.Float64),
                 },
             ),
-            {'measures': 'peak_velocity'},
-            {'identifiers': 'subject_id', 'sampling_rate': 1000},
+            {'measures': 'peak_velocity', 'sampling_rate': 1000},
+            {'identifiers': 'subject_id'},
             pl.from_dict(
                 {
                     'subject_id': [1, 1],

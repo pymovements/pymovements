@@ -47,24 +47,24 @@ def selection_end(
     Parameters
     ----------
     onset: str | pl.Expr
-        The onset column in milliseconds, as a name or an expression.
+        The onset column in microseconds, as a name or an expression.
     duration: str | pl.Expr
-        The duration column in milliseconds, as a name or an expression.
+        The duration column in microseconds, as a name or an expression.
     sampling_rate: float | None
         The sampling rate in Hz, or ``None`` to apply the interval as is.
 
     Returns
     -------
     pl.Expr
-        The end bound in milliseconds.
+        The end bound in microseconds.
     """
     onset_expr = pl.col(onset) if isinstance(onset, str) else onset
     duration_expr = pl.col(duration) if isinstance(duration, str) else duration
     end = onset_expr + duration_expr
     if sampling_rate is None:
         return end
-    # Half the interval the time columns carry, in milliseconds.
-    return end - sampling_interval_us(sampling_rate) / 2000
+    # Half the interval the time columns carry.
+    return end - sampling_interval_us(sampling_rate) / 2
 
 
 def resolve_sampling_rate(events: Events, experiment: Experiment | None) -> float | None:

@@ -1989,6 +1989,35 @@ def test_gaze_compute_event_properties_event_measure_with_name_keeps_other_rows(
     assert gaze.events.metadata['offset'] == {'inclusive': True}
 
 
+def test_gaze_compute_event_properties_sample_measure_with_name_keeps_other_rows():
+    gaze = Gaze(
+        samples=pl.DataFrame({
+            'time': [0, 1, 2, 3, 4, 5, 6, 7],
+            'position': [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4], [5, 5], [6, 6], [7, 7]],
+        }),
+        events=Events(
+            pl.DataFrame({
+                'name': ['fixation', 'saccade'],
+                'onset': [0, 5],
+                'offset': [4, 7],
+                'amplitude': [123.0, 456.0],
+            }),
+            offsets_inclusive=True,
+            sampling_rate=1000,
+        ),
+    )
+
+    with pytest.warns(
+            UserWarning,
+            match=r"already exist in event and will be overwritten: \['amplitude'\]",
+    ):
+        gaze.compute_event_properties('amplitude', name='fixation')
+
+    assert_series_equal(
+        gaze.events.frame['amplitude'], pl.Series('amplitude', [np.sqrt(32), 456.0]),
+    )
+
+
 @pytest.mark.parametrize(
     ('events', 'message'),
     [
