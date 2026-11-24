@@ -31,7 +31,21 @@ from pymovements.gaze import from_asc
 @pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
-def test_from_asc_binocular_overlapping_blinks_events_ratio(make_text_file):
+@pytest.mark.parametrize(
+    'expected',
+    [
+        pytest.param(96 / 105, id='parsed duration is end - start'),
+        pytest.param(
+            97 / 105,
+            id='parsed duration equals DUR',
+            marks=pytest.mark.xfail(
+                strict=True,
+                reason='the parser does not yet take the reported DUR as the duration',
+            ),
+        ),
+    ],
+)
+def test_from_asc_binocular_overlapping_blinks_events_ratio(make_text_file, expected):
     """Overlapping binocular blink events are merged by measure_events_ratio.
 
     Binocular recordings emit separate left-eye and right-eye blink events which
@@ -85,8 +99,7 @@ def test_from_asc_binocular_overlapping_blinks_events_ratio(make_text_file):
         gaze.measure_events_ratio('blink_eyelink', sampling_rate=1000.0),
     ).item()
 
-    # merging the overlapping intervals yields the duration of the left-eye blink. The parsed
-    # EyeLink durations are end - start, one sampling interval short of the 97 ms that the
-    # removed data_loss_ratio_blinks metadata field reported, until the parser takes the
-    # reported DUR as the duration: (1101 - 1005) / 105 = 96 / 105
-    assert ratio == pytest.approx(96 / 105)
+    # merging the overlapping intervals yields the left-eye blink, 1005 to 1101, over a range
+    # of 105 ms. Its reported DUR is 97 ms, the value the removed data_loss_ratio_blinks
+    # metadata field used. The parser stores end - start, one sampling interval short.
+    assert ratio == pytest.approx(expected)
