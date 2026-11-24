@@ -41,7 +41,7 @@ def test_ihmm_benchmark_viterbi_only(benchmark):
 
     benchmark.pedantic(
         ihmm,
-        kwargs={'velocities': velocities, 'minimum_duration': 1},
+        kwargs={'velocities': velocities, 'sampling_rate': 1000, 'minimum_duration': 1},
         iterations=1,
         rounds=50,
     )
@@ -55,6 +55,7 @@ def test_ihmm_benchmark_with_reestimation(benchmark):
         ihmm,
         kwargs={
             'velocities': velocities,
+            'sampling_rate': 1000,
             'minimum_duration': 1,
             'reestimation': True,
             'reestimation_max_iters': 20,
