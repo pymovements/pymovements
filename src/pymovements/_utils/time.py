@@ -263,9 +263,8 @@ def sampling_interval_ms(sampling_rate: float) -> float:
 def sampling_interval_us(sampling_rate: float) -> int:
     """Return the nominal interval between two samples in whole microseconds.
 
-    This is the interval the ``polars.Duration('us')`` time columns of an events frame carry:
-    the constructor, the ``offset`` and ``duration`` measures and the sample selection derive
-    it here, so the rounding agrees everywhere.
+    This is the interval the ``polars.Duration('us')`` time columns of an events frame carry,
+    rounded once so that every derivation from it agrees.
 
     Parameters
     ----------
