@@ -986,13 +986,13 @@ def test_from_asc_parse_offset_keeps_inclusive_offsets(
     assert gaze.events.metadata['sampling_rate'] == expected_sampling_rate
 
 
-def test_from_asc_without_parse_offset_stores_no_offset_entries(make_example_file):
+def test_from_asc_without_parse_offset_stores_no_offset_entry(make_example_file):
     filepath = make_example_file('eyelink_monocular_example.asc')
     gaze = from_asc(filepath, events=True)
 
     assert 'offset' not in gaze.events.frame.columns
     assert 'offset' not in gaze.events.metadata
-    assert 'sampling_rate' not in gaze.events.metadata
+    assert gaze.events.metadata['sampling_rate'] == 1000.0
 
 
 @pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')

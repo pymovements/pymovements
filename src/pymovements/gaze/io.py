@@ -469,12 +469,13 @@ def from_asc(
         are already decoded. (default: None)
     events: bool
         Flag indicating if events should be parsed from the asc file. The duration of each event
-        is the one reported in the file. (default: False)
+        is the one reported in the file, and the sampling rate of the recording is written to the
+        events metadata. (default: False)
     parse_offset: bool
         If ``True``, the end timestamps of the parsed events are kept as an ``offset`` column.
-        An end timestamp is the last sample of an event, so the column is declared inclusive
-        together with the sampling rate, and each reported duration is checked against it. Only
-        used with ``events=True``. (default: False)
+        An end timestamp is the last sample of an event, so the column is declared inclusive and
+        each reported duration is checked against it. Only used with ``events=True``.
+        (default: False)
     messages: bool | list[str]
         Flag indicating if any additional messages should be parsed from the asc file
         and stored in :py:class:`pymovements.gaze.experiment.Experiment`.
@@ -656,7 +657,10 @@ def from_asc(
             sampling_rate=experiment.eyetracker.sampling_rate,
         )
     elif events:
-        parsed_events = Events(event_data.drop('offset'))
+        parsed_events = Events(
+            event_data.drop('offset'),
+            sampling_rate=experiment.eyetracker.sampling_rate,
+        )
 
     gaze = Gaze(
         samples=samples,
