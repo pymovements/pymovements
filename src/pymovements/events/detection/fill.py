@@ -84,24 +84,22 @@ def fill(
     # Create binary mask where each existing event is marked.
     events_mask = numpy.zeros(len(timesteps), dtype=bool)
 
-    # Convert the event times to milliseconds to match the timesteps unit and derive the end of
-    # the sample selection of each event, which works in microseconds. Events without an end
-    # select no timesteps.
+    # Compare in microseconds, the scale of the selection end. The timesteps and the event times
+    # are milliseconds. Events without an end select no timesteps.
+    timesteps_us = timesteps * 1000
     events_frame = event_times_to_ms(events.frame).select(
+        (polars.col('onset') * 1000).alias('onset'),
+        (polars.col('duration') * 1000).alias('duration'),
+    ).select(
         'onset',
-        (
-            selection_end(
-                polars.col('onset') * 1000, polars.col('duration') * 1000,
-                sampling_rate=sampling_rate,
-            ) / 1000
-        ).alias('end'),
+        selection_end('onset', 'duration', sampling_rate=sampling_rate).alias('end'),
     ).drop_nulls()
 
     for onset, end in events_frame.iter_rows():
         # Mark every timestep inside the event selection ``[onset, end)``.
         # Matching by interval membership instead of exact timestep equality keeps this
         # robust to floating-point timesteps and to sample spacings other than one.
-        events_mask |= (timesteps >= onset) & (timesteps < end)
+        events_mask |= (timesteps_us >= onset) & (timesteps_us < end)
 
     # Mask all indices where there is no event.
     candidate_mask = ~events_mask

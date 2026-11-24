@@ -40,6 +40,13 @@ def _to_num(series: pl.Series) -> np.ndarray:
     return series.to_numpy()
 
 
+def _to_us(series: pl.Series) -> np.ndarray:
+    """Convert a time series to microsecond values, reading numeric values as milliseconds."""
+    if isinstance(series.dtype, pl.Duration):
+        return series.dt.total_microseconds().cast(pl.Float64).to_numpy()
+    return series.cast(pl.Float64).to_numpy() * 1000
+
+
 def _check_column(frame: pl.DataFrame, column: str | pl.Expr, label: str) -> None:
     """Raise if a column given by name is missing from the frame."""
     if isinstance(column, str) and column not in frame.columns:
@@ -322,12 +329,12 @@ def events2segmentation(
     if offset_column is not None:
         relevant_events, starts, ends = _closed_event_bounds(
             relevant_events, onset=onset, offset_column=offset_column,
-            padding=(pad_before, pad_after),
+            padding=(pad_before * 1000, pad_after * 1000),
         )
     else:
         relevant_events, starts, ends = _half_open_event_bounds(
             relevant_events, onset=onset, duration=duration, sampling_rate=sampling_rate,
-            padding=(pad_before, pad_after),
+            padding=(pad_before * 1000, pad_after * 1000),
         )
 
     # An empty selection, such as a 0 duration without padding, selects no samples.
@@ -370,21 +377,21 @@ def events2segmentation(
             else:
                 warnings.warn('Overlapping events detected', UserWarning, stacklevel=2)
 
-    # Compare in numeric milliseconds so the mask is correct whether the event bounds and the
-    # sample time column are numeric or ``polars.Duration``, and whether or not their dtypes
-    # match. Duration values are converted by their physical unit; numeric values follow the
-    # codebase convention that a numeric time column is already in milliseconds. The event
-    # bounds are already numeric milliseconds via ``_to_num``; the time column is coerced to
-    # milliseconds at evaluation time, dispatching on its runtime dtype.
-    time_ms = pl.col(time_column).map_batches(
-        lambda series: duration_to_ms(series)
-        if isinstance(series.dtype, pl.Duration) else series.cast(pl.Float64),
+    # Compare in numeric microseconds, the scale of the selection end, so the mask is correct
+    # whether the event bounds and the sample time column are numeric or ``polars.Duration``,
+    # and whether or not their dtypes match. Duration values are converted by their physical
+    # unit; numeric values follow the codebase convention that a numeric time column is in
+    # milliseconds. The event bounds are microseconds via ``_to_us``; the time column is
+    # converted at evaluation time, dispatching on its runtime dtype.
+    time_us = pl.col(time_column).map_batches(
+        lambda series: series.dt.total_microseconds().cast(pl.Float64)
+        if isinstance(series.dtype, pl.Duration) else series.cast(pl.Float64) * 1000,
         return_dtype=pl.Float64,
     )
 
     is_event = pl.repeat(False, pl.len())
     for index, event in enumerate(relevant_events.to_dicts()):
-        is_in_time_range = time_ms.ge(starts[index]) & time_ms.lt(ends[index])
+        is_in_time_range = time_us.ge(starts[index]) & time_us.lt(ends[index])
 
         # Select events matching time and trial criteria
         if trial_columns:
@@ -416,8 +423,8 @@ def _half_open_event_bounds(
         as_expr(duration).alias('duration'),
     )
     bounds = pl.DataFrame({
-        'onset': _to_num(bounds['onset']).astype(np.float64),
-        'duration': _to_num(bounds['duration']).astype(np.float64),
+        'onset': _to_us(bounds['onset']).astype(np.float64),
+        'duration': _to_us(bounds['duration']).astype(np.float64),
     }).fill_nan(None)
 
     if (bounds['duration'] < 0).any():
@@ -427,12 +434,7 @@ def _half_open_event_bounds(
 
     selects_samples = bounds['onset'].is_not_null() & bounds['duration'].is_not_null()
     bounds = bounds.filter(selects_samples)
-    # The selection end works in microseconds, the bounds here are milliseconds.
-    ends = bounds.select(
-        selection_end(
-            pl.col('onset') * 1000, pl.col('duration') * 1000, sampling_rate=sampling_rate,
-        ) / 1000,
-    )
+    ends = bounds.select(selection_end('onset', 'duration', sampling_rate=sampling_rate))
     pad_before, pad_after = padding
     return (
         events.filter(selects_samples),
@@ -453,8 +455,8 @@ def _closed_event_bounds(
     The end bound is the next float above the padded offset, so the exclusive comparison against
     it keeps a sample on the offset.
     """
-    onsets = _to_num(events.select(as_expr(onset)).to_series())
-    offsets = _to_num(events[offset_column])
+    onsets = _to_us(events.select(as_expr(onset)).to_series())
+    offsets = _to_us(events[offset_column])
 
     if np.any(onsets > offsets):
         raise ValueError(
