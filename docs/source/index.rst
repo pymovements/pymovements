@@ -14,6 +14,7 @@ Welcome to the pymovements documentation!
    tutorials/index
    datasets/index
    reference/index
+   migration/index
    contributing/index
    pmep/index
    about-us/index
