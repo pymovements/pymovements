@@ -350,13 +350,15 @@ def test_from_begaze_loader_uses_parse_begaze(make_text_file, with_trial_columns
 
     # Events should be attached and match expected.
     assert gaze.events is not None
-    # Events returned by the loader may include computed 'duration' - compare on common columns.
-    ev_actual = gaze.events.frame
-    expected_event_df = Events(BEGAZE_EXPECTED_EVENT_DF).frame
-    common_cols = [c for c in expected_event_df.columns if c in ev_actual.columns]
+    # The parsed offsets are the last samples, so each duration adds the 1 ms interval.
+    expected_event_df = Events(
+        BEGAZE_EXPECTED_EVENT_DF.with_columns(
+            (pl.col('offset') - pl.col('onset') + 1).alias('duration'),
+        ).drop('offset'),
+    ).frame
     assert_frame_equal(
-        ev_actual.select(common_cols),
-        expected_event_df.select(common_cols),
+        gaze.events.frame,
+        expected_event_df,
         check_column_order=False,
         rel_tol=0,
     )
