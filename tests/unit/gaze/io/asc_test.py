@@ -20,11 +20,13 @@
 """Test read from eyelink asc files."""
 import io
 import re
+import warnings
 from datetime import timedelta
 
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
+from polars.testing import assert_series_equal
 
 from pymovements import DatasetLibrary
 from pymovements import Experiment
@@ -862,14 +864,12 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
                     ],
                     'eye': ['left', 'left', 'left'],
                     'onset': [2154563, 2339227, 2339246],
-                    'offset': [2154695, 2339245, 2339290],
-                    'duration': [132, 18, 44],
+                    'duration': [133, 19, 45],
                 },
                 schema={
                     'name': pl.Utf8,
                     'eye': pl.Utf8,
                     'onset': pl.Duration('ms'),
-                    'offset': pl.Duration('ms'),
                     'duration': pl.Duration('ms'),
                 },
             ),
@@ -887,15 +887,13 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
                     ],
                     'eye': ['left', 'left', 'left'],
                     'onset': [2154563, 2339227, 2339246],
-                    'offset': [2154695, 2339245, 2339290],
-                    'duration': [132, 18, 44],
+                    'duration': [132_500, 18_500, 44_500],
                 },
                 schema={
                     'name': pl.Utf8,
                     'eye': pl.Utf8,
                     'onset': pl.Duration('ms'),
-                    'offset': pl.Duration('ms'),
-                    'duration': pl.Duration('ms'),
+                    'duration': pl.Duration('us'),
                 },
             ),
             id='eyelink_asc_mono_2khz_with_events',
@@ -919,16 +917,12 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
                     'onset': [
                         1408667, 1408667, 1408793, 1408787, 1408774, 1408778, 1408897, 1408899,
                     ],
-                    'offset': [
-                        1408773, 1408777, 1408872, 1408883, 1408896, 1408898, 1409025, 1409027,
-                    ],
-                    'duration': [106, 110, 79, 96, 122, 120, 128, 128],
+                    'duration': [107, 111, 80, 97, 123, 121, 129, 129],
                 },
                 schema={
                     'name': pl.Utf8,
                     'eye': pl.Utf8,
                     'onset': pl.Duration('ms'),
-                    'offset': pl.Duration('ms'),
                     'duration': pl.Duration('ms'),
                 },
             ),
@@ -948,13 +942,116 @@ def test_from_asc_example_file_has_expected_events(
     assert_frame_equal(gaze.events.frame, expected_event_frame, check_column_order=False)
 
 
-def test_from_asc_events_declare_inclusive_offsets(make_example_file):
-    # Interim: the parsed offset column stays until the parser takes the reported DUR as the
-    # duration and keeps the offsets only on request.
-    filepath = make_example_file('eyelink_binocular_example.asc')
+@pytest.mark.parametrize(
+    ('filename', 'expected_offsets', 'expected_sampling_rate'),
+    [
+        pytest.param(
+            'eyelink_monocular_example.asc',
+            [2154695, 2339245, 2339290],
+            1000.0,
+            id='eyelink_asc_mono',
+        ),
+        pytest.param(
+            'eyelink_monocular_2khz_example.asc',
+            [2154695, 2339245, 2339290],
+            2000.0,
+            id='eyelink_asc_mono_2khz',
+        ),
+        pytest.param(
+            'eyelink_binocular_example.asc',
+            [1408773, 1408777, 1408872, 1408883, 1408896, 1408898, 1409025, 1409027],
+            1000.0,
+            id='eyelink_asc_bino',
+        ),
+    ],
+)
+def test_from_asc_parse_offset_keeps_inclusive_offsets(
+        filename, expected_offsets, expected_sampling_rate, make_example_file,
+):
+    filepath = make_example_file(filename)
+    gaze_without_offsets = from_asc(filepath, events=True)
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings('error', message='.*contradict.*')
+        gaze = from_asc(filepath, events=True, parse_offset=True)
+
+    expected_offset = pl.Series(
+        'offset', expected_offsets, dtype=pl.Duration('ms'),
+    ).cast(pl.Duration('us'))
+    assert_series_equal(gaze.events.frame['offset'], expected_offset)
+    assert_series_equal(
+        gaze.events.frame['duration'], gaze_without_offsets.events.frame['duration'],
+    )
+    assert gaze.events.metadata['offset'] == {'inclusive': True}
+    assert gaze.events.metadata['sampling_rate'] == expected_sampling_rate
+
+
+def test_from_asc_without_parse_offset_stores_no_offset_entry(make_example_file):
+    filepath = make_example_file('eyelink_monocular_example.asc')
     gaze = from_asc(filepath, events=True)
 
+    assert 'offset' not in gaze.events.frame.columns
+    assert 'offset' not in gaze.events.metadata
+    assert gaze.events.metadata['sampling_rate'] == 1000.0
+
+
+@pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
+def test_from_asc_parse_offset_end_timestamp_disagreeing_with_dur_raises(make_text_file):
+    body = (
+        'MSG\t999 RECCFG CR 1000 2 1 R\n'
+        'SAMPLES\tGAZE\tRIGHT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2\n'
+        'SFIX R 1000\n'
+        'EFIX R 1000 1100 50 500.0 500.0 1000\n'
+    )
+    filepath = make_text_file(filename='dur_disagrees.asc', body=body)
+
+    gaze = from_asc(filepath, events=True)
+    assert gaze.events.frame['duration'].to_list() == [timedelta(milliseconds=50)]
+
+    with pytest.raises(ValueError, match='every row contradicts offsets_inclusive=True'):
+        from_asc(filepath, events=True, parse_offset=True)
+
+
+def test_from_asc_parse_offset_without_events_warns(make_example_file):
+    filepath = make_example_file('eyelink_monocular_example.asc')
+
+    with pytest.warns(UserWarning, match='parse_offset=True ignored: events=False'):
+        gaze = from_asc(filepath, parse_offset=True)
+
+    assert gaze.events.frame.height == 0
+
+
+@pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No sampling rate found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No tracked eye information found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
+def test_from_asc_parse_offset_without_sampling_rate_keeps_offset(make_text_file):
+    body = (
+        'SFIX R 1000\n'
+        'EFIX R 1000 1100 101 500.0 500.0 1000\n'
+    )
+    filepath = make_text_file(filename='no_rate.asc', body=body)
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings('error', message='.*contradict.*')
+        gaze = from_asc(filepath, events=True, parse_offset=True)
+
+    assert gaze.events.frame['offset'].to_list() == [timedelta(milliseconds=1100)]
+    assert gaze.events.frame['duration'].to_list() == [timedelta(milliseconds=101)]
     assert gaze.events.metadata['offset'] == {'inclusive': True}
+    assert 'sampling_rate' not in gaze.events.metadata
 
 
 @pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
@@ -1112,7 +1209,6 @@ def test_from_asc_orphaned_event_end_marker_with_custom_patterns_does_not_raise_
             'name': ['fixation_eyelink'],
             'eye': ['right'],
             'onset': [1000],
-            'offset': [1100],
             'duration': [100],
             'trial_id': [None],
         },
@@ -1120,13 +1216,12 @@ def test_from_asc_orphaned_event_end_marker_with_custom_patterns_does_not_raise_
             'name': pl.Utf8,
             'eye': pl.Utf8,
             'onset': pl.Duration('ms'),
-            'offset': pl.Duration('ms'),
             'duration': pl.Duration('ms'),
             'trial_id': pl.Null,
         },
     )
     expected_events = expected_events.with_columns(
-        pl.col('onset', 'offset', 'duration').cast(pl.Duration('us')),
+        pl.col('onset', 'duration').cast(pl.Duration('us')),
     )
 
     assert_frame_equal(gaze.events.frame, expected_events, check_column_order=False)

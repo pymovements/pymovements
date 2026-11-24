@@ -21,9 +21,11 @@
 from __future__ import annotations
 
 import warnings
+from datetime import timedelta
 
 import polars as pl
 import pytest
+from polars.testing import assert_frame_equal
 
 from pymovements import Experiment
 from pymovements.gaze import from_begaze
@@ -285,3 +287,61 @@ def test_fill_experiment_from_parsing_begaze_metadata(
     # Tracked eye flags set when None else warnings issued above - ensure values are booleans
     assert isinstance(result.eyetracker.left, (bool, type(None)))
     assert isinstance(result.eyetracker.right, (bool, type(None)))
+
+
+BEGAZE_EVENTS = (
+    '## [BeGaze]\n'
+    '## Sample Rate:\t500\n'
+    '##\n'
+    'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]\tInfo\n'
+    '1000000\tSMP\t1\t10\t20\t3.0\tFixation\n'
+    '1002000\tSMP\t1\t10\t20\t3.0\tFixation\n'
+    '1004000\tSMP\t1\t10\t20\t3.0\tFixation\n'
+    '1006000\tSMP\t1\t30\t40\t3.0\tSaccade\n'
+    '1008000\tSMP\t1\t50\t60\t3.0\tSaccade\n'
+)
+
+
+def test_from_begaze_event_durations_include_last_sample(make_text_file):
+    filepath = make_text_file('begaze_events.txt', header='', body=BEGAZE_EVENTS, encoding='ascii')
+
+    gaze = from_begaze(filepath)
+
+    expected_events = pl.DataFrame(
+        {
+            'onset': [1000, 1006],
+            'duration': [6, 4],
+            'name': ['fixation_begaze', 'saccade_begaze'],
+        },
+        schema={'onset': pl.Duration('ms'), 'duration': pl.Duration('ms'), 'name': pl.Utf8},
+    ).with_columns(pl.col('onset', 'duration').cast(pl.Duration('us')))
+    assert_frame_equal(gaze.events.frame, expected_events)
+    assert gaze.events.metadata['sampling_rate'] == 500.0
+
+
+def test_from_begaze_event_durations_from_experiment_sampling_rate(make_text_file):
+    body = BEGAZE_EVENTS.replace('## Sample Rate:\t500\n', '')
+    filepath = make_text_file('begaze_events.txt', header='', body=body, encoding='ascii')
+
+    gaze = from_begaze(filepath, experiment=Experiment(sampling_rate=250))
+
+    assert gaze.events.frame['duration'].to_list() == [
+        timedelta(milliseconds=8), timedelta(milliseconds=6),
+    ]
+    assert gaze.events.metadata['sampling_rate'] == 250
+
+
+def test_from_begaze_events_without_sampling_rate_raise(make_text_file):
+    body = BEGAZE_EVENTS.replace('## Sample Rate:\t500\n', '')
+    filepath = make_text_file('begaze_events.txt', header='', body=body, encoding='ascii')
+
+    with pytest.raises(ValueError, match='requires a sampling rate'):
+        from_begaze(filepath)
+
+
+def test_from_begaze_events_with_non_numeric_sampling_rate_raise(make_text_file):
+    body = BEGAZE_EVENTS.replace('## Sample Rate:\t500\n', '## Sample Rate:\tn/a\n')
+    filepath = make_text_file('begaze_events.txt', header='', body=body, encoding='ascii')
+
+    with pytest.raises(ValueError, match='requires a sampling rate'):
+        from_begaze(filepath)

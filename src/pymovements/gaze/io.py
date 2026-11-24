@@ -29,6 +29,7 @@ from typing import IO
 import polars as pl
 
 from pymovements._utils.sources import add_source
+from pymovements._utils.time import sampling_interval_us
 from pymovements.events.events import Events
 from pymovements.gaze._utils.parsing_begaze import parse_begaze
 from pymovements.gaze._utils.parsing_eyelink import parse_eyelink
@@ -425,6 +426,7 @@ def from_asc(
         column_schema_overrides: dict[str, Any] | None = None,
         encoding: str | None = None,
         events: bool = False,
+        parse_offset: bool = False,
         messages: bool | list[str] = False,
         metadata: dict[str, Any] | None = None,
         extend_resolution: bool | None = None,
@@ -466,7 +468,14 @@ def from_asc(
         Only applies to file paths and binary file objects; text file objects
         are already decoded. (default: None)
     events: bool
-        Flag indicating if events should be parsed from the asc file. (default: False)
+        Flag indicating if events should be parsed from the asc file. The duration of each event
+        is the one reported in the file, and the sampling rate of the recording is written to the
+        events metadata. (default: False)
+    parse_offset: bool
+        If ``True``, the end timestamps of the parsed events are kept as an ``offset`` column.
+        An end timestamp is the last sample of an event, so the column is declared inclusive and
+        each reported duration is checked against it. Only used with ``events=True``.
+        (default: False)
     messages: bool | list[str]
         Flag indicating if any additional messages should be parsed from the asc file
         and stored in :py:class:`pymovements.gaze.experiment.Experiment`.
@@ -493,6 +502,12 @@ def from_asc(
     -------
     Gaze
         The initialized gaze object read from the asc file.
+
+    Raises
+    ------
+    ValueError
+        If ``parse_offset`` is ``True`` and every parsed end timestamp contradicts its reported
+        duration.
 
     Notes
     -----
@@ -589,6 +604,12 @@ def from_asc(
     else:
         _patterns = patterns
 
+    if parse_offset and not events:
+        warnings.warn(
+            'parse_offset=True ignored: events=False, so no events are parsed.',
+            UserWarning,
+        )
+
     # Read data.
     samples, event_data, parsed_metadata, messages_df = parse_eyelink(
         file,
@@ -640,15 +661,18 @@ def from_asc(
     calibrations = metadata_to_cal_frame(parsed_metadata)
     validations = metadata_to_val_frame(parsed_metadata)
 
-    # Interim: EyeLink end timestamps are the last sample of an event, but the durations stay
-    # end - start, one sampling interval short of that convention, so they are kept unchecked.
-    # This goes away once the parser takes the reported DUR as the duration.
-    event_data = event_data.with_columns((pl.col('offset') - pl.col('onset')).alias('duration'))
+    parsed_events = None
+    if events:
+        parsed_events = Events(
+            event_data if parse_offset else event_data.drop('offset'),
+            offsets_inclusive=True if parse_offset else None,
+            sampling_rate=experiment.eyetracker.sampling_rate,
+        )
 
     gaze = Gaze(
         samples=samples,
         experiment=experiment,
-        events=Events(event_data, offsets_inclusive=True, validate=False) if events else None,
+        events=parsed_events,
         messages=messages_df,
         trial_columns=trial_columns,
         time_column='time',
@@ -908,7 +932,8 @@ def _fill_experiment_from_parsing_begaze_metadata(
 
     Behavior:
     - Create a new ``Experiment`` if none is provided, using the parsed sampling rate.
-    - If a field on ``experiment`` is None, set it from parsed metadata when available.
+    - If a field on ``experiment`` is None, set it from parsed metadata when available. A sampling
+      rate that is not a number is not set.
     - If a field is already set and differs from parsed metadata, emit a warning and keep the
       existing value (do not raise).
     """
@@ -916,9 +941,12 @@ def _fill_experiment_from_parsing_begaze_metadata(
     if experiment is None:
         experiment = Experiment()
 
-    # Only set the sampling rate if not set
+    # Only set the sampling rate if not set. A header value that failed the float cast stays a
+    # string in the metadata and is left out.
     if experiment.eyetracker.sampling_rate is None:
-        experiment.eyetracker.sampling_rate = metadata['sampling_rate']
+        parsed_sampling_rate = metadata.get('sampling_rate')
+        if isinstance(parsed_sampling_rate, (int, float)):
+            experiment.eyetracker.sampling_rate = parsed_sampling_rate
 
     # Tracked eye flags if present (metadata may provide 'L'/'R')
     tracked = (metadata.get('tracked_eye') or '')
@@ -1013,6 +1041,16 @@ def from_begaze(
     -------
     Gaze
         The initialized gaze object read from the BeGaze text file.
+
+    Raises
+    ------
+    ValueError
+        If the file holds events, but neither the file header nor ``experiment`` gives a
+        sampling rate.
+
+    Notes
+    -----
+    The duration of each event runs from its first to its last sample plus one sampling interval.
     """
     # Read data via BeGaze parser.
     samples, event_data, parsed_metadata = parse_begaze(
@@ -1054,10 +1092,24 @@ def from_begaze(
     # Detect pixel columns to pass to Gaze (monocular naming from BeGaze uses 'x_pix', 'y_pix').
     detected_pixel_columns: list[str] | None = [c for c in samples.columns if '_pix' in c]
 
+    # The parsed offset is the last sample of an event, so the duration adds one sampling interval.
+    sampling_rate = experiment.eyetracker.sampling_rate
+    if sampling_rate is None and event_data.height > 0:
+        raise ValueError(
+            'from_begaze requires a sampling rate to compute the event durations, but the file '
+            'header gives none. Pass an experiment with a sampling_rate.',
+        )
+    if sampling_rate is not None:
+        sampling_interval_ms = sampling_interval_us(sampling_rate) / 1000
+        event_data = event_data.with_columns(
+            (pl.col('offset') - pl.col('onset') + sampling_interval_ms).alias('duration'),
+        )
+    parsed_events = Events(event_data.drop('offset'), sampling_rate=sampling_rate)
+
     gaze = Gaze(
         samples=samples,
         experiment=experiment,
-        events=Events(event_data),
+        events=parsed_events,
         trial_columns=trial_columns,
         time_column='time',
         time_unit='ms',

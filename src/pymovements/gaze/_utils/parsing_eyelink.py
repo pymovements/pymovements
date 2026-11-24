@@ -313,10 +313,11 @@ def parse_eyelink_event_start(line: str) -> tuple[str, str, float] | None:
     return None
 
 
-def parse_eyelink_event_end(line: str) -> tuple[str, str, float, float] | None:
+def parse_eyelink_event_end(line: str) -> tuple[str, str, float, float, float] | None:
     """Check if the line contains the end of an event and return the event name, eye and times.
 
-    Returns a tuple (event_name, eye, onset, offset). Example: ('fixation', 'left', 123.0, 130.0)
+    Returns a tuple (event_name, eye, onset, offset, duration), with the duration as reported in
+    the line. Example: ('fixation', 'left', 123.0, 130.0, 8.0)
     """
     if match := _match_regex(FIXATION_STOP_REGEX, line):
         eye = match.group('eye').upper()
@@ -326,6 +327,7 @@ def parse_eyelink_event_end(line: str) -> tuple[str, str, float, float] | None:
             eye_str,
             float(match.group('timestamp_start')),
             float(match.group('timestamp_end')),
+            float(match.group('duration_ms')),
         )
     if match := _match_regex(SACCADE_STOP_REGEX, line):
         eye = match.group('eye').upper()
@@ -335,6 +337,7 @@ def parse_eyelink_event_end(line: str) -> tuple[str, str, float, float] | None:
             eye_str,
             float(match.group('timestamp_start')),
             float(match.group('timestamp_end')),
+            float(match.group('duration_ms')),
         )
     if match := _match_regex(BLINK_STOP_REGEX, line):
         eye = match.group('eye').upper()
@@ -344,6 +347,7 @@ def parse_eyelink_event_end(line: str) -> tuple[str, str, float, float] | None:
             eye_str,
             float(match.group('timestamp_start')),
             float(match.group('timestamp_end')),
+            float(match.group('duration_ms')),
         )
     return None
 
@@ -362,7 +366,7 @@ def _check_patterns(line: str, compiled_patterns: list[dict[str, Any]]) -> dict[
 
 def _match_events_with_context(
         event_starts: list[tuple[str, str, float]],
-        event_ends: list[tuple[str, str, float, float]],
+        event_ends: list[tuple[str, str, float, float, float]],
         context_timeline: dict[float, dict[str, Any]],
         additional_columns: set[str],
 ) -> list[dict[str, Any]]:
@@ -376,8 +380,8 @@ def _match_events_with_context(
     ----------
     event_starts : list[tuple[str, str, float]]
         List of event starts as tuples of (event_name, eye, timestamp).
-    event_ends : list[tuple[str, str, float, float]]
-        List of event ends as tuples of (event_name, eye, onset, offset).
+    event_ends : list[tuple[str, str, float, float, float]]
+        List of event ends as tuples of (event_name, eye, onset, offset, duration).
     context_timeline : dict[float, dict[str, Any]]
         Dictionary mapping timestamps to context dictionaries containing additional
         column values at that point in time.
@@ -387,7 +391,7 @@ def _match_events_with_context(
     Returns
     -------
     list[dict[str, Any]]
-        List of matched event dictionaries with keys: name, eye, onset, offset,
+        List of matched event dictionaries with keys: name, eye, onset, offset, duration,
         and any additional columns from the context.
     """
     matched_events: list[dict[str, Any]] = []
@@ -411,7 +415,7 @@ def _match_events_with_context(
             event_name, eye, start_ts = data
             stacks[(event_name, eye)].append(start_ts)
         else:
-            event_name, eye, onset, offset = data
+            event_name, eye, onset, offset, duration = data
             stack = stacks[(event_name, eye)]
 
             if stack:
@@ -455,6 +459,7 @@ def _match_events_with_context(
                 'eye': eye,
                 'onset': event_onset,
                 'offset': offset,
+                'duration': duration,
                 **event_context,
             })
 
@@ -616,10 +621,9 @@ def parse_eyelink(
 
     Notes
     -----
-    Event onsets and offsets are parsed as they are in the file. However, EyeLink calculates the
-    durations in a different way than pymovements, resulting in a difference of 1 sample duration.
-    For 1000 Hz recordings, durations calculated by pymovements are 1 ms shorter than the durations
-    reported in the asc file.
+    Event onsets, offsets and durations are parsed as they are in the file. The offset is the
+    timestamp of the last sample of an event, and the reported duration includes that sample. It
+    exceeds ``offset - onset`` by one sampling interval, for example by 1 ms at 1000 Hz.
 
     Robustness to unmatched end markers: If an event end line (EBLINK/EFIX/ESACC) appears without a
     corresponding start line (SBLINK/SFIX/SSACC) for the same eye earlier in the file, a warning is
@@ -655,6 +659,7 @@ def parse_eyelink(
         'eye': [],
         'onset': [],
         'offset': [],
+        'duration': [],
         **{additional_column: [] for additional_column in additional_columns},
     }
 
@@ -692,7 +697,7 @@ def parse_eyelink(
     # Event collection for deterministic matching
     context_timeline: dict[float, dict[str, Any]] = {}
     event_starts: list[tuple[str, str, float]] = []
-    event_ends: list[tuple[str, str, float, float]] = []
+    event_ends: list[tuple[str, str, float, float, float]] = []
 
     if not isinstance(messages, (bool, list)) or (
         isinstance(messages, list)
@@ -800,8 +805,8 @@ def parse_eyelink(
             context_timeline[timestamp] = {**current_additional}
 
         elif end_event := parse_eyelink_event_end(line):
-            event_name, eye, onset, offset = end_event
-            event_ends.append((event_name, eye, onset, offset))
+            event_name, eye, onset, offset, duration = end_event
+            event_ends.append((event_name, eye, onset, offset, duration))
             context_timeline[offset] = {**current_additional}
 
         # Then process patterns and update context for subsequent lines
@@ -1029,6 +1034,7 @@ def parse_eyelink(
         'eye': pl.String,
         'onset': pl.Float64,
         'offset': pl.Float64,
+        'duration': pl.Float64,
     }
 
     if schema is not None:

@@ -1,5 +1,5 @@
 ##  adjust example file
-##
+## Sample Rate:	250
 ##
 ##
 ##
