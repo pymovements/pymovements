@@ -1976,3 +1976,16 @@ def test_gaze_detect_keeps_sources_beside_the_entries():
     assert gaze.events.metadata == {
         'Sources': ['raw/sub_1.csv'], **_detected_entries(1000),
     }
+
+
+def test_gaze_detect_leaves_detected_keys_that_are_no_entry_out():
+    def custom_method():
+        return pm.Events(
+            name='fixation', onsets=[0], durations=[1],
+            metadata={'Sources': ['raw/other.csv']},
+        )
+
+    gaze = pm.gaze.from_numpy()
+    gaze.detect(custom_method)
+
+    assert 'Sources' not in gaze.events.metadata
