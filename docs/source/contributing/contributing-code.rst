@@ -166,8 +166,8 @@ A package that only a few features need goes into an extra. Import it with
 ``import_optional_dependency`` from ``pymovements._utils.optional`` on the code path that needs it.
 The helper raises an ``ImportError`` that names the extra to install.
 
-Heavy packages (scipy, matplotlib, pandas, scikit-learn, PIL) are imported inside the function that
-uses them, so that ``import pymovements`` stays fast. Bind the module to an alias with
+Heavy packages (scipy, matplotlib, scikit-learn, PIL) are imported inside the function that uses
+them, so that ``import pymovements`` stays fast. Bind the module to an alias with
 ``importlib.import_module``, which keeps pylint's ``import-outside-toplevel`` check on. Imports
 needed only for type annotations go under ``TYPE_CHECKING``.
 
