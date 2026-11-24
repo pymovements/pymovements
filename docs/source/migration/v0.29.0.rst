@@ -1,0 +1,370 @@
+=====================
+ Migrating to v0.29.0
+=====================
+
+v0.29.0 implements :doc:`PMEP 1 </pmep/pmep-001-events-minimal-schema>`, the minimal event schema.
+It ships one breaking change: an event is described by its onset and its duration, and the
+duration counts every sample of the event. The change is silent for code that reads durations,
+so this note starts with the values and then walks through every call that behaves differently.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 60
+
+   * - What changes
+     - Where to look
+   * - Detected and parsed durations grow by one sampling interval
+     - :ref:`migration_0_29_durations`
+   * - ``offset`` leaves detected and parsed frames, the column order changes
+     - :ref:`migration_0_29_schema`
+   * - Duration thresholds and the merge gap compare against the new values
+     - :ref:`migration_0_29_thresholds`
+   * - Supplied offsets need a declared convention
+     - :ref:`migration_0_29_convention`
+   * - Event files saved before v0.29.0 need the legacy recipe
+     - :ref:`migration_0_29_legacy`
+   * - Own output with an ``offset`` column needs a keyword on reload
+     - :ref:`migration_0_29_reload`
+   * - The ``duration`` measure needs ``offsets_inclusive=``
+     - :ref:`migration_0_29_duration_measure`
+   * - ``parse_offset`` defaults to ``False``
+     - :ref:`migration_0_29_parse_offset`
+   * - Direct detector calls need ``sampling_rate=``
+     - :ref:`migration_0_29_detectors`
+   * - ``offset_column`` and ``onset_column`` are deprecated
+     - :ref:`migration_0_29_deprecations`
+
+
+.. _migration_0_29_durations:
+
+Durations grow by one sampling interval
+=======================================
+
+Before v0.29.0, a detected event stored the timestamps of its first and its last sample as
+``onset`` and ``offset`` and derived ``duration = offset - onset``. That value misses the last
+sample: an event covering the samples at 0, 1 and 2 ms lasted 2 ms, not 3 ms. From v0.29.0 the
+duration is ``offset - onset`` plus one sampling interval, written ``Δ`` below, so that
+``onset + duration`` is the end of the event and adjacent events touch.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 35 35
+
+   * - Producer
+     - Before v0.29.0
+     - From v0.29.0
+   * - Detectors (``ivt``, ``idt``, ``ihmm``, ``microsaccades``, ``blink``, ``fill``,
+       ``out_of_screen``)
+     - ``t_last - t_first``
+     - ``t_last - t_first + Δ``
+   * - EyeLink parser (``from_asc(..., events=True)``)
+     - ``t_last - t_first``, the reported ``DUR`` was discarded
+     - the reported ``DUR``, which equals ``t_last - t_first + Δ``
+   * - ``segmentation2events``
+     - ``t_last - t_first``
+     - ``t_last - t_first + Δ``
+
+The parsed EyeLink durations deserve a separate look. The same ASC file loads without an error
+or a warning in both versions, and every parsed duration is one ``Δ`` longer than before. The new
+values are the ones the file reports, so a comparison with the EyeLink data viewer now matches.
+
+.. code-block:: python
+
+   gaze = pm.gaze.from_asc('subject.asc', events=True)
+   gaze.events.frame['duration']
+   # before v0.29.0: one sampling interval shorter than the DUR column of the file
+   # from v0.29.0:   the DUR column of the file
+
+Any stored result that was computed from durations, such as mean fixation durations or
+reading measures, changes by the same interval when it is recomputed with v0.29.0.
+
+
+.. _migration_0_29_schema:
+
+The event frame
+===============
+
+Detected and parsed frames no longer carry an ``offset`` column. The minimal schema is ``onset``,
+``duration`` and ``name`` behind the trial columns, in that order.
+
+.. code-block:: python
+
+   gaze.detect('ivt')
+   gaze.events.frame.columns
+   # before v0.29.0: ['name', 'onset', 'offset', 'duration']
+   # from v0.29.0:   ['onset', 'duration', 'name']
+
+Code that read ``events.frame['offset']`` from a detected or parsed frame takes the ``offset``
+event measure instead. ``inclusive=True`` reproduces the stored offsets of earlier versions, the
+timestamp of the last sample, and needs the sampling rate.
+
+.. code-block:: python
+
+   # before v0.29.0
+   last_samples = gaze.events.frame['offset']
+
+   # from v0.29.0
+   gaze.compute_event_properties(('offset', {'inclusive': True}))
+   last_samples = gaze.events.frame['offset']
+
+   # or on the frame alone, with the sampling rate given
+   frame = events.frame.with_columns(
+       pm.measure.events.offset(inclusive=True, sampling_rate=1000),
+   )
+
+The measure writes a ``null`` offset for an event with a duration of ``0`` or ``null``, since
+such an event has no last sample.
+
+
+.. _migration_0_29_thresholds:
+
+Duration thresholds and the merge gap
+=====================================
+
+The detectors compare ``minimum_duration`` and ``maximum_duration`` against the new duration
+values. An event that missed ``minimum_duration`` by exactly one interval before now passes it,
+and a blink that passed ``maximum_duration`` by exactly one interval now fails it. Adding one
+interval to both thresholds restores the event sets of earlier versions. I-DT already converted
+its threshold to a sample count, so its event sets do not change.
+
+.. code-block:: python
+
+   # event sets as before v0.29.0, at 1000 Hz
+   gaze.detect('ivt', minimum_duration=100 + 1)
+   gaze.detect('blink', minimum_duration=50 + 1, maximum_duration=500 + 1)
+
+:py:meth:`~pymovements.Events.merge_subsequent_close_events` measures the gap from the end of an
+event, its onset plus its duration, to the onset of the next one. Adjacent events have a gap of
+``0``, where they had a gap of one interval before, so every gap is one interval shorter.
+Subtracting one interval from ``max_gap`` restores the merges of earlier versions.
+
+.. code-block:: python
+
+   # merges as before v0.29.0, at 1000 Hz
+   gaze.events.merge_subsequent_close_events('fixation', max_gap=50 - 1)
+
+
+.. _migration_0_29_convention:
+
+Supplied offsets declare their convention
+=========================================
+
+``offsets=`` stays as an alternative to ``durations=`` when constructing
+:py:class:`~pymovements.Events`, and an ``offset`` column in a frame stays allowed. Both now need
+``offsets_inclusive=``, because the constructor never guesses the convention. There are two
+readings:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 45 30
+
+   * - ``offsets_inclusive``
+     - The offset is
+     - Sampling rate
+   * - ``True``
+     - the timestamp of the last sample of the event, the convention of every pymovements
+       producer before v0.29.0
+     - required
+   * - ``False``
+     - the first time point after the event, its end
+     - not needed
+
+Exact-boundary events are the exclusive case: an event with a known start and end time that is
+not tied to samples, such as a stimulus presentation from 0 to 500 ms, has
+``offsets_inclusive=False`` and a duration of exactly ``offset - onset``.
+
+.. code-block:: python
+
+   # before v0.29.0
+   events = pm.Events(name='blink', onsets=[2], offsets=[3])
+
+   # from v0.29.0, offsets as the last sample
+   events = pm.Events(
+       name='blink', onsets=[2], offsets=[3], offsets_inclusive=True, sampling_rate=1000,
+   )
+
+   # from v0.29.0, offsets as the end of the event
+   events = pm.Events(name='stimulus', onsets=[0], offsets=[500], offsets_inclusive=False)
+
+   # from v0.29.0, with durations and no offsets
+   events = pm.Events(name='blink', onsets=[2], durations=[2])
+
+Without the declaration the constructor raises a ``ValueError`` that names both declarations and
+the legacy recipe below.
+
+
+.. _migration_0_29_legacy:
+
+Event files saved before v0.29.0
+================================
+
+A file saved by an earlier version stores ``offset`` beside ``duration == offset - onset`` on
+every row. The same values also describe a correct file with exclusive offsets, so the two cannot
+be told apart from the data and loading such a file without a keyword raises. The recipe is to
+declare the offsets inclusive and derive the durations again.
+
+.. code-block:: python
+
+   # constructor form
+   events = pm.Events(
+       frame,
+       offsets_inclusive=True,
+       durations_from_offsets=True,
+       sampling_rate=1000,
+   )
+
+   # Dataset form, the sampling rate comes from the experiment of the definition
+   dataset.load_event_files(offsets_inclusive=True, durations_from_offsets=True)
+   dataset.load(events=True, offsets_inclusive=True, durations_from_offsets=True)
+
+The keywords in full, on the constructor, on :py:meth:`~pymovements.Dataset.load_event_files` and
+on :py:meth:`~pymovements.Dataset.load`:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 45 55
+
+   * - Keywords
+     - Outcome for a file saved before v0.29.0
+   * - none
+     - raises, the convention is undeclared
+   * - ``offsets_inclusive=True``
+     - raises, every stored duration contradicts the inclusive offsets
+   * - ``offsets_inclusive=True, durations_from_offsets=True``
+     - the durations grow by one interval, the migrated result
+   * - ``offsets_inclusive=False``
+     - the stored durations are kept as exact-boundary durations
+   * - ``offsets_inclusive=True, validate=False``
+     - the short durations are kept, the check is skipped
+
+Saving the migrated dataset once with :py:meth:`~pymovements.Dataset.save_events` writes files
+that reload without any keyword.
+
+
+.. _migration_0_29_reload:
+
+Own output with an offset column
+================================
+
+The convention of an ``offset`` column is held in the ``metadata`` of the events and is not
+written to the saved file. A saved frame that carries an ``offset`` column therefore reloads only
+with ``offsets_inclusive`` given. The value depends on where the column came from.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 50 50
+
+   * - Origin of the column
+     - Keyword on reload
+   * - ``from_asc(..., parse_offset=True)``
+     - ``offsets_inclusive=True``
+   * - the ``offset`` measure
+     - the ``inclusive`` value the measure was computed with
+   * - ``offsets=`` on the constructor
+     - the ``offsets_inclusive`` value declared there
+
+.. code-block:: python
+
+   dataset.load_event_files(offsets_inclusive=True)
+
+Frames saved without an ``offset`` column, as :py:meth:`~pymovements.Dataset.detect` produces
+them, reload without a keyword.
+
+
+.. _migration_0_29_duration_measure:
+
+The duration measure
+====================
+
+The ``duration`` event measure derives durations from onsets and offsets, so it needs the
+convention of the offsets. ``offsets_inclusive`` is required, and ``offsets_inclusive=True`` needs
+the sampling rate. The measure overwrites a stored ``duration`` column.
+
+.. code-block:: python
+
+   # before v0.29.0
+   gaze.compute_event_properties('duration')
+
+   # from v0.29.0
+   gaze.compute_event_properties(('duration', {'offsets_inclusive': True}))
+
+   # on the frame alone, with the sampling rate given
+   frame = events.frame.with_columns(
+       pm.measure.events.duration(offsets_inclusive=True, sampling_rate=1000),
+   )
+
+A frame without an ``offset`` column already holds its durations, so the measure is only needed
+after offsets were supplied or computed.
+
+
+.. _migration_0_29_parse_offset:
+
+The parse_offset default
+========================
+
+``parse_offset`` on :py:func:`~pymovements.gaze.from_asc` defaults to ``False``. The parser takes
+the reported ``DUR`` as the duration either way. With ``parse_offset=True`` the parsed end
+timestamps are kept as an inclusive ``offset`` column, with the convention recorded in the
+metadata, and every reported duration is checked against its end timestamp.
+
+.. code-block:: python
+
+   # onset, duration, name
+   gaze = pm.gaze.from_asc('subject.asc', events=True)
+   # plus an inclusive offset column
+   gaze = pm.gaze.from_asc('subject.asc', events=True, parse_offset=True)
+
+
+.. _migration_0_29_detectors:
+
+Direct detector calls
+=====================
+
+The detectors compute ``t_last - t_first + Δ``, so a direct call to a detection function needs
+the sampling rate. :py:meth:`~pymovements.Gaze.detect` passes the sampling rate of the experiment
+and raises on a gaze whose experiment has none. ``segmentation2events`` is a producer too and
+takes the same keyword.
+
+.. code-block:: python
+
+   # before v0.29.0
+   events = pm.events.detection.ivt(velocities)
+
+   # from v0.29.0
+   events = pm.events.detection.ivt(velocities, sampling_rate=1000)
+   events = pm.transforms.segmentation2events(
+       segmentation, name='fixation', sampling_rate=1000,
+   )
+
+
+.. _migration_0_29_deprecations:
+
+Deprecated parameters
+=====================
+
+``offset_column`` and ``onset_column`` on ``events2segmentation``, ``events2timeratio`` and
+:py:meth:`~pymovements.Gaze.measure_events_ratio` refer to a column that left the schema. They
+are deprecated in v0.29.0 and will be removed in v0.34.0. ``onset`` and ``duration`` replace
+them, and both take a column name or a polars expression.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 50 50
+
+   * - Deprecated
+     - Replacement
+   * - ``onset_column='onset'``
+     - ``onset='onset'``
+   * - ``offset_column='offset'``
+     - ``duration='duration'``
+
+.. code-block:: python
+
+   # before v0.29.0
+   gaze.measure_events_ratio('fixation', onset_column='onset', offset_column='offset')
+
+   # from v0.29.0, the defaults already name the schema columns
+   gaze.measure_events_ratio('fixation')
+
+The ratio functions no longer add one interval to the event durations, since the durations
+already cover every sample.
