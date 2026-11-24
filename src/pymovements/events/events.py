@@ -540,8 +540,8 @@ class Events:
     offsets_inclusive: bool | None
         The convention of the offsets. True if an offset is the last sample of the event, False
         if it is the first sample after the event. None leaves the convention to the convention
-        entry in ``metadata``, see the notes below. An ``offset`` column without either raises.
-        (default: None)
+        entry in ``metadata``, see the notes below. An ``offset`` column with neither this
+        argument nor the metadata entry raises. (default: None)
     durations_from_offsets: bool
         If True, durations are derived from declared offsets and replace supplied durations.
         (default: False)
@@ -602,9 +602,8 @@ class Events:
         finite positive number, if the ``offset`` entry in ``metadata`` is not a dict or its
         ``inclusive`` value is neither a bool nor ``None``, if the frame has an ``offset``
         column without a declared convention, if durations are derived from inclusive offsets
-        without a sampling rate, if every row contradicts the declared
-        offset convention, or if ``offsets_inclusive`` or ``sampling_rate`` differs from its entry
-        in ``metadata``.
+        without a sampling rate, if every row contradicts the declared offset convention, or if
+        ``offsets_inclusive`` or ``sampling_rate`` differs from its entry in ``metadata``.
 
     Notes
     -----
@@ -2544,6 +2543,8 @@ def _carry_detected_entries(events: Events, detected: Events) -> None:
         elif isinstance(value, dict) and value.get('inclusive') is not None:
             existing = metadata.get(key)
             if key not in metadata:
+                # The constructor refuses undeclared offsets, this guard covers a frame
+                # assigned directly.
                 if key in events.frame.columns:
                     raise ValueError(
                         f"detected events declare metadata['{key}'] = {value!r}, but the "

@@ -225,7 +225,8 @@ def load_event_files(
         Convention of the ``offset`` column of the saved files, forwarded to
         :py:class:`~pymovements.Events` per file: ``True`` if the offset is the last sample
         of the event, ``False`` if it is the first sample after it. ``None`` leaves the
-        convention to the ``offset`` entry of the metadata. (default: None)
+        convention to the ``offset`` entry of the metadata. A saved ``offset`` column without
+        an entry raises. (default: None)
     durations_from_offsets: bool
         If ``True``, replace the saved durations by the ones derived from the offsets under
         the declared convention, forwarded to :py:class:`~pymovements.Events` per file.

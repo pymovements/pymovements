@@ -273,7 +273,7 @@ class TestLegacyFile:
         events = Events(self.frame, sampling_rate=1000, **kwargs)
 
         assert events.frame['duration'].to_list() == [
-            timedelta(milliseconds=v) for v in expected_ms
+            timedelta(milliseconds=ms) for ms in expected_ms
         ]
 
 
@@ -298,7 +298,7 @@ def test_init_declared_offsets_without_durations_derive(
 ):
     events = Events(**kwargs, offsets_inclusive=offsets_inclusive, sampling_rate=sampling_rate)
 
-    assert events.frame['duration'].to_list() == [timedelta(milliseconds=v) for v in expected_ms]
+    assert events.frame['duration'].to_list() == [timedelta(milliseconds=ms) for ms in expected_ms]
 
 
 def test_init_inclusive_derivation_rounds_sampling_interval_to_microseconds():
@@ -338,7 +338,7 @@ def test_init_durations_from_offsets_replaces_durations(
         durations_from_offsets=True, validate=validate,
     )
 
-    assert events.frame['duration'].to_list() == [timedelta(milliseconds=v) for v in expected_ms]
+    assert events.frame['duration'].to_list() == [timedelta(milliseconds=ms) for ms in expected_ms]
 
 
 @pytest.mark.parametrize('offsets_inclusive', [True, False])
@@ -697,4 +697,4 @@ def test_merge_subsequent_close_events_without_offset_gaps_from_durations(
     events.merge_subsequent_close_events(max_gap=15)
 
     assert 'offset' not in events.columns
-    assert events.frame['duration'].to_list() == [timedelta(milliseconds=v) for v in expected_ms]
+    assert events.frame['duration'].to_list() == [timedelta(milliseconds=ms) for ms in expected_ms]

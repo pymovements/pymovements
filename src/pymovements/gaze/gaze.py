@@ -1647,6 +1647,8 @@ class Gaze:
             if name is not None and column in self.events.columns:
                 entry = self.events.metadata.get(column)
                 declared = entry.get('inclusive') if isinstance(entry, dict) else None
+                # declared is None only for a frame assigned directly, the constructor
+                # refuses undeclared offsets.
                 if declared != measure_kwargs['inclusive']:
                     existing = (
                         f"metadata['{column}'] = {entry!r}" if declared is not None

@@ -1756,6 +1756,8 @@ def fixture_legacy_dataset_configuration(gaze_dataset_configuration):
 @mono_configuration
 @both_loaders
 class TestLoadLegacyEventFiles:
+    """Event files saved before v0.29.0 store duration == offset - onset on every row."""
+
     @pytest.mark.parametrize(
         ('kwargs', 'match'),
         [

@@ -519,6 +519,13 @@ def fixture_detected_gaze() -> pm.Gaze:
     return gaze
 
 
+def test_measure_events_ratio_detected_frame(detected_gaze):
+    ratio = detected_gaze.samples.select(detected_gaze.measure_events_ratio('fixation')).item()
+
+    # Fixations [0, 20) and [32, 56) ms over the 56 ms the samples span.
+    assert ratio == pytest.approx(44 / 56)
+
+
 @pytest.mark.parametrize(
     ('onset', 'duration'),
     [

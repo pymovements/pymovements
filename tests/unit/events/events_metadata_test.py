@@ -319,6 +319,7 @@ def test_gaze_detect_rebuilds_shared_empty_events_without_warning():
     assert_rebuilt([gaze.events], ['trial', 'onset', 'duration', 'name'])
 
 
+# Detectors build events from durations only, so existing exclusive events no longer raise.
 def test_gaze_detect_rebuilds_per_group_events_without_warning(entry_events, inclusive):
     gaze = make_gaze()
     gaze.events = entry_events

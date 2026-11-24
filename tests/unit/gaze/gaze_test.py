@@ -2036,39 +2036,37 @@ def test_gaze_compute_event_properties_sample_measure_with_name_keeps_other_rows
     )
 
 
-@pytest.mark.parametrize(
-    ('events', 'message'),
-    [
-        pytest.param(
-            Events(
-                name=['fixation', 'saccade'], onsets=[0, 10], offsets=[4, 12],
-                offsets_inclusive=True, sampling_rate=1000,
-            ),
-            r"metadata\['offset'\] = \{'inclusive': True\}, but inclusive=False is requested "
-            r"for the 'fixation' events only, which would mix conventions in one column. "
-            r"Drop name to recompute 'offset' for every event.",
-            id='differing_convention',
+def test_gaze_compute_event_properties_offset_with_name_on_other_convention_raises():
+    gaze = Gaze(
+        events=Events(
+            name=['fixation', 'saccade'], onsets=[0, 10], offsets=[4, 12],
+            offsets_inclusive=True, sampling_rate=1000,
         ),
-        pytest.param(
-            Events(name=['fixation', 'saccade'], onsets=[0, 10], durations=[5, 3]),
-            r"the existing 'offset' column is undeclared, but inclusive=False is requested "
-            r"for the 'fixation' events only",
-            id='undeclared_column',
-        ),
-    ],
-)
-def test_gaze_compute_event_properties_offset_with_name_on_other_convention_raises(
-        events, message,
-):
-    gaze = Gaze(events=events)
-    if 'offset' not in gaze.events.frame.columns:
-        # The constructor refuses undeclared offsets, the guard covers frames edited in place.
-        gaze.events.frame = gaze.events.frame.with_columns(
-            offset=pl.col('onset') + pl.col('duration'),
-        )
+    )
     expected_frame = gaze.events.frame.clone()
 
-    with pytest.raises(ValueError, match=message):
+    with pytest.raises(
+            ValueError,
+            match=r"metadata\['offset'\] = \{'inclusive': True\}, but inclusive=False is requested "
+            r"for the 'fixation' events only, which would mix conventions in one column. "
+            r"Drop name to recompute 'offset' for every event.",
+    ):
+        gaze.compute_event_properties(('offset', {'inclusive': False}), name='fixation')
+
+    assert_frame_equal(gaze.events.frame, expected_frame)
+
+
+def test_gaze_compute_event_properties_offset_with_name_on_undeclared_column_raises():
+    gaze = Gaze(events=Events(name=['fixation', 'saccade'], onsets=[0, 10], durations=[5, 3]))
+    # The constructor refuses undeclared offsets, the guard covers a frame assigned directly.
+    gaze.events.frame = gaze.events.frame.with_columns(offset=pl.col('onset') + pl.col('duration'))
+    expected_frame = gaze.events.frame.clone()
+
+    with pytest.raises(
+            ValueError,
+            match=r"the existing 'offset' column is undeclared, but inclusive=False is requested "
+            r"for the 'fixation' events only",
+    ):
         gaze.compute_event_properties(('offset', {'inclusive': False}), name='fixation')
 
     assert_frame_equal(gaze.events.frame, expected_frame)

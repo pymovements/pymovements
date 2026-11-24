@@ -1908,7 +1908,7 @@ def test_gaze_detect_existing_undeclared_offsets_raise_naming_clear(trial, trial
         experiment=pm.Experiment(sampling_rate=1000),
         events=pm.Events(name='fixation', onsets=[0], durations=[10], trials=trials),
     )
-    # The constructor refuses undeclared offsets, the guard covers frames edited in place.
+    # The constructor refuses undeclared offsets, the guard covers a frame assigned directly.
     gaze.events.frame = gaze.events.frame.with_columns(offset=pl.col('onset') + pl.col('duration'))
 
     with pytest.raises(ValueError, match=r"undeclared 'offset' column.*detect\(clear=True\)"):
