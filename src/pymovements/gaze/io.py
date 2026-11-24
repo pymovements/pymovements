@@ -1046,14 +1046,17 @@ def from_begaze(
     Returns
     -------
     Gaze
-        The initialized gaze object read from the BeGaze text file. The duration of each event
-        runs from its first to its last sample plus one sampling interval.
+        The initialized gaze object read from the BeGaze text file.
 
     Raises
     ------
     ValueError
         If the file holds events, but neither the file header nor ``experiment`` gives a
         sampling rate.
+
+    Notes
+    -----
+    The duration of each event runs from its first to its last sample plus one sampling interval.
     """
     # Read data via BeGaze parser.
     samples, event_data, parsed_metadata = parse_begaze(
