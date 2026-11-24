@@ -129,6 +129,38 @@ def _resolve_offset_convention(
     return entry_inclusive, 'entry'
 
 
+def _check_sampling_rate(sampling_rate: Any, *, name: str) -> float:
+    """Check that a sampling rate is a finite positive number.
+
+    The keyword and the metadata entry share this check, so a rate that one accepts is also
+    accepted by the other when the metadata is passed to a new ``Events``.
+
+    Parameters
+    ----------
+    sampling_rate: Any
+        The sampling rate to check.
+    name: str
+        The name of the checked value in the error message.
+
+    Returns
+    -------
+    float
+        The sampling rate as a float.
+
+    Raises
+    ------
+    ValueError
+        If the sampling rate is not a number, or not a finite positive one.
+    """
+    # bool is a Real, so True would pass as a sampling rate of 1 Hz.
+    if isinstance(sampling_rate, bool) or not isinstance(sampling_rate, Real):
+        raise ValueError(f'{name} must be a number, but is {sampling_rate!r}.')
+    rate = float(sampling_rate)
+    if not math.isfinite(rate) or rate <= 0:
+        raise ValueError(f'{name} must be a finite positive number, but is {sampling_rate}.')
+    return rate
+
+
 def _resolve_sampling_rate(
         sampling_rate: float | None,
         *,
@@ -158,18 +190,9 @@ def _resolve_sampling_rate(
     entry_rate = metadata.get('sampling_rate')
     rate = None
     if entry_rate is not None:
-        # bool is a Real, so True would pass as a sampling rate of 1 Hz.
-        if isinstance(entry_rate, bool) or not isinstance(entry_rate, Real):
-            raise ValueError(
-                "the metadata entry metadata['sampling_rate'] must be a number, "
-                f'but is {entry_rate!r}.',
-            )
-        rate = float(entry_rate)
-        if not math.isfinite(rate) or rate <= 0:
-            raise ValueError(
-                "the metadata entry metadata['sampling_rate'] must be a finite positive "
-                f'number, but is {entry_rate}.',
-            )
+        rate = _check_sampling_rate(
+            entry_rate, name="the metadata entry metadata['sampling_rate']",
+        )
     if sampling_rate is not None and rate is not None and sampling_rate != rate:
         raise ValueError(
             f'sampling_rate={sampling_rate!r} differs from the metadata entry '
@@ -757,10 +780,6 @@ class Events:
             trial_columns: list[str] | str | None = None,
             metadata: dict[str, Any] | None = None,
             time_unit: str | None = None,
-            # Passed by the rebuild sites only, left out of the rendered signature and the
-            # Parameters section: skips the report of a null duration beside a non-null
-            # offset, which was given when the frame entered pymovements.
-            _silent: bool = False,
     ):
         self.trial_columns: list[str] | None  # otherwise mypy gets confused.
         # A deep copy: neither the entries written below nor later changes to nested values
@@ -781,12 +800,8 @@ class Events:
                 "and 'us' for microseconds.",
             )
 
-        if sampling_rate is not None and not (
-                math.isfinite(sampling_rate) and sampling_rate > 0
-        ):
-            raise ValueError(
-                f'sampling_rate must be a finite positive number, but is {sampling_rate}.',
-            )
+        if sampling_rate is not None:
+            _check_sampling_rate(sampling_rate, name='sampling_rate')
 
         if data is not None:
             checks.check_is_mutual_exclusive(data=data, onsets=onsets)
@@ -931,7 +946,6 @@ class Events:
             sampling_rate=sampling_rate,
             sampling_rate_source=sampling_rate_source,
             validate=validate,
-            silent=_silent,
         )
 
         self._write_entries(
@@ -941,6 +955,44 @@ class Events:
             sampling_rate_source=sampling_rate_source,
             warn_missing_columns=validate,
         )
+
+    @classmethod
+    def _rebuild(
+            cls,
+            frame: polars.DataFrame,
+            *,
+            trial_columns: list[str] | None,
+            metadata: dict[str, Any],
+    ) -> Events:
+        """Construct events from a frame that an ``Events`` object already holds.
+
+        For internal use only. The frame has been normalised by ``__init__`` and its metadata
+        entries are written, so ``__init__`` is not run again: nothing is resolved, validated
+        or warned about. The metadata is deep-copied.
+
+        Parameters
+        ----------
+        frame: polars.DataFrame
+            An events frame as held by an ``Events`` object, or one derived from it that keeps
+            the normalised time columns and the column order.
+        trial_columns: list[str] | None
+            The trial columns of the source events.
+        metadata: dict[str, Any]
+            The metadata of the source events, or a merge of it with other sources.
+
+        Returns
+        -------
+        Events
+            The rebuilt events.
+        """
+        events = cls.__new__(cls)
+        events.trial_columns = trial_columns
+        events.metadata = deepcopy(metadata)
+        events.frame = frame
+        events._additional_columns = [
+            column for column in frame.columns if column not in cls._minimal_schema
+        ]
+        return events
 
     def _write_entries(
             self,
@@ -1012,7 +1064,6 @@ class Events:
             sampling_rate: float | None,
             sampling_rate_source: Literal['keyword', 'entry'],
             validate: bool,
-            silent: bool,
     ) -> None:
         """Fill or check the ``duration`` column against the ``offset`` column.
 
@@ -1066,18 +1117,17 @@ class Events:
 
         # A null duration beside a non-null offset is reported, never filled. The report is
         # not part of the validation that validate=False opts out of.
-        if not silent:
-            null_durations = self.frame.select(
-                (polars.col('duration').is_null() & polars.col('offset').is_not_null()).sum(),
-            ).item()
-            if null_durations:
-                rows_have = 'row has' if null_durations == 1 else 'rows have'
-                warn(
-                    f"{null_durations} {rows_have} a null duration beside a non-null offset. "
-                    'The durations stay null.',
-                    UserWarning,
-                    stacklevel=3,
-                )
+        null_durations = self.frame.select(
+            (polars.col('duration').is_null() & polars.col('offset').is_not_null()).sum(),
+        ).item()
+        if null_durations:
+            rows_have = 'row has' if null_durations == 1 else 'rows have'
+            warn(
+                f"{null_durations} {rows_have} a null duration beside a non-null offset. "
+                'The durations stay null.',
+                UserWarning,
+                stacklevel=3,
+            )
 
         if not validate:
             return
@@ -1525,12 +1575,10 @@ class Events:
         Events
             A copy of an Events object.
         """
-        return Events(
-            data=self.frame.clone(),
+        return Events._rebuild(
+            self.frame.clone(),
             trial_columns=self.trial_columns,
             metadata=self.metadata,
-            validate=False,
-            _silent=True,
         )
 
     @overload
@@ -1581,23 +1629,19 @@ class Events:
         if as_dict:
             # keys are tuples of the unique values of the columns specified in `by`.
             return {
-                key: Events(
+                key: Events._rebuild(
                     frame,
                     trial_columns=self.trial_columns,
                     metadata=self.metadata,
-                    validate=False,
-                    _silent=True,
                 )
                 for key, frame in event_dfs.items()
             }
 
         return [
-            Events(
+            Events._rebuild(
                 frame,
                 trial_columns=self.trial_columns,
                 metadata=self.metadata,
-                validate=False,
-                _silent=True,
             )
             for frame in event_dfs
         ]
@@ -2066,12 +2110,10 @@ class Events:
             self.frame = corrected_frame
             self.metadata = merge_sources(self.metadata, aois.metadata)
             return None
-        return Events(
+        return Events._rebuild(
             corrected_frame,
             trial_columns=self.trial_columns,
             metadata=merge_sources(self.metadata, aois.metadata),
-            validate=False,
-            _silent=True,
         )
 
     def measure_reading(
@@ -2203,12 +2245,10 @@ class Events:
             )
         else:
             stimuli = [stimulus]
-            mapped = Events(
+            mapped = Events._rebuild(
                 working_frame,
                 trial_columns=self.trial_columns,
                 metadata=self.metadata,
-                validate=False,
-                _silent=True,
             )
             mapped.map_to_aois(stimulus)
             fixations, aois = mapped.frame, stimulus.aois
@@ -2289,12 +2329,10 @@ class Events:
                 # The dict key defines the sequence column, so it must not also live in the
                 # entry handed to compute_reading_measures.
                 aois[original_key] = stim.aois.drop(sequence_column)
-            subset = Events(
+            subset = Events._rebuild(
                 frame.filter(polars.col(sequence_column) == key),
                 trial_columns=self.trial_columns,
                 metadata=self.metadata,
-                validate=False,
-                _silent=True,
             )
             if subset.frame.is_empty():
                 continue
