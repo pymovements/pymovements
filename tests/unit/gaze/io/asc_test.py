@@ -1018,6 +1018,36 @@ def test_from_asc_parse_offset_end_timestamp_disagreeing_with_dur_raises(make_te
         from_asc(filepath, events=True, parse_offset=True)
 
 
+def test_from_asc_parse_offset_without_events_warns(make_example_file):
+    filepath = make_example_file('eyelink_monocular_example.asc')
+
+    with pytest.warns(UserWarning, match='parse_offset=True ignored: events=False'):
+        gaze = from_asc(filepath, parse_offset=True)
+
+    assert gaze.events.frame.height == 0
+
+
+@pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No sampling rate found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No tracked eye information found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
+def test_from_asc_parse_offset_without_sampling_rate_raises(make_text_file):
+    body = (
+        'SFIX R 1000\n'
+        'EFIX R 1000 1100 101 500.0 500.0 1000\n'
+    )
+    filepath = make_text_file(filename='no_rate.asc', body=body)
+
+    with pytest.raises(ValueError, match='requires a sampling rate'):
+        from_asc(filepath, events=True, parse_offset=True)
+
+
 @pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')

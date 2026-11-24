@@ -503,6 +503,12 @@ def from_asc(
     Gaze
         The initialized gaze object read from the asc file.
 
+    Raises
+    ------
+    ValueError
+        If ``parse_offset`` is ``True`` and neither the file nor ``experiment`` gives a sampling
+        rate, or if every parsed end timestamp contradicts its reported duration.
+
     Notes
     -----
     ASC files are created from EyeLink EDF files using the ``edf2asc`` tool
@@ -649,17 +655,24 @@ def from_asc(
     calibrations = metadata_to_cal_frame(parsed_metadata)
     validations = metadata_to_val_frame(parsed_metadata)
 
-    parsed_events = None
-    if events and parse_offset:
-        parsed_events = Events(
-            event_data,
-            offsets_inclusive=True,
-            sampling_rate=experiment.eyetracker.sampling_rate,
+    if parse_offset and not events:
+        warnings.warn(
+            'parse_offset=True ignored: events=False, so no events are parsed.',
+            UserWarning,
         )
-    elif events:
+
+    parsed_events = None
+    if events:
+        sampling_rate = experiment.eyetracker.sampling_rate
+        if parse_offset and sampling_rate is None:
+            raise ValueError(
+                'from_asc requires a sampling rate to check the parsed offsets against the event '
+                'durations, but the file gives none. Pass an experiment with a sampling_rate.',
+            )
         parsed_events = Events(
-            event_data.drop('offset'),
-            sampling_rate=experiment.eyetracker.sampling_rate,
+            event_data if parse_offset else event_data.drop('offset'),
+            offsets_inclusive=True if parse_offset else None,
+            sampling_rate=sampling_rate,
         )
 
     gaze = Gaze(
