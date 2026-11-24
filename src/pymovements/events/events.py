@@ -129,6 +129,38 @@ def _resolve_offset_convention(
     return entry_inclusive, 'entry'
 
 
+def _check_sampling_rate(sampling_rate: Any, *, name: str) -> float:
+    """Check that a sampling rate is a finite positive number.
+
+    The keyword and the metadata entry share this check, so a rate that one accepts is also
+    accepted by the other when the metadata is passed to a new ``Events``.
+
+    Parameters
+    ----------
+    sampling_rate: Any
+        The sampling rate to check.
+    name: str
+        The name of the checked value in the error message.
+
+    Returns
+    -------
+    float
+        The sampling rate as a float.
+
+    Raises
+    ------
+    ValueError
+        If the sampling rate is not a number, or not a finite positive one.
+    """
+    # bool is a Real, so True would pass as a sampling rate of 1 Hz.
+    if isinstance(sampling_rate, bool) or not isinstance(sampling_rate, Real):
+        raise ValueError(f'{name} must be a number, but is {sampling_rate!r}.')
+    rate = float(sampling_rate)
+    if not math.isfinite(rate) or rate <= 0:
+        raise ValueError(f'{name} must be a finite positive number, but is {sampling_rate}.')
+    return rate
+
+
 def _resolve_sampling_rate(
         sampling_rate: float | None,
         *,
@@ -158,18 +190,9 @@ def _resolve_sampling_rate(
     entry_rate = metadata.get('sampling_rate')
     rate = None
     if entry_rate is not None:
-        # bool is a Real, so True would pass as a sampling rate of 1 Hz.
-        if isinstance(entry_rate, bool) or not isinstance(entry_rate, Real):
-            raise ValueError(
-                "the metadata entry metadata['sampling_rate'] must be a number, "
-                f'but is {entry_rate!r}.',
-            )
-        rate = float(entry_rate)
-        if not math.isfinite(rate) or rate <= 0:
-            raise ValueError(
-                "the metadata entry metadata['sampling_rate'] must be a finite positive "
-                f'number, but is {entry_rate}.',
-            )
+        rate = _check_sampling_rate(
+            entry_rate, name="the metadata entry metadata['sampling_rate']",
+        )
     if sampling_rate is not None and rate is not None and sampling_rate != rate:
         raise ValueError(
             f'sampling_rate={sampling_rate!r} differs from the metadata entry '
@@ -777,12 +800,8 @@ class Events:
                 "and 'us' for microseconds.",
             )
 
-        if sampling_rate is not None and not (
-                math.isfinite(sampling_rate) and sampling_rate > 0
-        ):
-            raise ValueError(
-                f'sampling_rate must be a finite positive number, but is {sampling_rate}.',
-            )
+        if sampling_rate is not None:
+            _check_sampling_rate(sampling_rate, name='sampling_rate')
 
         if data is not None:
             checks.check_is_mutual_exclusive(data=data, onsets=onsets)

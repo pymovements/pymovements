@@ -24,6 +24,7 @@ import math
 import re
 import warnings
 from datetime import timedelta
+from decimal import Decimal
 
 import polars as pl
 import pytest
@@ -360,6 +361,21 @@ def test_init_durations_from_offsets_on_undeclared_offsets_warns_once_and_is_ign
 @pytest.mark.parametrize('sampling_rate', [0, -1, math.nan, math.inf])
 def test_init_sampling_rate_not_finite_positive_raises(sampling_rate):
     with pytest.raises(ValueError, match='sampling_rate must be a finite positive number'):
+        Events(onsets=[0], offsets=[1], offsets_inclusive=True, sampling_rate=sampling_rate)
+
+
+@pytest.mark.parametrize(
+    ('sampling_rate', 'expected_match'),
+    [
+        pytest.param(True, r'^sampling_rate must be a number, but is True\.', id='bool'),
+        pytest.param(
+            Decimal('500'), r"^sampling_rate must be a number, but is Decimal\('500'\)\.",
+            id='decimal',
+        ),
+    ],
+)
+def test_init_non_numeric_sampling_rate_raises(sampling_rate, expected_match):
+    with pytest.raises(ValueError, match=expected_match):
         Events(onsets=[0], offsets=[1], offsets_inclusive=True, sampling_rate=sampling_rate)
 
 
