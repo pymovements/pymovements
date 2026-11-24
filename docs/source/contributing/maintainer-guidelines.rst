@@ -61,14 +61,15 @@ need it, or when it is heavy. The extras are named by what they enable, not by t
       - the framework
       - ``torch``, ``tensorflow``
     * - ``all``
-      - every extra above, no exceptions
+      - every runtime extra above
       -
 
 A new extra appears in three places: ``[project.optional-dependencies]`` in ``pyproject.toml``,
 the ``all`` extra, and the Optional Dependencies section of the installation guide. The test
 environments in ``tox.ini`` install ``all``. The code imports the package through
 ``import_optional_dependency``, which reads the minimum version from ``pyproject.toml`` and names
-the extra in its error message.
+the extra in its error message. An extra that a dataset needs is also named in a note in that
+dataset's description.
 
 Publishing Releases
 -------------------
