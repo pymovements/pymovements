@@ -72,6 +72,7 @@ def test_detected_events_reload_without_metadata_file_or_keyword(dataset_path):
     reloaded.load()
     reloaded.load_event_files()
 
+    # The events directory holds the five frames and no metadata file beside them.
     saved_filenames = sorted(path.name for path in reloaded.paths.events.iterdir())
     assert saved_filenames == [f'{subject_id}.feather' for subject_id in SUBJECT_IDS]
     assert len(reloaded.events) == len(SUBJECT_IDS)

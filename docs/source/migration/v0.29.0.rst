@@ -70,6 +70,8 @@ values are the ones the file reports, so a comparison with the EyeLink data view
 
 .. code-block:: python
 
+   import pymovements as pm
+
    gaze = pm.gaze.from_asc('subject.asc', events=True)
    gaze.events.frame['duration']
    # before v0.29.0: one sampling interval shorter than the DUR column of the file
@@ -112,8 +114,8 @@ timestamp of the last sample, and needs the sampling rate.
        pm.measure.events.offset(inclusive=True, sampling_rate=1000),
    )
 
-The measure writes a ``null`` offset for an event with a duration of ``0`` or ``null``, since
-such an event has no last sample.
+With ``inclusive=True`` the measure writes a ``null`` offset for an event with a duration of
+``0`` or ``null``, since such an event has no last sample.
 
 
 .. _migration_0_29_thresholds:
@@ -123,9 +125,9 @@ Duration thresholds and the merge gap
 
 The detectors compare ``minimum_duration`` and ``maximum_duration`` against the new duration
 values. An event that missed ``minimum_duration`` by exactly one interval before now passes it,
-and a blink that passed ``maximum_duration`` by exactly one interval now fails it. Adding one
-interval to both thresholds restores the event sets of earlier versions. I-DT already converted
-its threshold to a sample count, so its event sets do not change.
+and a blink whose duration equalled ``maximum_duration`` before now fails it. Adding one
+interval to both thresholds restores the event sets of earlier versions. I-DT already measured
+its window to the end of its last sample, so its event sets do not change.
 
 .. code-block:: python
 
