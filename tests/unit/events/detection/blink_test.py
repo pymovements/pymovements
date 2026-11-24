@@ -191,7 +191,7 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
                 'pupil': pl.repeat(500.0, 200, eager=True),
                 'timesteps': pl.arange(200, eager=True),
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='constant_pupil_no_blinks',
         ),
         pytest.param(
@@ -199,7 +199,7 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
                 'pupil': np.full(200, 500.0),
                 'timesteps': np.arange(200, dtype=int),
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='constant_pupil_no_blinks_numpy',
         ),
         pytest.param(
@@ -453,7 +453,7 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
                 'timesteps': pl.arange(200, eager=True),
                 'minimum_gap': 0,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='minimum_duration_filters_short_events',
         ),
         pytest.param(
@@ -467,7 +467,7 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
                 'timesteps': np.arange(200, dtype=int),
                 'minimum_gap': 0,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='minimum_duration_filters_short_events_numpy',
         ),
         pytest.param(
@@ -481,7 +481,7 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
                 'timesteps': pl.arange(700, eager=True),
                 'minimum_gap': 0,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='maximum_duration_filters_long_events',
         ),
         pytest.param(
@@ -495,7 +495,7 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
                 'timesteps': np.arange(700, dtype=int),
                 'minimum_gap': 0,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='maximum_duration_filters_long_events_numpy',
         ),
         pytest.param(
@@ -534,14 +534,14 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
             {
                 'pupil': pl.Series([], dtype=float),
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='empty_input_no_events',
         ),
         pytest.param(
             {
                 'pupil': np.array([], dtype=float),
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='empty_input_no_events_numpy',
         ),
         pytest.param(
@@ -626,7 +626,7 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
                 'minimum_duration': 1,
                 'maximum_duration': None,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='single_nan_sample_filtered_by_duration',
         ),
         pytest.param(
@@ -637,7 +637,7 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
                 'minimum_duration': 1,
                 'maximum_duration': None,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='single_nan_sample_filtered_by_duration_numpy',
         ),
         pytest.param(
