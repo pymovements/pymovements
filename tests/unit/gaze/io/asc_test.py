@@ -948,6 +948,15 @@ def test_from_asc_example_file_has_expected_events(
     assert_frame_equal(gaze.events.frame, expected_event_frame, check_column_order=False)
 
 
+def test_from_asc_events_declare_inclusive_offsets(make_example_file):
+    # Interim: the parsed offset column stays until the parser takes the reported DUR as the
+    # duration and keeps the offsets only on request.
+    filepath = make_example_file('eyelink_binocular_example.asc')
+    gaze = from_asc(filepath, events=True)
+
+    assert gaze.events.metadata['offset'] == {'inclusive': True}
+
+
 @pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
