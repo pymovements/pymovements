@@ -427,7 +427,12 @@ def _half_open_event_bounds(
 
     selects_samples = bounds['onset'].is_not_null() & bounds['duration'].is_not_null()
     bounds = bounds.filter(selects_samples)
-    ends = bounds.select(selection_end('onset', 'duration', sampling_rate=sampling_rate))
+    # The selection end works in microseconds, the bounds here are milliseconds.
+    ends = bounds.select(
+        selection_end(
+            pl.col('onset') * 1000, pl.col('duration') * 1000, sampling_rate=sampling_rate,
+        ) / 1000,
+    )
     pad_before, pad_after = padding
     return (
         events.filter(selects_samples),

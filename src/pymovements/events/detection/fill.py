@@ -85,10 +85,16 @@ def fill(
     events_mask = numpy.zeros(len(timesteps), dtype=bool)
 
     # Convert the event times to milliseconds to match the timesteps unit and derive the end of
-    # the sample selection of each event. Events without an end select no timesteps.
+    # the sample selection of each event, which works in microseconds. Events without an end
+    # select no timesteps.
     events_frame = event_times_to_ms(events.frame).select(
         'onset',
-        selection_end('onset', 'duration', sampling_rate=sampling_rate).alias('end'),
+        (
+            selection_end(
+                polars.col('onset') * 1000, polars.col('duration') * 1000,
+                sampling_rate=sampling_rate,
+            ) / 1000
+        ).alias('end'),
     ).drop_nulls()
 
     for onset, end in events_frame.iter_rows():
