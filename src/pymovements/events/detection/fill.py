@@ -115,7 +115,7 @@ def fill(
     ):
         return Events(
             name=name, onsets=[], durations=[],
-            offsets=[], offsets_inclusive=True, sampling_rate=sampling_rate,
+            sampling_rate=sampling_rate,
         )
 
     # Filter all candidates by minimum duration, each sample covering the nominal interval.
@@ -134,6 +134,6 @@ def fill(
 
     events = Events(
         name=name, onsets=onsets, durations=durations,
-        offsets=offsets, offsets_inclusive=True, sampling_rate=sampling_rate,
+        sampling_rate=sampling_rate,
     )
     return events

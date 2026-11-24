@@ -1336,7 +1336,7 @@ class Gaze:
         ...     samples=pl.DataFrame({'x': [0.1, 0.2], 'y': [0.3, 0.4], 'trial': [1, 2]}),
         ...     pixel_columns=['x', 'y'],
         ...     trial_columns=['trial'],
-        ...     events=Events(name='fixation', onsets=[0], offsets=[1], trials=[1]),
+        ...     events=Events(name='fixation', onsets=[0], durations=[1], trials=[1]),
         ... )
         >>> gaze.clear_events()
         >>> gaze.events.frame.is_empty()
@@ -2696,7 +2696,7 @@ class Gaze:
         ...         polars.DataFrame({
         ...             'name': ['fixation', 'fixation', 'fixation'],
         ...             'onset': [0, 1, 2],
-        ...             'offset': [1, 2, 3],
+        ...             'duration': [1, 1, 1],
         ...             'trial': [1, None, 2],
         ...         }),
         ...     ),
@@ -2732,15 +2732,15 @@ class Gaze:
         │ 3ms          ┆ [0.7, 0.8] │
         └──────────────┴────────────┘
         >>> gaze.events
-        shape: (2, 5)
-        ┌──────────────┬──────────────┬──────────┬──────────────┬───────┐
-        │ onset        ┆ duration     ┆ name     ┆ offset       ┆ trial │
-        │ ---          ┆ ---          ┆ ---      ┆ ---          ┆ ---   │
-        │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] ┆ i64   │
-        ╞══════════════╪══════════════╪══════════╪══════════════╪═══════╡
-        │ 0µs          ┆ 1ms          ┆ fixation ┆ 1ms          ┆ 1     │
-        │ 2ms          ┆ 1ms          ┆ fixation ┆ 3ms          ┆ 2     │
-        └──────────────┴──────────────┴──────────┴──────────────┴───────┘
+        shape: (2, 4)
+        ┌──────────────┬──────────────┬──────────┬───────┐
+        │ onset        ┆ duration     ┆ name     ┆ trial │
+        │ ---          ┆ ---          ┆ ---      ┆ ---   │
+        │ duration[μs] ┆ duration[μs] ┆ str      ┆ i64   │
+        ╞══════════════╪══════════════╪══════════╪═══════╡
+        │ 0µs          ┆ 1ms          ┆ fixation ┆ 1     │
+        │ 2ms          ┆ 1ms          ┆ fixation ┆ 2     │
+        └──────────────┴──────────────┴──────────┴───────┘
         """
         if subset is None:
             samples_subset = self.samples.columns
@@ -3260,7 +3260,7 @@ class Gaze:
         ...         {'time': [0, 1, 2], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}
         ...     ),
         ...     pixel_columns=['x', 'y'],
-        ...     events=Events(name=['saccade', 'fixation'], onsets=[0, 1], offsets=[1, 2]),
+        ...     events=Events(name=['saccade', 'fixation'], onsets=[0, 1], durations=[1, 1]),
         ... )
         >>> gaze.summary()
         total samples: 3 (0.0 MB in memory)

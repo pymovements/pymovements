@@ -130,7 +130,7 @@ def out_of_screen(
     if len(candidate_indices) == 0:
         return Events(
             name=name, onsets=[], durations=[],
-            offsets=[], offsets_inclusive=True, sampling_rate=sampling_rate,
+            sampling_rate=sampling_rate,
         )
 
     # Group consecutive indices into events.
@@ -145,5 +145,5 @@ def out_of_screen(
 
     return Events(
         name=name, onsets=onsets, durations=durations,
-        offsets=offsets, offsets_inclusive=True, sampling_rate=sampling_rate,
+        sampling_rate=sampling_rate,
     )

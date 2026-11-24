@@ -302,7 +302,7 @@ def microsaccades(
 
     events = Events(
         name=name, onsets=onsets, durations=durations,
-        offsets=offsets, offsets_inclusive=True, sampling_rate=sampling_rate,
+        sampling_rate=sampling_rate,
     )
     return events
 

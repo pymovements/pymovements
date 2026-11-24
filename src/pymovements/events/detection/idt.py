@@ -281,7 +281,7 @@ def idt(
     if len(timesteps) < 2:
         return Events(
             name=name, onsets=[], durations=[],
-            offsets=[], offsets_inclusive=True, sampling_rate=sampling_rate,
+            sampling_rate=sampling_rate,
         )
     end_times = numpy.append(timesteps, timesteps[-1] + sampling_interval)
 
@@ -359,6 +359,6 @@ def idt(
 
     events = Events(
         name=name, onsets=onsets_arr, durations=durations_arr,
-        offsets=offsets_arr, offsets_inclusive=True, sampling_rate=sampling_rate,
+        sampling_rate=sampling_rate,
     )
     return events

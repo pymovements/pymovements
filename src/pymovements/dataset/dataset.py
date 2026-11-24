@@ -1423,7 +1423,7 @@ class Dataset:
         ...     pl.DataFrame({
         ...         'name': ['fixation', 'fixation', 'fixation'],
         ...         'onset': [0, 200, 400],
-        ...         'offset': [100, 300, 500],
+        ...         'duration': [100, 100, 100],
         ...         'location': [[100.0, 105.0], [110.0, 195.0], [120.0, 302.0]],
         ...     }),
         ... )

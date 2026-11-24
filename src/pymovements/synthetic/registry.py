@@ -175,8 +175,8 @@ def register_generator(generator: type[GeneratorT]) -> type[GeneratorT]:
     ...     def _generate(self, *, rng, duration):
     ...         count = int(duration * 1000 // self.fixation_duration)
     ...         onsets = [index * self.fixation_duration for index in range(count)]
-    ...         offsets = [onset + self.fixation_duration for onset in onsets]
-    ...         return pm.Events(name=['fixation'] * count, onsets=onsets, offsets=offsets)
+    ...         durations = [self.fixation_duration] * count
+    ...         return pm.Events(name=['fixation'] * count, onsets=onsets, durations=durations)
     >>> 'equal_fixations' in pm.synthetic.EventGeneratorRegistry()
     True
     >>> 'equal_fixations' in pm.synthetic.SampleGeneratorRegistry()

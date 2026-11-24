@@ -1422,7 +1422,7 @@ def ihmm(
     if not numpy.any(vel_mask):
         return Events(
             name=name, onsets=numpy.array([]), durations=numpy.array([]),
-            offsets=numpy.array([]), offsets_inclusive=True, sampling_rate=sampling_rate,
+            sampling_rate=sampling_rate,
         )
 
     start = numpy.argmax(vel_mask)
@@ -1461,7 +1461,7 @@ def ihmm(
 
     events = Events(
         name=name, onsets=onsets_arr, durations=durations_arr,
-        offsets=offsets_arr, offsets_inclusive=True, sampling_rate=sampling_rate,
+        sampling_rate=sampling_rate,
     )
 
     return events

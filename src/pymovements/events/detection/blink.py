@@ -193,7 +193,7 @@ def blink(
     if len(pupil) == 0:
         return Events(
             name=name, onsets=[], durations=[],
-            offsets=[], offsets_inclusive=True, sampling_rate=sampling_rate,
+            sampling_rate=sampling_rate,
         )
 
     # Stage 1: Flag all samples with pupil loss as blink candidates.
@@ -225,7 +225,7 @@ def blink(
     if len(candidate_indices) == 0:
         return Events(
             name=name, onsets=[], durations=[],
-            offsets=[], offsets_inclusive=True, sampling_rate=sampling_rate,
+            sampling_rate=sampling_rate,
         )
 
     candidates = consecutive(arr=candidate_indices)
@@ -248,7 +248,7 @@ def blink(
     if len(candidates) == 0:
         return Events(
             name=name, onsets=[], durations=[],
-            offsets=[], offsets_inclusive=True, sampling_rate=sampling_rate,
+            sampling_rate=sampling_rate,
         )
 
     onsets = timesteps[[c[0] for c in candidates]].flatten()
@@ -257,7 +257,7 @@ def blink(
 
     return Events(
         name=name, onsets=onsets, durations=durations,
-        offsets=offsets, offsets_inclusive=True, sampling_rate=sampling_rate,
+        sampling_rate=sampling_rate,
     )
 
 
