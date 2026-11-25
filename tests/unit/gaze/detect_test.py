@@ -94,7 +94,7 @@ from pymovements.synthetic import step_function
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.events.Events(name='fixation', onsets=[0, 50], offsets=[49, 99]),
+            pm.events.Events(name='fixation', onsets=[0, 50], offsets=[48, 99]),
             id='idt_three_steps_two_fixations',
         ),
 

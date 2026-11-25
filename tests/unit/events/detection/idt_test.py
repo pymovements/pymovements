@@ -261,7 +261,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0, 50],
-                offsets=[49, 99],
+                offsets=[48, 99],
             ),
             id='three_steps_two_fixations',
         ),
@@ -279,7 +279,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0, 50],
-                offsets=[49, 99],
+                offsets=[48, 99],
             ),
             id='three_steps_two_fixations_numpy',
         ),
@@ -616,7 +616,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0, 8],
-                offsets=[4, 10],
+                offsets=[4, 11],
             ),
             id='two_fixations_single_sample_between_nans_dropped',
         ),
@@ -674,6 +674,51 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 offsets=[8],
             ),
             id='constant_position_single_fixation_with_repeated_timestep',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(length=20, steps=[10], values=[(5, 0)]),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[0, 10],
+                offsets=[9, 19],
+            ),
+            id='sample_exceeding_threshold_starts_next_fixation',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(
+                    length=20, steps=[3, 4, 10], values=[(np.nan, np.nan), (0, 0), (5, 0)],
+                ),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+                'include_nan': True,
+            },
+            Events(
+                name='fixation',
+                onsets=[0, 10],
+                offsets=[9, 19],
+            ),
+            id='sample_exceeding_threshold_starts_next_fixation_with_nan',
+        ),
+        pytest.param(
+            {
+                'positions': step_function(
+                    length=20, steps=[3, 4], values=[(np.nan, np.nan), (0, 0)],
+                ),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+                'include_nan': True,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[19],
+            ),
+            id='nan_window_keeps_last_sample',
         ),
     ],
 )
