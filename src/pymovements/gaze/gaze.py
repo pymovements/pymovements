@@ -2885,7 +2885,8 @@ class Gaze:
             if 'position' not in samples.columns:
                 raise polars.exceptions.ColumnNotFoundError(
                     f'Column \'position\' not found.'
-                    f' Available columns are: {samples.columns}',
+                    f' Available columns are: {samples.columns}.'
+                    ' Use pix2deg() to compute position from pixel coordinates.',
                 )
 
             if eye_components is None:
@@ -2899,7 +2900,8 @@ class Gaze:
             if 'velocity' not in samples.columns:
                 raise polars.exceptions.ColumnNotFoundError(
                     f'Column \'velocity\' not found.'
-                    f' Available columns are: {samples.columns}',
+                    f' Available columns are: {samples.columns}.'
+                    ' Use pos2vel() to compute velocity from the position column.',
                 )
 
             if eye_components is None:
