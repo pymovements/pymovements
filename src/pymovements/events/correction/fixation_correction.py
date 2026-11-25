@@ -369,19 +369,24 @@ def _correct_ensemble(
 
     routed_kwargs = _route_algorithm_kwargs(candidate_algos, algorithm_kwargs, directionality)
 
-    vote_exprs = []
+    corrected_exprs = []
     for candidate_algo in candidate_algos:
         func = _DRIFT_ALGORITHMS[candidate_algo]
         if candidate_algo in {'compare', 'warp'}:
             corrected_y = func(word_locations, location=location, **routed_kwargs[candidate_algo])
         else:
             corrected_y = func(line_values, location=location, **routed_kwargs[candidate_algo])
-        vote_exprs.append(
-            nearest_line_index(corrected_y, line_values).alias(candidate_algo),
-        )
+        corrected_exprs.append(corrected_y.alias(candidate_algo))
 
-    votes = fixations.select(
-        [location_x(location).alias('__location_x')] + vote_exprs,
+    # Materialize each candidate's corrected y-coordinates once. The algorithms use opaque
+    # map_batches UDFs, so inlining them into nearest_line_index below would run each UDF once
+    # per text line instead of once per trial.
+    corrected = fixations.select(
+        [location_x(location).alias('__location_x')] + corrected_exprs,
+    )
+    votes = corrected.select(
+        [pl.col('__location_x')]
+        + [nearest_line_index(pl.col(algo), line_values).alias(algo) for algo in candidate_algos],
     )
     return votes.select(
         pl.concat_list([

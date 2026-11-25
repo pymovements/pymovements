@@ -21,6 +21,8 @@
 # pylint: disable=redefined-outer-name
 from __future__ import annotations
 
+import importlib
+
 import polars as pl
 import pytest
 
@@ -323,6 +325,41 @@ def test_correct_fixation_locations_woc_votes_on_line_indices(sample_events_and_
     ])
     locs = correct_fixation_locations(events_df, aois_df, word_locations=word_locations)
     assert corrected_ys(locs) == [100.0, 100.0, 200.0, 200.0, 300.0, 300.0]
+
+
+def test_correct_fixation_locations_ensemble_runs_udf_once_per_trial(
+    sample_events_and_aois, monkeypatch,
+):
+    """The ensemble must materialize each UDF once instead of once per text line."""
+    events_df, aois_df = sample_events_and_aois
+    stretch_module = importlib.import_module('pymovements.events.correction.stretch')
+    core_runs = []
+    original_core = getattr(stretch_module, '_stretch_core')
+
+    def counting_core(locations, **kwargs):
+        core_runs.append(1)
+        return original_core(locations, **kwargs)
+
+    monkeypatch.setattr(stretch_module, '_stretch_core', counting_core)
+
+    locs = correct_fixation_locations(events_df, aois_df, algorithm=['stretch', 'attach'])
+
+    # The fixture has three text lines, so inlining the stretch expression into
+    # nearest_line_index would run the core at least once per line. Polars may evaluate a
+    # materialized UDF twice, so allow up to two runs for the single full-trial batch.
+    assert len(core_runs) <= 2
+    assert corrected_ys(locs) == [100.0, 100.0, 200.0, 200.0, 300.0, 300.0]
+
+
+def test_correct_fixation_locations_ensemble_preserves_row_alignment(
+    sample_events_and_aois,
+):
+    events_df, aois_df = sample_events_and_aois
+    locs = correct_fixation_locations(events_df, aois_df, algorithm=['stretch', 'attach'])
+    assert locs.to_list() == [
+        [100.0, 100.0], [200.0, 100.0], [300.0, 200.0],
+        [400.0, 200.0], [100.0, 300.0], [200.0, 300.0],
+    ]
 
 
 def test_correct_fixation_locations_woc_word_xy_without_aoi_coordinates():
