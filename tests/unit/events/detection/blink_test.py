@@ -902,6 +902,47 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
             ),
             id='absorption_rejected_at_boundary_numpy',
         ),
+        pytest.param(
+            # Two NaN blinks at 500 Hz with a 2-sample gap, which spans 4 ms on the grid.
+            # Region 1: samples 10..89 (20..178 ms), gap: samples 90, 91, Region 2: samples
+            # 92..171 (184..342 ms). minimum_gap=5 ms covers the gap, so both regions merge.
+            {
+                'sampling_rate': 500,
+                'pupil': pl.concat([
+                    pl.repeat(500.0, 10, eager=True),
+                    pl.repeat(None, 80, dtype=pl.Float64, eager=True),
+                    pl.repeat(500.0, 2, eager=True),
+                    pl.repeat(None, 80, dtype=pl.Float64, eager=True),
+                    pl.repeat(500.0, 28, eager=True),
+                ]),
+                'minimum_gap': 5,
+            },
+            Events(
+                name='blink', onsets=[20], offsets=[342],
+                offsets_inclusive=True, sampling_rate=500,
+            ),
+            id='gap_in_time_unit_absorbed_at_500hz',
+        ),
+        pytest.param(
+            # Same trace as above. minimum_gap=3 ms is shorter than the 4 ms gap, so the two
+            # regions stay separate although the gap is only 2 samples long.
+            {
+                'sampling_rate': 500,
+                'pupil': pl.concat([
+                    pl.repeat(500.0, 10, eager=True),
+                    pl.repeat(None, 80, dtype=pl.Float64, eager=True),
+                    pl.repeat(500.0, 2, eager=True),
+                    pl.repeat(None, 80, dtype=pl.Float64, eager=True),
+                    pl.repeat(500.0, 28, eager=True),
+                ]),
+                'minimum_gap': 3,
+            },
+            Events(
+                name='blink', onsets=[20, 184], offsets=[178, 342],
+                offsets_inclusive=True, sampling_rate=500,
+            ),
+            id='gap_in_time_unit_kept_at_500hz',
+        ),
     ],
 )
 def test_blink_detects_events(kwargs, expected):
