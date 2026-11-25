@@ -130,6 +130,24 @@ Documentation
   its fixed order, then contributors alphabetically by family name and given names, and the last
   entry is always Jäger, Lena A. A common mistake is a new entry appended at the very end.
 
+Dependencies
+------------
+
+- A new entry in ``dependencies`` of ``pyproject.toml`` has a justification in the pull request
+  description. Check whether the package belongs in an extra instead, whether the lower bound is
+  the oldest version the code works with, and that there is no upper bound.
+- A heavy package (scipy, matplotlib, pandas, scikit-learn, PIL) imported at the top of a module
+  that ``import pymovements`` loads fails ``tests/unit/import_test.py``. Ask for the import to move
+  into the function that uses it. A new heavy package is added to the test's list.
+- A package from an extra is imported through ``import_optional_dependency``, and the call sits on
+  the code path that needs the package. A check on a branch that works without the package breaks
+  callers that worked before.
+- Tests for code behind an extra go through the public function with the boundary mocked
+  (``sys.modules`` for a missing package, ``importlib.metadata.version`` for the version check).
+  The helper is called directly only for the ``ValueError`` on a name the extra does not declare.
+- A change to the extras updates the Optional Dependencies section of the installation guide, and
+  the pull request description states it.
+
 polars
 ------
 
@@ -137,13 +155,28 @@ polars
   the expression.
 - Watch for silent dtype changes, especially in time columns.
 
+Benchmarks
+----------
+
+- The ``pytest-benchmark`` check benchmarks the head of the pull request and its merge-base with
+  ``main`` on the same runner and fails when a benchmark gets more than 1.5 times slower. This
+  comparison is the regression check, and a failed check is a CI finding, not a review finding.
+- The `benchmark history chart <https://pymovements.github.io/pymovements/benchmarks/>`_ is
+  indicative only. Its points come from shared runners of varying speed, so a jump on the chart
+  alone is not a finding. Verify it against the pull request comparison or by running both
+  commits locally with ``tox -e benchmark`` on the same machine.
+- A performance claim in the pull request description is checked like a correctness claim. Ask for
+  the numbers from the comparison, and when no benchmark in ``tests/benchmark`` covers the changed
+  code path, ask for one.
+
 Severity
 --------
 
 - **Blocker**: wrong results, corrupted fixtures, a broken public API, a behavior change without
   justification, a new algorithm without a hand-verifiable test, patch coverage below 100%.
 - **Should-fix**: missing edge-case tests, missing documentation, error messages that are not
-  asserted, avoidable row-wise polars operations.
+  asserted, avoidable row-wise polars operations, a new required dependency without justification
+  or with an upper bound, an eager import of a heavy package.
 - **Nit**: what a linter enforces is not worth a comment.
 
 After the Review

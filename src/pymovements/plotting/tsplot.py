@@ -20,20 +20,23 @@
 """Provides the time series plotting function."""
 from __future__ import annotations
 
+import importlib
 import math
 from typing import TYPE_CHECKING
 from warnings import warn
 
-import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 
-from pymovements._utils._column_nesting import get_nested_columns
-from pymovements._utils._column_nesting import unnest_list_columns
-from pymovements._utils._time import duration_to_ms
+from pymovements._utils.column_nesting import get_nested_columns
+from pymovements._utils.column_nesting import unnest_list_columns
+from pymovements._utils.time import duration_to_ms
+from pymovements._utils.time import event_times_to_ms
 from pymovements.plotting._matplotlib import prepare_figure
 
 if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
+
     from pymovements.gaze import Gaze
 
 
@@ -132,6 +135,8 @@ def tsplot(
         If there are no channels to plot, e.g. if ``channels`` is an empty list or if ``time`` is
         the only numeric column of the gaze samples.
     """
+    plt = importlib.import_module('matplotlib.pyplot')
+
     if gap_factor is not None and gap_factor < 1:
         raise ValueError(f'gap_factor must be at least 1 or None, got {gap_factor}')
 
@@ -234,11 +239,10 @@ def tsplot(
     ylims = _compute_ylims(arr, zero_centered_yaxis=zero_centered_yaxis)
 
     if show_events:
-        # onset and offset are Duration columns; express them in milliseconds
-        # so the shaded spans line up with the millisecond time axis
-        events = gaze.events.frame.with_columns(
-            duration_to_ms(pl.col('onset', 'offset')),
-        )
+        # Convert onset and offset to milliseconds so the shaded spans line up
+        # with the millisecond time axis. A frame without an offset column gets
+        # one from onset + duration.
+        events = event_times_to_ms(gaze.events.frame)
         palette = plt.colormaps['tab10'].colors
         event_colors = {
             name: palette[i % len(palette)]

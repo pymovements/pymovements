@@ -20,6 +20,8 @@ These How-Tos provide detailed guides to implement the most important use cases 
     data-quality-report
     event-handling
     creating-synthetic-data
+    statistical-gaze-generation
+    geometrical-gaze-generation
     blink-detection
     blink-cleaning
     R-tutorial

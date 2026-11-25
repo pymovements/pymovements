@@ -17,28 +17,36 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test pymovements polars expression utilities."""
-from __future__ import annotations
+"""Test which third-party packages ``import pymovements`` loads."""
+import subprocess
+import sys
 
-import polars as pl
 import pytest
 
-from pymovements._utils._expressions import as_expr
+
+@pytest.fixture(name='imported_modules', scope='module')
+def fixture_imported_modules():
+    code = 'import sys; import pymovements; print("\\n".join(sys.modules))'
+    result = subprocess.run(
+        [sys.executable, '-c', code], check=True, capture_output=True, text=True,
+    )
+    return set(result.stdout.splitlines())
 
 
 @pytest.mark.parametrize(
-    ('column', 'expected'),
+    'module',
     [
-        pytest.param('column', pl.col('column'), id='column_name'),
-        pytest.param(pl.col('column') + 1, pl.col('column') + 1, id='expression'),
+        pytest.param('fastexcel', id='fastexcel'),
+        pytest.param('matplotlib', id='matplotlib'),
+        pytest.param('pandas', id='pandas'),
+        pytest.param('PIL', id='PIL'),
+        pytest.param('pyreadr', id='pyreadr'),
+        pytest.param('scipy.interpolate', id='scipy.interpolate'),
+        pytest.param('scipy.optimize', id='scipy.optimize'),
+        pytest.param('scipy.signal', id='scipy.signal'),
+        pytest.param('scipy.stats', id='scipy.stats'),
+        pytest.param('sklearn', id='sklearn'),
     ],
 )
-def test_as_expr(column, expected):
-    result = as_expr(column)
-    assert isinstance(result, pl.Expr)
-    assert result.meta.eq(expected)
-
-
-def test_as_expr_passes_expression_through_unchanged():
-    expression = pl.col('column') + 1
-    assert as_expr(expression) is expression
+def test_import_pymovements_does_not_load_module(imported_modules, module):
+    assert module not in imported_modules

@@ -70,6 +70,25 @@ def make_events_fixture():
                     'location': [(1, 2), (2, 3)],
                 },
             )
+        elif name == '2_fixations_one_without_location':
+            events = pl.DataFrame(
+                data={
+                    'trial': [1, 1],
+                    'name': ['fixation', 'fixation'],
+                    'onset': [0, 2],
+                    'offset': [1, 3],
+                    'duration': [1, 1],
+                    'location': [(1, 2), None],
+                },
+                schema={
+                    'trial': pl.Int64,
+                    'name': pl.String,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'duration': pl.Int64,
+                    'location': pl.List(pl.Int64),
+                },
+            )
         elif name == '3_events':
             events = pl.DataFrame(
                 data={
@@ -265,6 +284,10 @@ def test_scanpathplot_noshow(gaze, monkeypatch):
         pytest.param('1_fixation', 'fixation', 1, id='fixation'),
         pytest.param('1_fixation', 'saccade', 0, id='fixation'),
         pytest.param('2_fixations', 'fixation', 2, id='fixation'),
+        pytest.param(
+            '2_fixations_one_without_location', 'fixation', 1,
+            id='fixation_one_without_location',
+        ),
         pytest.param('3_events', 'fixation', 1, id='fixation'),
         pytest.param('3_events', 'saccade', 1, id='saccade'),
         pytest.param('3_events', 'foo', 1, id='foo'),
@@ -352,6 +375,43 @@ def test_set_screen_axes_valid(gaze):
     assert ax.get_xlim() == (0, gaze.experiment.screen.width_px)
     assert ax.get_ylim() == (gaze.experiment.screen.height_px, 0)
     assert ax.get_aspect() == 1
+
+
+@pytest.fixture(name='two_fixations', scope='function')
+def two_fixations_fixture():
+    return pl.DataFrame({
+        'name': ['fixation', 'fixation'],
+        'onset': [0, 100],
+        'offset': [99, 199],
+        'duration': [99, 99],
+    })
+
+
+@pytest.mark.parametrize('gaze', ['0_events'], indirect=True)
+def test_set_screen_axes_skipped_for_position_column(gaze, two_fixations):
+    gaze.events = Events(
+        two_fixations.with_columns(location=pl.Series([[-10.0, -5.0], [10.0, 5.0]])),
+    )
+
+    _, ax = scanpathplot(gaze=gaze, gaze_position_column='position')
+
+    # Fixation range in dva padded by the default pad_factor of 0.05, y-axis inverted.
+    assert ax.get_xlim() == pytest.approx((-11, 11))
+    assert ax.get_ylim() == pytest.approx((5.5, -5.5))
+
+
+@pytest.mark.parametrize('gaze', ['0_events'], indirect=True)
+def test_set_screen_axes_skipped_for_fixation_centroids_in_dva(gaze, two_fixations):
+    gaze.events = Events(two_fixations)
+    # Fixation centroids are computed in degrees of visual angle by default.
+    gaze.compute_event_properties('location')
+
+    _, ax = scanpathplot(gaze=gaze, gaze_position_column='position')
+
+    x_lim, y_lim = sorted(ax.get_xlim()), sorted(ax.get_ylim())
+    for x, y in gaze.events.frame['location']:
+        assert x_lim[0] <= x <= x_lim[1]
+        assert y_lim[0] <= y <= y_lim[1]
 
 
 @pytest.mark.parametrize('origin', ['lower left', 'center'])

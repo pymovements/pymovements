@@ -28,10 +28,10 @@ from typing import IO
 
 import polars as pl
 
-from pymovements._utils._sources import add_source
+from pymovements._utils.sources import add_source
 from pymovements.events.events import Events
-from pymovements.gaze._utils._parsing_begaze import parse_begaze
-from pymovements.gaze._utils._parsing_eyelink import parse_eyelink
+from pymovements.gaze._utils.parsing_begaze import parse_begaze
+from pymovements.gaze._utils.parsing_eyelink import parse_eyelink
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
 
@@ -470,12 +470,12 @@ def from_asc(
     messages: bool | list[str]
         Flag indicating if any additional messages should be parsed from the asc file
         and stored in :py:class:`pymovements.gaze.experiment.Experiment`.
-        The message format is 'MSG <timestamp> <content>'.
+        The message format is 'MSG <timestamp> [offset] <content>', see Notes.
         If True, all available messages will be parsed from the asc,
         alternatively, a list of regular expressions can be passed, and only the
         messages that match any of the regular expressions will be kept.
         Regular expressions are only applied to the message content,
-        implicitly parsing the `MSG <timestamp>` prefix.
+        implicitly parsing the `MSG <timestamp> [offset]` prefix.
         (default: False)
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. When ``file`` is a path, a ``Sources``
@@ -543,6 +543,25 @@ def from_asc(
     experiment's eye tracker then reports both eyes as tracked, the same as for a simultaneous
     binocular recording. Per-recording metadata that tells the two cases apart is planned in
     `issue 1663 <https://github.com/pymovements/pymovements/issues/1663>`_.
+
+    Message lines can carry a timestamp offset, ``MSG <timestamp> [offset] <text>``. The offset is
+    a signed integer in milliseconds, and the message refers to an event at ``timestamp - offset``.
+    The parsed message time is this corrected time, and messages are sorted by it. Calibrations and
+    validations parsed from message lines also carry the corrected time. The offset is
+    removed from the content, so ``patterns`` and ``metadata_patterns`` match the text without it.
+
+    ==============================  ==========  ===============
+    Line                            Time        Content
+    ==============================  ==========  ===============
+    ``MSG 456119 -10 TRIAL 1``      456129      ``TRIAL 1``
+    ``MSG 1000 12``                 1000        ``12``
+    ``MSG 1000 3 trials left``      997         ``trials left``
+    ==============================  ==========  ===============
+
+    A leading integer counts as an offset only if more text follows. Message text that starts with
+    an integer followed by more text is therefore misread, as in the last row. If an offset is
+    larger than its timestamp, the corrected time is negative and a warning is raised. Columns
+    added by ``patterns`` change at the message's line in the file, not at its corrected time.
 
     Examples
     --------
@@ -640,10 +659,15 @@ def from_asc(
     calibrations = metadata_to_cal_frame(parsed_metadata)
     validations = metadata_to_val_frame(parsed_metadata)
 
+    # Interim: EyeLink end timestamps are the last sample of an event, but the durations stay
+    # end - start, one sampling interval short of that convention, so they are kept unchecked.
+    # This goes away once the parser takes the reported DUR as the duration.
+    event_data = event_data.with_columns((pl.col('offset') - pl.col('onset')).alias('duration'))
+
     gaze = Gaze(
         samples=samples,
         experiment=experiment,
-        events=Events(event_data) if events else None,
+        events=Events(event_data, offsets_inclusive=True, validate=False) if events else None,
         messages=messages_df,
         trial_columns=trial_columns,
         time_column='time',

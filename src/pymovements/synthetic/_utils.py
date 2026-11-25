@@ -1,0 +1,267 @@
+# Copyright (c) 2026 The pymovements Project Authors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+"""Provides helpers shared by the synthetic generators and event operations.
+
+Two kinds: the rules for reading an event sequence as one continuous signal per trial, and the
+checks of hyperparameters and run parameters.
+"""
+from __future__ import annotations
+
+import math
+import numbers
+from collections.abc import Callable
+from typing import Any
+
+import numpy as np
+import polars as pl
+
+from pymovements.events.events import Events
+
+
+def previous_end(trial_columns: list[str]) -> pl.Expr:
+    """Return the end of the event before each one in its trial, null for the first.
+
+    An event spans ``[onset, onset + duration)``, as in PMEP 1, so no ``offset`` is needed.
+    """
+    expression = (pl.col('onset') + pl.col('duration')).shift(1)
+    if trial_columns:
+        expression = expression.over(trial_columns)
+    return expression
+
+
+def ordered_frame(events: Events, *, generator: str | None = None) -> pl.DataFrame:
+    """Return the events sorted by trial and onset, rejecting overlaps within a trial.
+
+    One signal cannot follow two events at once, so an overlap is an error rather than something
+    to resolve silently. Events of different trials may overlap, since each trial is its own
+    signal.
+    """
+    trial_columns = events.trial_columns or []
+    frame = events.frame.sort([*trial_columns, 'onset'], maintain_order=True)
+
+    overlapping = frame.with_columns(previous_end=previous_end(trial_columns)).filter(
+        pl.col('onset') < pl.col('previous_end'),
+    )
+    if overlapping.height:
+        first = overlapping.with_columns(
+            pl.col('onset', 'previous_end').dt.total_milliseconds(fractional=True),
+        ).row(0, named=True)
+        raise ValueError(
+            f"{_prefix(generator)}events overlap, a {first['name']} starts at "
+            f"{first['onset']} ms before the previous event ends "
+            f"at {first['previous_end']} ms",
+        )
+
+    return frame
+
+
+def check_contiguous(events: Events, *, generator: str | None = None) -> None:
+    """Reject a gap between two events of a trial, for generators that cannot render one.
+
+    A gap is not necessarily a saccade; it may be a blink or data loss. Filling it is left to
+    the user, who knows which it is.
+    """
+    trial_columns = events.trial_columns or []
+    gaps = ordered_frame(events, generator=generator).with_columns(
+        previous_end=previous_end(trial_columns),
+    ).filter(pl.col('onset') > pl.col('previous_end'))
+
+    if gaps.height:
+        first = gaps.with_columns(
+            pl.col('onset', 'previous_end').dt.total_milliseconds(fractional=True),
+        ).row(0, named=True)
+        raise ValueError(
+            f"{_prefix(generator)}events leave a gap from "
+            f"{first['previous_end']} ms to {first['onset']} ms "
+            f"before a {first['name']}; fill it first, for example with "
+            'pymovements.synthetic.bridge_gaps',
+        )
+
+
+def check_durations(events: Events, *, generator: str | None = None) -> None:
+    """Reject an event without a known duration, or with a negative one.
+
+    Without a duration, the end of an event, and so the time after it, is unknown.
+    """
+    unknown_end = events.frame.filter(pl.col('duration').is_null())
+    if unknown_end.height:
+        first = unknown_end.with_columns(
+            pl.col('onset').dt.total_milliseconds(fractional=True),
+        ).row(0, named=True)
+        raise ValueError(
+            f"{_prefix(generator)}a {first['name']} at {first['onset']} ms has no known "
+            'duration, so the time after it cannot be generated; set its duration or drop it',
+        )
+
+    negative = events.frame.filter(pl.col('duration') < pl.duration(microseconds=0))
+    if negative.height:
+        first = negative.with_columns(
+            pl.col('onset', 'duration').dt.total_milliseconds(fractional=True),
+        ).row(0, named=True)
+        raise ValueError(
+            f"{_prefix(generator)}a {first['name']} at {first['onset']} ms has a "
+            f"negative duration of {first['duration']} ms; correct its duration or drop it",
+        )
+
+
+def drop_zero_durations(events: Events, *, generator: str | None = None) -> Events:
+    """Return a copy of the events without those of zero duration.
+
+    An event of zero duration selects no samples. The copy is what a generator renders, since the
+    events are attached to the output as they came. A trial whose events all have a duration of
+    zero would vanish from the output, so it is rejected, and so are events that all have one.
+    """
+    has_duration = pl.col('duration') > pl.duration(microseconds=0)
+    rendered = events.clone()
+    rendered.frame = rendered.frame.filter(has_duration)
+
+    if events.trial_columns:
+        skipped = events.frame.group_by(events.trial_columns, maintain_order=True).agg(
+            has_duration.any().alias('has_duration'),
+        ).filter(~pl.col('has_duration'))
+        if skipped.height:
+            trial = skipped.drop('has_duration').row(0, named=True)
+            raise ValueError(
+                f'{_prefix(generator)}all events of the trial {trial} have a duration of zero, '
+                'so there is nothing to generate samples for; drop the trial',
+            )
+
+    if rendered.frame.is_empty() and not events.frame.is_empty():
+        raise ValueError(
+            f'{_prefix(generator)}all events have a duration of zero, so there is nothing to '
+            'generate samples for',
+        )
+
+    return rendered
+
+
+def per_trial(
+        events: Events,
+        synthesize: Callable[[pl.DataFrame], pl.DataFrame],
+        *,
+        generator: str | None = None,
+) -> pl.DataFrame:
+    """Return the samples synthesized for each trial, with the trial columns in front.
+
+    Each trial is generated as its own continuous signal, so the time between trials is never
+    filled. ``synthesize`` receives one trial's events, ordered by onset, and returns its
+    samples. A trial column named like a generated column is rejected, since the join would rename
+    one of them, and so is one named like a column ``Gaze`` keeps for itself, which it would
+    overwrite, fail on or read as the eye-to-screen distance. An event without a known onset
+    is rejected, since it cannot be placed in time.
+    """
+    trial_columns = events.trial_columns or []
+
+    gaze_columns = {'position', 'pixel', 'velocity', 'acceleration', 'distance'}
+    reserved = sorted(gaze_columns & set(trial_columns))
+    if reserved:
+        raise ValueError(
+            f'{_prefix(generator)}the trial columns {reserved} have the names of Gaze columns; '
+            'rename them',
+        )
+
+    unplaced = events.frame.filter(pl.col('onset').is_null())
+    if unplaced.height:
+        raise ValueError(
+            f"{_prefix(generator)}a {unplaced['name'][0]} has no known onset, so it cannot "
+            'be placed in time; set its onset or drop it',
+        )
+
+    frame = ordered_frame(events, generator=generator)
+
+    if frame.is_empty():
+        raise ValueError(
+            f'{_prefix(generator)}events are empty, so there is nothing to generate samples for',
+        )
+
+    if not trial_columns:
+        return synthesize(frame)
+
+    samples = []
+    for trial in frame.partition_by(trial_columns, maintain_order=True):
+        generated = synthesize(trial)
+
+        clashing = sorted(set(trial_columns) & set(generated.columns))
+        if clashing:
+            raise ValueError(
+                f'{_prefix(generator)}the trial columns {clashing} have the names of generated '
+                'columns; rename them',
+            )
+
+        samples.append(trial.select(trial_columns).head(1).join(generated, how='cross'))
+
+    return pl.concat(samples)
+
+
+def sample_times(onset: float, offset: float, sampling_rate: float) -> np.ndarray:
+    """Return the sample times in ms from onset up to offset, with at least one sample."""
+    n_samples = max(round((offset - onset) * sampling_rate / 1000.0), 1)
+    return onset + np.arange(n_samples) * (1000.0 / sampling_rate)
+
+
+def check_number(value: Any, name: str) -> float:
+    """Return the value as a float, rejecting non-numbers, including booleans."""
+    if isinstance(value, bool) or not isinstance(value, numbers.Real):
+        raise TypeError(
+            f'{name} must be a number but is of type {type(value).__name__}: {value}',
+        )
+
+    return float(value)
+
+
+def check_finite(value: Any, name: str) -> float:
+    """Return the value as a float, rejecting non-numbers, NaN and infinity."""
+    number = check_number(value, name)
+
+    if not math.isfinite(number):
+        raise ValueError(f'{name} must be finite but is: {number}')
+
+    return number
+
+
+def check_not_negative(value: Any, name: str) -> float:
+    """Return the value as a float, rejecting non-finite numbers and negative values."""
+    number = check_finite(value, name)
+
+    if number < 0:
+        raise ValueError(f'{name} must not be negative but is: {number}')
+
+    return number
+
+
+def check_positive(value: Any, name: str) -> float:
+    """Return the value as a float, rejecting non-finite numbers and values of zero or less."""
+    number = check_finite(value, name)
+
+    if number <= 0:
+        raise ValueError(f'{name} must be greater than zero but is: {number}')
+
+    return number
+
+
+def check_name(value: Any, name: str, allowed: tuple[str, ...]) -> None:
+    """Reject a value outside a fixed set of names."""
+    if value not in allowed:
+        raise ValueError(f'{name} must be one of {list(allowed)} but is: {value!r}')
+
+
+def _prefix(generator: str | None) -> str:
+    """Return the start of an error message naming the generator, if there is one."""
+    return f"generator '{generator}': " if generator else ''
