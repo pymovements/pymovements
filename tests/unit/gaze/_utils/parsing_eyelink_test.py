@@ -563,13 +563,13 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
                 'grade': 'POOR',
                 'tracked_eye': 'RIGHT',
                 'num_points': '9',
-                'timestamp': '1076158',
+                'timestamp': 1076158.0,
                 'validation_score_avg': '2.40',
                 'validation_score_max': '6.03',
             }],
             [{
                 'num_points': '9',
-                'timestamp': '7045618',
+                'timestamp': 7045618.0,
                 'tracked_eye': 'LEFT',
                 'type': 'P-CR',
             }],
@@ -583,7 +583,7 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
                 'grade': 'GOOD',
                 'tracked_eye': 'RIGHT',
                 'num_points': '9',
-                'timestamp': '7045618',
+                'timestamp': 7045618.0,
                 'validation_score_avg': '0.5',
                 'validation_score_max': '0.9',
             }],
@@ -598,7 +598,7 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
                 'grade': 'POOR',
                 'tracked_eye': 'RIGHT',
                 'num_points': '9',
-                'timestamp': '1076158',
+                'timestamp': 1076158.0,
                 'validation_score_avg': '12.37',
                 'validation_score_max': '25.25',
             }],
@@ -610,12 +610,12 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
             'MSG	1076160 !CAL VALIDATION R ABORTED\n',
             [
                 {
-                    'timestamp': '1076158',
+                    'timestamp': 1076158.0,
                     'tracked_eye': 'LEFT',
                     'grade': 'ABORTED',
                 },
                 {
-                    'timestamp': '1076160',
+                    'timestamp': 1076160.0,
                     'tracked_eye': 'RIGHT',
                     'grade': 'ABORTED',
                 },
@@ -629,7 +629,7 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
             [],
             [{
                 'num_points': '9',
-                'timestamp': '7045618',
+                'timestamp': 7045618.0,
                 'tracked_eye': 'LEFT',
                 'type': 'P-CR',
             }],
@@ -639,7 +639,7 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
             'MSG	7045618 !CAL\n'
             'MSG	7045618 !CAL\n',
             [],
-            [{'timestamp': '7045618'}],
+            [{'timestamp': 7045618.0}],
             id='cal_timestamp_no_cal_no_val',
         ),
         pytest.param(
@@ -648,7 +648,7 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
             [],
             [{
                 'num_points': '9',
-                'timestamp': '7045618',
+                'timestamp': 7045618.0,
                 'tracked_eye': 'LEFT',
                 'type': 'P-CR',
             }],
@@ -661,7 +661,7 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
             [],
             [{
                 'num_points': '9',
-                'timestamp': '7045618',
+                'timestamp': 7045618.0,
                 'tracked_eye': 'LEFT',
                 'type': 'P-CR',
                 'grade': 'GOOD',
@@ -675,7 +675,7 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
             [],
             [{
                 'num_points': '9',
-                'timestamp': '7045618',
+                'timestamp': 7045618.0,
                 'tracked_eye': 'LEFT',
                 'type': 'P-CR',
                 'grade': 'FAILED',
@@ -693,14 +693,14 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
             [
                 {
                     'num_points': '9',
-                    'timestamp': '7045618',
+                    'timestamp': 7045618.0,
                     'tracked_eye': 'LEFT',
                     'type': 'P-CR',
                     'grade': 'GOOD',
                 },
                 {
                     'num_points': '9',
-                    'timestamp': '7045618',
+                    'timestamp': 7045618.0,
                     'tracked_eye': 'RIGHT',
                     'type': 'P-CR',
                     'grade': 'FAILED',
@@ -715,7 +715,7 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
             [],
             [{
                 'num_points': '9',
-                'timestamp': '7045618',
+                'timestamp': 7045618.0,
                 'tracked_eye': 'LEFT',
                 'type': 'P-CR',
             }],
@@ -726,7 +726,7 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
             'MSG	7045621 !CAL CALIBRATION HV9 R RIGHT   FAILED\n',
             [],
             [{
-                'timestamp': '7045618',
+                'timestamp': 7045618.0,
                 'grade': 'FAILED',
             }],
             id='cal_grade_without_header',
@@ -796,12 +796,12 @@ def test_check_samples_config_key_warnings_and_casting(make_example_file):
         'grade': 'GOOD',
         'tracked_eye': 'LEFT',
         'num_points': '9',
-        'timestamp': '2148587',
+        'timestamp': 2148587.0,
         'validation_score_avg': '0.27',
         'validation_score_max': '0.83',
     }]
     expected_calibration = [{
-        'num_points': '9', 'type': 'P-CR', 'tracked_eye': 'LEFT', 'timestamp': '2135819',
+        'num_points': '9', 'type': 'P-CR', 'tracked_eye': 'LEFT', 'timestamp': 2135819.0,
         'grade': 'GOOD',
     }]
 
