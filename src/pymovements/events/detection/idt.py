@@ -67,8 +67,9 @@ def idt(
     The algorithm identifies fixations by grouping consecutive points
     within a maximum separation (dispersion) threshold and a minimum duration threshold.
     The algorithm uses a moving window to check the dispersion of the points in the window.
-    If the dispersion is below the threshold, the window represents a fixation,
-    and the window is expanded until the dispersion is above threshold.
+    If the dispersion is within the threshold, the window represents a fixation,
+    and the window grows while its dispersion stays within the threshold.
+    The sample that would exceed the threshold starts the next window.
     The window grows by elapsed time, so the interval between timesteps may be fractional
     and need not be constant.
 
@@ -338,8 +339,7 @@ def idt(
                     offsets.append(timesteps[candidate[-1]])
 
             else:
-                # Note a fixation at the centroid of the window points.
-
+                # The window holds no NaN and is one fixation.
                 onsets.append(timesteps[win_start])
                 offsets.append(timesteps[win_end - 1])
 
