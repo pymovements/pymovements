@@ -35,6 +35,11 @@ from pymovements.events.correction._utils import map_locations
 from pymovements.events.correction._utils import to_line_values
 
 
+# Additive sufficient statistics for a degree-1 least-squares fit:
+# (n, sum(x), sum(y), sum(x**2), sum(x*y), sum(y**2)).
+_SequenceStatistics = tuple[int, float, float, float, float, float]
+
+
 def merge(
     line_ys: pl.Series | Sequence[float],
     *,
@@ -113,6 +118,55 @@ def _fit_line_error(x_values: list[float], y_values: list[float]) -> tuple[float
     return float(gradient), error
 
 
+def _sequence_statistics(
+    x_values: Sequence[float],
+    y_values: Sequence[float],
+    indices: Sequence[int],
+) -> _SequenceStatistics:
+    """Return the additive sufficient statistics of a sequence."""
+    n = len(indices)
+    sx = sum(x_values[index] for index in indices)
+    sy = sum(y_values[index] for index in indices)
+    sxx = sum(x_values[index] ** 2 for index in indices)
+    sxy = sum(x_values[index] * y_values[index] for index in indices)
+    syy = sum(y_values[index] ** 2 for index in indices)
+    return n, sx, sy, sxx, sxy, syy
+
+
+def _sum_statistics(
+    lhs: _SequenceStatistics,
+    rhs: _SequenceStatistics,
+) -> _SequenceStatistics:
+    """Add the sufficient statistics of two sequences."""
+    return (
+        lhs[0] + rhs[0],
+        lhs[1] + rhs[1],
+        lhs[2] + rhs[2],
+        lhs[3] + rhs[3],
+        lhs[4] + rhs[4],
+        lhs[5] + rhs[5],
+    )
+
+
+def _fit_line_from_statistics(
+    statistics: _SequenceStatistics,
+) -> tuple[float, float, float] | None:
+    """Return slope, intercept and RMSE from sufficient statistics.
+
+    Returns ``None`` if the fit is degenerate and must be computed with
+    :func:`_fit_line_error` instead.
+    """
+    n, sx, sy, sxx, sxy, syy = statistics
+    denominator = n * sxx - sx * sx
+    if denominator == 0.0 or not math.isfinite(denominator):
+        return None
+    slope = (n * sxy - sx * sy) / denominator
+    intercept = (sy - slope * sx) / n
+    rss = syy - intercept * sy - slope * sxy
+    error = math.sqrt(max(rss, 0.0) / n)
+    return slope, intercept, error
+
+
 def _sequence_boundaries(
     x_values: list[float],
     y_values: list[float],
@@ -135,6 +189,7 @@ def _sequence_boundaries(
 
 def _best_merger(
     sequences: list[list[int]],
+    statistics: list[_SequenceStatistics],
     x_values: list[float],
     y_values: list[float],
     *,
@@ -158,11 +213,21 @@ def _best_merger(
         for j in range(i + 1, len(sequences)):
             if len(sequences[j]) < min_j:
                 continue
-            candidate = sequences[i] + sequences[j]
-            gradient, error = _fit_line_error(
-                [x_values[index] for index in candidate],
-                [y_values[index] for index in candidate],
-            )
+            candidate_statistics = _sum_statistics(statistics[i], statistics[j])
+            # A two-point fit is exactly determined. Its residuals are only
+            # floating-point noise, so use np.polyfit to preserve tie-breaking.
+            if candidate_statistics[0] < 3:
+                fit = None
+            else:
+                fit = _fit_line_from_statistics(candidate_statistics)
+            if fit is None:
+                candidate = sequences[i] + sequences[j]
+                gradient, error = _fit_line_error(
+                    [x_values[index] for index in candidate],
+                    [y_values[index] for index in candidate],
+                )
+            else:
+                gradient, _, error = fit
             if no_constraints or (abs(gradient) < g_thresh and error < e_thresh):
                 if error < best_error:
                     best_merger = (i, j)
@@ -191,6 +256,10 @@ def _merge_core(
         list(range(start, end))
         for start, end in zip([0] + boundaries, boundaries + [n])
     ]
+    statistics = [
+        _sequence_statistics(x_values, y_values, sequence)
+        for sequence in sequences
+    ]
 
     # Iteratively merge the pair of sequences with the best line fit, relaxing the
     # sequence length and fit quality constraints phase by phase.
@@ -204,7 +273,7 @@ def _merge_core(
     for min_i, min_j, no_constraints in merge_phases:
         while len(sequences) > m:
             best_merger = _best_merger(
-                sequences, x_values, y_values,
+                sequences, statistics, x_values, y_values,
                 min_i=min_i,
                 min_j=min_j,
                 no_constraints=no_constraints,
@@ -215,7 +284,9 @@ def _merge_core(
                 break
             merge_i, merge_j = best_merger
             sequences.append(sequences[merge_i] + sequences[merge_j])
+            statistics.append(_sum_statistics(statistics[merge_i], statistics[merge_j]))
             del sequences[merge_j], sequences[merge_i]
+            del statistics[merge_j], statistics[merge_i]
 
     # Sequences ordered by their mean y-coordinate map to the text lines top to bottom.
     corrected_y = [0.0] * n
