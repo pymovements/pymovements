@@ -34,6 +34,7 @@ from pymovements.synthetic import step_function
     [
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': pl.zeros(100, dtype=pl.Int64, eager=True),
                 'threshold': 1.,
             },
@@ -43,6 +44,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': pl.repeat((1, 2, 3), 100, eager=True),
                 'threshold': 1.,
             },
@@ -52,6 +54,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': pl.Series([[1], [1, 2], [1, 2, 3]]),
                 'threshold': 1.,
             },
@@ -61,6 +64,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': np.zeros(shape=(10, 2)),
                 'threshold': (1, 1, 1),
             },
@@ -70,6 +74,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': np.random.uniform(size=(10, 2)),
                 'threshold': (0, 100),
             },
@@ -79,6 +84,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': np.random.uniform(size=(10, 2)),
                 'threshold': (100, 0),
             },
@@ -88,6 +94,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': pl.repeat((1, 2), 100, eager=True),
                 'threshold': 1.0,
                 'timesteps': pl.repeat('b', 10, eager=True),
@@ -95,6 +102,17 @@ from pymovements.synthetic import step_function
             TypeError,
             r'timesteps dtype must be float or int but is String',
             id='timesteps_str_raises_type_error',
+        ),
+        pytest.param(
+            {
+                'sampling_rate': 1000,
+                'velocities': pl.repeat((1, 2), 10, eager=True),
+                'threshold': 1.0,
+                'timesteps': [0, 1, 2, 3, 4, 9, 8, 7, 6, 5],
+            },
+            ValueError,
+            r'timesteps must be in ascending order',
+            id='timesteps_not_ascending_raises_value_error',
         ),
     ],
 )
@@ -108,6 +126,7 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
     [
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': pl.from_numpy(
                     step_function(
                         length=100,
@@ -119,11 +138,12 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 ).select(pl.concat_list(['x', 'y']).alias('position'))['position'],
                 'threshold': 10,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='two_steps_one_saccade_high_threshold_no_events',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': step_function(
                     length=100,
                     steps=[40, 50],
@@ -132,11 +152,12 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 ),
                 'threshold': 10,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='two_steps_one_saccade_high_threshold_no_events_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': pl.from_numpy(
                     step_function(
                         length=100,
@@ -152,11 +173,14 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 name='saccade',
                 onsets=[40],
                 offsets=[49],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='two_steps_one_saccade',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': step_function(
                     length=100,
                     steps=[40, 50],
@@ -169,11 +193,14 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 name='saccade',
                 onsets=[40],
                 offsets=[49],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='two_steps_one_saccade_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': pl.from_numpy(
                     step_function(
                         length=100,
@@ -190,11 +217,14 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 name='custom_saccade',
                 onsets=[40],
                 offsets=[49],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='two_steps_one_saccade_custom_name',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': step_function(
                     length=100,
                     steps=[40, 50],
@@ -208,11 +238,14 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 name='custom_saccade',
                 onsets=[40],
                 offsets=[49],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='two_steps_one_saccade_custom_name_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': pl.from_numpy(
                     step_function(
                         length=100,
@@ -228,11 +261,14 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 name='saccade',
                 onsets=[20, 70],
                 offsets=[29, 79],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='four_steps_two_saccades',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': step_function(
                     length=100,
                     steps=[20, 30, 70, 80],
@@ -245,11 +281,14 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 name='saccade',
                 onsets=[20, 70],
                 offsets=[29, 79],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='four_steps_two_saccades_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': pl.from_numpy(
                     step_function(
                         length=100,
@@ -266,11 +305,14 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 name='saccade',
                 onsets=[20, 70],
                 offsets=[29, 79],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='two_saccades_nan_delete_ending_leading_nan',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': step_function(
                     length=100,
                     steps=[20, 25, 28, 30, 70, 80],
@@ -284,11 +326,14 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 name='saccade',
                 onsets=[20, 70],
                 offsets=[29, 79],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='two_saccades_nan_delete_ending_leading_nan_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': pl.from_numpy(
                     step_function(
                         length=100,
@@ -305,11 +350,14 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 name='saccade',
                 onsets=[20, 28, 70],
                 offsets=[24, 29, 79],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='three_saccades_nan_delete_ending_leading_nan',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': step_function(
                     length=100,
                     steps=[20, 25, 28, 30, 70, 80],
@@ -323,11 +371,14 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 name='saccade',
                 onsets=[20, 28, 70],
                 offsets=[24, 29, 79],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='three_saccades_nan_delete_ending_leading_nan_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': pl.from_numpy(
                     step_function(
                         length=100,
@@ -339,11 +390,12 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 ).select(pl.concat_list(['x', 'y']).alias('position'))['position'],
                 'threshold': 'std',
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='string_based_threshold',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': step_function(
                     length=100,
                     steps=[40, 50],
@@ -352,11 +404,12 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 ),
                 'threshold': 'std',
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='string_based_threshold_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': pl.from_numpy(
                     step_function(
                         length=100,
@@ -373,11 +426,14 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 name='saccade',
                 onsets=[1040],
                 offsets=[1049],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='two_steps_one_saccade_timesteps',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': step_function(
                     length=100,
                     steps=[40, 50],
@@ -391,11 +447,14 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 name='saccade',
                 onsets=[1040],
                 offsets=[1049],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='two_steps_one_saccade_timesteps_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': step_function(
                     length=100,
                     steps=[40, 50],
@@ -409,8 +468,32 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
                 name='saccade',
                 onsets=[1040],
                 offsets=[1049],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='two_steps_one_saccade_with_duration_timesteps',
+        ),
+        pytest.param(
+            {
+                'sampling_rate': 2000,
+                'velocities': step_function(
+                    length=100,
+                    steps=[40, 50],
+                    values=[(9, 9), (0, 0)],
+                    start_value=(0, 0),
+                ),
+                'timesteps': pl.Series(np.arange(0, 50_000, 500)).cast(pl.Duration('us')),
+                'threshold': 1e-5,
+                'minimum_duration': 4,
+            },
+            Events(
+                name='saccade',
+                onsets=[20],
+                offsets=[24.5],
+                offsets_inclusive=True,
+                sampling_rate=2000,
+            ),
+            id='two_steps_one_saccade_with_2khz_duration_timesteps',
         ),
     ],
 )

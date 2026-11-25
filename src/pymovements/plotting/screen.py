@@ -20,12 +20,16 @@
 """Provides an empty display-space canvas."""
 from __future__ import annotations
 
-import matplotlib.pyplot as plt
+import importlib
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
 
 SUPPORTED_ORIGINS = ('upper left', 'center')
 
 
-def screen(
+def make_screen_axes(
     width_px: int | None,
     height_px: int | None,
     *,
@@ -77,7 +81,7 @@ def screen(
 
     Examples
     --------
-    >>> fig, ax = screen(1280, 1024)
+    >>> fig, ax = make_screen_axes(1280, 1024)
     >>> tuple(float(value) for value in ax.get_xlim())
     (0.0, 1280.0)
     >>> tuple(float(value) for value in ax.get_ylim())
@@ -86,7 +90,7 @@ def screen(
     The ``'center'`` origin puts the coordinate origin at the display center,
     keeping screen y increasing downward:
 
-    >>> fig, ax = screen(1280, 1024, origin='center')
+    >>> fig, ax = make_screen_axes(1280, 1024, origin='center')
     >>> tuple(float(value) for value in ax.get_xlim())
     (-640.0, 640.0)
     >>> tuple(float(value) for value in ax.get_ylim())
@@ -108,6 +112,8 @@ def screen(
         raise ValueError(f'screen origin must be one of {supported}, got "{origin}".')
 
     if ax is None:
+        plt = importlib.import_module('matplotlib.pyplot')
+
         fig, ax = plt.subplots()
     else:
         fig = ax.figure

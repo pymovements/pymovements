@@ -22,7 +22,7 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements._utils._time import durations_to_ms
+from pymovements._utils.time import durations_to_ms
 from pymovements.events import Events
 from pymovements.measure.reading import ReadingMeasures
 from pymovements.measure.reading.annotation import annotate_fixations
@@ -125,6 +125,18 @@ def test_reading_measures_init_df():
     assert isinstance(reading_measures.frame, pl.DataFrame)
     assert reading_measures.frame.shape == (3, 1)
     assert reading_measures.frame['a'].to_list() == [1, 2, 3]
+
+
+def test_reading_measures_metadata_defaults_to_empty_dict():
+    reading_measures = ReadingMeasures()
+    assert reading_measures.metadata == {}
+
+
+def test_reading_measures_metadata_is_stored():
+    reading_measures = ReadingMeasures(
+        metadata={'Sources': ['raw/sub_1.csv', 'stimuli/text_1_aoi.csv']},
+    )
+    assert reading_measures.metadata == {'Sources': ['raw/sub_1.csv', 'stimuli/text_1_aoi.csv']}
 
 
 def test_compute_reading_measures_preserves_zero_based_word_indices():

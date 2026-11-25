@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test all Gaze functionality."""
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
 from copy import deepcopy
@@ -450,6 +451,22 @@ def test_gaze_copy_metadata_default():
 
     assert gaze_copy.metadata is not gaze_obj.metadata
     assert gaze_copy.metadata == gaze_obj.metadata
+
+
+def test_gaze_copy_metadata_sources_deepcopied():
+    gaze_obj = Gaze(
+        pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+        experiment=None,
+        position_columns=['x', 'y'],
+        metadata={'Sources': ['raw/sub_1.csv']},
+    )
+    gaze_copy = gaze_obj.clone()
+
+    assert gaze_copy.metadata['Sources'] == ['raw/sub_1.csv']
+    assert gaze_copy.events.metadata['Sources'] == ['raw/sub_1.csv']
+
+    gaze_copy.metadata['Sources'].append('other.csv')
+    assert gaze_obj.metadata['Sources'] == ['raw/sub_1.csv']
 
 
 def test_gaze_copy_messages():
@@ -1573,6 +1590,28 @@ def test_gaze_split_preserves_n_components():
         assert split_gaze.n_components == 2
 
 
+def test_gaze_split_propagates_sources():
+    gaze = Gaze(
+        samples=pl.DataFrame({
+            'trial': [1, 1, 2],
+            'time': [0, 1, 2],
+            'x': [0.1, 0.2, 0.3],
+            'y': [0.1, 0.2, 0.3],
+        }),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+        trial_columns='trial',
+        metadata={'Sources': ['raw/sub_1.csv']},
+    )
+
+    splits = gaze.split(by='trial')
+
+    assert len(splits) == 2
+    for gaze_split in splits:
+        assert gaze_split.metadata['Sources'] == ['raw/sub_1.csv']
+        assert gaze_split.events.metadata['Sources'] == ['raw/sub_1.csv']
+
+
 def test_gaze_dataframe_split_default():
     gaze = Gaze(
         pl.DataFrame(
@@ -1647,12 +1686,16 @@ def test_gaze_compute_event_properties_no_events():
         position_columns=['x', 'y'],
         trial_columns=['trial_id'],
     )
+    # The default events have no offset column.
+    assert 'offset' not in gaze.events.columns
 
     with pytest.warns(
         UserWarning,
         match='No events available to compute event properties. Did you forget to use detect()?',
     ):
-        gaze.compute_event_properties('amplitude')
+        gaze.compute_event_properties(('location', {'position_column': 'position'}))
+
+    assert gaze.events.frame.is_empty()
 
 
 @pytest.mark.parametrize(
@@ -1980,10 +2023,9 @@ def test_gaze_clear_events():
     expected_schema = {
         'trial': pl.Utf8,
         'page': pl.Int64,
-        'name': pl.Utf8,
         'onset': pl.Duration('us'),
-        'offset': pl.Duration('us'),
         'duration': pl.Duration('us'),
+        'name': pl.Utf8,
     }
     assert gaze.events.frame.schema == expected_schema
     assert gaze.events.frame.is_empty()

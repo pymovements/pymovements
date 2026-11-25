@@ -37,6 +37,7 @@ from pymovements.transforms.numpy import pos2vel as pos2vel_numpy
     [
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': None,
                 'velocity_threshold': 1.,
                 'minimum_duration': 1,
@@ -47,6 +48,7 @@ from pymovements.transforms.numpy import pos2vel as pos2vel_numpy
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': 1,
                 'velocity_threshold': 1.,
                 'minimum_duration': 1,
@@ -57,6 +59,7 @@ from pymovements.transforms.numpy import pos2vel as pos2vel_numpy
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': pl.ones(100, dtype=pl.Int64, eager=True),
                 'velocity_threshold': 1.,
                 'minimum_duration': 1,
@@ -67,6 +70,19 @@ from pymovements.transforms.numpy import pos2vel as pos2vel_numpy
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
+                'velocities': np.zeros(shape=(10, 2)),
+                'velocity_threshold': 1.,
+                'minimum_duration': 1,
+                'timesteps': [0, 1, 2, 3, 4, 9, 8, 7, 6, 5],
+            },
+            ValueError,
+            'timesteps must be in ascending order',
+            id='timesteps_not_ascending_raises_value_error',
+        ),
+        pytest.param(
+            {
+                'sampling_rate': 1000,
                 'velocities': np.ones(100),
                 'velocity_threshold': 1.,
                 'minimum_duration': 1,
@@ -77,6 +93,7 @@ from pymovements.transforms.numpy import pos2vel as pos2vel_numpy
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': pl.repeat((1, 2, 3), 100, eager=True),
                 'velocity_threshold': 1.,
                 'minimum_duration': 1,
@@ -87,6 +104,7 @@ from pymovements.transforms.numpy import pos2vel as pos2vel_numpy
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': np.ones((100, 3)),
                 'velocity_threshold': 1.,
                 'minimum_duration': 1,
@@ -97,6 +115,7 @@ from pymovements.transforms.numpy import pos2vel as pos2vel_numpy
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': pl.Series([[1], [1, 2], [1, 2, 3]]),
                 'velocity_threshold': 1.,
                 'minimum_duration': 1,
@@ -107,6 +126,7 @@ from pymovements.transforms.numpy import pos2vel as pos2vel_numpy
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': np.ones((100, 2)),
                 'velocity_threshold': None,
                 'minimum_duration': 1,
@@ -117,6 +137,7 @@ from pymovements.transforms.numpy import pos2vel as pos2vel_numpy
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': np.ones((100, 2)),
                 'velocity_threshold': '1.',
                 'minimum_duration': 1,
@@ -127,6 +148,7 @@ from pymovements.transforms.numpy import pos2vel as pos2vel_numpy
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': np.ones((100, 2)),
                 'velocity_threshold': 0.,
                 'minimum_duration': 1,
@@ -137,6 +159,7 @@ from pymovements.transforms.numpy import pos2vel as pos2vel_numpy
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'velocities': pl.repeat((1, 2), 100, eager=True),
                 'velocity_threshold': 1.0,
                 'timesteps': pl.repeat('b', 10, eager=True),
@@ -158,15 +181,17 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
     [
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': np.stack([np.arange(0, 200, 2), np.arange(0, 200, 2)], axis=1),
                 'velocity_threshold': 1,
                 'minimum_duration': 10,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='constant_velocity_no_fixation',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'velocity_threshold': 1,
                 'minimum_duration': 1,
@@ -175,11 +200,14 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0],
                 offsets=[99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'velocity_threshold': 1,
                 'minimum_duration': 1,
@@ -189,11 +217,14 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
                 name='custom_fixation',
                 onsets=[0],
                 offsets=[99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_custom_name',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(
                     length=100,
                     steps=[49, 50],
@@ -207,11 +238,14 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0, 51],
                 offsets=[48, 99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='three_steps_two_fixations',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(
                     length=100, steps=[10, 20, 90],
                     values=[
@@ -226,11 +260,14 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0, 21],
                 offsets=[9, 89],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='two_fixations_nan_remove_leading_ending',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(
                     length=100, steps=[10, 20, 90],
                     values=[
@@ -246,11 +283,14 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0],
                 offsets=[89],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='one_fixation_nan_remove_leading_ending',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'timesteps': np.arange(1000, 1100, dtype=int),
                 'velocity_threshold': 1,
@@ -260,11 +300,14 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[1000],
                 offsets=[1099],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'timesteps': pl.Series(np.arange(1000, 1100)).cast(pl.Duration('ms')),
                 'velocity_threshold': 1,
@@ -274,8 +317,27 @@ def test_ivt_raise_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[1000],
                 offsets=[1099],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_duration_timesteps',
+        ),
+        pytest.param(
+            {
+                'sampling_rate': 2000,
+                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'timesteps': pl.Series(np.arange(0, 50_000, 500)).cast(pl.Duration('us')),
+                'velocity_threshold': 1,
+                'minimum_duration': 1,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[49.5],
+                offsets_inclusive=True,
+                sampling_rate=2000,
+            ),
+            id='constant_position_single_fixation_with_2khz_duration_timesteps',
         ),
     ],
 )
@@ -297,6 +359,7 @@ def test_ivt_detects_fixations_numpy(kwargs, expected):
     [
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.select(
                     pl.concat_list(
                         [pl.arange(0, 200, 2, eager=True), pl.arange(0, 200, 2, eager=True)],
@@ -305,11 +368,12 @@ def test_ivt_detects_fixations_numpy(kwargs, expected):
                 'velocity_threshold': 1,
                 'minimum_duration': 10,
             },
-            Events(),
+            Events(onsets=[], offsets=[]),
             id='constant_velocity_no_fixation',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.from_numpy(
                     step_function(length=100, steps=[0], values=[(0, 0)]),
                     schema=['x', 'y'],
@@ -321,11 +385,14 @@ def test_ivt_detects_fixations_numpy(kwargs, expected):
                 name='fixation',
                 onsets=[1],  # polars pos2vel set undefined samples to null, numpy to 0
                 offsets=[99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.from_numpy(
                     step_function(length=100, steps=[0], values=[(0, 0)]),
                     schema=['x', 'y'],
@@ -338,11 +405,14 @@ def test_ivt_detects_fixations_numpy(kwargs, expected):
                 name='custom_fixation',
                 onsets=[1],
                 offsets=[99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_custom_name',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.from_numpy(
                     step_function(
                         length=100,
@@ -359,11 +429,14 @@ def test_ivt_detects_fixations_numpy(kwargs, expected):
                 name='fixation',
                 onsets=[1, 51],
                 offsets=[48, 99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='three_steps_two_fixations',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.from_numpy(
                     step_function(
                         length=100,
@@ -379,11 +452,14 @@ def test_ivt_detects_fixations_numpy(kwargs, expected):
                 name='fixation',
                 onsets=[1, 21],
                 offsets=[9, 89],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='two_fixations_nan_remove_leading_ending',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.from_numpy(
                     step_function(
                         length=100,
@@ -400,11 +476,14 @@ def test_ivt_detects_fixations_numpy(kwargs, expected):
                 name='fixation',
                 onsets=[1],
                 offsets=[89],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='one_fixation_nan_remove_leading_ending',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.from_numpy(
                     step_function(length=100, steps=[0], values=[(0, 0)]),
                     schema=['x', 'y'],
@@ -417,6 +496,8 @@ def test_ivt_detects_fixations_numpy(kwargs, expected):
                 name='fixation',
                 onsets=[1001],
                 offsets=[1099],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps',
         ),

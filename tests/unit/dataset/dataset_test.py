@@ -434,16 +434,16 @@ def mock_toy(
     for _ in range(fileinfo.height):
         events = pl.from_dict(
             {
-                'name': ['saccade', 'fixation'] * 5,
                 'onset': np.arange(0, 100_000, 10_000),
-                'offset': np.arange(5_000, 105_000, 10_000),
                 'duration': np.array([5_000] * 10),
+                'name': ['saccade', 'fixation'] * 5,
+                'offset': np.arange(5_000, 105_000, 10_000),
             },
             schema={
-                'name': pl.String,
                 'onset': pl.Duration('us'),
-                'offset': pl.Duration('us'),
                 'duration': pl.Duration('us'),
+                'name': pl.String,
+                'offset': pl.Duration('us'),
             },
         )
         events_list.append(events)
@@ -834,9 +834,12 @@ def test_load_gaze_has_correct_metadata(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
     dataset.load(stimuli=False)
 
-    expected_fileinfo = gaze_dataset_configuration['fileinfo']['gaze'].drop('filepath')
+    expected_fileinfo = gaze_dataset_configuration['fileinfo']['gaze']
     for gaze, gaze_fileinfo in zip(dataset.gaze, expected_fileinfo.iter_rows(named=True)):
-        assert gaze.metadata == gaze_fileinfo
+        # The loaded file is recorded in the Sources entry, relative to the dataset root.
+        raw_filepath = dataset.paths.raw / gaze_fileinfo.pop('filepath')
+        expected_sources = [raw_filepath.relative_to(dataset.paths.dataset).as_posix()]
+        assert gaze.metadata == {**gaze_fileinfo, 'Sources': expected_sources}
 
 
 def test_stimuli_list_exists(gaze_dataset_configuration):
@@ -1300,10 +1303,10 @@ def test_detect_events_auto_eye(detect_event_kwargs, gaze_dataset_configuration)
     expected_schema = {
         'task': pl.String,
         'trial': pl.Int64,
-        'name': pl.String,
         'onset': pl.Duration('us'),
-        'offset': pl.Duration('us'),
         'duration': pl.Duration('us'),
+        'name': pl.String,
+        'offset': pl.Duration('us'),
     }
     for result_events in dataset.events:
         assert result_events.schema == expected_schema
@@ -1349,10 +1352,10 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
         expected_schema = {
             'task': pl.String,
             'trial': pl.Int64,
-            'name': pl.String,
             'onset': pl.Duration('us'),
-            'offset': pl.Duration('us'),
             'duration': pl.Duration('us'),
+            'name': pl.String,
+            'offset': pl.Duration('us'),
         }
 
         for result_events in dataset.events:
@@ -1381,10 +1384,10 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
             {
                 'task': pl.String,
                 'trial': pl.Int64,
-                'name': pl.String,
                 'onset': pl.Duration('us'),
-                'offset': pl.Duration('us'),
                 'duration': pl.Duration('us'),
+                'name': pl.String,
+                'offset': pl.Duration('us'),
             },
             id='two-saccade-runs',
         ),
@@ -1402,10 +1405,10 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
             {
                 'task': pl.String,
                 'trial': pl.Int64,
-                'name': pl.String,
                 'onset': pl.Duration('us'),
-                'offset': pl.Duration('us'),
                 'duration': pl.Duration('us'),
+                'name': pl.String,
+                'offset': pl.Duration('us'),
             },
             id='one-saccade-one-fixation-run',
         ),
@@ -2125,10 +2128,10 @@ def test_event_dataframe_add_property_has_expected_height(
         pytest.param(
             {'event_properties': 'peak_velocity'},
             {
-                'name': pl.String,
                 'onset': pl.Duration('us'),
-                'offset': pl.Duration('us'),
                 'duration': pl.Duration('us'),
+                'name': pl.String,
+                'offset': pl.Duration('us'),
                 'peak_velocity': pl.Float64,
             },
             id='single_event_peak_velocity',
@@ -2136,10 +2139,10 @@ def test_event_dataframe_add_property_has_expected_height(
         pytest.param(
             {'event_properties': 'location'},
             {
-                'name': pl.String,
                 'onset': pl.Duration('us'),
-                'offset': pl.Duration('us'),
                 'duration': pl.Duration('us'),
+                'name': pl.String,
+                'offset': pl.Duration('us'),
                 'location': pl.List(pl.Float64),
             },
             id='single_event_position',
@@ -2515,8 +2518,20 @@ def test_load_no_files_precomputed_rm_raises_exception(precomputed_rm_dataset_co
 def test_load_split_precomputed_events(precomputed_dataset_configuration, by, expected_len):
     dataset = Dataset(**precomputed_dataset_configuration['init_kwargs'])
     dataset.load(stimuli=False)
+
+    # Loaded precomputed events list their source file relative to the dataset root.
+    metadata_pre = [dict(precomputed.metadata) for precomputed in dataset.precomputed_events]
+    for metadata in metadata_pre:
+        assert len(metadata['Sources']) == 1
+        assert not Path(metadata['Sources'][0]).is_absolute()
+        assert (dataset.paths.dataset / metadata['Sources'][0]).is_file()
+
     dataset.split_precomputed_events(by)
     assert len(dataset.precomputed_events) == expected_len
+
+    # Each split frame keeps the metadata of the frame it was split from.
+    for precomputed in dataset.precomputed_events:
+        assert precomputed.metadata in metadata_pre
 
 
 def test_dataset_definition_from_yaml(tmp_path):

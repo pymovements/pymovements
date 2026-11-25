@@ -30,7 +30,6 @@ __all__ = [
 import calendar
 import datetime
 import io
-import math
 import re
 
 import warnings
@@ -39,10 +38,11 @@ from collections.abc import Sequence
 
 from pathlib import Path
 from typing import IO, Any
+from typing import Literal
 
 import polars as pl
 
-from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys, \
+from pymovements.gaze._utils.parsing import compile_patterns, get_pattern_keys, \
     check_nan
 
 
@@ -85,9 +85,14 @@ VALIDATION_REGEX = (
     r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+!CAL\s+VALIDATION\s+HV'
     r'(?P<num_points>\d\d?).*'
     r'(?P<tracked_eye>LEFT|RIGHT)\s+'
-    r'(?P<error>\D*)\s+'
-    r'(?P<validation_score_avg>\d.\d\d)\s+avg\.\s+'
-    r'(?P<validation_score_max>\d.\d\d)\s+max'
+    r'(?P<error>(?:(?P<grade>GOOD|FAIR|POOR)\s+)?\D*)\s+'
+    r'(?P<validation_score_avg>\d+\.\d+)\s+avg\.\s+'
+    r'(?P<validation_score_max>\d+\.\d+)\s+max'
+)
+
+VALIDATION_ABORTED_REGEX = (
+    r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+!CAL\s+VALIDATION\s+'
+    r'(?P<tracked_eye>L|R)\s+ABORTED\b'
 )
 
 FIXATION_START_REGEX = r'SFIX\s+(?P<eye>R|L)\s+(?P<timestamp>(\d+[.]?\d*))\s*'
@@ -117,6 +122,13 @@ CALIBRATION_REGEX = (
     r'>+\s+CALIBRATION\s+\(HV(?P<num_points>\d\d?),'
     r'(?P<type>.*)\).*'
     r'(?P<tracked_eye>RIGHT|LEFT):\s+<{9}'
+)
+
+CALIBRATION_GRADE_REGEX = (
+    r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+!CAL\s+CALIBRATION\s+HV'
+    r'(?P<num_points>\d\d?).*'
+    r'(?P<tracked_eye>LEFT|RIGHT)\s+'
+    r'(?P<grade>GOOD|FAILED)\b'
 )
 
 RECORDING_CONFIG_REGEX = (
@@ -152,9 +164,13 @@ STOP_RECORDING_REGEX = (
     r'(?P<xres>[\d\.]*)\s+(?P<yres>[\d\.]*)\s*'
 )
 
-# General message format
+# General message format: MSG <timestamp> [offset] <content>
+# The offset is a signed integer in ms, followed by at least one more token. The message refers to
+# an event at timestamp - offset.
 MSG_REGEX = (
-    r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+(?P<content>.*)'
+    r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+'
+    r'(?:(?P<offset>[-+]?\d+)\s+(?=\S))?'
+    r'(?P<content>.*)'
 )
 
 
@@ -336,6 +352,22 @@ def parse_eyelink_event_end(line: str) -> tuple[str, str, float, float] | None:
     return None
 
 
+def _parse_message(line: str) -> tuple[str, tuple[float, str] | None]:
+    """Split the timestamp offset off an EyeLink message line.
+
+    Returns the line without the offset and the message as ``(time, content)``, with the time
+    corrected by the offset. A line that is no message is returned unchanged with ``None``.
+    """
+    match = _match_regex(MSG_REGEX, line) if line.startswith('MSG') else None
+    if match is None:
+        return line, None
+    offset = match.group('offset')
+    stripped = line
+    if offset is not None:
+        stripped = line[:match.start('offset')] + line[match.start('content'):]
+    return stripped, (float(match.group('timestamp')) - float(offset or 0), match.group('content'))
+
+
 def _check_patterns(line: str, compiled_patterns: list[dict[str, Any]]) -> dict[str, Any]:
     """Check line against compiled patterns and return matched context."""
     context = {}
@@ -449,31 +481,100 @@ def _match_events_with_context(
     return matched_events
 
 
-def _migrate_samples_to_binocular(samples: dict[str, list[Any]]) -> None:
+# Eye layout of a SAMPLES block: one eye or both.
+_MonocularEye = Literal['left', 'right']
+_EyeLayout = Literal['left', 'right', 'both']
+
+# Eye layout to the eye code used in the metadata.
+_TRACKED_EYE_CODE: dict[_EyeLayout, str] = {'left': 'L', 'right': 'R', 'both': 'LR'}
+
+# Sample columns of the monocular layout and of each eye in the binocular layout,
+# in the order x, y, pupil.
+_MONOCULAR_CHANNELS = ('x_pix', 'y_pix', 'pupil')
+_LEFT_CHANNELS = ('x_left_pix', 'y_left_pix', 'pupil_left')
+_RIGHT_CHANNELS = ('x_right_pix', 'y_right_pix', 'pupil_right')
+
+
+def _parse_tracked_eye_layout(tracked: str) -> _EyeLayout:
+    r"""Map a SAMPLES config tracked-eye token to an eye layout.
+
+    Parameters
+    ----------
+    tracked: str
+        Upper-cased tracked-eye token from a SAMPLES config line, one of the alternatives
+        captured by ``SAMPLES_CONFIG_REGEX`` (``LEFT``, ``RIGHT``, ``LEFT\tRIGHT``, ``L``,
+        ``R``, ``LR``).
+
+    Returns
+    -------
+    _EyeLayout
+        ``'left'``, ``'right'`` or ``'both'``.
+
+    Raises
+    ------
+    ValueError
+        If ``tracked`` is none of the tokens captured by ``SAMPLES_CONFIG_REGEX``.
+    """
+    if ('LEFT' in tracked and 'RIGHT' in tracked) or tracked == 'LR':
+        return 'both'
+    if tracked in {'LEFT', 'L'}:
+        return 'left'
+    if tracked in {'RIGHT', 'R'}:
+        return 'right'
+    raise ValueError(
+        f'Unknown tracked-eye token {tracked!r} in SAMPLES config line, '
+        'expected one of LEFT, RIGHT, LEFT RIGHT, L, R or LR.',
+    )
+
+
+def _eye_channels(eye: _MonocularEye) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Return the binocular sample columns of ``eye`` and of the other eye.
+
+    Parameters
+    ----------
+    eye: _MonocularEye
+        The eye that holds the data.
+
+    Returns
+    -------
+    tuple[tuple[str, ...], tuple[str, ...]]
+        The columns of ``eye`` and the columns of the other eye, each in the order x, y, pupil.
+    """
+    if eye == 'right':
+        return _RIGHT_CHANNELS, _LEFT_CHANNELS
+    return _LEFT_CHANNELS, _RIGHT_CHANNELS
+
+
+def _migrate_samples_to_binocular(
+        samples: dict[str, list[Any]],
+        prev_eye: _MonocularEye | None,
+) -> None:
     """Switch the sample column schema from monocular to binocular.
 
-    Samples collected so far were parsed as monocular; they are treated as left-eye data
-    and the right eye is filled with NaN. In standard EyeLink ASC files the binocular
-    SAMPLES config precedes all sample lines, so no samples have been collected yet and no
-    migration happens, but the code below stays correct if that assumption does not hold.
-    Mid-file mode switches (binocular <-> monocular or changing the tracked eyes) within a
-    single file are not supported.
+    Samples collected so far were parsed as monocular and belong to ``prev_eye``. They are
+    moved to that eye's channels and the other eye is filled with null. In standard EyeLink
+    ASC files the binocular SAMPLES config precedes all sample lines, so no samples have
+    been collected yet and no migration happens, but the code below stays correct if that
+    assumption does not hold.
 
     Parameters
     ----------
     samples: dict[str, list[Any]]
         Dictionary of sample columns to migrate in place.
+    prev_eye: _MonocularEye | None
+        Eye the already-collected monocular samples belong to. None means no monocular
+        SAMPLES config was seen before the change. Samples parsed before any SAMPLES line
+        still exist and go to the left eye.
     """
-    prev_x = samples.pop('x_pix', [])
-    prev_y = samples.pop('y_pix', [])
-    prev_pupil = samples.pop('pupil', [])
-    n_prev = len(prev_x)
-    samples['x_left_pix'] = prev_x
-    samples['y_left_pix'] = prev_y
-    samples['pupil_left'] = prev_pupil
-    samples['x_right_pix'] = [math.nan] * n_prev
-    samples['y_right_pix'] = [math.nan] * n_prev
-    samples['pupil_right'] = [math.nan] * n_prev
+    own_channels, _ = _eye_channels(prev_eye or 'left')
+    prev_values = [samples.pop(channel, []) for channel in _MONOCULAR_CHANNELS]
+    n_prev = len(prev_values[0])
+    # Insert the left channels before the right ones whichever eye holds the data, so the
+    # column order does not depend on the eye tracked first.
+    for channel in _LEFT_CHANNELS + _RIGHT_CHANNELS:
+        samples[channel] = [None] * n_prev
+    for channel, values in zip(own_channels, prev_values):
+        samples[channel] = values
 
 
 def parse_eyelink(
@@ -506,12 +607,12 @@ def parse_eyelink(
     messages: bool | Sequence[str]
         Flag indicating if any additional messages should be parsed from the asc file
         and returned as a DataFrame with 'time' (f64) and 'content' (str) columns.
-        The message format is 'MSG <timestamp> <content>'.
+        The message format is 'MSG <timestamp> [offset] <content>', see Notes.
         If True, all available messages will be parsed from the asc,
         alternatively, a list of regular expressions can be passed and only the
         messages that match any of the regular expressions will be kept.
         Regular expressions are only applied to the message content,
-        implicitly parsing the `MSG <timestamp>` prefix.
+        implicitly parsing the `MSG <timestamp> [offset]` prefix.
         (default: False)
     extend_resolution: bool | None
         Flag indicating if the screen resolution should be extended by 1 pixel.
@@ -545,6 +646,9 @@ def parse_eyelink(
     emitted and the event is still recorded. In this case, the parser seeds additional columns from
     the current context (values derived from the provided ``patterns`` at that line), so trial/task
     information is preserved when available.
+
+    Message lines can carry a timestamp offset (``MSG <timestamp> [offset] <text>``). See the Notes
+    of :py:func:`pymovements.gaze.from_asc` for how the offset is applied.
     """
     # pylint: disable=too-many-branches, too-many-statements, too-many-nested-blocks
     msg_prefix = r'MSG\s+\d+[.]?\d*\s+'
@@ -622,21 +726,96 @@ def parse_eyelink(
             f'as strings. Received {messages}.',
         )
 
-    messages_list: list[list[str]] = []
+    messages_list: list[tuple[float, str]] = []
+    num_negative_message_times = 0
 
-    cal_timestamp = ''
+    cal_timestamp: float | None = None
 
-    validations = []
-    calibrations = []
+    validations: list[dict[str, Any]] = []
+    calibrations: list[dict[str, Any]] = []
     recording_config: list[dict[str, Any]] = []
     samples_config: list[dict[str, Any]] = []
     start_recording_timestamp: str | None = None
     total_recording_duration = 0.0
 
     is_binocular = False
+    # Eye layout of the current SAMPLES block and the single monocular eye seen so far. If
+    # the tracked eye changes within a file (LEFT then RIGHT, or a monocular block followed
+    # by a binocular one), the whole recording is promoted to a binocular (four-channel)
+    # layout, with the non-tracked eye set to null for monocular blocks.
+    # See https://github.com/pymovements/pymovements/issues/1401.
+    current_layout: _EyeLayout | None = None
+    mono_eye_seen: _MonocularEye | None = None
 
     # Single pass: collect events, patterns, samples, samples config, and metadata
     for line in lines:
+        # Gaze sample lines start with a digit (their timestamp); every other line is an event,
+        # config or metadata line. Dispatch on the first character so the many non-sample regexes
+        # are not evaluated for every sample line.
+        if line[:1].isdigit():
+            # Parse the current block with the binocular regex only if the current SAMPLES
+            # config is itself binocular. A monocular block within a promoted binocular file is
+            # still parsed with the monocular regex and routed to its tracked eye.
+            current_block_binocular = current_layout == 'both'
+            eye_tracking_sample_match = (
+                _match_regex(EYE_TRACKING_SAMPLE_BINOCULAR, line)
+                if current_block_binocular else
+                _match_regex(EYE_TRACKING_SAMPLE_MONOCULAR, line)
+            )
+
+            if eye_tracking_sample_match:
+                timestamp_s = eye_tracking_sample_match.group('time')
+
+                for additional_column in additional_columns:
+                    samples[additional_column].append(current_additional[additional_column])
+
+                if current_block_binocular:
+                    # Binocular block: both eyes present in the sample line.
+                    x_left_pix = check_nan(eye_tracking_sample_match.group('x_pix_left'))
+                    y_left_pix = check_nan(eye_tracking_sample_match.group('y_pix_left'))
+                    pupil_left = check_nan(eye_tracking_sample_match.group('pupil_left'))
+                    x_right_pix = check_nan(eye_tracking_sample_match.group('x_pix_right'))
+                    y_right_pix = check_nan(eye_tracking_sample_match.group('y_pix_right'))
+                    pupil_right = check_nan(eye_tracking_sample_match.group('pupil_right'))
+
+                    samples['x_left_pix'].append(x_left_pix)
+                    samples['y_left_pix'].append(y_left_pix)
+                    samples['pupil_left'].append(pupil_left)
+                    samples['x_right_pix'].append(x_right_pix)
+                    samples['y_right_pix'].append(y_right_pix)
+                    samples['pupil_right'].append(pupil_right)
+                else:
+                    # Monocular sample line: one tracked eye in this block.
+                    x_pix = check_nan(eye_tracking_sample_match.group('x_pix'))
+                    y_pix = check_nan(eye_tracking_sample_match.group('y_pix'))
+                    pupil = check_nan(eye_tracking_sample_match.group('pupil'))
+
+                    if not is_binocular:
+                        # Monocular file: a single tracked eye throughout, three channels.
+                        samples['x_pix'].append(x_pix)
+                        samples['y_pix'].append(y_pix)
+                        samples['pupil'].append(pupil)
+                    else:
+                        # Monocular block within a promoted binocular file: route the sample to
+                        # its tracked eye and fill the other eye with null.
+                        own_channels, other_channels = _eye_channels(
+                            'right' if current_layout == 'right' else 'left',
+                        )
+                        for channel, value in zip(own_channels, (x_pix, y_pix, pupil)):
+                            samples[channel].append(value)
+                        for channel in other_channels:
+                            samples[channel].append(None)
+
+                timestamp = float(timestamp_s)
+                samples['time'].append(timestamp)
+
+            # A sample line directly after !CAL ends the calibration entry with its timestamp only.
+            if cal_timestamp is not None:
+                calibrations.append({'timestamp': cal_timestamp})
+                cal_timestamp = None
+
+            continue
+
         # Collect event starts/ends for deterministic matching
         # Store context BEFORE processing this line's patterns (context is from previous lines)
         if start_event := parse_eyelink_event_start(line):
@@ -649,25 +828,39 @@ def parse_eyelink(
             event_ends.append((event_name, eye, onset, offset))
             context_timeline[offset] = {**current_additional}
 
+        # msg_prefix and the message regexes below expect no offset, so all matching from here on
+        # uses the line without it. Its timestamp is not corrected, so times come from message.
+        line_without_offset, message = _parse_message(line)
+        if message is not None:
+            message_time, _ = message
+            if message_time < 0:
+                num_negative_message_times += 1
+
         # Then process patterns and update context for subsequent lines
-        matched_ctx = _check_patterns(line, compiled_patterns)
+        matched_ctx = _check_patterns(line_without_offset, compiled_patterns)
         if matched_ctx:
             current_additional.update(matched_ctx)
 
         # Detect the tracking configuration independently of the elif chain below, so a
         # SAMPLES config line is never missed (e.g. if it directly follows a calibration
         # line while cal_timestamp is still set). The switch to binocular has to happen
-        # before this config block's samples are parsed further down the loop.
-        if samples_match := _search_regex(SAMPLES_CONFIG_REGEX, line, re.IGNORECASE):
+        # before the next sample line is dispatched at the top of the loop.
+        if samples_match := _search_regex(SAMPLES_CONFIG_REGEX, line_without_offset, re.IGNORECASE):
             samples_config.append(samples_match.groupdict())
             tracked = samples_match.group('tracked_eye').upper().strip()
-            if not is_binocular and (
-                ('LEFT' in tracked and 'RIGHT' in tracked) or tracked in {'LR', 'L R'}
-            ):
-                _migrate_samples_to_binocular(samples)
-                is_binocular = True
+            layout = _parse_tracked_eye_layout(tracked)
+            if not is_binocular:
+                if layout == 'both':
+                    _migrate_samples_to_binocular(samples, mono_eye_seen)
+                    is_binocular = True
+                elif mono_eye_seen is None:
+                    mono_eye_seen = layout
+                elif mono_eye_seen != layout:
+                    _migrate_samples_to_binocular(samples, mono_eye_seen)
+                    is_binocular = True
+            current_layout = layout
 
-        if cal_timestamp:
+        if cal_timestamp is not None:
             # if a calibration timestamp has been found, the next line will be a
             # calibration pattern, if not, there will only be the timestamp added to the overview
 
@@ -677,17 +870,17 @@ def parse_eyelink(
                     'timestamp': cal_timestamp,
                     **match.groupdict(),
                 }
-                if (match := _match_regex(CALIBRATION_REGEX, line))
+                if (match := _match_regex(CALIBRATION_REGEX, line_without_offset))
                 else {'timestamp': cal_timestamp},
             )
-            cal_timestamp = ''
+            cal_timestamp = None
 
-        elif match := _match_regex(RECORDING_CONFIG_REGEX, line):
+        elif match := _match_regex(RECORDING_CONFIG_REGEX, line_without_offset):
             # Drop optional groups that weren't present for legacy behaviour
             rec_cfg = {k: v for k, v in match.groupdict().items() if v is not None}
             recording_config.append(rec_cfg)
 
-        elif match := _match_regex(GAZE_COORDS_REGEX, line):
+        elif match := _match_regex(GAZE_COORDS_REGEX, line_without_offset):
             left, top, right, bottom = (float(coord) for coord in match.group('resolution').split())
             # GAZE_COORDS is typically logged after RECCFG - if not, warn and skip assignment.
             if not recording_config:
@@ -711,10 +904,10 @@ def parse_eyelink(
 
                 recording_config[-1]['resolution'] = (width, height)
 
-        elif match := _match_regex(START_RECORDING_REGEX, line):
+        elif match := _match_regex(START_RECORDING_REGEX, line_without_offset):
             start_recording_timestamp = match.groupdict()['timestamp']
 
-        elif match := _match_regex(STOP_RECORDING_REGEX, line):
+        elif match := _match_regex(STOP_RECORDING_REGEX, line_without_offset):
             if start_recording_timestamp is None:
                 warnings.warn(
                     'END recording message without associated START recording message. '
@@ -726,69 +919,58 @@ def parse_eyelink(
                     float(match.groupdict()['timestamp']) - float(start_recording_timestamp)
                 )
             start_recording_timestamp = None
-        if messages and (match := _match_regex(MSG_REGEX, line)):
-            messages_list.append([match.groupdict()['timestamp'], match.groupdict()['content']])
+        if messages and message:
+            messages_list.append(message)
 
-        # Use the appropriate regex based on the file type
-        eye_tracking_sample_match = (
-            _match_regex(EYE_TRACKING_SAMPLE_BINOCULAR, line)
-            if is_binocular else
-            _match_regex(EYE_TRACKING_SAMPLE_MONOCULAR, line)
-        )
+        if message is not None and _match_regex(CALIBRATION_TIMESTAMP_REGEX, line_without_offset):
+            cal_timestamp = message_time
 
-        if eye_tracking_sample_match:
-            timestamp_s = eye_tracking_sample_match.group('time')
+        elif message is not None and (
+            match := _match_regex(VALIDATION_REGEX, line_without_offset)
+        ):
+            validations.append({**match.groupdict(), 'timestamp': message_time})
 
-            for additional_column in additional_columns:
-                samples[additional_column].append(current_additional[additional_column])
+        elif message is not None and (
+            match := _match_regex(VALIDATION_ABORTED_REGEX, line_without_offset)
+        ):
+            validation = {**match.groupdict(), 'timestamp': message_time}
+            validation['tracked_eye'] = (
+                'LEFT' if validation['tracked_eye'] == 'L' else 'RIGHT'
+            )
+            validation['grade'] = 'ABORTED'
+            validations.append(validation)
 
-            if is_binocular:
-                x_left_pix_s = eye_tracking_sample_match.group('x_pix_left')
-                y_left_pix_s = eye_tracking_sample_match.group('y_pix_left')
-                pupil_left_s = eye_tracking_sample_match.group('pupil_left')
-                x_right_pix_s = eye_tracking_sample_match.group('x_pix_right')
-                y_right_pix_s = eye_tracking_sample_match.group('y_pix_right')
-                pupil_right_s = eye_tracking_sample_match.group('pupil_right')
-
-                x_left_pix = check_nan(x_left_pix_s)
-                y_left_pix = check_nan(y_left_pix_s)
-                pupil_left = check_nan(pupil_left_s)
-                x_right_pix = check_nan(x_right_pix_s)
-                y_right_pix = check_nan(y_right_pix_s)
-                pupil_right = check_nan(pupil_right_s)
-
-                samples['x_left_pix'].append(x_left_pix)
-                samples['y_left_pix'].append(y_left_pix)
-                samples['pupil_left'].append(pupil_left)
-                samples['x_right_pix'].append(x_right_pix)
-                samples['y_right_pix'].append(y_right_pix)
-                samples['pupil_right'].append(pupil_right)
-
-            else:
-                x_pix_s = eye_tracking_sample_match.group('x_pix')
-                y_pix_s = eye_tracking_sample_match.group('y_pix')
-                pupil_s = eye_tracking_sample_match.group('pupil')
-
-                x_pix = check_nan(x_pix_s)
-                y_pix = check_nan(y_pix_s)
-                pupil = check_nan(pupil_s)
-
-                samples['x_pix'].append(x_pix)
-                samples['y_pix'].append(y_pix)
-                samples['pupil'].append(pupil)
-
-            timestamp = float(timestamp_s)
-            samples['time'].append(timestamp)
-
-        elif match := _match_regex(CALIBRATION_TIMESTAMP_REGEX, line):
-            cal_timestamp = match.groupdict()['timestamp']
-
-        elif match := _match_regex(VALIDATION_REGEX, line):
-            validations.append(match.groupdict())
+        elif match := _match_regex(CALIBRATION_GRADE_REGEX, line_without_offset):
+            # The calibration grade is logged after the calibration points block,
+            # so attach it to the most recent calibration entry lacking a grade yet.
+            grade_match = match.groupdict()
+            candidates = [
+                calibration for calibration in calibrations
+                if 'grade' not in calibration
+            ]
+            matched_calibration = next(
+                (
+                    calibration for calibration in reversed(candidates)
+                    if calibration.get('tracked_eye') == grade_match['tracked_eye']
+                ),
+                None,
+            )
+            if matched_calibration is None:
+                # Only fall back to entries whose header failed to parse, i.e. entries
+                # without a tracked_eye key. Never attach a grade to the other eye.
+                matched_calibration = next(
+                    (
+                        calibration for calibration in reversed(candidates)
+                        if 'tracked_eye' not in calibration
+                    ),
+                    None,
+                )
+            if matched_calibration is not None:
+                matched_calibration['grade'] = grade_match['grade']
 
         elif compiled_metadata_patterns:
             for pattern_dict in compiled_metadata_patterns.copy():
-                if match := pattern_dict['pattern'].match(line):
+                if match := pattern_dict['pattern'].match(line_without_offset):
                     if 'value' in pattern_dict:
                         metadata[pattern_dict['key']] = pattern_dict['value']
 
@@ -807,6 +989,13 @@ def parse_eyelink(
 
     if not metadata:
         warnings.warn('No metadata found. Please check the file for errors.')
+
+    if num_negative_message_times:
+        warnings.warn(
+            f"{num_negative_message_times} message lines in file '{file_name}' have an offset "
+            'larger than their timestamp, so their corrected time is negative. '
+            'The leading integer of these lines may be part of the message text.',
+        )
 
     # Match events using collected starts/ends and context timeline
     matched_events = _match_events_with_context(
@@ -832,17 +1021,24 @@ def parse_eyelink(
                 f' Using the value from the samples message.',
             )
     metadata['sampling_rate'] = sampling_rate_samples_config
-    metadata['recorded_eye'] = _check_reccfg_key(recording_config, 'tracked_eye')
     # the actual tracked eye is in the samples config, not in the recording config
     # the recording config contains the eyes that were recorded
     # RECCFG uses L/R/LR, SAMPLES uses LEFT/RIGHT/LEFT RIGHT
-    tracked_eye_samples_config = _check_samples_config_key(samples_config, 'tracked_eye')
-    if tracked_eye_samples_config == 'LEFT':
-        metadata['tracked_eye'] = 'L'
-    elif tracked_eye_samples_config == 'RIGHT':
-        metadata['tracked_eye'] = 'R'
-    elif tracked_eye_samples_config == 'LEFT\tRIGHT':
-        metadata['tracked_eye'] = 'LR'
+    recorded_eyes = {d['tracked_eye'] for d in recording_config if d.get('tracked_eye')}
+    if is_binocular and len(recorded_eyes) > 1:
+        # More than one RECCFG eye in a file with the binocular layout: the tracked eye changed,
+        # or the samples were binocular throughout while RECCFG named one eye per block. The
+        # consistency helper would report this as inconsistent values. See issue #1401.
+        metadata['recorded_eye'] = _TRACKED_EYE_CODE['both']
+    else:
+        metadata['recorded_eye'] = _check_reccfg_key(recording_config, 'tracked_eye')
+
+    if is_binocular:
+        # A genuinely binocular recording or one whose tracked eye changes within the file.
+        # Both use the binocular layout and are reported as 'LR'.
+        metadata['tracked_eye'] = _TRACKED_EYE_CODE['both']
+    elif mono_eye_seen is not None:
+        metadata['tracked_eye'] = _TRACKED_EYE_CODE[mono_eye_seen]
 
     if metadata['tracked_eye'] and metadata['recorded_eye']:
         if metadata['tracked_eye'] != metadata['recorded_eye']:
@@ -868,21 +1064,8 @@ def parse_eyelink(
         'time': pl.Float64,
     }
 
-    if is_binocular:
-        gaze_schema_overrides.update({
-            'x_left_pix': pl.Float64,
-            'y_left_pix': pl.Float64,
-            'pupil_left': pl.Float64,
-            'x_right_pix': pl.Float64,
-            'y_right_pix': pl.Float64,
-            'pupil_right': pl.Float64,
-        })
-    else:
-        gaze_schema_overrides.update({
-            'x_pix': pl.Float64,
-            'y_pix': pl.Float64,
-            'pupil': pl.Float64,
-        })
+    sample_channels = _LEFT_CHANNELS + _RIGHT_CHANNELS if is_binocular else _MONOCULAR_CHANNELS
+    gaze_schema_overrides.update({channel: pl.Float64 for channel in sample_channels})
 
     event_schema_overrides = {
         'name': pl.String,
@@ -908,6 +1091,8 @@ def parse_eyelink(
             },
             orient='row',
         )
+        # Offsets can move a message before earlier lines. Equal times keep the file order.
+        messages_df = messages_df.sort('time', maintain_order=True)
         # Filter messages with regexp if given
         if isinstance(messages, Sequence):
             # keep rows where content matches any of the regex patterns

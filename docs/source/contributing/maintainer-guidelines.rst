@@ -2,6 +2,9 @@
  Maintainer Guidelines
 =======================
 
+These guidelines describe how maintainers merge pull requests and publish releases. What we check
+when reviewing a pull request is described in the :doc:`Review Guidelines <review-guidelines>`.
+
 Merging Pull Requests
 ---------------------
 

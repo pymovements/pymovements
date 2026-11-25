@@ -28,8 +28,8 @@ import numpy as np
 import yaml
 from deprecated.sphinx import deprecated
 
-from pymovements._utils import _checks
-from pymovements._utils._html import repr_html
+from pymovements._utils import checks
+from pymovements._utils.html import repr_html
 from pymovements.gaze.eyetracker import EyeTracker
 from pymovements.gaze.screen import Screen
 from pymovements.transforms.numpy import pos2vel
@@ -119,13 +119,13 @@ class Experiment:
             screen: Screen | None = None,
             eyetracker: EyeTracker | None = None,
     ):
-        _checks.check_is_mutual_exclusive(screen_width_px=screen_width_px, screen=screen)
-        _checks.check_is_mutual_exclusive(screen_height_px=screen_height_px, screen=screen)
-        _checks.check_is_mutual_exclusive(screen_width_cm=screen_width_cm, screen=screen)
-        _checks.check_is_mutual_exclusive(screen_height_cm=screen_height_cm, screen=screen)
-        _checks.check_is_mutual_exclusive(distance_cm=distance_cm, screen=screen)
-        _checks.check_is_mutual_exclusive(origin=origin, screen=screen)
-        _checks.check_is_mutual_exclusive(sampling_rate=sampling_rate, eyetracker=eyetracker)
+        checks.check_is_mutual_exclusive(screen_width_px=screen_width_px, screen=screen)
+        checks.check_is_mutual_exclusive(screen_height_px=screen_height_px, screen=screen)
+        checks.check_is_mutual_exclusive(screen_width_cm=screen_width_cm, screen=screen)
+        checks.check_is_mutual_exclusive(screen_height_cm=screen_height_cm, screen=screen)
+        checks.check_is_mutual_exclusive(distance_cm=distance_cm, screen=screen)
+        checks.check_is_mutual_exclusive(origin=origin, screen=screen)
+        checks.check_is_mutual_exclusive(sampling_rate=sampling_rate, eyetracker=eyetracker)
 
         if screen is None:
             screen = Screen(
@@ -143,7 +143,7 @@ class Experiment:
         self.eyetracker = eyetracker
 
         if self.sampling_rate is not None:
-            _checks.check_is_greater_than_zero(sampling_rate=self.sampling_rate)
+            checks.check_is_greater_than_zero(sampling_rate=self.sampling_rate)
 
     @staticmethod
     def from_dict(dictionary: dict[str, Any]) -> Experiment:

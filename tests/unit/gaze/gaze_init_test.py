@@ -1123,6 +1123,26 @@ def test_init_rounds_sub_microsecond_duration_time():
     assert gaze.samples['time'].dt.total_microseconds().to_list() == [2, 3, 4]
 
 
+def test_init_normalizes_large_duration_time_without_overflow():
+    # A Duration('ms') beyond ~292 years has no nanosecond representation. The normalization
+    # must stay exact for such values instead of overflowing to null or wrapping.
+    time_ms = 400 * 365 * 24 * 3600 * 1000  # 400 years in milliseconds
+    gaze = Gaze(
+        pl.DataFrame({
+            'time': pl.Series([time_ms, time_ms + 1], dtype=pl.Duration('ms')),
+            'x': [1.0, 2.0],
+            'y': [1.0, 2.0],
+        }),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+    )
+
+    assert gaze.samples.schema['time'] == pl.Duration('us')
+    assert gaze.samples['time'].dt.total_microseconds().to_list() == [
+        time_ms * 1000, (time_ms + 1) * 1000,
+    ]
+
+
 @pytest.mark.parametrize(
     ('init_kwargs', 'expected_experiment'),
     [
@@ -1857,6 +1877,68 @@ def test_gaze_init_events(events, init_kwargs):
 def test_gaze_has_correct_metadata(metadata, expected_metadata):
     gaze = Gaze(metadata=metadata)
     assert gaze.metadata == expected_metadata
+
+
+def test_gaze_init_propagates_sources_to_events():
+    gaze = Gaze(
+        samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+        metadata={'Sources': ['raw/sub_1.csv']},
+    )
+    assert gaze.events.metadata['Sources'] == ['raw/sub_1.csv']
+
+
+def test_gaze_init_without_sources_leaves_events_metadata_empty():
+    gaze = Gaze(
+        samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+    )
+    assert gaze.events.metadata == {}
+
+
+def test_gaze_init_merges_sources_into_passed_events():
+    events = Events(
+        name='fixation', onsets=[0], offsets=[1],
+        metadata={'Sources': ['events/sub_1.feather']},
+    )
+    gaze = Gaze(
+        samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+        events=events,
+        metadata={'Sources': ['raw/sub_1.csv']},
+    )
+    assert gaze.events.metadata['Sources'] == ['events/sub_1.feather', 'raw/sub_1.csv']
+
+
+def test_gaze_init_raises_on_non_list_sources():
+    with pytest.raises(TypeError) as excinfo:
+        Gaze(
+            samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+            time_column='time',
+            pixel_columns=['x', 'y'],
+            metadata={'Sources': 'raw/sub_1.csv'},
+        )
+    assert str(excinfo.value) == (
+        "metadata['Sources'] must be a list of path strings "
+        "but is of type str: 'raw/sub_1.csv'"
+    )
+
+
+def test_gaze_init_raises_on_non_path_sources_entry():
+    with pytest.raises(TypeError) as excinfo:
+        Gaze(
+            samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+            time_column='time',
+            pixel_columns=['x', 'y'],
+            metadata={'Sources': ['raw/sub_1.csv', 123]},
+        )
+    assert str(excinfo.value) == (
+        "metadata['Sources'] entries must be path strings "
+        'but found entry of type int: 123'
+    )
 
 
 def test_gaze_init_warnings():

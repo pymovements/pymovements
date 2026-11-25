@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pymovements._utils import _checks
+from pymovements._utils import checks
 
 
 def _check_window_length(window_length: Any) -> None:
@@ -33,9 +33,9 @@ def _check_window_length(window_length: Any) -> None:
     window_length: Any
         The window length to check.
     """
-    _checks.check_is_not_none(window_length=window_length)
-    _checks.check_is_int(window_length=window_length)
-    _checks.check_is_greater_than_zero(degree=window_length)
+    checks.check_is_not_none(window_length=window_length)
+    checks.check_is_int(window_length=window_length)
+    checks.check_is_greater_than_zero(degree=window_length)
 
 
 def _check_padding(padding: Any) -> None:
@@ -71,8 +71,8 @@ def _check_distance(distance: float) -> None:
     distance: float
         The distance to check.
     """
-    _checks.check_is_scalar(distance=distance)
-    _checks.check_is_greater_than_zero(distance=distance)
+    checks.check_is_scalar(distance=distance)
+    checks.check_is_greater_than_zero(distance=distance)
 
 
 def _check_screen_resolution(screen_resolution: tuple[int, int]) -> None:
@@ -98,8 +98,8 @@ def _check_screen_resolution(screen_resolution: tuple[int, int]) -> None:
         )
 
     for element in screen_resolution:
-        _checks.check_is_scalar(screen_resolution=element)
-        _checks.check_is_greater_than_zero(screen_resolution=element)
+        checks.check_is_scalar(screen_resolution=element)
+        checks.check_is_greater_than_zero(screen_resolution=element)
 
 
 def _check_screen_size(screen_size: tuple[float, float]) -> None:
@@ -123,5 +123,5 @@ def _check_screen_size(screen_size: tuple[float, float]) -> None:
         raise ValueError(f'screen_size must have length of 2, but is of length {len(screen_size)}')
 
     for element in screen_size:
-        _checks.check_is_scalar(screen_size=element)
-        _checks.check_is_greater_than_zero(screen_size=element)
+        checks.check_is_scalar(screen_size=element)
+        checks.check_is_greater_than_zero(screen_size=element)

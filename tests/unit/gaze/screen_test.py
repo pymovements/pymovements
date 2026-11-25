@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test for Screen class."""
+import re
+
+import matplotlib.pyplot as plt
 import pytest
 
 import pymovements as pm
@@ -628,3 +631,47 @@ def test_screen_to_dict_prefer_size(prefer_size, expected_dict):
 )
 def test_screen_bool_all_none(screen, expected_bool):
     assert bool(screen) == expected_bool
+
+
+@pytest.mark.parametrize(
+    ('origin', 'expected_xlim', 'expected_ylim'),
+    [
+        pytest.param('upper left', (0, 1280), (1024, 0), id='upper_left'),
+        pytest.param('center', (-640, 640), (512, -512), id='center'),
+    ],
+)
+def test_screen_plot_limits(origin, expected_xlim, expected_ylim):
+    screen = pm.Screen(1280, 1024, 38.0, 30.0, 68.0, origin)
+
+    _, ax = screen.plot()
+
+    assert ax.get_xlim() == expected_xlim
+    assert ax.get_ylim() == expected_ylim
+
+
+def test_screen_plot_reuses_passed_axes():
+    screen = pm.Screen(1280, 1024, 38.0, 30.0, 68.0, 'upper left')
+    _, ax = plt.subplots()
+
+    returned_fig, returned_ax = screen.plot(ax=ax)
+
+    assert returned_ax is ax
+    assert returned_fig is ax.figure
+
+
+def test_screen_plot_without_resolution_raises():
+    screen = pm.Screen(origin='upper left')
+
+    expected_message = (
+        'screen width and height must be set, got width_px=None and height_px=None.'
+    )
+    with pytest.raises(ValueError, match=re.escape(expected_message)):
+        screen.plot()
+
+
+def test_screen_plot_without_origin_raises():
+    screen = pm.Screen(1280, 1024)
+
+    expected_message = 'screen origin must be one of "upper left", "center", got "None".'
+    with pytest.raises(ValueError, match=re.escape(expected_message)):
+        screen.plot()

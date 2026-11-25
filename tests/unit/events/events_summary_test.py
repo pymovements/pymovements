@@ -17,28 +17,28 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test pymovements polars expression utilities."""
-from __future__ import annotations
-
-import polars as pl
-import pytest
-
-from pymovements._utils._expressions import as_expr
+"""Tests for Events.summary."""
+from pymovements import Events
 
 
-@pytest.mark.parametrize(
-    ('column', 'expected'),
-    [
-        pytest.param('column', pl.col('column'), id='column_name'),
-        pytest.param(pl.col('column') + 1, pl.col('column') + 1, id='expression'),
-    ],
-)
-def test_as_expr(column, expected):
-    result = as_expr(column)
-    assert isinstance(result, pl.Expr)
-    assert result.meta.eq(expected)
+def test_events_summary_without_events(capsys):
+    """Ensure that summary prints a zero event total without event name lines."""
+    events = Events()
+
+    events.summary()
+
+    assert capsys.readouterr().out == 'total events: 0\n'
 
 
-def test_as_expr_passes_expression_through_unchanged():
-    expression = pl.col('column') + 1
-    assert as_expr(expression) is expression
+def test_events_summary_counts_events_by_name(capsys):
+    """Ensure that summary prints event counts grouped by event name in alphabetical order."""
+    events = Events(
+        name=['saccade', 'fixation', 'fixation'],
+        onsets=[0, 1, 2],
+        offsets=[1, 2, 3],
+    )
+
+    events.summary()
+
+    expected = 'total events: 3\n  fixation: 2\n  saccade: 1\n'
+    assert capsys.readouterr().out == expected

@@ -18,7 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from eyelink asc files."""
+import io
 import re
+from datetime import timedelta
 
 import polars as pl
 import pytest
@@ -132,7 +134,7 @@ def test_from_asc_has_expected_samples(
                     'trial_id': [0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 3, 3, 4, 4, None],
                     'point_id': 3 * [None] + [0, 1, 2, 3] + [None, 0] + [0, 0, 1, 2] + [0, 1, None],
                     'screen_id': [None, 0, 1] + 13 * [None],
-                    'task': [None] + 2 * ['reading'] + 12 * ['judo'] + [None],
+                    'task': 3 * ['reading'] + 12 * ['judo'] + [None],
                 },
                 schema={
                     'time': pl.Float64,
@@ -691,11 +693,12 @@ def test_from_asc_example_file_has_expected_metadata(
 
 
 @pytest.mark.parametrize(
-    'filename', [
-        pytest.param('eyelink_monocular_example.asc', id='mono'),
+    ('filename', 'expected_grade'), [
+        pytest.param('eyelink_monocular_example.asc', ['GOOD'], id='mono'),
+        pytest.param('eyelink_binocular_example.asc', ['GOOD', 'GOOD'], id='bino'),
     ],
 )
-def test_from_asc_sets_public_cal_interfaces(filename, make_example_file):
+def test_from_asc_sets_public_cal_interfaces(filename, expected_grade, make_example_file):
     filepath = make_example_file(filename)
     gaze = from_asc(filepath)
 
@@ -706,10 +709,130 @@ def test_from_asc_sets_public_cal_interfaces(filename, make_example_file):
         'num_points': pl.Int64,
         'eye': pl.Utf8,
         'tracking_mode': pl.Utf8,
+        'grade': pl.Utf8,
     }
 
     # Example file should contain at least one calibration
     assert gaze.calibrations.height >= 1
+    assert gaze.calibrations['grade'].to_list() == expected_grade
+
+
+@pytest.mark.parametrize(
+    ('body', 'expected_eye', 'expected_grade'),
+    [
+        pytest.param(
+            'MSG	524874 !CAL\n'
+            '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+            'MSG	524879 !CAL CALIBRATION HV9 L LEFT    FAILED\n',
+            ['left'],
+            ['FAILED'],
+            id='header_match',
+        ),
+        pytest.param(
+            'MSG	524874 !CAL\n'
+            '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+            'MSG	524879 !CAL CALIBRATION HV9 LR RIGHT    FAILED\n',
+            ['left'],
+            [None],
+            id='eye_mismatch',
+        ),
+        pytest.param(
+            'MSG	524874 !CAL\n'
+            'MSG	524879 !CAL CALIBRATION HV9 R RIGHT    FAILED\n',
+            [None],
+            ['FAILED'],
+            id='header_missing',
+        ),
+    ],
+)
+@pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No sampling rate found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No tracked eye information found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
+def test_from_asc_attaches_calibration_grade_only_with_matching_header(
+        body, expected_eye, expected_grade, make_text_file,
+):
+    filepath = make_text_file(
+        filename='cal_grade.asc',
+        body=(
+            'MSG	524874 RECCFG CR 1000 2 1 L\n'
+            'MSG	524874 GAZE_COORDS 0 0 1919 1079\n'
+            f'{body}'
+        ),
+    )
+
+    gaze = from_asc(filepath)
+
+    assert gaze.calibrations['eye'].to_list() == expected_eye
+    assert gaze.calibrations['grade'].to_list() == expected_grade
+
+
+@pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No sampling rate found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No tracked eye information found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
+def test_from_asc_parses_calibration_grades(make_text_file):
+    body = (
+        'MSG	524874 RECCFG CR 1000 2 1 L\n'
+        'MSG	524874 GAZE_COORDS 0 0 1919 1079\n'
+        'MSG	524875 !CAL\n'
+        '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+        'MSG	524878 !CAL CALIBRATION HV9 L LEFT    GOOD\n'
+        'MSG	524885 !CAL\n'
+        '>>>>>>> CALIBRATION (HV5,P-CR) FOR RIGHT: <<<<<<<<<\n'
+        'MSG	524888 !CAL CALIBRATION HV5 R RIGHT    FAILED\n'
+    )
+    filepath = make_text_file(filename='cal_grades.asc', body=body)
+
+    gaze = from_asc(filepath)
+
+    assert gaze.calibrations.rows() == [
+        (timedelta(milliseconds=524_875), 9, 'left', 'P-CR', 'GOOD'),
+        (timedelta(milliseconds=524_885), 5, 'right', 'P-CR', 'FAILED'),
+    ]
+
+
+@pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No sampling rate found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No tracked eye information found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
+def test_from_asc_parses_validation_grades_and_full_scores(make_text_file):
+    body = (
+        'MSG	524874 RECCFG CR 1000 2 1 L\n'
+        'MSG	524874 GAZE_COORDS 0 0 1919 1079\n'
+        'MSG	524879 !CAL VALIDATION HV9 R RIGHT GOOD ERROR 0.5 avg. 0.9 max  '
+        'OFFSET 0.19 deg. 4.2,6.3 pix.\n'
+        'MSG	524880 !CAL VALIDATION L ABORTED\n'
+        'MSG	524881 !CAL VALIDATION HV9 R RIGHT POOR ERROR 12.37 avg. 25.25 max  '
+        'OFFSET 0.19 deg. 4.2,6.3 pix.\n'
+    )
+    filepath = make_text_file(filename='val_grades.asc', body=body)
+
+    gaze = from_asc(filepath)
+
+    assert gaze.validations.rows() == [
+        (timedelta(milliseconds=524_879), 9, 'right', 0.5, 0.9, 'GOOD'),
+        (timedelta(milliseconds=524_880), None, 'left', None, None, 'ABORTED'),
+        (timedelta(milliseconds=524_881), 9, 'right', 12.37, 25.25, 'POOR'),
+    ]
 
 
 @pytest.mark.parametrize(
@@ -729,10 +852,12 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
         'eye': pl.Utf8,
         'accuracy_avg': pl.Float64,
         'accuracy_max': pl.Float64,
+        'grade': pl.Utf8,
     }
 
     # Example file should contain at least one validation
     assert gaze.validations.height >= 1
+    assert gaze.validations['grade'].to_list() == ['GOOD']
 
 
 @pytest.mark.parametrize(
@@ -743,16 +868,14 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
             {'events': False},
             pl.from_dict(
                 data={
-                    'name': [],
                     'onset': [],
-                    'offset': [],
                     'duration': [],
+                    'name': [],
                 },
                 schema={
-                    'name': pl.Utf8,
                     'onset': pl.Duration('ms'),
-                    'offset': pl.Duration('ms'),
                     'duration': pl.Duration('ms'),
+                    'name': pl.Utf8,
                 },
             ),
             id='eyelink_asc_mono_without_events',
@@ -850,9 +973,37 @@ def test_from_asc_example_file_has_expected_events(
     gaze = from_asc(filepath, **kwargs)
 
     expected_event_frame = expected_event_frame.with_columns(
-        pl.col('onset', 'offset', 'duration').cast(pl.Duration('us')),
+        pl.col(pl.Duration('ms')).cast(pl.Duration('us')),
     )
     assert_frame_equal(gaze.events.frame, expected_event_frame, check_column_order=False)
+
+
+def test_from_asc_events_declare_inclusive_offsets(make_example_file):
+    # Interim: the parsed offset column stays until the parser takes the reported DUR as the
+    # duration and keeps the offsets only on request.
+    filepath = make_example_file('eyelink_binocular_example.asc')
+    gaze = from_asc(filepath, events=True)
+
+    assert gaze.events.metadata['offset'] == {'inclusive': True}
+
+
+@pytest.mark.filterwarnings('ignore:ivt. No events were detected:UserWarning')
+def test_from_asc_events_survive_detect(make_example_file):
+    # Interim: the parsed durations are offset - onset, one sampling interval short of the
+    # inclusive convention they declare. Detection on top of them carries the rate entry and leaves
+    # the parsed rows as they are.
+    filepath = make_example_file('eyelink_monocular_example.asc')
+    experiment = Experiment(1280, 1024, 38, 30, 60, 'upper left', 1000)
+    gaze = from_asc(filepath, experiment=experiment, events=True)
+    parsed_events = gaze.events.frame.clone()
+
+    gaze.pix2deg()
+    gaze.pos2vel()
+    gaze.detect('ivt')
+
+    assert gaze.events.metadata['offset'] == {'inclusive': True}
+    assert gaze.events.metadata['sampling_rate'] == 1000
+    assert_frame_equal(gaze.events.frame, parsed_events)
 
 
 @pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
@@ -925,6 +1076,12 @@ def test_from_asc_corrupted_file_warning_contains_full_path(make_text_file):
             True,
             [(123_000, 152_000), ('message here', 'TEST 1')],
             id='multiple_messages',
+        ),
+        pytest.param(
+            'MSG 123 -2 message here\nMSG 124 TEST 1',
+            True,
+            [(124_000, 125_000), ('TEST 1', 'message here')],
+            id='message_offset',
         ),
         pytest.param(
             'MSG 123 message here\nMSG 152 TEST 1',
@@ -1030,6 +1187,52 @@ def test_from_asc_orphaned_event_end_marker_with_custom_patterns_does_not_raise_
     assert_frame_equal(gaze.events.frame, expected_events, check_column_order=False)
 
 
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
+def test_from_asc_tracked_eye_change_yields_binocular_gaze(make_text_file):
+    """A file that switches the tracked eye loads as a binocular recording (#1401).
+
+    Each sample carries its own eye, the non-tracked eye is null, and the experiment reports
+    both eyes as tracked.
+    """
+    asc_text = (
+        '** VERSION: EYELINK II 1\n'
+        '** DATE: Wed Mar 10 12:00:00 2021\n'
+        'MSG\t1 ELCLCFG BTABLER\n'
+        'MSG\t1000 RECCFG CR 1000 2 1 R\n'
+        'START\t1000 \tRIGHT\tSAMPLES\tEVENTS\n'
+        'SAMPLES\tGAZE\tRIGHT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2\n'
+        '1000\t500.0\t400.0\t600.0\t0.0\t.....\n'
+        'END\t1000 \tSAMPLES\tEVENTS\tRES\t38.54\t31.12\n'
+        'MSG\t2000 RECCFG CR 1000 2 1 L\n'
+        'START\t2000 \tLEFT\tSAMPLES\tEVENTS\n'
+        'SAMPLES\tGAZE\tLEFT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2\n'
+        '2000\t138.1\t131.0\t778.0\t0.0\t.....\n'
+        'END\t2000 \tSAMPLES\tEVENTS\tRES\t38.54\t31.12\n'
+    )
+    filepath = make_text_file(filename='sub_eye_change.asc', body=asc_text)
+
+    gaze = from_asc(filepath)
+
+    expected_samples = pl.DataFrame(
+        {
+            'time': [1_000_000, 2_000_000],
+            'pixel': [[None, None, 500.0, 400.0], [138.1, 131.0, None, None]],
+            'pupil': [[None, 600.0], [778.0, None]],
+        },
+        schema={
+            'time': pl.Duration('us'),
+            'pixel': pl.List(pl.Float64),
+            'pupil': pl.List(pl.Float64),
+        },
+    )
+    assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
+    assert gaze.experiment.eyetracker.left is True
+    assert gaze.experiment.eyetracker.right is True
+
+
 @pytest.mark.parametrize(
     ('mode', 'encoding', 'buffering'), [
         pytest.param('r', 'utf-8', -1, id='text_mode'),
@@ -1054,3 +1257,217 @@ def test_from_asc_rejects_nonfile_objects():
     """Test that from_asc raises an error when given a non-file object."""
     with pytest.raises(TypeError, match='Expected a file path or a file-like object'):
         from_asc(12345)
+
+
+_MONOCULAR_HEADER = (
+    '** DATE: Wed Mar  8 09:25:20 2023\n'
+    '** TYPE: EDF_FILE BINARY EVENT SAMPLE TAGGED\n'
+    '** VERSION: EYELINK II 1\n'
+    '** EYELINK II CL v6.12 Feb  1 2018 (EyeLink Portable Duo)\n'
+    '** RECORDED BY pymovements\n'
+    '**\n'
+    'MSG\t100 RECCFG CR 1000 2 1 L\n'
+    'MSG\t100 ELCLCFG BTABLER\n'
+    'MSG\t100 GAZE_COORDS 0.00 0.00 1279.00 1023.00\n'
+    'START\t200 \tLEFT\tSAMPLES\tEVENTS\n'
+    'SAMPLES\tGAZE\tLEFT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2\n'
+)
+_MONOCULAR_HEADER_MESSAGE_TIME = timedelta(milliseconds=100)
+
+
+def test_from_asc_skips_malformed_sample_line():
+    """A digit-first line that is not a valid sample is skipped."""
+    content = (
+        _MONOCULAR_HEADER
+        + '1000\t10.0\t20.0\t3.0\t0.0\t.....\n'
+        + '1234567'  # no trailing newline: starts with a digit but is not a sample line
+    )
+
+    gaze = from_asc(io.StringIO(content))
+
+    assert gaze.samples['time'].to_list() == [timedelta(seconds=1)]
+
+
+def test_from_asc_calibration_timestamp_followed_by_sample_line():
+    """A sample line right after !CAL ends the calibration entry with its timestamp only."""
+    content = (
+        _MONOCULAR_HEADER
+        + 'MSG\t300 !CAL\n'
+        + '1000\t10.0\t20.0\t3.0\t0.0\t.....\n'
+        + '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+    )
+
+    gaze = from_asc(io.StringIO(content))
+
+    assert gaze.calibrations.height == 1
+    assert gaze.calibrations['time'].to_list() == [timedelta(milliseconds=300)]
+    assert gaze.calibrations['num_points'].to_list() == [None]
+    assert gaze.calibrations['eye'].to_list() == [None]
+    assert gaze.samples['time'].to_list() == [timedelta(seconds=1)]
+
+
+@pytest.mark.parametrize(
+    ('prefix', 'expected_time'),
+    [
+        pytest.param('MSG\t2154562', timedelta(milliseconds=2_154_562), id='no_offset'),
+        pytest.param('MSG\t456119 -10', timedelta(milliseconds=456_129), id='negative_offset'),
+        pytest.param(
+            'MSG\t14108943 173', timedelta(milliseconds=14_108_770), id='positive_offset',
+        ),
+        pytest.param('MSG\t524874 +5', timedelta(milliseconds=524_869), id='plus_signed_offset'),
+        pytest.param('MSG\t3977219 0', timedelta(milliseconds=3_977_219), id='zero_offset'),
+        pytest.param(
+            'MSG\t2135819.5', timedelta(milliseconds=2_135_819.5), id='2khz_timestamp',
+        ),
+        pytest.param(
+            'MSG\t2154599.5 -11', timedelta(milliseconds=2_154_610.5),
+            id='2khz_timestamp_with_offset',
+        ),
+        pytest.param(
+            'MSG\t2096367.0 -4', timedelta(milliseconds=2_096_371),
+            id='2khz_integer_timestamp_with_offset',
+        ),
+        pytest.param('MSG 2091659 -4', timedelta(milliseconds=2_091_663), id='space_separator'),
+    ],
+)
+class TestFromAscMessageTimeFormats:
+
+    def test_message_time(self, prefix, expected_time):
+        content = _MONOCULAR_HEADER + f'{prefix} TRIAL 1\n'
+
+        gaze = from_asc(io.StringIO(content), messages=True)
+
+        messages = gaze.messages.filter(pl.col('time') > _MONOCULAR_HEADER_MESSAGE_TIME)
+        assert messages.rows() == [(expected_time, 'TRIAL 1')]
+
+    def test_calibration_time(self, prefix, expected_time):
+        content = (
+            _MONOCULAR_HEADER
+            + f'{prefix} !CAL\n'
+            + '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+            + f'{prefix} !CAL CALIBRATION HV9 L LEFT    GOOD\n'
+        )
+
+        gaze = from_asc(io.StringIO(content))
+
+        assert gaze.calibrations['time'].to_list() == [expected_time]
+
+    def test_validation_time(self, prefix, expected_time):
+        content = (
+            _MONOCULAR_HEADER
+            + f'{prefix} !CAL VALIDATION HV9 L LEFT GOOD ERROR 0.5 avg. 0.9 max\n'
+        )
+
+        gaze = from_asc(io.StringIO(content))
+
+        assert gaze.validations['time'].to_list() == [expected_time]
+
+    def test_validation_aborted_time(self, prefix, expected_time):
+        content = _MONOCULAR_HEADER + f'{prefix} !CAL VALIDATION L ABORTED\n'
+
+        gaze = from_asc(io.StringIO(content))
+
+        assert gaze.validations['time'].to_list() == [expected_time]
+
+
+@pytest.mark.parametrize(
+    ('line', 'expected_content'),
+    [
+        pytest.param('MSG 1000 12', '12', id='bare_integer'),
+        pytest.param('MSG 1000 -12', '-12', id='bare_negative_integer'),
+        pytest.param('MSG 1000 0.5 contrast', '0.5 contrast', id='float'),
+    ],
+)
+def test_from_asc_message_leading_number_is_content(line, expected_content):
+    gaze = from_asc(io.StringIO(_MONOCULAR_HEADER + line + '\n'), messages=True)
+
+    messages = gaze.messages.filter(pl.col('time') > _MONOCULAR_HEADER_MESSAGE_TIME)
+    assert messages.rows() == [(timedelta(milliseconds=1000), expected_content)]
+
+
+def test_from_asc_negative_corrected_time_warns_and_keeps_rows():
+    content = (
+        _MONOCULAR_HEADER
+        + 'MSG\t1000 1100 TRIALID 7\n'
+        + '1001\t10.0\t20.0\t3.0\t0.0\t.....\n'
+        + 'MSG\t1000 1100 !CAL\n'
+        + '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n'
+        + 'MSG\t1000 1100 !CAL CALIBRATION HV9 L LEFT    GOOD\n'
+        + 'MSG\t1000 1100 !CAL VALIDATION L ABORTED\n'
+    )
+
+    with pytest.warns(UserWarning, match='4 message lines in file .* have an offset larger'):
+        gaze = from_asc(
+            io.StringIO(content),
+            patterns=[r'TRIALID (?P<trial_id>\d+)'],
+            messages=True,
+        )
+
+    assert gaze.messages.filter(pl.col('time') < timedelta(0)).rows() == [
+        (timedelta(milliseconds=-100), 'TRIALID 7'),
+        (timedelta(milliseconds=-100), '!CAL'),
+        (timedelta(milliseconds=-100), '!CAL CALIBRATION HV9 L LEFT    GOOD'),
+        (timedelta(milliseconds=-100), '!CAL VALIDATION L ABORTED'),
+    ]
+    assert gaze.samples['trial_id'].to_list() == ['7']
+    assert gaze.calibrations.select(['time', 'grade']).rows() == [
+        (timedelta(milliseconds=-100), 'GOOD'),
+    ]
+    assert gaze.validations.select(['time', 'grade']).rows() == [
+        (timedelta(milliseconds=-100), 'ABORTED'),
+    ]
+
+
+def test_from_asc_patterns_match_behind_message_offset():
+    content = (
+        _MONOCULAR_HEADER
+        + 'MSG 999 -3 DISPLAY_COORDS 0 0 1279 1023\n'
+        + 'MSG 1000 -14 TRIALID 7\n'
+        + '1001\t10.0\t20.0\t3.0\t0.0\t.....\n'
+        + 'MSG 1002 0 !V TRIAL_VAR SUBJECT_ID 42\n'
+    )
+
+    gaze = from_asc(
+        io.StringIO(content),
+        patterns=[r'TRIALID (?P<trial_id>\d+)'],
+        metadata_patterns=[r'!V TRIAL_VAR SUBJECT_ID (?P<subject_id>\d+)'],
+    )
+
+    assert gaze.samples['trial_id'].to_list() == ['7']
+    assert gaze._metadata['subject_id'] == '42'
+    assert gaze._metadata['DISPLAY_COORDS'] == (0.0, 0.0, 1279.0, 1023.0)
+
+
+def test_from_asc_pattern_does_not_match_message_offset():
+    content = (
+        _MONOCULAR_HEADER
+        + 'MSG 1000 -14 SYNCTIME\n'
+        + '1001\t10.0\t20.0\t3.0\t0.0\t.....\n'
+    )
+
+    gaze = from_asc(
+        io.StringIO(content),
+        patterns=[{'pattern': r'-14 SYNCTIME', 'column': 'synced', 'value': True}],
+    )
+
+    assert gaze.samples['synced'].to_list() == [None]
+
+
+def test_from_asc_messages_sorted_by_corrected_time():
+    content = (
+        _MONOCULAR_HEADER
+        + 'MSG 1000 A\n'
+        + 'MSG 1001 B\n'
+        + 'MSG 1001 -2 C\n'
+        + 'MSG 1002 D\n'
+        + 'MSG 1003 E\n'
+        + 'MSG 1005 3 F\n'
+    )
+
+    gaze = from_asc(io.StringIO(content), messages=True)
+
+    messages = gaze.messages.filter(pl.col('time') > _MONOCULAR_HEADER_MESSAGE_TIME)
+    assert messages['time'].to_list() == [
+        timedelta(milliseconds=ms) for ms in (1000, 1001, 1002, 1002, 1003, 1003)
+    ]
+    assert messages['content'].to_list() == ['A', 'B', 'D', 'F', 'C', 'E']

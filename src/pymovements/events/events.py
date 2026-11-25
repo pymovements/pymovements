@@ -18,26 +18,190 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides the Events class."""
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
+import math
+import warnings
 from collections.abc import Sequence
+from copy import deepcopy
+from numbers import Real
 from typing import Any
 from typing import Literal
 from typing import overload
+from warnings import warn
 
 import numpy as np
 import polars
 from tqdm import tqdm
 
-from pymovements._utils import _checks
-from pymovements._utils._column_nesting import unnest_list_columns
-from pymovements._utils._html import repr_html
-from pymovements._utils._nulls import row_is_null
-from pymovements._utils._time import normalize_duration_to_us
-from pymovements._utils._time import numeric_to_duration_us
+from pymovements._utils import checks
+from pymovements._utils.column_nesting import unnest_list_columns
+from pymovements._utils.html import repr_html
+from pymovements._utils.nulls import row_is_null
+from pymovements._utils.sources import merge_sources
+from pymovements._utils.time import normalize_duration_to_us
+from pymovements._utils.time import numeric_to_duration_us
 from pymovements.events.correction import fixation_correction
-from pymovements.measure.events.measures import duration
+from pymovements.measure.reading import compute_reading_measures
+from pymovements.measure.reading import ReadingMeasures
 from pymovements.stimulus.text import TextStimulus
+
+# The time columns that are converted to ``polars.Duration('us')`` on construction.
+_TIME_COLUMNS = ('onset', 'duration', 'offset')
+
+# onset, offset and duration are rounded to microseconds one by one
+_RESIDUAL_TOLERANCE_US = 1
+
+
+def _format_microseconds(value: int) -> str:
+    """Format a residual in microseconds, in milliseconds where it is a whole number of them."""
+    if value == 0:
+        return '0'
+    if value % 1000 == 0:
+        return f'{value // 1000}ms'
+    return f'{value}us'
+
+
+def _format_residuals(values: list[int]) -> str:
+    """Format a sorted list of residuals, shortened after ten values."""
+    shown = ', '.join(_format_microseconds(value) for value in values[:10])
+    if len(values) > 10:
+        shown += f', ... ({len(values) - 10} more)'
+    return f'[{shown}]'
+
+
+def _resolve_offset_convention(
+        offsets_inclusive: bool | None,
+        *,
+        metadata: dict[str, Any],
+        columns: Sequence[str],
+) -> tuple[bool | None, Literal['keyword', 'entry']]:
+    """Resolve the convention of ``offset`` from the keyword or the metadata entry.
+
+    Parameters
+    ----------
+    offsets_inclusive: bool | None
+        The ``offsets_inclusive`` keyword, compared against the ``offset`` entry.
+    metadata: dict[str, Any]
+        The metadata holding the ``offset`` entry, if any.
+    columns: Sequence[str]
+        The columns of the events frame, to say whether ``offset`` is among them.
+
+    Returns
+    -------
+    tuple[bool | None, Literal['keyword', 'entry']]
+        The convention and where it comes from: the keyword when given, else the ``offset``
+        entry, whose convention is ``None`` when the entry is absent.
+
+    Raises
+    ------
+    ValueError
+        If the ``offset`` entry is not a dict, if its ``inclusive`` value is neither a bool nor
+        ``None``, or if the keyword differs from the ``offset`` entry.
+    """
+    entry = metadata.get('offset')
+    if entry is not None and not isinstance(entry, dict):
+        raise ValueError(
+            f"the metadata entry metadata['offset'] must be a dict, but is {entry!r}.",
+        )
+    entry_inclusive = entry.get('inclusive') if entry is not None else None
+    if entry_inclusive is not None and not isinstance(entry_inclusive, bool):
+        raise ValueError(
+            "the metadata entry metadata['offset']['inclusive'] must be a bool, "
+            f'but is {entry_inclusive!r}.',
+        )
+    if (
+            offsets_inclusive is not None and entry_inclusive is not None
+            and offsets_inclusive != entry_inclusive
+    ):
+        no_column_note = (
+            '' if 'offset' in columns
+            else ", and the events frame has no 'offset' column"
+        )
+        raise ValueError(
+            f'offsets_inclusive={offsets_inclusive} differs from the metadata entry '
+            f"metadata['offset'] = {{'inclusive': {entry_inclusive}}}{no_column_note}. "
+            'Correct the entry or drop the keyword.',
+        )
+    if offsets_inclusive is not None:
+        return offsets_inclusive, 'keyword'
+    return entry_inclusive, 'entry'
+
+
+def _check_sampling_rate(sampling_rate: Any, *, name: str) -> float:
+    """Check that a sampling rate is a finite positive number.
+
+    The keyword and the metadata entry share this check, so a rate that one accepts is also
+    accepted by the other when the metadata is passed to a new ``Events``.
+
+    Parameters
+    ----------
+    sampling_rate: Any
+        The sampling rate to check.
+    name: str
+        The name of the checked value in the error message.
+
+    Returns
+    -------
+    float
+        The sampling rate as a float.
+
+    Raises
+    ------
+    ValueError
+        If the sampling rate is not a number, or not a finite positive one.
+    """
+    # bool is a Real, so True would pass as a sampling rate of 1 Hz.
+    if isinstance(sampling_rate, bool) or not isinstance(sampling_rate, Real):
+        raise ValueError(f'{name} must be a number, but is {sampling_rate!r}.')
+    rate = float(sampling_rate)
+    if not math.isfinite(rate) or rate <= 0:
+        raise ValueError(f'{name} must be a finite positive number, but is {sampling_rate}.')
+    return rate
+
+
+def _resolve_sampling_rate(
+        sampling_rate: float | None,
+        *,
+        metadata: dict[str, Any],
+) -> tuple[float | None, Literal['keyword', 'entry']]:
+    """Resolve the sampling rate from the keyword or the metadata entry.
+
+    Parameters
+    ----------
+    sampling_rate: float | None
+        The ``sampling_rate`` keyword, compared against the sampling-rate entry.
+    metadata: dict[str, Any]
+        The metadata holding the sampling-rate entry, if any.
+
+    Returns
+    -------
+    tuple[float | None, Literal['keyword', 'entry']]
+        The sampling rate and where it comes from: the keyword when given, else the
+        sampling-rate entry, whose rate is ``None`` when the entry is absent.
+
+    Raises
+    ------
+    ValueError
+        If the sampling-rate entry is not a finite positive number, or if the keyword
+        differs from it.
+    """
+    entry_rate = metadata.get('sampling_rate')
+    rate = None
+    if entry_rate is not None:
+        rate = _check_sampling_rate(
+            entry_rate, name="the metadata entry metadata['sampling_rate']",
+        )
+    if sampling_rate is not None and rate is not None and sampling_rate != rate:
+        raise ValueError(
+            f'sampling_rate={sampling_rate!r} differs from the metadata entry '
+            f"metadata['sampling_rate'] = {entry_rate!r}. "
+            'Correct the entry or drop the keyword.',
+        )
+    if sampling_rate is not None:
+        return sampling_rate, 'keyword'
+    return rate, 'entry'
 
 
 def _aois_frame_from_text_stimulus(stimulus: TextStimulus) -> polars.DataFrame:
@@ -84,32 +248,317 @@ def _build_time_series(values: list[int | float] | np.ndarray) -> polars.Series:
     return series
 
 
+_AOI_ROW_ID = '__pymovements_aoi_row_id'
+_AOI_MATCH_ORDER = '__pymovements_aoi_match_order'
+_AOI_X = '__pymovements_aoi_x'
+_AOI_Y = '__pymovements_aoi_y'
+_AOI_NAME = '__pymovements_aoi_name'
+_AOI_JOIN_KEY_PREFIX = '__pymovements_aoi_join_key_'
+
+
+def _aoi_join_key_name(column: str) -> str:
+    """Return the reserved name of the cast join-key column for ``column``."""
+    return f'{_AOI_JOIN_KEY_PREFIX}{column}'
+
+
+def _is_numeric_like(dtype: polars.PolarsDataType) -> bool:
+    """Return whether ``dtype`` holds numeric values (booleans compare like integers)."""
+    return dtype.is_numeric() or dtype == polars.Boolean
+
+
+def _is_string_like(dtype: polars.PolarsDataType) -> bool:
+    """Return whether ``dtype`` holds string-like values."""
+    return (
+        dtype == polars.String
+        or dtype == polars.Categorical
+        or isinstance(dtype, polars.Enum)
+    )
+
+
+def _key_cast_is_valid(
+        original: polars.Expr,
+        source_dtype: polars.PolarsDataType,
+        target_dtype: polars.PolarsDataType,
+) -> polars.Expr:
+    """Return whether a key value survives casting to the AOI key dtype unchanged.
+
+    Nulls are wildcards and stay valid. A value that cannot be cast, like the string ``'x'``
+    against an integer column, matches no AOI, as in the per-row lookup. A numeric value must
+    also survive the cast back, so precision loss (for example ``1.5`` against an integer
+    column) matches no AOI either.
+    """
+    if source_dtype == target_dtype:
+        return polars.lit(True)
+    if _is_string_like(source_dtype) and _is_string_like(target_dtype):
+        return polars.lit(True)
+    cast = original.cast(target_dtype, strict=False)
+    is_valid = cast.is_not_null()
+    if _is_numeric_like(source_dtype):
+        round_trip = cast.cast(source_dtype, strict=False)
+        is_valid = is_valid & (round_trip == original)
+    return original.is_null() | is_valid
+
+
+def _event_coordinate_expr(
+        frame: polars.DataFrame,
+        component: Literal['x', 'y'],
+) -> tuple[polars.Expr, bool]:
+    """Resolve one fixation coordinate and report whether its source is numeric.
+
+    Only numeric component columns or numeric ``location`` list entries count as coordinates.
+    Anything else resolves to null so it receives no match, as in the per-row lookup.
+    """
+    index = 0 if component == 'x' else 1
+    component_column = f'location_{component}'
+    if component_column in frame.columns:
+        source_dtype = frame.schema[component_column]
+        if _is_numeric_like(source_dtype):
+            return polars.col(component_column).cast(polars.Float64), True
+        return polars.lit(None, dtype=polars.Float64), False
+    if 'location' in frame.columns:
+        source_dtype = frame.schema['location']
+        if isinstance(source_dtype, polars.List) and _is_numeric_like(source_dtype.inner):
+            return polars.col('location').list.get(index).cast(polars.Float64), True
+        return polars.lit(None, dtype=polars.Float64), False
+    return polars.lit(None, dtype=polars.Float64), False
+
+
+def _map_fixations_to_aois(
+        frame: polars.DataFrame,
+        aoi_dataframe: TextStimulus,
+        aoi_columns: list[str],
+        aoi_schema: dict[str, polars.PolarsDataType],
+        verbose: bool,
+) -> polars.DataFrame:
+    """Return the AOI columns for all fixations in ``frame``, aligned to its row order.
+
+    Non-fixation rows, rows with invalid coordinates and rows without a matching AOI receive
+    null values. Fixation-to-AOI matching is done with a single vectorized join and spatial
+    filter instead of a per-row Python loop.
+    """
+    key_columns = [
+        column
+        for column in (aoi_dataframe.trial_column, aoi_dataframe.page_column)
+        if column is not None and column in frame.columns
+    ]
+
+    x_expr, x_is_numeric = _event_coordinate_expr(frame, 'x')
+    y_expr, y_is_numeric = _event_coordinate_expr(frame, 'y')
+
+    candidates = frame.select(
+        polars.int_range(polars.len()).alias(_AOI_ROW_ID),
+        polars.col('name').alias(_AOI_NAME),
+        x_expr.alias(_AOI_X),
+        y_expr.alias(_AOI_Y),
+        # Keep the original key values for the null-wildcard lookup below.
+        *[polars.col(column) for column in key_columns],
+        # Cast to the AOI key dtypes so the join keys always share a common dtype.
+        *[
+            polars.col(column)
+            .cast(aoi_dataframe.aois.schema[column], strict=False)
+            .alias(_aoi_join_key_name(column))
+            for column in key_columns
+        ],
+    )
+    is_fixation = (
+        polars.col(_AOI_NAME).is_not_null()
+        & polars.col(_AOI_NAME).str.starts_with('fixation')
+    )
+    has_valid_xy = (
+        polars.col(_AOI_X).is_not_null()
+        & polars.col(_AOI_Y).is_not_null()
+        & polars.col(_AOI_X).is_not_nan()
+        & polars.col(_AOI_Y).is_not_nan()
+    )
+
+    n_fixations = candidates.filter(is_fixation).height
+    if x_is_numeric and y_is_numeric:
+        n_invalid = candidates.filter(is_fixation & ~has_valid_xy).height
+    else:
+        n_invalid = n_fixations
+    if n_invalid:
+        warnings.warn(
+            f'Invalid eye coordinates in {n_invalid} of {n_fixations} fixations for AOI '
+            'lookup. Returning no match for these fixations.',
+            UserWarning,
+        )
+
+    candidates = candidates.filter(is_fixation & has_valid_xy)
+
+    # Rows whose configured key columns contain null are matched against all AOIs of the
+    # respective other key (legacy behavior); handle them via the per-row lookup below.
+    # Non-null keys that do not survive the cast match no AOI, as in the per-row lookup.
+    if key_columns:
+        keys_present = polars.all_horizontal(
+            [polars.col(column).is_not_null() for column in key_columns],
+        )
+        keys_valid = polars.all_horizontal(
+            [
+                _key_cast_is_valid(
+                    polars.col(column),
+                    frame.schema[column],
+                    aoi_dataframe.aois.schema[column],
+                )
+                for column in key_columns
+            ],
+        )
+        constrained = candidates.filter(keys_present & keys_valid)
+        wildcard = candidates.filter(~keys_present)
+    else:
+        constrained = candidates
+        wildcard = candidates.head(0)
+
+    aois = aoi_dataframe.aois.with_columns(
+        polars.int_range(polars.len()).alias(_AOI_MATCH_ORDER),
+    )
+    if key_columns:
+        matches = constrained.join(
+            aois,
+            left_on=[_aoi_join_key_name(column) for column in key_columns],
+            right_on=key_columns,
+            how='inner',
+            suffix='_aoi',
+        )
+    else:
+        matches = constrained.join(aois, how='cross', suffix='_aoi')
+
+    if aoi_dataframe.width_column is not None:
+        spatial = (
+            (polars.col(aoi_dataframe.start_x_column) <= polars.col(_AOI_X))
+            & (
+                polars.col(_AOI_X)
+                < polars.col(aoi_dataframe.start_x_column) + polars.col(aoi_dataframe.width_column)
+            )
+            & (polars.col(aoi_dataframe.start_y_column) <= polars.col(_AOI_Y))
+            & (
+                polars.col(_AOI_Y)
+                < polars.col(aoi_dataframe.start_y_column) + polars.col(aoi_dataframe.height_column)
+            )
+        )
+    else:
+        spatial = (
+            (polars.col(aoi_dataframe.start_x_column) <= polars.col(_AOI_X))
+            & (polars.col(_AOI_X) < polars.col(aoi_dataframe.end_x_column))
+            & (polars.col(aoi_dataframe.start_y_column) <= polars.col(_AOI_Y))
+            & (polars.col(_AOI_Y) < polars.col(aoi_dataframe.end_y_column))
+        )
+    matches = matches.filter(spatial)
+
+    multiple = (
+        matches.group_by(_AOI_ROW_ID).len().filter(polars.col('len') > 1)
+        .join(candidates.select(_AOI_ROW_ID, _AOI_X, _AOI_Y), on=_AOI_ROW_ID, how='left')
+        .sort(_AOI_ROW_ID)
+    )
+    for candidate in multiple.iter_rows(named=True):
+        warnings.warn(
+            f'Multiple AOIs matched this point (x={candidate[_AOI_X]}, y={candidate[_AOI_Y]}).',
+            UserWarning,
+        )
+
+    matched = (
+        matches.sort([_AOI_ROW_ID, _AOI_MATCH_ORDER])
+        .group_by(_AOI_ROW_ID)
+        .agg([polars.col(column).first() for column in aoi_columns])
+    )
+
+    if wildcard.height:
+        fallback_records = [
+            _aoi_lookup_record(aoi_dataframe, row, key_columns, aoi_columns)
+            for row in tqdm(
+                wildcard.iter_rows(named=True),
+                desc='Mapping events to AOIs',
+                unit='event',
+                ncols=80,
+                disable=not verbose,
+            )
+        ]
+        fallback_records = [record for record in fallback_records if record is not None]
+        if fallback_records:
+            fallback = polars.DataFrame(
+                fallback_records,
+                schema={_AOI_ROW_ID: candidates.schema[_AOI_ROW_ID], **aoi_schema},
+            )
+            matched = polars.concat([matched, fallback])
+
+    result = frame.with_row_index(_AOI_ROW_ID)
+    if matched.height:
+        result = result.join(matched, on=_AOI_ROW_ID, how='left')
+    else:
+        result = result.with_columns(
+            [polars.lit(None).cast(aoi_schema[column]).alias(column) for column in aoi_columns],
+        )
+    return result.sort(_AOI_ROW_ID).select(aoi_columns).cast(aoi_schema)
+
+
+def _aoi_lookup_record(
+        aoi_dataframe: TextStimulus,
+        row: dict[str, Any],
+        key_columns: list[str],
+        aoi_columns: list[str],
+) -> dict[str, Any] | None:
+    """Look up a single wildcard (null key) event row via the per-row AOI lookup."""
+    lookup = {column: row[column] for column in key_columns}
+    lookup[_AOI_X] = row[_AOI_X]
+    lookup[_AOI_Y] = row[_AOI_Y]
+    try:
+        aoi_row = aoi_dataframe.get_aoi(
+            row=lookup, x_eye=_AOI_X, y_eye=_AOI_Y, max_matches=1,
+        )
+    except (KeyError, TypeError):
+        return None
+    record: dict[str, Any] = {_AOI_ROW_ID: row[_AOI_ROW_ID]}
+    record.update({column: aoi_row[column][0] for column in aoi_columns})
+    return record
+
+
 @repr_html(['frame', 'trial_columns'])
 class Events:
     """A data structure for event data.
 
-    Each row has at least an event name with its onset and offset specified.
+    Each row has at least an onset, a duration and an event name.
 
     Parameters
     ----------
     data: polars.DataFrame | None
         A dataframe to be transformed to a polars dataframe. Numeric ``onset``, ``offset``
         and ``duration`` columns are interpreted according to ``time_unit`` and converted to
-        ``polars.Duration`` columns with microsecond precision; ``polars.Duration`` columns
-        are taken over unchanged. This argument is mutually exclusive with all the other
-        arguments. (default: None)
+        ``polars.Duration`` columns with microsecond precision. ``polars.Duration`` columns
+        are taken over unchanged. This argument is mutually exclusive with ``name``, ``onsets``,
+        ``durations``, ``offsets`` and ``trials``. (default: None)
     name: str | list[str] | None
         Name of events. (default: None)
     onsets: list[int | float] | np.ndarray | None
-        List of onsets. Numeric values are interpreted according to ``time_unit``; ``timedelta``
+        List of onsets. Numeric values are interpreted according to ``time_unit``. ``timedelta``
         and ``timedelta64`` input is converted by its physical unit. (default: None)
+    durations: list[int | float] | np.ndarray | None
+        List of durations, accepted like ``onsets``. Only together with ``onsets`` and of the
+        same length. (default: None)
     offsets: list[int | float] | np.ndarray | None
-        List of offsets. Numeric values are interpreted according to ``time_unit``; ``timedelta``
-        and ``timedelta64`` input is converted by its physical unit. (default: None)
+        List of offsets, accepted like ``onsets``. Only together with ``onsets`` and of the same
+        length. An ``offset`` column is stored only if offsets are supplied. (default: None)
+    offsets_inclusive: bool | None
+        The convention of the offsets. True if an offset is the last sample of the event, False
+        if it is the first sample after the event. None leaves the convention to the convention
+        entry in ``metadata``, see the notes below. (default: None)
+    durations_from_offsets: bool
+        If True, durations are derived from declared offsets and replace supplied durations.
+        (default: False)
+    sampling_rate: float | None
+        The sampling rate in Hz. Its interval is the duration of the last sample of an inclusive
+        offset. Required to derive durations from inclusive offsets. If None, the sampling-rate
+        entry in ``metadata`` is used. (default: None)
+    validate: bool
+        If False, supplied durations are kept unchecked beside declared offsets, and a
+        convention entry without its column is kept without a warning. (default: True)
     trials: list[int | float | str | None] | np.ndarray | None
         List of trial identifiers. (default: None)
     trial_columns: list[str] | str | None
-        List of trial columns in the passed dataframe.
+        List of trial columns in the passed dataframe. (default: None)
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. A ``Sources`` entry lists the files the
+        event data was generated from. The offset convention and sampling-rate entries are
+        described in the notes below. The dictionary is deep-copied, so the events share
+        nothing with the passed one. (default: None)
     time_unit: str | None
         The unit of the numeric ``onset``, ``offset`` and ``duration`` input: ``'s'`` for
         seconds, ``'ms'`` for milliseconds or ``'us'`` for microseconds. Ignored for
@@ -119,10 +568,14 @@ class Events:
     Attributes
     ----------
     frame: polars.DataFrame
-        A dataframe of events.
+        A dataframe of events. The columns are the trial columns, ``onset``, ``duration`` and
+        ``name``, followed by all other columns.
     trial_columns: list[str] | None
         The name of the trial columns in the data frame. If not None, processing methods
         will be applied to each trial separately.
+    metadata: dict[str, Any]
+        Dictionary containing additional metadata. A ``Sources`` entry lists the files the
+        event data was generated from.
     schema: polars.type_aliases.SchemaDict
         Schema of the event dataframe.
     columns: list[str]
@@ -141,14 +594,96 @@ class Events:
     Raises
     ------
     ValueError
-        If list of onsets is passed but not a list of offsets, or vice versa, or if length of
-        onsets does not match length of offsets, or if ``time_unit`` is not one of ``'s'``,
-        ``'ms'`` or ``'us'``.
+        If ``durations`` or ``offsets`` are passed without ``onsets``, if their lengths do not
+        match the length of ``onsets``, if ``time_unit`` is not one of ``'s'``, ``'ms'`` or
+        ``'us'``, if ``sampling_rate`` or the sampling-rate entry in ``metadata`` is not a
+        finite positive number, if the ``offset`` entry in ``metadata`` is not a dict or its
+        ``inclusive`` value is neither a bool nor ``None``, if durations are derived
+        from inclusive offsets without a sampling rate, if every row contradicts the declared
+        offset convention, or if ``offsets_inclusive`` or ``sampling_rate`` differs from its entry
+        in ``metadata``.
+
+    Notes
+    -----
+    How the ``duration`` column is built from the supplied columns:
+
+    .. list-table::
+        :header-rows: 1
+        :widths: 15 15 15 55
+
+        * - ``offset``
+          - convention
+          - ``duration``
+          - outcome
+        * - no
+          - any
+          - no
+          - a ``duration`` column of nulls, no ``offset`` column
+        * - no
+          - any
+          - yes
+          - the durations are kept
+        * - yes
+          - declared
+          - no
+          - the durations are derived under the declared convention
+        * - yes
+          - declared
+          - yes
+          - with ``durations_from_offsets=True`` the derivation replaces the durations,
+            otherwise the durations are kept and checked unless ``validate=False``
+        * - yes
+          - undeclared
+          - no
+          - the durations are derived as ``offset - onset``
+        * - yes
+          - undeclared
+          - yes
+          - the durations are kept unchecked
+
+    An inclusive offset adds one sampling interval to ``offset - onset``, an exclusive offset
+    adds nothing. The check compares each row with both values non-null against this rule and
+    allows 1 µs, because onset, offset and duration are rounded to microseconds one by one.
+    Without a sampling rate the durations of inclusive offsets must exceed ``offset - onset`` by
+    one common positive interval. If every row contradicts the declaration, a ``ValueError``
+    names the ways to fix it. If some rows do, one warning names them. A null ``duration``
+    beside a non-null ``offset`` is reported with one warning and stays null, with
+    ``validate=True`` and ``validate=False`` alike.
+
+    ``metadata`` carries the convention and the sampling rate, so a frame rebuilt from
+    ``frame`` and ``metadata`` needs neither keyword:
+
+    .. list-table::
+        :header-rows: 1
+        :widths: 30 35 35
+
+        * - entry
+          - written by
+          - shape
+        * - offset convention
+          - ``offsets_inclusive``, only if the frame has an ``offset`` column
+          - ``metadata['offset'] = {'inclusive': True}``, keyed by the column name
+        * - sampling rate
+          - ``sampling_rate``
+          - ``metadata['sampling_rate'] = 1000``, the number as passed
+
+    The convention of ``offset`` is declared by ``offsets_inclusive``, by its entry, or by both
+    when they agree. The sampling rate resolves from ``sampling_rate`` first, then from its
+    entry. A keyword that differs from its entry raises a ``ValueError``, also on a frame without
+    an ``offset`` column. An entry of the wrong shape raises a ``ValueError`` too: an ``offset``
+    entry that is not a dict, an ``inclusive`` value that is neither a bool nor ``None``, or a
+    sampling rate that is not a finite positive number. An ``inclusive`` value of ``None``
+    declares no convention. Several offset columns may carry their own convention entries. A
+    convention entry for a column the frame does not have is kept, and with ``validate=True``
+    one warning names the column. :py:meth:`~pymovements.Events.drop` removes the ``metadata``
+    entry keyed by a dropped column's name, such as the convention entry of an offset column.
+
+    Modifying ``frame`` directly is not supported: ``metadata`` is not kept consistent with it.
 
     Examples
     --------
     We define an event dataframe with given names of events and lists of onsets and offsets.
-    Durations are computed automatically.
+    Without a declared convention, durations are computed as ``offset - onset``.
 
     >>> event = Events(
     ...    name=['fixation', 'fixation', 'fixation', 'fixation', ],
@@ -157,26 +692,76 @@ class Events:
     ... )
     >>> event
     shape: (4, 4)
-    ┌──────────┬──────────────┬──────────────┬──────────────┐
-    │ name     ┆ onset        ┆ offset       ┆ duration     │
-    │ ---      ┆ ---          ┆ ---          ┆ ---          │
-    │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
-    ╞══════════╪══════════════╪══════════════╪══════════════╡
-    │ fixation ┆ 33m 8s 147ms ┆ 33m 8s 322ms ┆ 175ms        │
-    │ fixation ┆ 33m 8s 351ms ┆ 33m 8s 546ms ┆ 195ms        │
-    │ fixation ┆ 33m 8s 592ms ┆ 33m 8s 736ms ┆ 144ms        │
-    │ fixation ┆ 33m 8s 788ms ┆ 33m 9s 13ms  ┆ 225ms        │
-    └──────────┴──────────────┴──────────────┴──────────────┘
+    ┌──────────────┬──────────────┬──────────┬──────────────┐
+    │ onset        ┆ duration     ┆ name     ┆ offset       │
+    │ ---          ┆ ---          ┆ ---      ┆ ---          │
+    │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
+    ╞══════════════╪══════════════╪══════════╪══════════════╡
+    │ 33m 8s 147ms ┆ 175ms        ┆ fixation ┆ 33m 8s 322ms │
+    │ 33m 8s 351ms ┆ 195ms        ┆ fixation ┆ 33m 8s 546ms │
+    │ 33m 8s 592ms ┆ 144ms        ┆ fixation ┆ 33m 8s 736ms │
+    │ 33m 8s 788ms ┆ 225ms        ┆ fixation ┆ 33m 9s 13ms  │
+    └──────────────┴──────────────┴──────────┴──────────────┘
+
+    If the offsets are the last sample of each event, we declare them inclusive and pass the
+    sampling rate. Each duration then includes the last sample:
+
+    >>> Events(
+    ...     name='blink', onsets=[2], offsets=[3], offsets_inclusive=True, sampling_rate=1000,
+    ... )
+    shape: (1, 4)
+    ┌──────────────┬──────────────┬───────┬──────────────┐
+    │ onset        ┆ duration     ┆ name  ┆ offset       │
+    │ ---          ┆ ---          ┆ ---   ┆ ---          │
+    │ duration[μs] ┆ duration[μs] ┆ str   ┆ duration[μs] │
+    ╞══════════════╪══════════════╪═══════╪══════════════╡
+    │ 2ms          ┆ 2ms          ┆ blink ┆ 3ms          │
+    └──────────────┴──────────────┴───────┴──────────────┘
+
+    Events can also be defined by onsets and durations alone, without an offset column:
+
+    >>> Events(name='blink', onsets=[2], durations=[2])
+    shape: (1, 3)
+    ┌──────────────┬──────────────┬───────┐
+    │ onset        ┆ duration     ┆ name  │
+    │ ---          ┆ ---          ┆ ---   │
+    │ duration[μs] ┆ duration[μs] ┆ str   │
+    ╞══════════════╪══════════════╪═══════╡
+    │ 2ms          ┆ 2ms          ┆ blink │
+    └──────────────┴──────────────┴───────┘
+
+    If both durations and declared offsets are given, the durations are checked against the
+    offsets. Durations computed as ``offset - onset`` for inclusive offsets are one sample short:
+
+    >>> Events(
+    ...     name='blink', onsets=[2], offsets=[3], durations=[1],
+    ...     offsets_inclusive=True, sampling_rate=1000,
+    ... )  # doctest: +ELLIPSIS
+    Traceback (most recent call last):
+    ...
+    ValueError: every row contradicts offsets_inclusive=True: ...
+
+    The convention and the sampling rate are kept in ``metadata``. A frame rebuilt with this
+    metadata is declared and rated without any keyword:
+
+    >>> events = Events(onsets=[0], offsets=[120], offsets_inclusive=True, sampling_rate=1000)
+    >>> events.metadata
+    {'offset': {'inclusive': True}, 'sampling_rate': 1000}
+    >>> rebuilt = Events(events.frame.drop('duration'), metadata=events.metadata)
+    >>> rebuilt.frame['duration'].to_list()
+    [datetime.timedelta(microseconds=121000)]
     """
 
     frame: polars.DataFrame
 
     trial_columns: list[str] | None
 
+    metadata: dict[str, Any]
+
     _minimal_schema: dict[str, Any] = {
-        'name': polars.Utf8,
         'onset': polars.Duration('us'),
-        'offset': polars.Duration('us'),
+        'duration': polars.Duration('us'),
+        'name': polars.Utf8,
     }
 
     def __init__(
@@ -185,12 +770,21 @@ class Events:
             *,
             name: str | list[str] | None = None,
             onsets: list[int | float] | np.ndarray | None = None,
+            durations: list[int | float] | np.ndarray | None = None,
             offsets: list[int | float] | np.ndarray | None = None,
+            offsets_inclusive: bool | None = None,
+            durations_from_offsets: bool = False,
+            sampling_rate: float | None = None,
+            validate: bool = True,
             trials: list[int | float | str | None] | np.ndarray | None = None,
             trial_columns: list[str] | str | None = None,
+            metadata: dict[str, Any] | None = None,
             time_unit: str | None = None,
     ):
         self.trial_columns: list[str] | None  # otherwise mypy gets confused.
+        # A deep copy: neither the entries written below nor later changes to nested values
+        # reach the caller's dict, and changes to the caller's dict never reach these events.
+        self.metadata = deepcopy(metadata) if metadata is not None else {}
 
         # Numeric onset/offset/duration input is interpreted in this unit; None means
         # milliseconds. Duration input carries its own unit, so time_unit is ignored for it.
@@ -206,12 +800,17 @@ class Events:
                 "and 'us' for microseconds.",
             )
 
-        if data is not None:
-            _checks.check_is_mutual_exclusive(data=data, onsets=onsets)
-            _checks.check_is_mutual_exclusive(data=data, offsets=offsets)
-            _checks.check_is_mutual_exclusive(data=data, name=name)
-            _checks.check_is_mutual_exclusive(data=data, name=trials)
+        if sampling_rate is not None:
+            _check_sampling_rate(sampling_rate, name='sampling_rate')
 
+        if data is not None:
+            checks.check_is_mutual_exclusive(data=data, onsets=onsets)
+            checks.check_is_mutual_exclusive(data=data, durations=durations)
+            checks.check_is_mutual_exclusive(data=data, offsets=offsets)
+            checks.check_is_mutual_exclusive(data=data, name=name)
+            checks.check_is_mutual_exclusive(data=data, name=trials)
+
+            durations_supplied = 'duration' in data.columns
             data = data.clone()
             data = self._add_minimal_schema_columns(data)
             data_dict = data.to_dict()
@@ -221,25 +820,17 @@ class Events:
             else:
                 self.trial_columns = trial_columns
 
-            self._additional_columns = [
-                column_name for column_name in data_dict.keys()
-                if column_name not in self._minimal_schema
-            ]
-
         else:
-            # Make sure that if either onsets or offsets is None, the other one is None too.
-            _checks.check_is_none_is_mutual(onsets=onsets, offsets=offsets)
+            durations_supplied = durations is not None
 
-            # Make sure lengths of onsets and offsets are equal.
             if onsets is not None:
-
-                # mypy does not get that offsets cannot be None (l. 87)
-                assert offsets is not None
-
-                _checks.check_is_length_matching(onsets=onsets, offsets=offsets)
-                # In case name is given as a list, check that too.
+                # Make sure that durations, offsets and names match the onsets in length.
+                if durations is not None:
+                    checks.check_is_length_matching(onsets=onsets, durations=durations)
+                if offsets is not None:
+                    checks.check_is_length_matching(onsets=onsets, offsets=offsets)
                 if isinstance(name, Sequence) and not isinstance(name, str):
-                    _checks.check_is_length_matching(onsets=onsets, name=name)
+                    checks.check_is_length_matching(onsets=onsets, name=name)
 
                 # These reassignments are necessary for a correct conversion into a dataframe.
                 if len(onsets) == 0:
@@ -250,10 +841,15 @@ class Events:
                     name = [name] * len(onsets)
 
                 data_dict = {
-                    'name': polars.Series(name, dtype=polars.Utf8),
                     'onset': _build_time_series(onsets),
-                    'offset': _build_time_series(offsets),
+                    'duration': (
+                        _build_time_series(durations) if durations is not None
+                        else polars.Series([None] * len(onsets), dtype=polars.Float64)
+                    ),
+                    'name': polars.Series(name, dtype=polars.Utf8),
                 }
+                if offsets is not None:
+                    data_dict['offset'] = _build_time_series(offsets)
 
                 if trials is not None:
                     data_dict['trial'] = polars.Series('trial', trials)
@@ -262,10 +858,16 @@ class Events:
                     self.trial_columns = None
 
             else:
+                # Onsets are the anchor: without them there is nothing to attach durations or
+                # offsets to.
+                if durations is not None or offsets is not None:
+                    raise ValueError(
+                        'durations and offsets can only be passed together with onsets',
+                    )
                 data_dict = {
-                    'name': polars.Series([], dtype=polars.Utf8),
                     'onset': polars.Series([], dtype=polars.Float64),
-                    'offset': polars.Series([], dtype=polars.Float64),
+                    'duration': polars.Series([], dtype=polars.Float64),
+                    'name': polars.Series([], dtype=polars.Utf8),
                 }
                 self.trial_columns = None
 
@@ -273,30 +875,29 @@ class Events:
         # canonical dtype is Duration('us'), but list/int/float input arrives in milliseconds
         # and is converted below. Casting such input straight to Duration('us') here would
         # reinterpret the millisecond values as microseconds. Duration input is left untouched.
-        schema_overrides: dict[str, Any] = {}
-        for column, dtype in self._minimal_schema.items():
-            if not isinstance(dtype, polars.Duration):
-                schema_overrides[column] = dtype
-            elif column in data_dict and not isinstance(
+        schema_overrides: dict[str, Any] = {'name': polars.Utf8}
+        for column in _TIME_COLUMNS:
+            if column in data_dict and not isinstance(
                     getattr(data_dict[column], 'dtype', None), polars.Duration,
             ):
                 schema_overrides[column] = polars.Float64
         self.frame = polars.DataFrame(data=data_dict, schema_overrides=schema_overrides)
 
         # Ensure column order: trial columns, then minimal schema, keeping all other columns.
-        if self.trial_columns is not None:
-            # Keep any additional columns beyond trial and minimal schema columns
-            other_cols = [
-                col for col in self.frame.columns
-                if col not in self.trial_columns and col not in self._minimal_schema
-            ]
-            self.frame = self.frame.select(
-                [*self.trial_columns, *self._minimal_schema.keys(), *other_cols],
-            )
+        leading_columns = [*(self.trial_columns or []), *self._minimal_schema]
+        self.frame = self.frame.select(
+            [
+                *leading_columns,
+                *[column for column in self.frame.columns if column not in leading_columns],
+            ],
+        )
+        self._additional_columns = [
+            column for column in self.frame.columns if column not in self._minimal_schema
+        ]
 
         # Convert onset, offset, and duration to Duration('us').
         # Numeric input values are interpreted according to time_unit (milliseconds by default).
-        time_cols = [c for c in ('onset', 'offset', 'duration') if c in self.frame.columns]
+        time_cols = [c for c in _TIME_COLUMNS if c in self.frame.columns]
         numeric_time_cols = [
             c for c in time_cols
             if not isinstance(self.frame.schema[c], polars.Duration)
@@ -327,11 +928,321 @@ class Events:
         ]
         if wrong_unit_cols:
             self.frame = self.frame.with_columns(
-                normalize_duration_to_us(polars.col(wrong_unit_cols)),
+                [normalize_duration_to_us(c, self.frame.schema[c]) for c in wrong_unit_cols],
             )
 
-        if 'duration' not in self.frame.columns:
-            self._add_duration_property()
+        offsets_inclusive, offsets_inclusive_source = _resolve_offset_convention(
+            offsets_inclusive, metadata=self.metadata, columns=self.frame.columns,
+        )
+        sampling_rate, sampling_rate_source = _resolve_sampling_rate(
+            sampling_rate, metadata=self.metadata,
+        )
+
+        self._resolve_durations(
+            durations_supplied=durations_supplied,
+            offsets_inclusive=offsets_inclusive,
+            offsets_inclusive_source=offsets_inclusive_source,
+            durations_from_offsets=durations_from_offsets,
+            sampling_rate=sampling_rate,
+            sampling_rate_source=sampling_rate_source,
+            validate=validate,
+        )
+
+        self._write_entries(
+            offsets_inclusive=offsets_inclusive,
+            offsets_inclusive_source=offsets_inclusive_source,
+            sampling_rate=sampling_rate,
+            sampling_rate_source=sampling_rate_source,
+            warn_missing_columns=validate,
+        )
+
+    @classmethod
+    def _rebuild(
+            cls,
+            frame: polars.DataFrame,
+            *,
+            trial_columns: list[str] | None,
+            metadata: dict[str, Any],
+    ) -> Events:
+        """Construct events from a frame that an ``Events`` object already holds.
+
+        For internal use only. The frame has been normalised by ``__init__`` and its metadata
+        entries are written, so ``__init__`` is not run again: nothing is resolved, validated
+        or warned about. The metadata is deep-copied.
+
+        Parameters
+        ----------
+        frame: polars.DataFrame
+            An events frame as held by an ``Events`` object, or one derived from it that keeps
+            the normalised time columns and the column order.
+        trial_columns: list[str] | None
+            The trial columns of the source events.
+        metadata: dict[str, Any]
+            The metadata of the source events, or a merge of it with other sources.
+
+        Returns
+        -------
+        Events
+            The rebuilt events.
+        """
+        events = cls.__new__(cls)
+        events.trial_columns = trial_columns
+        events.metadata = deepcopy(metadata)
+        events.frame = frame
+        events._additional_columns = [
+            column for column in frame.columns if column not in cls._minimal_schema
+        ]
+        return events
+
+    def _write_entries(
+            self,
+            *,
+            offsets_inclusive: bool | None,
+            offsets_inclusive_source: Literal['keyword', 'entry'],
+            sampling_rate: float | None,
+            sampling_rate_source: Literal['keyword', 'entry'],
+            warn_missing_columns: bool,
+    ) -> None:
+        """Write the keyword declarations as entries and warn about entries without a column.
+
+        Parameters
+        ----------
+        offsets_inclusive: bool | None
+            The resolved convention, written to the ``offset`` entry when it comes from the
+            keyword and the frame has that column.
+        offsets_inclusive_source: Literal['keyword', 'entry']
+            Where the convention comes from.
+        sampling_rate: float | None
+            The resolved sampling rate, written as passed to the sampling-rate entry when it
+            comes from the keyword.
+        sampling_rate_source: Literal['keyword', 'entry']
+            Where the sampling rate comes from.
+        warn_missing_columns: bool
+            Whether to warn once about convention entries whose column the frame does not have.
+        """
+        # Entries are written only for what the frame has.
+        if offsets_inclusive_source == 'keyword' and 'offset' in self.frame.columns:
+            entry = self.metadata.get('offset')
+            self.metadata['offset'] = {
+                **(entry or {}),
+                'inclusive': offsets_inclusive,
+            }
+        if sampling_rate_source == 'keyword':
+            self.metadata['sampling_rate'] = sampling_rate
+
+        if not warn_missing_columns:
+            return
+
+        # A convention entry without its column is kept, never removed on construction.
+        missing_columns = [
+            column for column, entry in self.metadata.items()
+            if isinstance(entry, dict) and 'inclusive' in entry
+            and column not in self.frame.columns
+        ]
+        if not missing_columns:
+            return
+        if len(missing_columns) == 1:
+            described = f"entry for the column '{missing_columns[0]}'"
+        else:
+            described = 'entries for the columns ' + ', '.join(
+                f"'{column}'" for column in missing_columns
+            )
+        warn(
+            f'metadata holds offset convention {described}, '
+            'which the events frame does not have. The metadata is kept.',
+            UserWarning,
+            stacklevel=3,
+        )
+
+    def _resolve_durations(
+            self,
+            *,
+            durations_supplied: bool,
+            offsets_inclusive: bool | None,
+            offsets_inclusive_source: Literal['keyword', 'entry'],
+            durations_from_offsets: bool,
+            sampling_rate: float | None,
+            sampling_rate_source: Literal['keyword', 'entry'],
+            validate: bool,
+    ) -> None:
+        """Fill or check the ``duration`` column against the ``offset`` column.
+
+        See the construction rules in the class docstring.
+        """
+        if 'offset' not in self.frame.columns:
+            ignored = []
+            if offsets_inclusive_source == 'keyword':
+                ignored.append(f'offsets_inclusive={offsets_inclusive}')
+            if durations_from_offsets:
+                ignored.append('durations_from_offsets=True')
+            if ignored:
+                warn(
+                    f"{' and '.join(ignored)} ignored: the events frame has no 'offset' column.",
+                    UserWarning,
+                    stacklevel=3,
+                )
+            return
+
+        if offsets_inclusive is None:
+            # Undeclared offsets keep the pre-v0.29.0 behavior until an undeclared offset raises.
+            if durations_from_offsets:
+                warn(
+                    "durations_from_offsets=True ignored: the 'offset' column is undeclared. "
+                    'Pass offsets_inclusive to declare its convention.',
+                    UserWarning,
+                    stacklevel=3,
+                )
+            if not durations_supplied:
+                self.frame = self.frame.with_columns(
+                    (polars.col('offset') - polars.col('onset')).alias('duration'),
+                )
+            return
+
+        sampling_interval = None
+        if sampling_rate is not None:
+            # Rounded to microseconds like numeric time input, so residuals compare exactly.
+            sampling_interval = round(1_000_000 / sampling_rate)
+
+        if not durations_supplied or durations_from_offsets:
+            if offsets_inclusive and sampling_interval is None:
+                raise ValueError(
+                    'deriving durations from inclusive offsets requires a sampling_rate: '
+                    'duration = offset - onset + 1 / sampling_rate.',
+                )
+            derived = polars.col('offset') - polars.col('onset')
+            if offsets_inclusive:
+                derived = derived + polars.duration(microseconds=sampling_interval)
+            self.frame = self.frame.with_columns(derived.alias('duration'))
+            return
+
+        # A null duration beside a non-null offset is reported, never filled. The report is
+        # not part of the validation that validate=False opts out of.
+        null_durations = self.frame.select(
+            (polars.col('duration').is_null() & polars.col('offset').is_not_null()).sum(),
+        ).item()
+        if null_durations:
+            rows_have = 'row has' if null_durations == 1 else 'rows have'
+            warn(
+                f"{null_durations} {rows_have} a null duration beside a non-null offset. "
+                'The durations stay null.',
+                UserWarning,
+                stacklevel=3,
+            )
+
+        if not validate:
+            return
+
+        self._check_durations_against_offsets(
+            offsets_inclusive=offsets_inclusive,
+            offsets_inclusive_source=offsets_inclusive_source,
+            sampling_rate=sampling_rate,
+            sampling_interval=sampling_interval,
+            sampling_rate_source=sampling_rate_source,
+        )
+
+    def _check_durations_against_offsets(
+            self,
+            *,
+            offsets_inclusive: bool,
+            offsets_inclusive_source: Literal['keyword', 'entry'],
+            sampling_rate: float | None,
+            sampling_interval: int | None,
+            sampling_rate_source: Literal['keyword', 'entry'],
+    ) -> None:
+        """Check the stored durations against the declared offsets.
+
+        Raises if every row with both values non-null contradicts the declaration, warns once if
+        some rows do. Every comparison allows 1 µs, because onset, offset and duration are rounded
+        to microseconds one by one.
+        """
+        residuals = self.frame.select(
+            (polars.col('duration') - (polars.col('offset') - polars.col('onset')))
+            .dt.total_microseconds()
+            .drop_nulls(),
+        ).to_series()
+        if residuals.is_empty():
+            return
+
+        # The texts name the metadata entry as the source, the keyword is the default.
+        declaration = f'offsets_inclusive={offsets_inclusive}'
+        if offsets_inclusive_source == 'entry':
+            declaration += ' from the metadata entry'
+        if not offsets_inclusive:
+            expected = 0
+            expected_text = '0'
+        elif sampling_interval is not None:
+            expected = sampling_interval
+            rate_text = f'sampling_rate={sampling_rate:g}'
+            if sampling_rate_source == 'entry':
+                rate_text += ' from the metadata entry'
+            expected_text = f'{_format_microseconds(expected)} ({rate_text})'
+        else:
+            # Without a sampling rate the positive residuals must agree on one interval.
+            positive = residuals.filter(residuals > _RESIDUAL_TOLERANCE_US)
+            if positive.is_empty():
+                expected = None
+                expected_text = 'a common positive residual (no sampling rate)'
+            else:
+                counts = positive.value_counts(sort=True)
+                expected = counts.filter(
+                    polars.col('count') == counts['count'].max(),
+                )[residuals.name].min()
+                expected_text = (
+                    f'common positive residual {_format_microseconds(expected)} '
+                    '(no sampling rate)'
+                )
+
+        contradicting = residuals if expected is None else residuals.filter(
+            (residuals - expected).abs() > _RESIDUAL_TOLERANCE_US,
+        )
+        if contradicting.is_empty():
+            return
+
+        distinct = sorted(contradicting.unique().to_list())
+
+        if len(contradicting) == len(residuals):
+            if len(distinct) == 1:
+                seen = f'is {_format_microseconds(distinct[0])} on every row'
+            else:
+                seen = f'takes the values {_format_residuals(distinct)}'
+            message = (
+                f'every row contradicts {declaration}: duration - (offset - onset) {seen}, '
+                f'expected {expected_text}'
+            )
+            if offsets_inclusive and all(abs(r) <= _RESIDUAL_TOLERANCE_US for r in distinct):
+                message += ', the durations look like pre-v0.29.0 values'
+            # The correction is offered where the convention was declared.
+            if offsets_inclusive_source == 'keyword':
+                correction = f'offsets_inclusive={not offsets_inclusive}'
+            else:
+                correction = f"metadata['offset'] = {{'inclusive': {not offsets_inclusive}}}"
+            if offsets_inclusive:
+                message += (
+                    '. Pass durations_from_offsets=True to derive the durations from the '
+                    f'offsets, {correction} if the offsets are exclusive, '
+                    'or validate=False to keep the durations unchecked.'
+                )
+            else:
+                message += (
+                    f'. Pass {correction} if the offsets are inclusive, '
+                    'or validate=False to keep the durations unchecked.'
+                )
+            raise ValueError(message)
+
+        message = (
+            f'{len(contradicting)} of {len(residuals)} rows contradict {declaration}: '
+            f'expected duration - (offset - onset) to be {expected_text}, '
+            f'residuals seen: {_format_residuals(sorted(residuals.unique().to_list()))}.'
+        )
+        if offsets_inclusive:
+            legacy_rows = (contradicting.abs() <= _RESIDUAL_TOLERANCE_US).sum()
+            if legacy_rows:
+                rows_look = 'row looks' if legacy_rows == 1 else 'rows look'
+                message += (
+                    f' {legacy_rows} {rows_look} like pre-v0.29.0 durations. Pass '
+                    'durations_from_offsets=True to derive the durations from the offsets.'
+                )
+        warn(message, UserWarning, stacklevel=4)
 
     @property
     def schema(self) -> polars.type_aliases.SchemaDict:
@@ -350,10 +1261,6 @@ class Events:
     def columns(self) -> list[str]:
         """List of column names."""
         return self.frame.columns
-
-    def _add_duration_property(self) -> None:
-        """Add duration property column to dataframe."""
-        self.frame = self.frame.select([polars.all(), duration().alias('duration')])
 
     def add_event_properties(
             self,
@@ -379,7 +1286,9 @@ class Events:
 
         Notes
         -----
-        The minimal schema columns ``name``, ``onset`` and ``offset`` cannot be removed.
+        The minimal schema columns ``onset``, ``duration`` and ``name`` cannot be removed.
+        Dropping a column also removes the ``metadata`` entry keyed by its name, such as the
+        convention entry of an offset column.
 
         Parameters
         ----------
@@ -405,11 +1314,13 @@ class Events:
             if column in minimal_schema:
                 raise ValueError(
                     f"The column '{column}' cannot be removed "
-                    'because it belongs to the minimal schema (onset, offset, name). '
+                    'because it belongs to the minimal schema (onset, duration, name). '
                     f'Available columns to remove: {available_columns}.',
                 )
         for column in columns:
             self.frame = self.frame.drop(column)
+            # A metadata entry keyed by the dropped column describes it and goes with it.
+            self.metadata.pop(column, None)
 
     def add_trial_column(
             self,
@@ -437,7 +1348,7 @@ class Events:
                 raise TypeError(
                     'data must be passed as a list of values in case of providing multiple columns',
                 )
-            _checks.check_is_length_matching(column=column, data=data)
+            checks.check_is_length_matching(column=column, data=data)
 
             trial_columns = dict(zip(column, data))
 
@@ -488,72 +1399,72 @@ class Events:
         ... )
         >>> events
         shape: (8, 4)
-        ┌──────────────────┬──────────────┬──────────────┬──────────────┐
-        │ name             ┆ onset        ┆ offset       ┆ duration     │
-        │ ---              ┆ ---          ┆ ---          ┆ ---          │
-        │ str              ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
-        ╞══════════════════╪══════════════╪══════════════╪══════════════╡
-        │ saccade          ┆ 90ms         ┆ 100ms        ┆ 10ms         │
-        │ fixation         ┆ 99ms         ┆ 176ms        ┆ 77ms         │
-        │ fixation_idt     ┆ 99ms         ┆ 175ms        ┆ 76ms         │
-        │ fixation_ivt     ┆ 100ms        ┆ 178ms        ┆ 78ms         │
-        │ fixation_eyelink ┆ 101ms        ┆ 175ms        ┆ 74ms         │
-        │ microsaccade     ┆ 115ms        ┆ 124ms        ┆ 9ms          │
-        │ microsaccade     ┆ 145ms        ┆ 157ms        ┆ 12ms         │
-        │ saccade          ┆ 175ms        ┆ 199ms        ┆ 24ms         │
-        └──────────────────┴──────────────┴──────────────┴──────────────┘
+        ┌──────────────┬──────────────┬──────────────────┬──────────────┐
+        │ onset        ┆ duration     ┆ name             ┆ offset       │
+        │ ---          ┆ ---          ┆ ---              ┆ ---          │
+        │ duration[μs] ┆ duration[μs] ┆ str              ┆ duration[μs] │
+        ╞══════════════╪══════════════╪══════════════════╪══════════════╡
+        │ 90ms         ┆ 10ms         ┆ saccade          ┆ 100ms        │
+        │ 99ms         ┆ 77ms         ┆ fixation         ┆ 176ms        │
+        │ 99ms         ┆ 76ms         ┆ fixation_idt     ┆ 175ms        │
+        │ 100ms        ┆ 78ms         ┆ fixation_ivt     ┆ 178ms        │
+        │ 101ms        ┆ 74ms         ┆ fixation_eyelink ┆ 175ms        │
+        │ 115ms        ┆ 9ms          ┆ microsaccade     ┆ 124ms        │
+        │ 145ms        ┆ 12ms         ┆ microsaccade     ┆ 157ms        │
+        │ 175ms        ┆ 24ms         ┆ saccade          ┆ 199ms        │
+        └──────────────┴──────────────┴──────────────────┴──────────────┘
 
         All fixations:
 
         >>> events.filter_by_name('fixation')
         shape: (4, 4)
-        ┌──────────────────┬──────────────┬──────────────┬──────────────┐
-        │ name             ┆ onset        ┆ offset       ┆ duration     │
-        │ ---              ┆ ---          ┆ ---          ┆ ---          │
-        │ str              ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
-        ╞══════════════════╪══════════════╪══════════════╪══════════════╡
-        │ fixation         ┆ 99ms         ┆ 176ms        ┆ 77ms         │
-        │ fixation_idt     ┆ 99ms         ┆ 175ms        ┆ 76ms         │
-        │ fixation_ivt     ┆ 100ms        ┆ 178ms        ┆ 78ms         │
-        │ fixation_eyelink ┆ 101ms        ┆ 175ms        ┆ 74ms         │
-        └──────────────────┴──────────────┴──────────────┴──────────────┘
+        ┌──────────────┬──────────────┬──────────────────┬──────────────┐
+        │ onset        ┆ duration     ┆ name             ┆ offset       │
+        │ ---          ┆ ---          ┆ ---              ┆ ---          │
+        │ duration[μs] ┆ duration[μs] ┆ str              ┆ duration[μs] │
+        ╞══════════════╪══════════════╪══════════════════╪══════════════╡
+        │ 99ms         ┆ 77ms         ┆ fixation         ┆ 176ms        │
+        │ 99ms         ┆ 76ms         ┆ fixation_idt     ┆ 175ms        │
+        │ 100ms        ┆ 78ms         ┆ fixation_ivt     ┆ 178ms        │
+        │ 101ms        ┆ 74ms         ┆ fixation_eyelink ┆ 175ms        │
+        └──────────────┴──────────────┴──────────────────┴──────────────┘
 
         Exact match for fixation:
 
         >>> events.filter_by_name('^fixation$')
         shape: (1, 4)
-        ┌──────────┬──────────────┬──────────────┬──────────────┐
-        │ name     ┆ onset        ┆ offset       ┆ duration     │
-        │ ---      ┆ ---          ┆ ---          ┆ ---          │
-        │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
-        ╞══════════╪══════════════╪══════════════╪══════════════╡
-        │ fixation ┆ 99ms         ┆ 176ms        ┆ 77ms         │
-        └──────────┴──────────────┴──────────────┴──────────────┘
+        ┌──────────────┬──────────────┬──────────┬──────────────┐
+        │ onset        ┆ duration     ┆ name     ┆ offset       │
+        │ ---          ┆ ---          ┆ ---      ┆ ---          │
+        │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
+        ╞══════════════╪══════════════╪══════════╪══════════════╡
+        │ 99ms         ┆ 77ms         ┆ fixation ┆ 176ms        │
+        └──────────────┴──────────────┴──────────┴──────────────┘
 
         Prefix match:
 
         >>> events.filter_by_name('^fixation_')
         shape: (3, 4)
-        ┌──────────────────┬──────────────┬──────────────┬──────────────┐
-        │ name             ┆ onset        ┆ offset       ┆ duration     │
-        │ ---              ┆ ---          ┆ ---          ┆ ---          │
-        │ str              ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
-        ╞══════════════════╪══════════════╪══════════════╪══════════════╡
-        │ fixation_idt     ┆ 99ms         ┆ 175ms        ┆ 76ms         │
-        │ fixation_ivt     ┆ 100ms        ┆ 178ms        ┆ 78ms         │
-        │ fixation_eyelink ┆ 101ms        ┆ 175ms        ┆ 74ms         │
-        └──────────────────┴──────────────┴──────────────┴──────────────┘
+        ┌──────────────┬──────────────┬──────────────────┬──────────────┐
+        │ onset        ┆ duration     ┆ name             ┆ offset       │
+        │ ---          ┆ ---          ┆ ---              ┆ ---          │
+        │ duration[μs] ┆ duration[μs] ┆ str              ┆ duration[μs] │
+        ╞══════════════╪══════════════╪══════════════════╪══════════════╡
+        │ 99ms         ┆ 76ms         ┆ fixation_idt     ┆ 175ms        │
+        │ 100ms        ┆ 78ms         ┆ fixation_ivt     ┆ 178ms        │
+        │ 101ms        ┆ 74ms         ┆ fixation_eyelink ┆ 175ms        │
+        └──────────────┴──────────────┴──────────────────┴──────────────┘
 
         Suffix match:
 
         >>> events.filter_by_name('ivt$')
         shape: (1, 4)
         ┌──────────────┬──────────────┬──────────────┬──────────────┐
-        │ name         ┆ onset        ┆ offset       ┆ duration     │
+        │ onset        ┆ duration     ┆ name         ┆ offset       │
         │ ---          ┆ ---          ┆ ---          ┆ ---          │
-        │ str          ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+        │ duration[μs] ┆ duration[μs] ┆ str          ┆ duration[μs] │
         ╞══════════════╪══════════════╪══════════════╪══════════════╡
-        │ fixation_ivt ┆ 100ms        ┆ 178ms        ┆ 78ms         │
+        │ 100ms        ┆ 78ms         ┆ fixation_ivt ┆ 178ms        │
         └──────────────┴──────────────┴──────────────┴──────────────┘
 
         All saccade variants:
@@ -561,14 +1472,14 @@ class Events:
         >>> events.filter_by_name('saccade')
         shape: (4, 4)
         ┌──────────────┬──────────────┬──────────────┬──────────────┐
-        │ name         ┆ onset        ┆ offset       ┆ duration     │
+        │ onset        ┆ duration     ┆ name         ┆ offset       │
         │ ---          ┆ ---          ┆ ---          ┆ ---          │
-        │ str          ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+        │ duration[μs] ┆ duration[μs] ┆ str          ┆ duration[μs] │
         ╞══════════════╪══════════════╪══════════════╪══════════════╡
-        │ saccade      ┆ 90ms         ┆ 100ms        ┆ 10ms         │
-        │ microsaccade ┆ 115ms        ┆ 124ms        ┆ 9ms          │
-        │ microsaccade ┆ 145ms        ┆ 157ms        ┆ 12ms         │
-        │ saccade      ┆ 175ms        ┆ 199ms        ┆ 24ms         │
+        │ 90ms         ┆ 10ms         ┆ saccade      ┆ 100ms        │
+        │ 115ms        ┆ 9ms          ┆ microsaccade ┆ 124ms        │
+        │ 145ms        ┆ 12ms         ┆ microsaccade ┆ 157ms        │
+        │ 175ms        ┆ 24ms         ┆ saccade      ┆ 199ms        │
         └──────────────┴──────────────┴──────────────┴──────────────┘
 
         Only microsaccades:
@@ -576,26 +1487,26 @@ class Events:
         >>> events.filter_by_name('microsaccade')
         shape: (2, 4)
         ┌──────────────┬──────────────┬──────────────┬──────────────┐
-        │ name         ┆ onset        ┆ offset       ┆ duration     │
+        │ onset        ┆ duration     ┆ name         ┆ offset       │
         │ ---          ┆ ---          ┆ ---          ┆ ---          │
-        │ str          ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+        │ duration[μs] ┆ duration[μs] ┆ str          ┆ duration[μs] │
         ╞══════════════╪══════════════╪══════════════╪══════════════╡
-        │ microsaccade ┆ 115ms        ┆ 124ms        ┆ 9ms          │
-        │ microsaccade ┆ 145ms        ┆ 157ms        ┆ 12ms         │
+        │ 115ms        ┆ 9ms          ┆ microsaccade ┆ 124ms        │
+        │ 145ms        ┆ 12ms         ┆ microsaccade ┆ 157ms        │
         └──────────────┴──────────────┴──────────────┴──────────────┘
 
         Exact match for saccade:
 
         >>> events.filter_by_name('^saccade$')
         shape: (2, 4)
-        ┌─────────┬──────────────┬──────────────┬──────────────┐
-        │ name    ┆ onset        ┆ offset       ┆ duration     │
-        │ ---     ┆ ---          ┆ ---          ┆ ---          │
-        │ str     ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
-        ╞═════════╪══════════════╪══════════════╪══════════════╡
-        │ saccade ┆ 90ms         ┆ 100ms        ┆ 10ms         │
-        │ saccade ┆ 175ms        ┆ 199ms        ┆ 24ms         │
-        └─────────┴──────────────┴──────────────┴──────────────┘
+        ┌──────────────┬──────────────┬─────────┬──────────────┐
+        │ onset        ┆ duration     ┆ name    ┆ offset       │
+        │ ---          ┆ ---          ┆ ---     ┆ ---          │
+        │ duration[μs] ┆ duration[μs] ┆ str     ┆ duration[μs] │
+        ╞══════════════╪══════════════╪═════════╪══════════════╡
+        │ 90ms         ┆ 10ms         ┆ saccade ┆ 100ms        │
+        │ 175ms        ┆ 24ms         ┆ saccade ┆ 199ms        │
+        └──────────────┴──────────────┴─────────┴──────────────┘
 
         Returns
         -------
@@ -664,9 +1575,10 @@ class Events:
         Events
             A copy of an Events object.
         """
-        return Events(
-            data=self.frame.clone(),
+        return Events._rebuild(
+            self.frame.clone(),
             trial_columns=self.trial_columns,
+            metadata=self.metadata,
         )
 
     @overload
@@ -717,12 +1629,20 @@ class Events:
         if as_dict:
             # keys are tuples of the unique values of the columns specified in `by`.
             return {
-                key: Events(frame, trial_columns=self.trial_columns)
+                key: Events._rebuild(
+                    frame,
+                    trial_columns=self.trial_columns,
+                    metadata=self.metadata,
+                )
                 for key, frame in event_dfs.items()
             }
 
         return [
-            Events(frame, trial_columns=self.trial_columns)
+            Events._rebuild(
+                frame,
+                trial_columns=self.trial_columns,
+                metadata=self.metadata,
+            )
             for frame in event_dfs
         ]
 
@@ -772,14 +1692,14 @@ class Events:
         >>> events.drop_nulls(subset=['trial', 'page'], how='all')
         >>> events
         shape: (2, 6)
-        ┌──────────┬──────────────┬──────────────┬───────┬──────┬──────────────┐
-        │ name     ┆ onset        ┆ offset       ┆ trial ┆ page ┆ duration     │
-        │ ---      ┆ ---          ┆ ---          ┆ ---   ┆ ---  ┆ ---          │
-        │ str      ┆ duration[μs] ┆ duration[μs] ┆ i64   ┆ i64  ┆ duration[μs] │
-        ╞══════════╪══════════════╪══════════════╪═══════╪══════╪══════════════╡
-        │ fixation ┆ 0µs          ┆ 100ms        ┆ 1     ┆ 1    ┆ 100ms        │
-        │ fixation ┆ 110ms        ┆ 150ms        ┆ null  ┆ 2    ┆ 40ms         │
-        └──────────┴──────────────┴──────────────┴───────┴──────┴──────────────┘
+        ┌──────────────┬──────────────┬──────────┬──────────────┬───────┬──────┐
+        │ onset        ┆ duration     ┆ name     ┆ offset       ┆ trial ┆ page │
+        │ ---          ┆ ---          ┆ ---      ┆ ---          ┆ ---   ┆ ---  │
+        │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] ┆ i64   ┆ i64  │
+        ╞══════════════╪══════════════╪══════════╪══════════════╪═══════╪══════╡
+        │ 0µs          ┆ 100ms        ┆ fixation ┆ 100ms        ┆ 1     ┆ 1    │
+        │ 110ms        ┆ 40ms         ┆ fixation ┆ 150ms        ┆ null  ┆ 2    │
+        └──────────────┴──────────────┴──────────┴──────────────┴───────┴──────┘
 
         Under the default ``how='any'``, a single null value suffices, removing the second
         fixation too:
@@ -787,13 +1707,13 @@ class Events:
         >>> events.drop_nulls(subset=['trial', 'page'])
         >>> events
         shape: (1, 6)
-        ┌──────────┬──────────────┬──────────────┬───────┬──────┬──────────────┐
-        │ name     ┆ onset        ┆ offset       ┆ trial ┆ page ┆ duration     │
-        │ ---      ┆ ---          ┆ ---          ┆ ---   ┆ ---  ┆ ---          │
-        │ str      ┆ duration[μs] ┆ duration[μs] ┆ i64   ┆ i64  ┆ duration[μs] │
-        ╞══════════╪══════════════╪══════════════╪═══════╪══════╪══════════════╡
-        │ fixation ┆ 0µs          ┆ 100ms        ┆ 1     ┆ 1    ┆ 100ms        │
-        └──────────┴──────────────┴──────────────┴───────┴──────┴──────────────┘
+        ┌──────────────┬──────────────┬──────────┬──────────────┬───────┬──────┐
+        │ onset        ┆ duration     ┆ name     ┆ offset       ┆ trial ┆ page │
+        │ ---          ┆ ---          ┆ ---      ┆ ---          ┆ ---   ┆ ---  │
+        │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] ┆ i64   ┆ i64  │
+        ╞══════════════╪══════════════╪══════════╪══════════════╪═══════╪══════╡
+        │ 0µs          ┆ 100ms        ┆ fixation ┆ 100ms        ┆ 1     ┆ 1    │
+        └──────────────┴──────────────┴──────────┴──────────────┴───────┴──────┘
         """
         if subset is None:
             subset = self.frame.columns
@@ -878,14 +1798,38 @@ class Events:
             aoi_dataframe: TextStimulus,
             *,
             preserve_structure: bool = True,
-            verbose: bool = True,
+            verbose: bool | None = None,
     ) -> None:
         """Map events to AOIs, ignoring non-fixations.
 
         This function computes AOI membership only for rows whose ``name`` starts with
-        ``"fixation"`` (e.g., ``"fixation"``, ``"fixation_ivt"``). Rows that are not fixations
-        are left unchanged and receive ``None`` values for all AOI columns. The original order
-        and number of rows are preserved.
+        ``"fixation"`` (e.g., ``"fixation"``, ``"fixation_ivt"``). Non-fixation rows,
+        fixations with invalid coordinates and fixations without a matching AOI receive
+        ``None`` values for all appended AOI columns. The original order and number of rows
+        are preserved.
+
+        Fixations are matched against the AOI rectangles with a vectorised join and
+        half-open rectangle test (``start <= coordinate < end``) instead of one lookup per
+        row. Coordinates are taken from numeric ``location_x``/``location_y`` columns, or
+        from a numeric ``location`` list column when the component columns are absent.
+        Fixations whose coordinates are missing, ``NaN`` or non-numeric receive no match,
+        and one ``UserWarning`` reports the number of such fixations per call.
+
+        Trial and page keys:
+
+        - If the stimulus defines ``trial_column``/``page_column`` and the events frame has
+          the same columns, matching is restricted to AOIs with equal key values.
+        - A null value in a configured key column is a wildcard: that fixation is matched
+          against all AOIs for the other key(s), using the per-row
+          :meth:`~pymovements.stimulus.TextStimulus.get_aoi` lookup.
+        - A non-null key is cast to the AOI key dtype, so the string ``'02'`` matches the
+          integer key ``2``. A key that cannot be cast without changing its value (for
+          example ``'x'`` or ``1.5`` against an integer column) matches no AOI.
+
+        Overlapping AOIs:
+
+        - If multiple AOIs contain a fixation, the first AOI in stimulus order is selected
+          and a ``UserWarning`` is emitted.
 
         Schema handling:
 
@@ -893,12 +1837,11 @@ class Events:
           ``location`` column exists: derive ``location_x``/``location_y`` and drop ``location``.
           This keeps downstream expectations about flat component columns.
         - If ``preserve_structure=False``, no unnesting/derivation occurs and the original
-          ``location`` list column is preserved. Coordinates are extracted per-row without
-          altering the frame.
+          ``location`` list column is preserved. Matching reads coordinates without altering
+          the frame.
 
-        AOI columns used for trial/page keys in the stimulus (``trial_column``/``page_column``)
-        are not appended to the events, as they are dropped by ``TextStimulus.get_aoi`` to avoid
-        duplicate columns during concatenation.
+        AOI columns used as trial/page keys are only appended when the events frame does not
+        already contain a column with that name; existing event columns are never overwritten.
 
         Parameters
         ----------
@@ -907,20 +1850,47 @@ class Events:
         preserve_structure: bool
             Control whether to derive component columns and drop the list column as described
             above. Default: True.
-        verbose : bool
-            If ``True``, show a progress bar. (default: True)
+        verbose: bool | None
+            If ``True``, show a progress bar over the fixations with a null trial or page value,
+            the only ones that are still looked up one by one. (default: None)
+
+            .. deprecated:: v0.29.0
+                The mapping no longer loops over all events.
+                This argument will be removed in v0.34.0.
 
         Raises
         ------
         ValueError
             If ``aoi_dataframe`` does not have either ``width_column`` or ``end_x_column`` defined.
         ValueError
+            If ``width_column`` and ``height_column`` or ``end_x_column`` and ``end_y_column``
+            are not both defined or both ``None``.
+        ValueError
             If the events frame is empty.
         """
+        if verbose is not None:
+            warnings.warn(
+                DeprecationWarning(
+                    "Events.map_to_aois argument 'verbose' is deprecated since version v0.29.0. "
+                    'The mapping no longer loops over all events. '
+                    'This argument will be removed in v0.34.0.',
+                ),
+            )
+
         # Validate AOI configuration early
         if aoi_dataframe.width_column is None and aoi_dataframe.end_x_column is None:
             raise ValueError(
                 'either TextStimulus.width or TextStimulus.end_x_column must be defined',
+            )
+        if aoi_dataframe.width_column is not None:
+            checks.check_is_none_is_mutual(
+                height_column=aoi_dataframe.width_column,
+                width_column=aoi_dataframe.height_column,
+            )
+        else:
+            checks.check_is_none_is_mutual(
+                end_x_column=aoi_dataframe.end_x_column,
+                end_y_column=aoi_dataframe.end_y_column,
             )
         # Raise when no rows to concat
         if self.frame.height == 0:
@@ -949,67 +1919,11 @@ class Events:
             if aoi_columns else {}
         )
 
-        def _empty_aoi_row() -> polars.DataFrame:
-            # Create one row of all-None cast to expected AOI dtypes
-            return polars.DataFrame({col: [None] for col in aoi_columns}).cast(aoi_schema)
-
-        out_rows: list[polars.DataFrame] = []
-        for row in tqdm(
-                self.frame.iter_rows(named=True),
-                total=len(self.frame),
-                desc='Mapping events to AOIs',
-                unit='event',
-                ncols=80,
-                disable=not verbose,
-        ):
-            name_val = row.get('name')
-            is_fix = isinstance(name_val, str) and name_val.startswith('fixation')
-            if not is_fix:
-                out_rows.append(_empty_aoi_row())
-                continue
-
-            # Extract coordinates - support either pre-existing component columns or list column
-            x = row.get('location_x')
-            y = row.get('location_y')
-            if x is None or y is None:
-                loc = row.get('location')
-                if isinstance(loc, (list, tuple)) and len(loc) >= 2:
-                    x, y = loc[0], loc[1]
-
-            if x is None or y is None:
-                out_rows.append(_empty_aoi_row())
-                continue
-
-            # Create a shallow copy with temporary keys for AOI lookup
-            tmp_row = dict(row)
-            tmp_row['__x'] = x
-            tmp_row['__y'] = y
-
-            try:
-                aoi_row = aoi_dataframe.get_aoi(
-                    row=tmp_row, x_eye='__x', y_eye='__y', max_matches=1,
-                )
-            except (KeyError, TypeError):  # tolerate common lookup/type errors per row
-                aoi_row = _empty_aoi_row()
-            else:
-                # Project to the selected AOI columns and fill any missing ones with None
-                if aoi_columns:
-                    present = [c for c in aoi_columns if c in aoi_row.columns]
-                    missing = [c for c in aoi_columns if c not in aoi_row.columns]
-                    aoi_row = aoi_row.select(
-                        [polars.col(c) for c in present]
-                        + [polars.lit(None).alias(c) for c in missing],
-                    )
-                    # Cast to the stable AOI schema to ensure consistent dtypes across rows
-                    aoi_row = aoi_row.cast(aoi_schema)
-                else:
-                    # No AOI columns are to be appended (all already exist in the Events frame).
-                    # Keep row count but contribute zero columns to avoid duplicate-column errors.
-                    aoi_row = aoi_row.select([])
-            out_rows.append(aoi_row)
-
-        aoi_df = polars.concat(out_rows)
-        self.frame = polars.concat([self.frame, aoi_df], how='horizontal_extend')
+        if aoi_columns:
+            aoi_df = _map_fixations_to_aois(
+                self.frame, aoi_dataframe, aoi_columns, aoi_schema, verbose is True,
+            )
+            self.frame = polars.concat([self.frame, aoi_df], how='horizontal_extend')
 
         # Backward-compatibility: some pipelines expect that a prior unnest removed the
         # original 'location' list column and kept only component columns. We avoid unnesting,
@@ -1019,6 +1933,9 @@ class Events:
             'location_x' in self.frame.columns or 'location_y' in self.frame.columns
         ):
             self.frame = self.frame.drop('location')
+
+        # The AOI-mapped events are derived from the stimulus file as well.
+        self.metadata = merge_sources(self.metadata, aoi_dataframe.metadata)
 
     def correct_fixations(
             self,
@@ -1075,7 +1992,7 @@ class Events:
         character_level: bool
             Set to True when the stimulus AOIs are finer than words, e.g. one row per
             character. The AOIs are then aggregated to one location per word via the
-            'word' column, which must be present. (default: False)
+            stimulus' ``word_column``, which must be configured. (default: False)
         inplace: bool
             If ``True``, mutate this object and return None. If ``False``, return a new
             :py:class:`~pymovements.Events` object with corrected fixation locations,
@@ -1094,7 +2011,8 @@ class Events:
         ValueError
             If the trial or page column of the stimulus holds multiple unique values
             without being part of :py:attr:`~pymovements.Events.trial_columns`, as the
-            AOIs of all trials or pages would be pooled into a single text.
+            AOIs of all trials or pages would be pooled into a single text, or if
+            ``character_level`` is True but ``aois.word_column`` is None.
 
         Examples
         --------
@@ -1168,6 +2086,13 @@ class Events:
                     f'{column_kind}.',
                 )
 
+        if character_level and aois.word_column is None:
+            raise ValueError(
+                'character_level is True, but the TextStimulus has no word_column '
+                'configured. Set TextStimulus.word_column to the AOI column that groups '
+                'sub-word AOIs into words.',
+            )
+
         corrected_frame = fixation_correction.correct_fixations(
             self.frame,
             aois_frame,
@@ -1178,11 +2103,260 @@ class Events:
             algorithm_kwargs=algorithm_kwargs,
             fixation_name=fixation_name,
             character_level=character_level,
+            word_column=aois.word_column,
         )
+        # The corrected fixations are derived from the stimulus file as well.
         if inplace:
             self.frame = corrected_frame
+            self.metadata = merge_sources(self.metadata, aois.metadata)
             return None
-        return Events(corrected_frame, trial_columns=self.trial_columns)
+        return Events._rebuild(
+            corrected_frame,
+            trial_columns=self.trial_columns,
+            metadata=merge_sources(self.metadata, aois.metadata),
+        )
+
+    def measure_reading(
+            self,
+            stimulus: TextStimulus | dict[Any, TextStimulus],
+            *,
+            group_columns: list[str] | None = None,
+            word_index_column: str = 'word_idx',
+            word_column: str = 'word',
+            event_name: str = 'fixation',
+    ) -> ReadingMeasures:
+        """Compute word-level reading measures from the fixation events.
+
+        The fixations are mapped onto the AOIs of ``stimulus`` (see
+        :py:meth:`~pymovements.Events.map_to_aois`) and word-level reading measures are computed
+        from the resulting word indices (see
+        :func:`~pymovements.measure.reading.compute_reading_measures`). The events are not
+        modified. The mapping happens on an internal copy, and index columns from an earlier
+        mapping are replaced on that copy. The ``Sources`` entry of the returned measures lists
+        the sources of the events followed by those of the stimuli. Empty events return only
+        their own sources.
+
+        Parameters
+        ----------
+        stimulus : TextStimulus | dict[Any, TextStimulus]
+            Text stimulus defining the AOIs. Pass a dict mapping values of the first group column
+            to a separate stimulus per value when the events span several stimuli.
+        group_columns : list[str] | None
+            Column names used to partition the data into independent reading sequences. The first
+            column takes the trial role, the remaining columns take the page role. If ``None`` or
+            empty, the whole input is treated as a single reading sequence. Required if
+            ``stimulus`` is a dict, whose keys are the values of the first group column.
+            (default: None)
+        word_index_column : str
+            Shared column name in the mapped fixations and the stimulus AOIs that corresponds to
+            the word index of the text.
+            (default: ``'word_idx'``)
+        word_column : str
+            Column in the stimulus AOIs with the content within each AOI.
+            (default: ``'word'``)
+        event_name : str
+            Name of the fixation events to compute measures from. Rows with a different ``name``
+            are dropped. The name must start with ``fixation``, because the AOI mapping only maps
+            fixation rows (see :py:meth:`~pymovements.Events.map_to_aois`).
+            (default: ``'fixation'``)
+
+        Returns
+        -------
+        ReadingMeasures
+            Reading measures container with one row per word.
+
+        Raises
+        ------
+        ValueError
+            If ``stimulus`` is a dict and ``group_columns`` is empty, the dict is empty, the
+            events have no first group column, the keys cannot be cast to that column's dtype,
+            an entry's own sequence column differs from its key, or a sequence of the events has
+            no entry.
+
+        Warns
+        -----
+        UserWarning
+            If ``stimulus`` is a dict with a key that matches no fixation. Its words are kept in
+            the output with all measures zero and ``skipped`` set to 1. Also if a single
+            ``stimulus`` has no first group column while the events do, in which case its AOIs
+            are broadcast to every value of that column. Also if no fixation row carries
+            ``event_name``, for example a name without the ``fixation`` prefix, in which case all
+            measures are zero.
+
+        Examples
+        --------
+        Two fixations on a three-word stimulus, where the third word is never looked at:
+
+        >>> import polars
+        >>> import pymovements as pm
+        >>> events = pm.Events(
+        ...     polars.DataFrame({
+        ...         'name': ['fixation', 'fixation'],
+        ...         'onset': [0, 200],
+        ...         'offset': [200, 400],
+        ...         'location': [[15.0, 15.0], [25.0, 15.0]],
+        ...     }),
+        ... )
+        >>> stimulus = pm.stimulus.TextStimulus(
+        ...     aois=polars.DataFrame({
+        ...         'word': ['The', 'quick', 'brown'],
+        ...         'word_idx': [0, 1, 2],
+        ...         'start_x': [10.0, 20.0, 30.0],
+        ...         'start_y': [10.0, 10.0, 10.0],
+        ...         'end_x': [20.0, 30.0, 40.0],
+        ...         'end_y': [30.0, 30.0, 30.0],
+        ...     }),
+        ...     aoi_column='word',
+        ...     start_x_column='start_x',
+        ...     start_y_column='start_y',
+        ...     end_x_column='end_x',
+        ...     end_y_column='end_y',
+        ... )
+
+        The measures hold one row per word. The skipped word has a total fixation time of 0:
+
+        >>> measures = events.measure_reading(stimulus)
+        >>> measures.frame.select(['word_index', 'word', 'TFT', 'TFC', 'skipped'])
+        shape: (3, 5)
+        ┌────────────┬───────┬─────┬─────┬─────────┐
+        │ word_index ┆ word  ┆ TFT ┆ TFC ┆ skipped │
+        │ ---        ┆ ---   ┆ --- ┆ --- ┆ ---     │
+        │ i64        ┆ str   ┆ i64 ┆ u64 ┆ i64     │
+        ╞════════════╪═══════╪═════╪═════╪═════════╡
+        │ 0          ┆ The   ┆ 200 ┆ 1   ┆ 0       │
+        │ 1          ┆ quick ┆ 200 ┆ 1   ┆ 0       │
+        │ 2          ┆ brown ┆ 0   ┆ 0   ┆ 1       │
+        └────────────┴───────┴─────┴─────┴─────────┘
+        """
+        if self.frame.is_empty():
+            return ReadingMeasures(metadata=deepcopy(self.metadata))
+
+        # map_to_aois keeps columns the events already have, so a previous mapping would be
+        # reused. The index columns the measures consume are dropped from the working copy.
+        stale_columns = [
+            column for column in (word_index_column, 'char_idx') if column in self.frame.columns
+        ]
+        working_frame = self.frame.drop(stale_columns)
+
+        if isinstance(stimulus, dict):
+            stimuli = list(stimulus.values())
+            fixations, aois = self._map_to_reading_stimuli(
+                working_frame, stimulus, group_columns, word_index_column,
+            )
+        else:
+            stimuli = [stimulus]
+            mapped = Events._rebuild(
+                working_frame,
+                trial_columns=self.trial_columns,
+                metadata=self.metadata,
+            )
+            mapped.map_to_aois(stimulus)
+            fixations, aois = mapped.frame, stimulus.aois
+
+        # The measures are derived from the events and the stimulus files.
+        metadata = deepcopy(self.metadata)
+        for stim in stimuli:
+            metadata = merge_sources(metadata, stim.metadata)
+
+        return ReadingMeasures(
+            compute_reading_measures(
+                fixations,
+                aois,
+                word_index_column=word_index_column,
+                word_column=word_column,
+                event_name=event_name,
+                group_columns=group_columns,
+            ),
+            metadata=metadata,
+        )
+
+    def _map_to_reading_stimuli(
+            self,
+            frame: polars.DataFrame,
+            stimuli: dict[Any, TextStimulus],
+            group_columns: list[str] | None,
+            word_index_column: str,
+    ) -> tuple[polars.DataFrame, dict[Any, polars.DataFrame]]:
+        """Map each reading sequence to its own stimulus and collect the per-key AOI tables.
+
+        The events in ``frame`` are split by the first group column and the subset for each key
+        is mapped to the matching stimulus. Rows whose key has no stimulus entry pass through
+        unmapped. Returns the concatenated fixations and a dict of the per-key AOI tables for
+        :func:`~pymovements.measure.reading.compute_reading_measures`.
+        """
+        # The dict is keyed by the first group column (the trial role), matching
+        # compute_reading_measures.
+        if not group_columns:
+            raise ValueError(
+                'stimulus given as dict requires at least one group column for its keys, e.g. '
+                "group_columns=['trial'] when the dict is keyed by the trial column.",
+            )
+        sequence_column = group_columns[0]
+        if sequence_column not in frame.columns:
+            raise ValueError(
+                f'stimulus is a dict keyed by {sequence_column!r}, but the events have no '
+                f'{sequence_column!r} column.',
+            )
+
+        # The keys are compared with the column, so they are cast to its dtype once, the same
+        # way compute_reading_measures does it.
+        sequence_dtype = frame.schema[sequence_column]
+        try:
+            keys = polars.Series(sequence_column, list(stimuli)).cast(sequence_dtype)
+        except polars.exceptions.PolarsError as exception:
+            raise ValueError(
+                f'stimulus dict keys are not compatible with the fixation {sequence_column} '
+                f'dtype {sequence_dtype}: {exception}',
+            ) from exception
+
+        mapped_frames = []
+        aois = {}
+        for key, (original_key, stim) in zip(keys, stimuli.items()):
+            aois[original_key] = stim.aois
+            if sequence_column in stim.aois.columns:
+                # map_to_aois still filters the entry's AOIs by this column, so values other
+                # than the key would leave every fixation of the sequence unmatched. AOI rows
+                # with a null value are ignored by the mapping and by this check.
+                values = (
+                    stim.aois[sequence_column].drop_nulls().cast(sequence_dtype, strict=False)
+                    .unique().to_list()
+                )
+                if values != [key]:
+                    raise ValueError(
+                        f'stimulus for key {original_key!r} has {sequence_column} values '
+                        f'{values} that differ from its dict key.',
+                    )
+                # The dict key defines the sequence column, so it must not also live in the
+                # entry handed to compute_reading_measures.
+                aois[original_key] = stim.aois.drop(sequence_column)
+            subset = Events._rebuild(
+                frame.filter(polars.col(sequence_column) == key),
+                trial_columns=self.trial_columns,
+                metadata=self.metadata,
+            )
+            if subset.frame.is_empty():
+                continue
+            subset.map_to_aois(stim)
+            mapped_frames.append(subset.frame)
+
+        # Rows whose key has no stimulus entry pass through unmapped, so that
+        # compute_reading_measures raises its missing-key error instead of silently dropping them.
+        # is_in is null for a null key, which filter would drop. A null key is unmatched too.
+        unmatched = frame.filter(
+            ~polars.col(sequence_column).is_in(keys.implode()).fill_null(False),
+        )
+        if not unmatched.is_empty():
+            mapped_frames.append(unmatched)
+
+        # Different stimuli may contribute different AOI columns, so align on the column union.
+        fixations = polars.concat(mapped_frames, how='diagonal_relaxed')
+        if word_index_column not in fixations.columns:
+            # No key matched any row, so no mapping added the index column that
+            # compute_reading_measures reads before it raises its own error.
+            fixations = fixations.with_columns(
+                polars.lit(None, dtype=polars.Int64).alias(word_index_column),
+            )
+        return fixations, aois
 
     def __eq__(self, other: Events) -> bool:
         """Check equality between this and another :py:class:`~pymovements.Events` object."""
@@ -1197,6 +2371,35 @@ class Events:
     def __repr__(self) -> str:
         """Return string representation of event dataframe."""
         return self.__str__()
+
+    def summary(self) -> None:
+        """Print a summary of the events.
+
+        The summary shows the total number of events, followed by the event counts
+        grouped by event name in alphabetical order.
+
+        See Also
+        --------
+        pymovements.Gaze.summary : Print a summary of a gaze object.
+        pymovements.Dataset.summary : Print a summary of a dataset.
+
+        Examples
+        --------
+        >>> from pymovements import Events
+        >>> events = Events(name=['saccade', 'fixation'], onsets=[0, 1], offsets=[1, 2])
+        >>> events.summary()
+        total events: 2
+          fixation: 1
+          saccade: 1
+        """
+        lines = [f'total events: {len(self):,}']
+
+        if len(self):
+            name_counts = self.frame['name'].value_counts().sort('name')
+            for name, count in name_counts.iter_rows():
+                lines.append(f'  {name}: {count:,}')
+
+        print('\n'.join(lines))
 
     def merge_subsequent_close_events(
             self,
@@ -1234,13 +2437,13 @@ class Events:
         >>> events.merge_subsequent_close_events(name='fixation', max_gap=10)
         >>> events.frame
         shape: (1, 4)
-        ┌──────────┬──────────────┬──────────────┬──────────────┐
-        │ name     ┆ onset        ┆ offset       ┆ duration     │
-        │ ---      ┆ ---          ┆ ---          ┆ ---          │
-        │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
-        ╞══════════╪══════════════╪══════════════╪══════════════╡
-        │ fixation ┆ 0µs          ┆ 90ms         ┆ 90ms         │
-        └──────────┴──────────────┴──────────────┴──────────────┘
+        ┌──────────────┬──────────────┬──────────┬──────────────┐
+        │ onset        ┆ duration     ┆ name     ┆ offset       │
+        │ ---          ┆ ---          ┆ ---      ┆ ---          │
+        │ duration[μs] ┆ duration[μs] ┆ str      ┆ duration[μs] │
+        ╞══════════════╪══════════════╪══════════╪══════════════╡
+        │ 0µs          ┆ 90ms         ┆ fixation ┆ 90ms         │
+        └──────────────┴──────────────┴──────────┴──────────────┘
 
         This combined all the smaller events into a single event with longer duration.
 
@@ -1252,8 +2455,13 @@ class Events:
 
         number_of_events = len(events)
 
-        # Step 2: Calculate the gap between the current onset and the previous offset
-        events = events.with_columns(gap=polars.col('onset') - polars.col('offset').shift(1))
+        # Step 2: Calculate the gap between the current onset and the previous offset. Without an
+        # offset column the previous event ends at its onset plus its duration.
+        has_offset = 'offset' in events.columns
+        previous_end = (
+            polars.col('offset') if has_offset else polars.col('onset') + polars.col('duration')
+        )
+        events = events.with_columns(gap=polars.col('onset') - previous_end.shift(1))
 
         # Step 3: Create a 'group' identifier for merging
         events = events.with_columns(
@@ -1277,10 +2485,13 @@ class Events:
             # all columns from the first group element except offset and duration
             polars.exclude(['offset', 'duration']).first(),
             # the offset of the merged event is the last offset in the group
-            polars.col('offset').last().alias('offset'),
+            *([polars.col('offset').last().alias('offset')] if has_offset else []),
+            # the merged event lasts from the first onset to the end of the last event in the group
+            (
+                polars.col('onset').last() + polars.col('duration').last()
+                - polars.col('onset').first()
+            ).alias('duration'),
         ]).drop(['group', 'gap'])  # we don't need the group and gap columns anymore
-        # the duration of the merged event is the last offset minus the first onset in the group
-        events = events.with_columns(duration().alias('duration'))
 
         # Step 5: concatenate new events
         events = events.select(self.frame.columns)  # reorder columns to match original frame
@@ -1291,3 +2502,60 @@ class Events:
                 f"Merged {number_of_events} '{name}' events "
                 f'into {len(events)} events with max_gap={max_gap} ms.',
             )
+
+
+def _carry_detected_entries(events: Events, detected: Events) -> None:
+    """Carry the metadata entries of detected events into the metadata of existing events.
+
+    An entry absent from the metadata of ``events`` is copied, an equal entry is left alone,
+    and a differing sampling-rate entry or offset convention entry raises, since one events
+    frame holds one sampling grid and one convention per offset column. An offset column of
+    ``events`` without a convention entry raises as well: the detected convention would declare
+    rows that were never declared. Every entry is checked before any is copied, so a raise
+    leaves the metadata of ``events`` as it was. Keys that are no entry, such as the sources,
+    are left untouched on both sides.
+
+    Parameters
+    ----------
+    events: Events
+        The existing events, their metadata is updated in place.
+    detected: Events
+        The detected events.
+
+    Raises
+    ------
+    ValueError
+        If the sampling rate or an offset convention of the detected events differs from the
+        entry stored in the metadata of ``events``, or if ``events`` has an undeclared offset
+        column that the detected events declare.
+    """
+    metadata = events.metadata
+    carried: dict[str, Any] = {}
+    for key, value in detected.metadata.items():
+        if key == 'sampling_rate':
+            if key not in metadata:
+                carried[key] = value
+            elif metadata[key] != value:
+                raise ValueError(
+                    f'detected events have sampling_rate={value!r}, but the existing events '
+                    f"carry metadata['{key}'] = {metadata[key]!r}. "
+                    'Call detect(clear=True) to replace the existing events.',
+                )
+        elif isinstance(value, dict) and value.get('inclusive') is not None:
+            existing = metadata.get(key)
+            if key not in metadata:
+                if key in events.frame.columns:
+                    raise ValueError(
+                        f"detected events declare metadata['{key}'] = {value!r}, but the "
+                        f"existing events carry an undeclared '{key}' column. Declare it, for "
+                        f"the 'offset' column with offsets_inclusive=, or call "
+                        'detect(clear=True) to replace the existing events.',
+                    )
+                carried[key] = dict(value)
+            elif not isinstance(existing, dict) or existing.get('inclusive') != value['inclusive']:
+                raise ValueError(
+                    f"detected events declare metadata['{key}'] = {value!r}, but the existing "
+                    f"events carry metadata['{key}'] = {metadata[key]!r}. "
+                    'Call detect(clear=True) to replace the existing events.',
+                )
+    metadata.update(carried)

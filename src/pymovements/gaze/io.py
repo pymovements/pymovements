@@ -28,9 +28,10 @@ from typing import IO
 
 import polars as pl
 
+from pymovements._utils.sources import add_source
 from pymovements.events.events import Events
-from pymovements.gaze._utils._parsing_begaze import parse_begaze
-from pymovements.gaze._utils._parsing_eyelink import parse_eyelink
+from pymovements.gaze._utils.parsing_begaze import parse_begaze
+from pymovements.gaze._utils.parsing_eyelink import parse_eyelink
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
 
@@ -121,7 +122,10 @@ def from_csv(
         .. versionchanged:: 0.29.0
             The loaded columns follow the order of ``columns`` instead of the file order.
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. (default: None)
+        Dictionary containing additional metadata. When ``file`` is a path, a ``Sources``
+        entry holding the path as given is added unless already present. When reloading a
+        file previously saved with :py:meth:`~pymovements.Gaze.save`, the reloaded file
+        itself is recorded, not the sources of the original data. (default: None)
     **kwargs: Any
         Additional keyword arguments to be passed to :py:func:`polars.read_csv` to read in the csv.
         These can include custom separators, a subset of columns, or specific data types
@@ -319,7 +323,7 @@ def from_csv(
         acceleration_columns=acceleration_columns,
         distance_column=distance_column,
         auto_column_detect=auto_column_detect,
-        metadata=metadata,
+        metadata=add_source(metadata, file),
     )
     return gaze
 
@@ -328,7 +332,7 @@ def metadata_to_cal_frame(metadata: dict[str, Any]) -> pl.DataFrame:
     """Convert and consume EyeLink calibration metadata to a DataFrame.
 
     Pops the 'calibrations' key from the metadata dict and returns a DataFrame with schema:
-    time(f64), num_points(i64), eye(utf8), tracking_mode(utf8).
+    time(f64), num_points(i64), eye(utf8), tracking_mode(utf8), grade(utf8).
     """
     cal_items = metadata.pop('calibrations', []) or []
     if cal_items:
@@ -343,6 +347,7 @@ def metadata_to_cal_frame(metadata: dict[str, Any]) -> pl.DataFrame:
                     'right' if (item.get('tracked_eye') or '').upper() == 'RIGHT' else None
                 ),
                 'tracking_mode': item.get('type') if item.get('type') not in (None, '') else None,
+                'grade': item.get('grade') if item.get('grade') not in (None, '') else None,
             }
             for item in cal_items
         ]).with_columns([
@@ -350,6 +355,7 @@ def metadata_to_cal_frame(metadata: dict[str, Any]) -> pl.DataFrame:
             pl.col('num_points').cast(pl.Int64),
             pl.col('eye').cast(pl.Utf8),
             pl.col('tracking_mode').cast(pl.Utf8),
+            pl.col('grade').cast(pl.Utf8),
         ])
     return pl.DataFrame(
         schema={
@@ -357,6 +363,7 @@ def metadata_to_cal_frame(metadata: dict[str, Any]) -> pl.DataFrame:
             'num_points': pl.Int64,
             'eye': pl.Utf8,
             'tracking_mode': pl.Utf8,
+            'grade': pl.Utf8,
         },
     )
 
@@ -365,7 +372,7 @@ def metadata_to_val_frame(metadata: dict[str, Any]) -> pl.DataFrame:
     """Convert and consume EyeLink validation metadata to a DataFrame.
 
     Pops the 'validations' key from the metadata dict and returns a DataFrame with schema:
-    time(f64), num_points(i64), eye(utf8), accuracy_avg(f64), accuracy_max(f64).
+    time(f64), num_points(i64), eye(utf8), accuracy_avg(f64), accuracy_max(f64), grade(utf8).
     """
     val_items = metadata.pop('validations', []) or []
     if val_items:
@@ -383,6 +390,7 @@ def metadata_to_val_frame(metadata: dict[str, Any]) -> pl.DataFrame:
                 item.get('validation_score_avg') not in (None, '') else None,
                 'accuracy_max': float(item.get('validation_score_max')) if
                 item.get('validation_score_max') not in (None, '') else None,
+                'grade': item.get('grade') if item.get('grade') not in (None, '') else None,
             }
             for item in val_items
         ]).with_columns([
@@ -391,6 +399,7 @@ def metadata_to_val_frame(metadata: dict[str, Any]) -> pl.DataFrame:
             pl.col('eye').cast(pl.Utf8),
             pl.col('accuracy_avg').cast(pl.Float64),
             pl.col('accuracy_max').cast(pl.Float64),
+            pl.col('grade').cast(pl.Utf8),
         ])
     return pl.DataFrame(
         schema={
@@ -399,6 +408,7 @@ def metadata_to_val_frame(metadata: dict[str, Any]) -> pl.DataFrame:
             'eye': pl.Utf8,
             'accuracy_avg': pl.Float64,
             'accuracy_max': pl.Float64,
+            'grade': pl.Utf8,
         },
     )
 
@@ -460,15 +470,16 @@ def from_asc(
     messages: bool | list[str]
         Flag indicating if any additional messages should be parsed from the asc file
         and stored in :py:class:`pymovements.gaze.experiment.Experiment`.
-        The message format is 'MSG <timestamp> <content>'.
+        The message format is 'MSG <timestamp> [offset] <content>', see Notes.
         If True, all available messages will be parsed from the asc,
         alternatively, a list of regular expressions can be passed, and only the
         messages that match any of the regular expressions will be kept.
         Regular expressions are only applied to the message content,
-        implicitly parsing the `MSG <timestamp>` prefix.
+        implicitly parsing the `MSG <timestamp> [offset]` prefix.
         (default: False)
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. (default: None)
+        Dictionary containing additional metadata. When ``file`` is a path, a ``Sources``
+        entry holding the path as given is added unless already present. (default: None)
     extend_resolution: bool | None
         Extend the parsed screen resolution by 1 pixel if ``True``.
         If ``None``, the resolution is extended by 1 pixel unless the file was recorded by
@@ -525,6 +536,32 @@ def from_asc(
     Using other ``edf2asc`` parameters may lead to errors or unexpected behavior. For example, using
     ``-e`` or ``-ns`` to output only events or ``-s`` or ``-ne`` to only output samples will not
     work with this function, as it expects both samples and events to be present in the ASC file.
+
+    A file whose tracked eye changes between recording blocks, for example a monocular left block
+    followed by a monocular right block, is loaded in the binocular four-channel layout. Each
+    sample holds the data of the eye tracked at that time and null for the other eye. The
+    experiment's eye tracker then reports both eyes as tracked, the same as for a simultaneous
+    binocular recording. Per-recording metadata that tells the two cases apart is planned in
+    `issue 1663 <https://github.com/pymovements/pymovements/issues/1663>`_.
+
+    Message lines can carry a timestamp offset, ``MSG <timestamp> [offset] <text>``. The offset is
+    a signed integer in milliseconds, and the message refers to an event at ``timestamp - offset``.
+    The parsed message time is this corrected time, and messages are sorted by it. Calibrations and
+    validations parsed from message lines also carry the corrected time. The offset is
+    removed from the content, so ``patterns`` and ``metadata_patterns`` match the text without it.
+
+    ==============================  ==========  ===============
+    Line                            Time        Content
+    ==============================  ==========  ===============
+    ``MSG 456119 -10 TRIAL 1``      456129      ``TRIAL 1``
+    ``MSG 1000 12``                 1000        ``12``
+    ``MSG 1000 3 trials left``      997         ``trials left``
+    ==============================  ==========  ===============
+
+    A leading integer counts as an offset only if more text follows. Message text that starts with
+    an integer followed by more text is therefore misread, as in the last row. If an offset is
+    larger than its timestamp, the corrected time is negative and a warning is raised. Columns
+    added by ``patterns`` change at the message's line in the file, not at its corrected time.
 
     Examples
     --------
@@ -622,16 +659,21 @@ def from_asc(
     calibrations = metadata_to_cal_frame(parsed_metadata)
     validations = metadata_to_val_frame(parsed_metadata)
 
+    # Interim: EyeLink end timestamps are the last sample of an event, but the durations stay
+    # end - start, one sampling interval short of that convention, so they are kept unchecked.
+    # This goes away once the parser takes the reported DUR as the duration.
+    event_data = event_data.with_columns((pl.col('offset') - pl.col('onset')).alias('duration'))
+
     gaze = Gaze(
         samples=samples,
         experiment=experiment,
-        events=Events(event_data) if events else None,
+        events=Events(event_data, offsets_inclusive=True, validate=False) if events else None,
         messages=messages_df,
         trial_columns=trial_columns,
         time_column='time',
         time_unit='ms',
         pixel_columns=detected_pixel_columns,
-        metadata=metadata,
+        metadata=add_source(metadata, file),
         calibrations=calibrations,
         validations=validations,
     )
@@ -680,7 +722,10 @@ def from_ipc(
     read_ipc_kwargs: dict[str, Any] | None
             Additional keyword arguments to be passed to :py:func:`polars.read_ipc`. (default: None)
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. (default: None)
+        Dictionary containing additional metadata. When ``file`` is a path, a ``Sources``
+        entry holding the path as given is added unless already present. When reloading a
+        file previously saved with :py:meth:`~pymovements.Gaze.save`, the reloaded file
+        itself is recorded, not the sources of the original data. (default: None)
     **kwargs: Any
             Additional keyword arguments to be passed to :py:func:`polars.read_ipc`.
 
@@ -760,7 +805,7 @@ def from_ipc(
         samples=samples,
         experiment=experiment,
         trial_columns=trial_columns,
-        metadata=metadata,
+        metadata=add_source(metadata, file),
     )
     return gaze
 
@@ -980,7 +1025,8 @@ def from_begaze(
     prefer_eye: str
         Preferred eye to parse when both eyes are present ("L" or "R"). Defaults to "L".
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. (default: None)
+        Dictionary containing additional metadata. Unless already present, a ``Sources``
+        entry holding ``file`` as given is added. (default: None)
 
     Returns
     -------
@@ -1035,6 +1081,6 @@ def from_begaze(
         time_column='time',
         time_unit='ms',
         pixel_columns=detected_pixel_columns,
-        metadata=metadata,
+        metadata=add_source(metadata, file),
     )
     return gaze
