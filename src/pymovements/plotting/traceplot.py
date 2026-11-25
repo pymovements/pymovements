@@ -23,8 +23,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from warnings import warn
 
-import matplotlib.pyplot as plt
-import matplotlib.scale
 import numpy as np
 
 from pymovements.plotting._matplotlib import _draw_line_data
@@ -33,6 +31,9 @@ from pymovements.plotting._matplotlib import _setup_axes_and_colormap
 from pymovements.plotting._matplotlib import LinearSegmentedColormapType
 
 if TYPE_CHECKING:
+    import matplotlib.colors
+    import matplotlib.pyplot as plt
+
     from pymovements.gaze.gaze import Gaze
 
 
@@ -63,7 +64,9 @@ def traceplot(
     gaze: Gaze
         The Gaze to plot.
     position_column: str
-        The column name of the x and y position data (default: 'pixel')
+        The column name of the x and y position data. Only a column named ``'pixel'`` gets the
+        screen's pixel extent as axes limits, for other columns the limits follow the padded data
+        range. (default: 'pixel')
     cval: np.ndarray | None
         Line color values. (default: None)
     cmap: matplotlib.colors.Colormap | None
@@ -170,6 +173,7 @@ def traceplot(
             gaze.experiment.screen.width_px,
             gaze.experiment.screen.height_px,
             gaze.experiment.screen.origin,
+            position_column=position_column,
             func_name='traceplot',
         )
 

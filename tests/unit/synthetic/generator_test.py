@@ -21,6 +21,9 @@
 import dataclasses
 import inspect
 import json
+import math
+from typing import Annotated
+from typing import ClassVar
 
 import numpy as np
 import pytest
@@ -266,6 +269,14 @@ def test_sample_generator_requires_a_sampling_rate(noise_sample_generator):
             id='zero_sampling_rate_raises_value_error',
         ),
         pytest.param(
+            math.nan, ValueError, ('sampling_rate', 'finite', 'nan'),
+            id='nan_sampling_rate_raises_value_error',
+        ),
+        pytest.param(
+            math.inf, ValueError, ('sampling_rate', 'finite', 'inf'),
+            id='infinite_sampling_rate_raises_value_error',
+        ),
+        pytest.param(
             '1000', TypeError, ('sampling_rate', 'number', 'str'),
             id='string_sampling_rate_raises_type_error',
         ),
@@ -437,6 +448,51 @@ class _AnnotatedNameGenerator(_NeverGenerates):
     name: str = 'annotated'  # type: ignore[misc]
 
 
+@dataclasses.dataclass
+class _DecoratedGenerator(_NeverGenerates):
+    name = 'decorated'
+
+    scale: float = 1.0
+
+
+class _NewFieldGenerator(_DecoratedGenerator):
+    extra: float = 2.0
+
+
+class _NewDefaultGenerator(_DecoratedGenerator):
+    scale: float = 5.0
+
+
+@dataclasses.dataclass
+class _DecoratedOnUndecoratedGenerator(_NewFieldGenerator):
+    other: float = 3.0
+
+
+class _UndecoratedLevelBase(_NeverGenerates):
+    extra: float = 2.0
+
+
+@dataclasses.dataclass
+class _DecoratedOnLevelBaseGenerator(_UndecoratedLevelBase):
+    name = 'decorated_on_level_base'
+
+
+class ClassVariant:
+    pass
+
+
+class _ClassVarInTypeNameGenerator(_DecoratedGenerator):
+    variant: ClassVariant = ClassVariant()
+
+
+class _ClassVarInAnnotatedGenerator(_DecoratedGenerator):
+    extra: Annotated[float, 'ClassVar'] = 2.0
+
+
+class _AnnotatedMixin:
+    cache: dict
+
+
 @pytest.mark.parametrize(
     ('generator_class', 'msg_substrings'),
     [
@@ -460,6 +516,36 @@ class _AnnotatedNameGenerator(_NeverGenerates):
             ('_AnnotatedNameGenerator', "'name'", 'annotation', 'hyperparameter'),
             id='name_declared_as_a_field',
         ),
+        pytest.param(
+            _NewFieldGenerator,
+            ('_NewFieldGenerator', "'extra'", '@dataclasses.dataclass'),
+            id='new_field_without_the_decorator',
+        ),
+        pytest.param(
+            _NewDefaultGenerator,
+            ('_NewDefaultGenerator', "'scale'", '@dataclasses.dataclass'),
+            id='new_default_without_the_decorator',
+        ),
+        pytest.param(
+            _DecoratedOnUndecoratedGenerator,
+            ('_NewFieldGenerator', "'extra'", '@dataclasses.dataclass'),
+            id='field_of_an_undecorated_base',
+        ),
+        pytest.param(
+            _DecoratedOnLevelBaseGenerator,
+            ('_UndecoratedLevelBase', "'extra'", '@dataclasses.dataclass'),
+            id='field_of_an_undecorated_base_of_the_level',
+        ),
+        pytest.param(
+            _ClassVarInTypeNameGenerator,
+            ('_ClassVarInTypeNameGenerator', "'variant'", '@dataclasses.dataclass'),
+            id='class_var_in_the_type_name',
+        ),
+        pytest.param(
+            _ClassVarInAnnotatedGenerator,
+            ('_ClassVarInAnnotatedGenerator', "'extra'", '@dataclasses.dataclass'),
+            id='class_var_in_annotated_metadata',
+        ),
     ],
 )
 def test_generate_rejects_a_generator_class_that_cannot_be_recorded(
@@ -480,6 +566,61 @@ def test_to_dict_rejects_a_generator_that_is_no_dataclass():
     msg, = excinfo.value.args
     for msg_substring in ('_PlainGenerator', 'dataclass'):
         assert msg_substring in msg
+
+
+@pytest.mark.parametrize(('generator', 'init', 'run'), LEVELS)
+def test_generate_rejects_a_field_without_the_decorator(request, generator, init, run):
+    """A dataclass base hides the missing decorator, so the field would go unrecorded."""
+    class UndecoratedGenerator(request.getfixturevalue(generator)):
+        extra: float = 2.0
+
+    with pytest.raises(TypeError) as excinfo:
+        UndecoratedGenerator(**init).generate(seed=42, **run)
+
+    msg, = excinfo.value.args
+    for msg_substring in ('UndecoratedGenerator', "'extra'", '@dataclasses.dataclass'):
+        assert msg_substring in msg
+
+
+def test_to_dict_rejects_a_field_without_the_decorator():
+    with pytest.raises(TypeError) as excinfo:
+        _NewFieldGenerator().to_dict()
+
+    msg, = excinfo.value.args
+    for msg_substring in ('_NewFieldGenerator', "'extra'", '@dataclasses.dataclass'):
+        assert msg_substring in msg
+
+
+@pytest.mark.parametrize(('generator', 'init', 'run'), LEVELS)
+def test_annotation_of_a_plain_mixin_is_no_field(request, generator, init, run):
+    """A mixin is no generator, and dataclasses read no fields from it."""
+    base_class = request.getfixturevalue(generator)
+
+    @dataclasses.dataclass
+    class MixedGenerator(_AnnotatedMixin, base_class):
+        pass
+
+    expected = base_class(**init).generate(seed=42, **run)
+
+    generated = MixedGenerator(**init).generate(seed=42, **run)
+
+    assert generated.metadata == expected.metadata
+
+
+@pytest.mark.parametrize(('generator', 'init', 'run'), LEVELS)
+def test_subclass_without_new_fields_needs_no_decorator(request, generator, init, run):
+    """Adding a class variable leaves the fields as they are, so no decorator is needed."""
+    base_class = request.getfixturevalue(generator)
+
+    class UndecoratedGenerator(base_class):
+        marker: ClassVar[str] = 'plain'
+        quoted_marker: 'ClassVar[str]' = 'quoted'
+
+    expected = base_class(**init).generate(seed=42, **run)
+
+    generated = UndecoratedGenerator(**init).generate(seed=42, **run)
+
+    assert generated.metadata == expected.metadata
 
 
 @pytest.mark.parametrize(

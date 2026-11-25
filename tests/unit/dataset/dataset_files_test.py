@@ -22,8 +22,10 @@
 # pylint: disable=duplicate-code
 from __future__ import annotations
 
+import importlib.metadata
 import re
 import shutil
+import sys
 from pathlib import Path
 
 import polars as pl
@@ -1030,6 +1032,123 @@ def test_load_precomputed_rm_file_xlsx(target_filename, make_example_file):
     assert_frame_equal(reading_measure.frame, expected_df, check_column_order=True)
 
 
+@pytest.mark.parametrize(
+    ('filename', 'content', 'load_kwargs', 'load_function', 'missing_module'),
+    [
+        pytest.param(
+            'rda_test_file.rda',
+            'precomputed_reading_measures',
+            {'r_dataframe_key': 'joint.fix'},
+            load_precomputed_reading_measure_file,
+            'pyreadr',
+            id='reading_measures_rda',
+        ),
+        pytest.param(
+            'Sentences.xlsx',
+            'precomputed_reading_measures',
+            {'sheet_name': 'Sheet 1'},
+            load_precomputed_reading_measure_file,
+            'fastexcel',
+            id='reading_measures_xlsx',
+        ),
+        pytest.param(
+            'rda_test_file.rda',
+            'precomputed_events',
+            {'r_dataframe_key': 'joint.fix'},
+            load_precomputed_event_file,
+            'pyreadr',
+            id='events_rda',
+        ),
+    ],
+)
+def test_load_precomputed_file_missing_optional_dependency_raises_install_hint(
+        filename, content, load_kwargs, load_function, missing_module, make_example_file,
+        monkeypatch,
+):
+    filepath = make_example_file(filename)
+    resource_definition = ResourceDefinition(content=content, load_kwargs=load_kwargs)
+    file = DatasetFile(path=filepath, definition=resource_definition)
+    monkeypatch.setitem(sys.modules, missing_module, None)
+
+    with pytest.raises(ImportError, match=re.escape("pip install 'pymovements[datasets]'")):
+        load_function(file, dataset_definition=DatasetDefinition())
+
+
+@pytest.mark.parametrize(
+    'installed_version',
+    [
+        pytest.param('0.4.9', id='older_minor'),
+        pytest.param('0.5.1', id='older_patch'),
+        pytest.param('0.5.1.post1', id='older_patch_with_suffix'),
+    ],
+)
+def test_load_precomputed_rm_file_rda_outdated_pyreadr_raises_upgrade_hint(
+        installed_version, make_example_file, monkeypatch,
+):
+    filepath = make_example_file('rda_test_file.rda')
+    resource_definition = ResourceDefinition(
+        content='precomputed_reading_measures',
+        load_kwargs={'r_dataframe_key': 'joint.fix'},
+    )
+    file = DatasetFile(path=filepath, definition=resource_definition)
+    monkeypatch.setattr(importlib.metadata, 'version', lambda name: installed_version)
+
+    expected_message = (
+        "pymovements requires 'pyreadr>=0.5.2' "
+        f"(version '{installed_version}' is installed). "
+        "Upgrade it with: pip install --upgrade 'pymovements[datasets]'"
+    )
+    with pytest.raises(ImportError, match=re.escape(expected_message)):
+        load_precomputed_reading_measure_file(file, dataset_definition=DatasetDefinition())
+
+
+@pytest.mark.parametrize(
+    'installed_version',
+    [
+        pytest.param('0.5.2', id='equal'),
+        pytest.param('0.5.10', id='newer_patch_two_digits'),
+        pytest.param('1.0.0rc1', id='newer_major_prerelease'),
+    ],
+)
+def test_load_precomputed_rm_file_rda_recent_pyreadr_loads(
+        installed_version, make_example_file, monkeypatch,
+):
+    filepath = make_example_file('rda_test_file.rda')
+    resource_definition = ResourceDefinition(
+        content='precomputed_reading_measures',
+        load_kwargs={'r_dataframe_key': 'joint.fix'},
+    )
+    file = DatasetFile(path=filepath, definition=resource_definition)
+    monkeypatch.setattr(importlib.metadata, 'version', lambda name: installed_version)
+
+    reading_measure = load_precomputed_reading_measure_file(
+        file, dataset_definition=DatasetDefinition(),
+    )
+
+    expected_df = pl.DataFrame(pyreadr.read_r(filepath)['joint.fix'])
+    assert_frame_equal(reading_measure.frame, expected_df)
+
+
+def test_load_precomputed_rm_file_xlsx_other_engine_does_not_require_fastexcel(
+        make_example_file, monkeypatch,
+):
+    filepath = make_example_file('Sentences.xlsx')
+    resource_definition = ResourceDefinition(
+        content='precomputed_reading_measures',
+        load_kwargs={'read_excel_kwargs': {'engine': 'openpyxl'}},
+    )
+    file = DatasetFile(path=filepath, definition=resource_definition)
+    monkeypatch.setitem(sys.modules, 'fastexcel', None)
+    expected_df = pl.DataFrame({'a': [1]})
+    monkeypatch.setattr(pl, 'read_excel', lambda path, **kwargs: expected_df)
+
+    reading_measure = load_precomputed_reading_measure_file(
+        file, dataset_definition=DatasetDefinition(),
+    )
+
+    assert_frame_equal(reading_measure.frame, expected_df)
+
+
 def test_load_precomputed_rm_file_unsupported_file_format(make_example_file):
     filepath = make_example_file('binocular_example.feather')
     resource_definition = ResourceDefinition(content='precomputed_events')
@@ -1582,7 +1701,7 @@ def test_load_event_files_adds_relative_sources(tmp_path):
     ]
     paths = DatasetPaths(root=tmp_path, dataset='.')
 
-    events_list = load_event_files(files, paths, verbose=False)
+    events_list = load_event_files(DatasetDefinition(), files, paths, verbose=False)
 
     assert events_list[0].metadata == {
         'subject_id': 1,
@@ -1610,7 +1729,7 @@ def test_load_event_files_keeps_user_sources_list_unmutated(tmp_path):
     ]
     paths = DatasetPaths(root=tmp_path, dataset='.')
 
-    events_list = load_event_files(files, paths, verbose=False)
+    events_list = load_event_files(DatasetDefinition(), files, paths, verbose=False)
 
     # The user-supplied entry is respected and recorded relative to the dataset root.
     assert events_list[0].metadata == {'Sources': ['events/sub_1.feather']}
@@ -1637,7 +1756,7 @@ def test_load_event_files_relativizes_relative_user_source(tmp_path, monkeypatch
     ]
     paths = DatasetPaths(root=tmp_path, dataset='.')
 
-    events_list = load_event_files(files, paths, verbose=False)
+    events_list = load_event_files(DatasetDefinition(), files, paths, verbose=False)
 
     # The relative entry is anchored at the working directory and then made root-relative.
     assert events_list[0].metadata == {'Sources': ['events/sub_1.feather']}
@@ -1659,11 +1778,133 @@ def test_load_event_files_respects_empty_user_sources(tmp_path):
     ]
     paths = DatasetPaths(root=tmp_path, dataset='.')
 
-    events_list = load_event_files(files, paths, verbose=False)
+    events_list = load_event_files(DatasetDefinition(), files, paths, verbose=False)
 
     # An explicitly empty user-provided Sources entry expresses that no source shall be
     # recorded. Neither source recording nor relativization touches it.
     assert events_list[0].metadata == {'Sources': []}
+
+
+def write_legacy_event_file(tmp_path):
+    """Save one event file with duration == offset - onset per row at 1000 Hz.
+
+    Returns the files and paths that load it.
+    """
+    events_dirpath = tmp_path / 'events'
+    events_dirpath.mkdir()
+    events_df = pl.DataFrame(
+        {
+            'onset': [0, 10_000],
+            'duration': [5_000, 7_000],
+            'name': ['saccade', 'fixation'],
+            'offset': [5_000, 17_000],
+        },
+        schema={
+            'onset': pl.Duration('us'),
+            'duration': pl.Duration('us'),
+            'name': pl.String,
+            'offset': pl.Duration('us'),
+        },
+    )
+    events_df.write_ipc(events_dirpath / 'sub_1.feather')
+
+    files = [
+        DatasetFile(
+            path=tmp_path / 'raw' / 'sub_1.csv',
+            definition=ResourceDefinition(content='gaze'),
+        ),
+    ]
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+    return files, paths
+
+
+def test_load_event_files_writes_sampling_rate_from_experiment(tmp_path):
+    files, paths = write_legacy_event_file(tmp_path)
+    definition = DatasetDefinition(experiment=Experiment(sampling_rate=1000))
+
+    events_list = load_event_files(definition, files, paths, verbose=False)
+
+    assert events_list[0].metadata['sampling_rate'] == 1000
+
+
+@pytest.mark.parametrize(
+    'experiment',
+    [
+        pytest.param(None, id='no_experiment'),
+        pytest.param(Experiment(sampling_rate=None), id='no_rate'),
+    ],
+)
+class TestLoadEventFilesWithoutExperimentRate:
+    def test_writes_no_sampling_rate(self, tmp_path, experiment):
+        files, paths = write_legacy_event_file(tmp_path)
+        definition = DatasetDefinition(experiment=experiment)
+
+        events_list = load_event_files(definition, files, paths, verbose=False)
+
+        assert 'sampling_rate' not in events_list[0].metadata
+
+    def test_migration_raises(self, tmp_path, experiment):
+        files, paths = write_legacy_event_file(tmp_path)
+        definition = DatasetDefinition(experiment=experiment)
+
+        with pytest.raises(ValueError, match='requires a sampling_rate'):
+            load_event_files(
+                definition, files, paths, verbose=False,
+                offsets_inclusive=True, durations_from_offsets=True,
+            )
+
+
+def test_load_event_files_raises_on_sampling_rate_conflict(tmp_path):
+    files, paths = write_legacy_event_file(tmp_path)
+    files[0].metadata['sampling_rate'] = 500
+    definition = DatasetDefinition(experiment=Experiment(sampling_rate=1000))
+
+    with pytest.raises(ValueError, match='differs from the metadata entry'):
+        load_event_files(definition, files, paths, verbose=False)
+
+
+@pytest.mark.parametrize(
+    ('kwargs', 'expected_offset_entry', 'expected_durations'),
+    [
+        pytest.param(
+            {'offsets_inclusive': False},
+            {'inclusive': False},
+            [5_000, 7_000],
+            id='offsets_inclusive',
+        ),
+        pytest.param(
+            {'offsets_inclusive': True, 'durations_from_offsets': True},
+            {'inclusive': True},
+            [6_000, 8_000],
+            id='durations_from_offsets',
+        ),
+        pytest.param(
+            {'offsets_inclusive': True, 'validate': False},
+            {'inclusive': True},
+            [5_000, 7_000],
+            id='validate',
+        ),
+    ],
+)
+def test_load_event_files_forwards_keywords(
+        tmp_path, kwargs, expected_offset_entry, expected_durations,
+):
+    files, paths = write_legacy_event_file(tmp_path)
+    definition = DatasetDefinition(experiment=Experiment(sampling_rate=1000))
+
+    events_list = load_event_files(definition, files, paths, verbose=False, **kwargs)
+
+    assert events_list[0].metadata['offset'] == expected_offset_entry
+    durations = events_list[0].frame['duration'].dt.total_microseconds().to_list()
+    assert durations == expected_durations
+
+
+def test_load_event_files_validates_by_default(tmp_path):
+    files, paths = write_legacy_event_file(tmp_path)
+    definition = DatasetDefinition(experiment=Experiment(sampling_rate=1000))
+
+    with pytest.raises(ValueError, match='every row contradicts offsets_inclusive=True'):
+        load_event_files(definition, files, paths, verbose=False, offsets_inclusive=True)
 
 
 @pytest.mark.parametrize(

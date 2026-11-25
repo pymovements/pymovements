@@ -239,6 +239,9 @@ suppress_warnings = [
     'myst.header',
 ]
 
+# sphinx-design 0.8.0 deprecated the '^^^'/'+++' card separators.
+sd_card_legacy_separators = False
+
 
 copybutton_prompt_text = r'>>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: '
 copybutton_prompt_is_regexp = True
@@ -308,7 +311,7 @@ nitpick_ignore_regex = [
     ),
 
     # Project-internal typing aliases used only in docs
-    (r'py:class', r'^(?:DatasetDefinitionClass|SampleMeasure|GeneratorT|OutputT)$'),
+    (r'py:class', r'^(?:DatasetDefinitionClass|SampleMeasure|GeneratorT|OutputT|RangeLike)$'),
     # Fully-qualified generic forms that appear in docstrings
     (
         r'py:class', r'^pymovements\.(?:dataset\.dataset_library\.'

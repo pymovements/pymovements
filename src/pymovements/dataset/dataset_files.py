@@ -30,9 +30,9 @@ from typing import Any
 from warnings import warn
 
 import polars as pl
-import pyreadr
 from tqdm.auto import tqdm
 
+from pymovements._utils.optional import import_optional_dependency
 from pymovements._utils.paths import match_filepaths
 from pymovements._utils.sources import add_source
 from pymovements._utils.sources import relativize_sources
@@ -188,16 +188,27 @@ def scan_dataset(
 
 
 def load_event_files(
+        definition: DatasetDefinition,
         files: list[DatasetFile],
         paths: DatasetPaths,
         events_dirname: str | None = None,
         extension: str = 'feather',
         verbose: bool = True,
+        *,
+        offsets_inclusive: bool | None = None,
+        durations_from_offsets: bool = False,
+        validate: bool = True,
 ) -> list[Events]:
     """Load all event files associated with a gaze sample file.
 
+    The sampling rate of the definition's experiment is written to each
+    :py:class:`~pymovements.Events` as the sampling-rate entry. A definition without an
+    experiment, or an experiment without a sampling rate, writes no entry.
+
     Parameters
     ----------
+    definition: DatasetDefinition
+        The dataset definition.
     files: list[DatasetFile]
         Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
     paths: DatasetPaths
@@ -210,6 +221,19 @@ def load_event_files(
         (default: 'feather')
     verbose : bool
         If ``True``, show a progress bar. (default: True)
+    offsets_inclusive: bool | None
+        Convention of the ``offset`` column of the saved files, forwarded to
+        :py:class:`~pymovements.Events` per file: ``True`` if the offset is the last sample
+        of the event, ``False`` if it is the first sample after it. ``None`` leaves the
+        convention to the ``offset`` entry of the metadata. (default: None)
+    durations_from_offsets: bool
+        If ``True``, replace the saved durations by the ones derived from the offsets under
+        the declared convention, forwarded to :py:class:`~pymovements.Events` per file.
+        Migrates files saved before v0.29.0 together with ``offsets_inclusive=True``.
+        (default: False)
+    validate: bool
+        If ``True``, check the saved durations against the declared offsets, forwarded to
+        :py:class:`~pymovements.Events` per file. (default: True)
 
     Returns
     -------
@@ -221,9 +245,17 @@ def load_event_files(
     AttributeError
         If `fileinfo` is None or the `fileinfo` dataframe is empty.
     ValueError
-        If the extension is not in list of valid extensions.
+        If the extension is not in list of valid extensions, if durations are derived from
+        inclusive offsets and the definition's experiment has no sampling rate, or if every
+        row of a file contradicts the declared offset convention.
     """
     list_of_events: list[Events] = []
+
+    # Saved event files are derivatives of the gaze recording, so their sampling rate is the
+    # experiment's. Without an experiment or without a rate there is none to write.
+    sampling_rate = None
+    if definition.experiment is not None:
+        sampling_rate = definition.experiment.sampling_rate
 
     # read and preprocess input files
     for file in tqdm(
@@ -248,7 +280,16 @@ def load_event_files(
 
         metadata = add_source(file.metadata, filepath)
         metadata = relativize_sources(metadata, paths.dataset)
-        list_of_events.append(Events(events, metadata=metadata))
+        list_of_events.append(
+            Events(
+                events,
+                offsets_inclusive=offsets_inclusive,
+                durations_from_offsets=durations_from_offsets,
+                sampling_rate=sampling_rate,
+                validate=validate,
+                metadata=metadata,
+            ),
+        )
 
     return list_of_events
 
@@ -533,6 +574,7 @@ def load_precomputed_reading_measure_file(
         precomputed_reading_measure_df = pl.read_csv(file.path, **read_kwargs)
     elif file_path_suffix in r_extensions:
         if 'r_dataframe_key' in load_kwargs:
+            pyreadr = import_optional_dependency('pyreadr', extra='datasets')
             precomputed_r = pyreadr.read_r(file.path)
             # convert to polars DataFrame because read_r has no .clone().
             precomputed_reading_measure_df = pl.DataFrame(
@@ -542,6 +584,10 @@ def load_precomputed_reading_measure_file(
             raise ValueError('please specify r_dataframe_key in ResourceDefinition.load_kwargs')
     elif file_path_suffix in excel_extensions:
         read_kwargs = load_kwargs.pop('read_excel_kwargs', {})
+        if read_kwargs.get('engine', 'calamine') == 'calamine':
+            # polars imports fastexcel itself, this call only raises the pymovements install hint
+            # for the datasets extra and enforces its minimum version.
+            import_optional_dependency('fastexcel', extra='datasets')
         precomputed_reading_measure_df = pl.read_excel(file.path, **read_kwargs)
     else:
         raise ValueError(
@@ -637,6 +683,7 @@ def load_precomputed_event_file(
         precomputed_event_df = pl.read_csv(file.path, **read_kwargs)
     elif file_path_suffix in r_extensions:
         if 'r_dataframe_key' in load_kwargs:
+            pyreadr = import_optional_dependency('pyreadr', extra='datasets')
             precomputed_r = pyreadr.read_r(file.path)
             # convert to polars DataFrame because read_r has no .clone().
             precomputed_event_df = pl.DataFrame(
