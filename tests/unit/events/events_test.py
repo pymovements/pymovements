@@ -538,6 +538,7 @@ def test_init_rounds_sub_microsecond_duration_input():
         pytest.param(1500, 2, id='tie_up_to_even'),
         pytest.param(2500, 2, id='tie_down_to_even'),
         pytest.param(-1500, -2, id='negative_tie_to_even'),
+        pytest.param(-2500, -2, id='negative_odd_tie_to_even'),
         pytest.param(-2600, -3, id='negative_rounds_to_nearest'),
         pytest.param(2**53 * 1000 + 1500, 2**53 + 2, id='tie_beyond_float_precision'),
         pytest.param(2**63 - 1, 9_223_372_036_854_776, id='max_nanoseconds'),
