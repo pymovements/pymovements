@@ -177,7 +177,7 @@ def pos2acc(
         mode: str = 'interp',
         cval: float = 0.0,
 ) -> np.ndarray:
-    """Compute velocity time series from 2-dimensional position time series.
+    """Compute acceleration time series from 2-dimensional position time series.
 
     Parameters
     ----------
@@ -197,7 +197,7 @@ def pos2acc(
     Returns
     -------
     np.ndarray
-        Velocity time series in input_unit / sec
+        Acceleration time series in input_unit / sec^2
 
     Examples
     --------
@@ -207,12 +207,12 @@ def pos2acc(
     ...    sampling_rate=1000,
     ...    window_length=5,
     ... )
-    array([[2000., 2000.],
-           [2000., 2000.],
-           [2000., 2000.],
-           [2000., 2000.],
-           [2000., 2000.],
-           [2000., 2000.]])
+    array([[2000000., 2000000.],
+           [2000000., 2000000.],
+           [2000000., 2000000.],
+           [2000000., 2000000.],
+           [2000000., 2000000.],
+           [2000000., 2000000.]])
     """
     scipy_signal = importlib.import_module('scipy.signal')
 
@@ -228,12 +228,14 @@ def pos2acc(
         )
 
     acc = np.zeros(arr.shape)
+    delta = 1 / sampling_rate
 
-    # transform to velocities
+    # transform to accelerations
     if arr.ndim == 1:
         acc = scipy_signal.savgol_filter(
             x=arr,
             deriv=2,
+            delta=delta,
             window_length=window_length,
             polyorder=degree,
             mode=mode,
@@ -245,12 +247,12 @@ def pos2acc(
             acc[:, channel_id] = scipy_signal.savgol_filter(
                 x=arr[:, channel_id],
                 deriv=2,
+                delta=delta,
                 window_length=window_length,
                 polyorder=degree,
                 mode=mode,
                 cval=cval,
             )
-    acc *= sampling_rate
 
     return acc
 

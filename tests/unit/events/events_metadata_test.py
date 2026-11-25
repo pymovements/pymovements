@@ -22,7 +22,6 @@ import math
 import re
 import warnings
 from contextlib import contextmanager
-from copy import deepcopy
 from datetime import timedelta
 
 import polars as pl
@@ -165,34 +164,44 @@ def test_events_map_to_aois_merges_stimulus_sources(simple_stimulus: TextStimulu
     assert events.metadata['Sources'] == ['raw/sub_1.csv', 'stimuli/text_1_aoi.csv']
 
 
-_REBUILD_METADATA = {'key': 'value', 'offset': {'inclusive': False}, 'sampling_rate': 1000.0}
 _REBUILD_ENTRY_COLUMNS = ['trial', 'onset', 'duration', 'name', 'offset', 'location']
 
 
-def make_entry_events():
+def rebuild_metadata(inclusive):
+    return {'key': 'value', 'offset': {'inclusive': inclusive}, 'sampling_rate': 1000.0}
+
+
+def make_entry_events(inclusive=True):
     return Events(
         pl.DataFrame({
             'trial': [1, 1, 2],
             'name': ['fixation', 'fixation', 'fixation'],
             'onset': [0, 200, 400],
             'duration': [100, None, 100],
-            'offset': [100, 300, 500],
+            'offset': [99, 299, 499] if inclusive else [100, 300, 500],
             'location': [[100.0, 105.0], [110.0, 195.0], [120.0, 302.0]],
         }),
         trial_columns='trial',
-        offsets_inclusive=False,
+        offsets_inclusive=inclusive,
         sampling_rate=1000,
         metadata={'key': 'value'},
     )
 
 
+# The rebuild sites of Events run on both conventions. Gaze.detect stays inclusive: the
+# detectors declare inclusive offsets, so existing exclusive events raise there by design.
+@pytest.fixture(name='inclusive', params=[True, False], ids=['inclusive', 'exclusive'])
+def fixture_inclusive(request):
+    return request.param
+
+
 @pytest.fixture(name='entry_events')
-def fixture_entry_events():
+def fixture_entry_events(inclusive):
     # The construction warns about the null duration, see the test below. The rebuild sites
     # construct from the frame the events already hold, so the warning must not repeat there.
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', message='.*null duration')
-        return make_entry_events()
+        return make_entry_events(inclusive)
 
 
 @pytest.fixture(name='entry_stimulus')
@@ -225,6 +234,7 @@ def make_gaze():
         time_column='time',
         pixel_columns=['x', 'y'],
         trial_columns='trial',
+        experiment=pm.Experiment(sampling_rate=1000),
     )
 
 
@@ -237,11 +247,11 @@ def no_warnings():
         yield
 
 
-def assert_rebuilt(rebuilt, expected_columns):
+def assert_rebuilt(rebuilt, expected_columns, inclusive=True):
     assert rebuilt
     for events in rebuilt:
         assert events.frame.columns == expected_columns
-        assert events.metadata.items() >= _REBUILD_METADATA.items()
+        assert events.metadata.items() >= rebuild_metadata(inclusive).items()
 
 
 def test_entry_events_construction_warns_once_about_the_null_duration():
@@ -251,45 +261,49 @@ def test_entry_events_construction_warns_once_about_the_null_duration():
     assert len(record) == 1
 
 
-def test_clone_rebuilds_entries_without_warning(entry_events):
+def test_clone_rebuilds_entries_without_warning(entry_events, inclusive):
     with no_warnings():
         cloned = entry_events.clone()
 
-    assert_rebuilt([cloned], _REBUILD_ENTRY_COLUMNS)
+    assert_rebuilt([cloned], _REBUILD_ENTRY_COLUMNS, inclusive)
     assert_frame_equal(cloned.frame, entry_events.frame)
 
 
-def test_clone_rebuilds_with_a_deep_copy_of_the_metadata(entry_events):
+def test_clone_rebuilds_with_a_deep_copy_of_the_metadata(entry_events, inclusive):
     cloned = entry_events.clone()
 
-    cloned.metadata['offset']['inclusive'] = True
+    cloned.metadata['offset']['inclusive'] = not inclusive
     cloned.metadata['key'] = 'changed'
 
-    assert entry_events.metadata == _REBUILD_METADATA
+    assert entry_events.metadata == rebuild_metadata(inclusive)
 
 
-def test_split_rebuilds_entries_without_warning(entry_events):
+def test_split_rebuilds_entries_without_warning(entry_events, inclusive):
     with no_warnings():
         splits = entry_events.split()
 
-    assert_rebuilt(splits, _REBUILD_ENTRY_COLUMNS)
+    assert_rebuilt(splits, _REBUILD_ENTRY_COLUMNS, inclusive)
 
 
-def test_split_dict_rebuilds_entries_without_warning(entry_events):
+def test_split_dict_rebuilds_entries_without_warning(entry_events, inclusive):
     with no_warnings():
         splits = entry_events.split(as_dict=True)
 
-    assert_rebuilt(list(splits.values()), _REBUILD_ENTRY_COLUMNS)
+    assert_rebuilt(list(splits.values()), _REBUILD_ENTRY_COLUMNS, inclusive)
 
 
-def test_correct_fixations_rebuilds_entries_without_warning(entry_events, entry_stimulus):
+def test_correct_fixations_rebuilds_entries_without_warning(
+        entry_events, entry_stimulus, inclusive,
+):
     with no_warnings():
         corrected = entry_events.correct_fixations(
             entry_stimulus, algorithm='attach', inplace=False,
         )
 
     assert_rebuilt(
-        [corrected], [*_REBUILD_ENTRY_COLUMNS, 'location_original', 'correction_algorithm'],
+        [corrected],
+        [*_REBUILD_ENTRY_COLUMNS, 'location_original', 'correction_algorithm'],
+        inclusive,
     )
 
 
@@ -297,7 +311,7 @@ def test_gaze_detect_rebuilds_shared_empty_events_without_warning():
     gaze = make_gaze()
     # A convention entry without its column: a validating construction would warn about the
     # orphan entry, the rebuild must not.
-    gaze.events.metadata = deepcopy(_REBUILD_METADATA)
+    gaze.events.metadata = rebuild_metadata(inclusive=True)
 
     with no_warnings():
         gaze.detect('fill')
@@ -306,6 +320,7 @@ def test_gaze_detect_rebuilds_shared_empty_events_without_warning():
     assert_rebuilt([gaze.events], ['trial', 'onset', 'duration', 'name', 'offset'])
 
 
+@pytest.mark.parametrize('inclusive', [True], ids=['inclusive'])
 def test_gaze_detect_rebuilds_per_group_events_without_warning(entry_events):
     gaze = make_gaze()
     gaze.events = entry_events
@@ -316,11 +331,11 @@ def test_gaze_detect_rebuilds_per_group_events_without_warning(entry_events):
     assert_rebuilt([gaze.events], _REBUILD_ENTRY_COLUMNS)
 
 
-def test_bridge_gaps_rebuilds_entries_without_warning(entry_events):
+def test_bridge_gaps_rebuilds_entries_without_warning(entry_events, inclusive):
     with no_warnings():
         bridged = pm.synthetic.bridge_gaps(entry_events)
 
-    assert_rebuilt([bridged], _REBUILD_ENTRY_COLUMNS)
+    assert_rebuilt([bridged], _REBUILD_ENTRY_COLUMNS, inclusive)
 
 
 # measure_reading maps the rebuilt events to the stimulus and discards them, only the measures
