@@ -436,4 +436,3 @@ def test_regress_core_matches_reference():
     )
 
     assert actual.to_list() == expected.to_list()
-
