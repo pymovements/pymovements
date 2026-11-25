@@ -957,6 +957,25 @@ def test_from_asc_events_declare_inclusive_offsets(make_example_file):
     assert gaze.events.metadata['offset'] == {'inclusive': True}
 
 
+@pytest.mark.filterwarnings('ignore:ivt. No events were detected:UserWarning')
+def test_from_asc_events_survive_detect(make_example_file):
+    # Interim: the parsed durations are offset - onset, one sampling interval short of the
+    # inclusive convention they declare. Detection on top of them carries the rate entry and leaves
+    # the parsed rows as they are.
+    filepath = make_example_file('eyelink_monocular_example.asc')
+    experiment = Experiment(1280, 1024, 38, 30, 60, 'upper left', 1000)
+    gaze = from_asc(filepath, experiment=experiment, events=True)
+    parsed_events = gaze.events.frame.clone()
+
+    gaze.pix2deg()
+    gaze.pos2vel()
+    gaze.detect('ivt')
+
+    assert gaze.events.metadata['offset'] == {'inclusive': True}
+    assert gaze.events.metadata['sampling_rate'] == 1000
+    assert_frame_equal(gaze.events.frame, parsed_events)
+
+
 @pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
