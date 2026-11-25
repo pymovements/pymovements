@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import math
+import re
 from typing import Any
 
 import polars as pl
@@ -526,95 +527,41 @@ def test_map_to_aois_preserves_saccades_without_structure(
 
 
 @pytest.mark.parametrize(
-    'trial_value',
-    ['x', 1.5],
-    ids=['non-numeric-string', 'non-integral-float'],
+    ('trial_value', 'message'),
+    [
+        pytest.param(
+            pl.Series(['1'], dtype=pl.String),
+            "events key column 'trial' has dtype String but the AOI column 'trial' has dtype "
+            'Int64. Cast one side so both key columns share the same dtype.',
+            id='string-vs-int64',
+        ),
+        pytest.param(
+            pl.Series([1], dtype=pl.Int32),
+            "events key column 'trial' has dtype Int32 but the AOI column 'trial' has dtype "
+            'Int64. Cast one side so both key columns share the same dtype.',
+            id='int32-vs-int64',
+        ),
+    ],
 )
-def test_map_to_aois_key_that_changes_on_cast_gets_no_aoi(
+def test_map_to_aois_key_dtype_mismatch_raises(
     stimulus_with_trials: TextStimulus,
-    trial_value: object,
+    trial_value: pl.Series,
+    message: str,
 ) -> None:
-    """A non-null key that cannot be cast to the AOI dtype unchanged matches no AOI."""
+    """An events key column with a different dtype than the AOI key column is rejected."""
     df = pl.DataFrame(
         {
             'name': ['fixation'],
             'onset': [0],
             'offset': [1],
             'location': [[5.0, 5.0]],
-            'trial': [trial_value],
+            'trial': trial_value,
         },
     )
     events = Events(data=df, trial_columns=['trial'])
 
-    events.map_to_aois(stimulus_with_trials)
-
-    assert events.frame.get_column('label').to_list() == [None]
-
-
-@pytest.mark.parametrize(
-    ('trial_value', 'location', 'expected_label'),
-    [
-        pytest.param('1', [5.0, 5.0], 'A', id='plain'),
-        pytest.param('02', [25.0, 25.0], 'B', id='leading-zero'),
-    ],
-)
-def test_map_to_aois_numeric_string_key_matches_integer_key(
-    stimulus_with_trials: TextStimulus,
-    trial_value: str,
-    location: list[float],
-    expected_label: str,
-) -> None:
-    """A string key that parses to the integer AOI key matches that trial's AOIs."""
-    df = pl.DataFrame(
-        {
-            'name': ['fixation'],
-            'onset': [0],
-            'offset': [1],
-            'location': [location],
-            'trial': [trial_value],
-        },
-    )
-    events = Events(data=df, trial_columns=['trial'])
-
-    events.map_to_aois(stimulus_with_trials)
-
-    assert events.frame.get_column('label').to_list() == [expected_label]
-
-
-def test_map_to_aois_integer_key_matches_string_key() -> None:
-    """An integer key matches a string AOI key with the same textual value."""
-    stimulus = TextStimulus(
-        pl.DataFrame(
-            {
-                'label': ['A', 'B'],
-                'sx': [0, 20],
-                'sy': [0, 20],
-                'ex': [10, 30],
-                'ey': [10, 30],
-                'trial': ['1', '02'],
-            },
-        ),
-        aoi_column='label',
-        start_x_column='sx',
-        start_y_column='sy',
-        end_x_column='ex',
-        end_y_column='ey',
-        trial_column='trial',
-    )
-    df = pl.DataFrame(
-        {
-            'name': ['fixation', 'fixation'],
-            'onset': [0, 1],
-            'offset': [1, 2],
-            'location': [[5.0, 5.0], [25.0, 25.0]],
-            'trial': [1, 2],
-        },
-    )
-    events = Events(data=df, trial_columns=['trial'])
-
-    events.map_to_aois(stimulus)
-
-    assert events.frame.get_column('label').to_list() == ['A', None]
+    with pytest.raises(ValueError, match=re.escape(message)):
+        events.map_to_aois(stimulus_with_trials)
 
 
 def test_map_to_aois_valid_key_still_matches(stimulus_with_trials: TextStimulus) -> None:
@@ -796,17 +743,24 @@ def test_map_to_aois_numeric_string_list_coordinates_get_no_match(
     assert events.frame.get_column('label').to_list() == [None]
 
 
-def test_map_to_aois_categorical_key_matches_string_key() -> None:
-    """String-like keys with different dtypes are still castable and match."""
+@pytest.mark.parametrize(
+    'dtype',
+    [
+        pytest.param(pl.Categorical, id='categorical'),
+        pytest.param(pl.Enum(['1', '2']), id='enum'),
+    ],
+)
+def test_map_to_aois_same_dtype_keys_match(dtype: pl.DataType) -> None:
+    """Keys of the same dtype on both sides match without any cast."""
     stimulus = TextStimulus(
         pl.DataFrame(
             {
-                'label': ['A'],
-                'sx': [0],
-                'sy': [0],
-                'ex': [10],
-                'ey': [10],
-                'trial': ['1'],
+                'label': ['A', 'B'],
+                'sx': [0, 20],
+                'sy': [0, 20],
+                'ex': [10, 30],
+                'ey': [10, 30],
+                'trial': pl.Series(['1', '2'], dtype=dtype),
             },
         ),
         aoi_column='label',
@@ -818,18 +772,18 @@ def test_map_to_aois_categorical_key_matches_string_key() -> None:
     )
     df = pl.DataFrame(
         {
-            'name': ['fixation'],
-            'onset': [0],
-            'offset': [1],
-            'location': [[5.0, 5.0]],
-            'trial': pl.Series(['1'], dtype=pl.Categorical),
+            'name': ['fixation', 'fixation'],
+            'onset': [0, 1],
+            'offset': [1, 2],
+            'location': [[25.0, 25.0], [5.0, 5.0]],
+            'trial': pl.Series(['2', '1'], dtype=dtype),
         },
     )
     events = Events(data=df, trial_columns=['trial'])
 
     events.map_to_aois(stimulus)
 
-    assert events.frame.get_column('label').to_list() == ['A']
+    assert events.frame.get_column('label').to_list() == ['B', 'A']
 
 
 def test_map_to_aois_non_numeric_list_without_structure_gets_no_match(
