@@ -27,6 +27,7 @@ import numpy as np
 import polars as pl
 import pytest
 
+from pymovements import Experiment
 from pymovements import Gaze
 
 _RNG = np.random.default_rng(42)
@@ -48,7 +49,7 @@ def _build_gaze() -> Gaze:
         pl.col('velocity').cast(pl.List(pl.Float64)),
         pl.col('position').cast(pl.List(pl.Float64)),
     )
-    return Gaze(samples, trial_columns=['trial'])
+    return Gaze(samples, trial_columns=['trial'], experiment=Experiment(sampling_rate=1000))
 
 
 def test_gaze_detect_benchmark(benchmark):

@@ -198,12 +198,14 @@ def timesteps_to_numpy(timesteps: pl.Series) -> np.ndarray:
 def normalize_timesteps(
         timesteps: list[int] | list[float] | np.ndarray | pl.Series | None,
         length: int,
+        sampling_rate: float,
 ) -> np.ndarray:
     """Convert the timesteps input of a detection function to a flat numpy array.
 
     A ``polars.Series`` is converted with :py:func:`timesteps_to_numpy`, so ``polars.Duration``
     series arrive as fractional milliseconds. Any other array-like input is flattened as given.
-    If ``timesteps`` is None, sample based timesteps ``0`` to ``length - 1`` are returned.
+    If ``timesteps`` is None, a grid of ``length`` samples spaced by the nominal interval of
+    ``sampling_rate`` is returned, in milliseconds and starting at ``0``.
     The timesteps must be numeric and in ascending order. Repeated timesteps are allowed.
 
     Parameters
@@ -211,7 +213,9 @@ def normalize_timesteps(
     timesteps: list[int] | list[float] | np.ndarray | pl.Series | None
         The timesteps input of a detection function.
     length: int
-        The number of samples, used for the sample based timesteps if ``timesteps`` is None.
+        The number of samples, used for the grid if ``timesteps`` is None.
+    sampling_rate: float
+        The sampling rate in Hz, used for the grid if ``timesteps`` is None.
 
     Returns
     -------
@@ -223,10 +227,11 @@ def normalize_timesteps(
     TypeError
         If the timesteps are neither a Duration series nor of a numeric dtype.
     ValueError
-        If the timesteps are not in ascending order.
+        If the timesteps are not in ascending order, or if ``timesteps`` is None and the
+        sampling rate is not positive.
     """
     if timesteps is None:
-        return np.arange(length, dtype=np.int64)
+        return np.arange(length) * sampling_interval_ms(sampling_rate)
     if isinstance(timesteps, pl.Series):
         timesteps = timesteps_to_numpy(timesteps)
     timesteps = np.array(timesteps).flatten()
@@ -235,6 +240,29 @@ def normalize_timesteps(
     if np.any(np.diff(timesteps) < 0):
         raise ValueError('timesteps must be in ascending order')
     return timesteps
+
+
+def sampling_interval_ms(sampling_rate: float) -> float:
+    """Return the nominal interval between two samples in milliseconds.
+
+    Parameters
+    ----------
+    sampling_rate: float
+        The sampling rate in Hz.
+
+    Returns
+    -------
+    float
+        The nominal sampling interval ``1000 / sampling_rate`` in milliseconds.
+
+    Raises
+    ------
+    ValueError
+        If the sampling rate is not positive.
+    """
+    if not sampling_rate > 0:
+        raise ValueError(f'sampling_rate must be positive, but is {sampling_rate}.')
+    return 1000 / sampling_rate
 
 
 def durations_to_ms(frame: pl.DataFrame) -> pl.DataFrame:

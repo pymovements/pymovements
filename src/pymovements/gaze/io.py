@@ -659,10 +659,15 @@ def from_asc(
     calibrations = metadata_to_cal_frame(parsed_metadata)
     validations = metadata_to_val_frame(parsed_metadata)
 
+    # Interim: EyeLink end timestamps are the last sample of an event, but the durations stay
+    # end - start, one sampling interval short of that convention, so they are kept unchecked.
+    # This goes away once the parser takes the reported DUR as the duration.
+    event_data = event_data.with_columns((pl.col('offset') - pl.col('onset')).alias('duration'))
+
     gaze = Gaze(
         samples=samples,
         experiment=experiment,
-        events=Events(event_data) if events else None,
+        events=Events(event_data, offsets_inclusive=True, validate=False) if events else None,
         messages=messages_df,
         trial_columns=trial_columns,
         time_column='time',
