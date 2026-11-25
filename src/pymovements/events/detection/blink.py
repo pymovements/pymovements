@@ -41,7 +41,7 @@ def blink(
         delta: float | None = None,
         minimum_duration: int = 50,
         maximum_duration: int | None = 500,
-        minimum_gap: int = 5,
+        minimum_gap: float = 5,
         minimum_candidates_around_gap: tuple[int, int] | int = 2,
         name: str = 'blink',
         sampling_rate: float,
@@ -92,9 +92,11 @@ def blink(
         None, the unit is milliseconds.
         Set to None to disable the upper bound.
         (default: 500)
-    minimum_gap: int
-        Minimum gap in-between two blinks, as a number of samples. Unflagged runs of at most this
-        many samples are absorbed into the surrounding blink, whatever the unit of ``timesteps``.
+    minimum_gap: float
+        Minimum gap in-between two blinks. The gap is specified in the units used in
+        ``timesteps``. For a ``polars.Duration`` timesteps series the unit is milliseconds, and
+        if ``timesteps`` is None, the unit is milliseconds too. Unflagged runs spanning at most
+        this long are absorbed into the surrounding blink.
         (default: 5)
     minimum_candidates_around_gap: tuple[int, int] | int
         Minimum number of candidate samples required on each side of a gap for it to be absorbed. If
@@ -214,7 +216,7 @@ def blink(
     # Stage 3: Combine blinks with less than minimum time gap in-between.
     if minimum_gap > 0:
         candidate_mask = _merge_blink_candidates(
-            candidate_mask, minimum_gap, minimum_candidates_around_gap,
+            candidate_mask, minimum_gap / sampling_interval, minimum_candidates_around_gap,
         )
 
     # Group consecutive candidate_mask samples into events
@@ -261,7 +263,7 @@ def blink(
 
 def _merge_blink_candidates(
         candidate_mask: numpy.ndarray,
-        minimum_gap: int,
+        minimum_gap: float,
         minimum_candidate_duration_to_absorb_gap: tuple[int, int],
 ) -> numpy.ndarray:
     """Absorb short unflagged runs surrounded by masked samples.
@@ -270,8 +272,8 @@ def _merge_blink_candidates(
     ----------
     candidate_mask: numpy.ndarray
         Boolean array of flagged samples.
-    minimum_gap: int
-        Maximum length of an unflagged run to absorb.
+    minimum_gap: float
+        Maximum length in samples of an unflagged run to absorb.
     minimum_candidate_duration_to_absorb_gap: tuple[int, int]
         Minimum flagged samples required on each side.
 
