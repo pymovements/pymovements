@@ -93,11 +93,9 @@ def blink(
         Set to None to disable the upper bound.
         (default: 500)
     minimum_gap: int
-        Minimum time gap in-between two blinks. Blinks that have a smaller time gap are combined
-        into a single event. The duration is specified in the units used in ``timesteps``; for a
-        ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is None,
-        the unit is milliseconds.
-        (default: 100)
+        Minimum gap in-between two blinks, as a number of samples. Unflagged runs of at most this
+        many samples are absorbed into the surrounding blink, whatever the unit of ``timesteps``.
+        (default: 5)
     minimum_candidates_around_gap: tuple[int, int] | int
         Minimum number of candidate samples required on each side of a gap for it to be absorbed. If
         a tuple is provided the values are used for the number of left and right candidates
