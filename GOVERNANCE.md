@@ -27,4 +27,5 @@ editorial change, with prior private notice.
 | Paul Prasse | [@prassepaul](https://github.com/prassepaul) | active |
 | Deborah N. Jakobi | [@theDebbister](https://github.com/theDebbister) | active |
 | Paweł Kasprowski | [@kasprowski](https://github.com/kasprowski) | active |
+| Jana Hofmann | [@saphjra](https://github.com/saphjra) | active |
 | Lena A. Jäger | [@LenaJaeger](https://github.com/LenaJaeger) | emeritus |
