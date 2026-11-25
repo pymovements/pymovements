@@ -46,16 +46,31 @@ Before you start developing, make sure to read our :ref:`documentation <startpag
 Development Installation
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-Make sure to install the latest pymovements version from the main branch.
+Clone the repository and create a virtual environment using Python 3.11 or later.
 
 .. code:: bash
 
     git clone https://github.com/pymovements/pymovements.git
     cd pymovements
-    pip install -e .
+    python -m venv .venv
 
-If you have a problem e.g. ``command not found: pip``, check whether you have activated a virtual
-environment.
+On Linux and macOS, activate the environment in bash or zsh.
+
+.. code:: bash
+
+    source .venv/bin/activate
+
+On Windows PowerShell, activate it with the following command.
+
+.. code:: powershell
+
+    .\.venv\Scripts\Activate.ps1
+
+Install pymovements in editable mode.
+
+.. code:: bash
+
+    python -m pip install -e .
 
 .. _create-branch:
 
@@ -180,42 +195,48 @@ needed only for type annotations go under ``TYPE_CHECKING``.
 Testing
 ^^^^^^^
 
-Tests are written using `pytest <https://docs.pytest.org>`_ and executed
-in a separate environment using `tox <https://tox.readthedocs.io/en/latest/>`_.
-
-If you have not yet installed ``tox`` and the testing dependencies you can do so via
+With your :ref:`virtual environment <development-installation>` active, install the test
+dependencies.
 
 .. code:: bash
 
-    pip install -e '.[dev]'
+    python -m pip install -e '.[dev,docs]'
 
-You can run all tests on all supported python versions run by simply calling ``tox`` in the
-repository root.
+Running tests with pytest
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code:: bash
-
-    tox
-
-Running ``tox`` the first time in the repository will take a few minutes, as all necessary python
-environments will have to be set up with their dependencies. Runtime should be short on the
-subsequent runs.
-
-If you add a new feature, please also include appropriate tests to verify its intended
-functionality. Our code coverage is at 100% and stays there, so every changed line needs a test
-that runs it.
-
-It is possible to limit the scope of testing to specific environments and files. For example, to
-only test event-related functionality using the Python 3.11 environment use:
+`pytest <https://docs.pytest.org>`_ runs with the active environment's Python and dependencies.
+From the repository root, run the event unit tests that can run offline.
 
 .. code:: bash
 
-    tox -e py311 -- tests/unit/events
+    python -m pytest tests/unit/events -m "not network"
 
-In case you only want to run tests locally that do not require any network access you can use:
+To run the local suite, including source doctests, exclude benchmarks, integration tests, and
+tests marked as requiring network access.
 
 .. code:: bash
 
-    tox -e py311 -- -m "not network"
+    python -m pytest --ignore=tests/benchmark --ignore=tests/integration -m "not network"
+
+These commands run without generating a coverage report.
+
+Running tests with tox
+~~~~~~~~~~~~~~~~~~~~~~
+
+`tox <https://tox.readthedocs.io/en/latest/>`_ creates isolated environments. Choose one that
+matches a Python version you have installed. The Python test environments in tox generate
+coverage reports and require 100% coverage by default. This example sets the required coverage
+to zero for a focused run in the Python 3.12 environment.
+
+.. code:: bash
+
+    tox -e py312 -- tests/unit/events -m "not network" --cov-fail-under=0
+
+Run ``tox -e py312`` for the full Python 3.12 coverage check. Run ``tox`` from the repository
+root to run the configured environments for your available interpreters.
+
+Add tests that cover each changed line of code and verify the intended behavior.
 
 .. _benchmarks:
 
