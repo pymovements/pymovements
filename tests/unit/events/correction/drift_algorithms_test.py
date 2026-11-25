@@ -21,11 +21,18 @@
 # pylint: disable=redefined-outer-name
 from __future__ import annotations
 
+from functools import partial
+
 import numpy as np
 import polars as pl
 import pytest
+import scipy.optimize
+import scipy.stats
 
 from pymovements.events import correction
+from pymovements.events.correction._utils import locations_to_lists
+from pymovements.events.correction.regress import _line_log_densities
+from pymovements.events.correction.regress import _regress_core
 
 
 def make_location_frame(x_values, y_values):
@@ -300,3 +307,132 @@ def test_wisdom_of_the_crowd_tie():
         correction.wisdom_of_the_crowd(['a', 'b', 'c', 'd', 'e']),
     ).to_series().to_list()
     assert res == [200.0]
+
+
+def reference_line_log_densities(
+    params,
+    *,
+    x_values,
+    y_values,
+    line_values,
+    k_bounds,
+    o_bounds,
+    s_bounds,
+):
+    """Compute the per-line log-densities with a Python loop over lines."""
+    slope = k_bounds[0] + (k_bounds[1] - k_bounds[0]) * scipy.stats.norm.cdf(params[0])
+    offset = o_bounds[0] + (o_bounds[1] - o_bounds[0]) * scipy.stats.norm.cdf(params[1])
+    deviation = s_bounds[0] + (s_bounds[1] - s_bounds[0]) * scipy.stats.norm.cdf(params[2])
+    predicted_y = [x * slope for x in x_values]
+    return [
+        scipy.stats.norm.logpdf(
+            y_values,
+            [predicted + line_y + offset for predicted in predicted_y],
+            deviation,
+        )
+        for line_y in line_values
+    ]
+
+
+def reference_regress_core(
+    locations,
+    *,
+    line_values,
+    k_bounds,
+    o_bounds,
+    s_bounds,
+):
+    """Fit the regression parameters with the original Python-loop implementation."""
+    x_values, y_values = locations_to_lists(locations)
+    densities_of = partial(
+        reference_line_log_densities,
+        x_values=x_values,
+        y_values=y_values,
+        line_values=line_values,
+        k_bounds=k_bounds,
+        o_bounds=o_bounds,
+        s_bounds=s_bounds,
+    )
+
+    def objective(params):
+        densities = densities_of(params)
+        return -sum(max(fixation) for fixation in zip(*densities))
+
+    best_fit = scipy.optimize.minimize(objective, [0, 0, 0])
+    densities = densities_of(best_fit.x)
+    corrected_y = [
+        line_values[max(range(len(line_values)), key=list(fixation).__getitem__)]
+        for fixation in zip(*densities)
+    ]
+    return pl.Series(corrected_y)
+
+
+def test_line_log_densities_matches_reference():
+    """The vectorized log-densities must match the per-line reference implementation."""
+    rng = np.random.default_rng(42)
+    x_values = rng.uniform(0, 1200, 40)
+    y_values = rng.uniform(80, 320, 40)
+    line_values = np.array([100.0, 200.0, 300.0])
+    params = [0.3, -0.4, 0.5]
+    k_bounds = (-0.1, 0.1)
+    o_bounds = (-50, 50)
+    s_bounds = (1, 20)
+
+    expected = np.stack(
+        reference_line_log_densities(
+            params,
+            x_values=x_values,
+            y_values=y_values,
+            line_values=line_values,
+            k_bounds=k_bounds,
+            o_bounds=o_bounds,
+            s_bounds=s_bounds,
+        ),
+        axis=1,
+    )
+    actual = _line_log_densities(
+        params,
+        x_values=x_values,
+        y_values=y_values,
+        line_values=line_values,
+        k_bounds=k_bounds,
+        o_bounds=o_bounds,
+        s_bounds=s_bounds,
+    )
+
+    assert actual.shape == (40, 3)
+    np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-12)
+
+
+def test_regress_core_matches_reference():
+    """The vectorized regression core must match the Python-loop reference."""
+    rng = np.random.default_rng(7)
+    line_values = [100.0, 200.0, 300.0]
+    x_values = np.concatenate([
+        np.linspace(100, 1100, 12),
+        np.linspace(1100, 100, 12),
+        np.linspace(100, 1100, 12),
+    ])
+    y_values = np.repeat([100.0, 200.0, 300.0], 12)
+    y_values = y_values + 3.0 + 0.02 * x_values + rng.normal(0, 3, x_values.size)
+    fixations = make_location_frame(x_values, y_values).to_series()
+    k_bounds = (-0.1, 0.1)
+    o_bounds = (-50, 50)
+    s_bounds = (1, 20)
+
+    expected = reference_regress_core(
+        fixations,
+        line_values=line_values,
+        k_bounds=k_bounds,
+        o_bounds=o_bounds,
+        s_bounds=s_bounds,
+    )
+    actual = _regress_core(
+        fixations,
+        line_values=line_values,
+        k_bounds=k_bounds,
+        o_bounds=o_bounds,
+        s_bounds=s_bounds,
+    )
+
+    assert actual.to_list() == expected.to_list()
