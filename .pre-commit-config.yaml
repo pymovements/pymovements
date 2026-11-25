@@ -39,6 +39,7 @@ repos:
     rev: v2.4.3
     hooks:
       - id: codespell
+        exclude: ^constraints\.txt$
   - repo: https://github.com/pappasam/toml-sort
     rev: v0.26.0
     hooks:
@@ -97,6 +98,7 @@ repos:
         exclude: .*_fixtures\.py|tests/plugins/
       - id: no-commit-to-branch
       - id: requirements-txt-fixer
+        exclude: ^constraints\.txt$
       - id: trailing-whitespace
   - repo: https://github.com/hhatto/autopep8
     rev: v2.3.2

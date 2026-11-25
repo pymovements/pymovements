@@ -225,6 +225,22 @@ Running `tox` the first time in the repository will take a few minutes, as all n
 environments will have to be set up with their dependencies. Runtime should be short on the
 subsequent runs.
 
+The environments install the dependency versions pinned in `constraints.txt`, the same ones the
+continuous integration uses. A scheduled workflow refreshes the file weekly and opens a pull
+request when the resolution changed. To refresh it right away, for example after changing a
+lower bound in `pyproject.toml`, dispatch that workflow:
+
+```bash
+gh workflow run constraints.yml
+```
+
+To install the newest versions instead of the pinned ones, set `PIP_CONSTRAINT` to an empty
+value:
+
+```bash
+PIP_CONSTRAINT= tox -e py311
+```
+
 If you add a new feature, please also include appropriate tests to verify its intended
 functionality. Our code coverage is at 100% and stays there, so every changed line needs a test
 that runs it.

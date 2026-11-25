@@ -47,7 +47,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           key:
-            benchmark-ubuntu-latest-py315-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/benchmark.yml') }}
+            benchmark-ubuntu-latest-py315-${{ hashFiles('tox.ini', 'pyproject.toml', 'constraints.txt', '.github/workflows/benchmark.yml') }}
           path: |
             ~/.cache
             ~/.tox

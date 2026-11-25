@@ -8,8 +8,13 @@ on:
   workflow_call:
 
 jobs:
+  # The scheduled run installs the newest dependencies in the tests workflow,
+  # every other run the pinned ones. The benchmark stays pinned: it compares
+  # two commits in one environment and has nothing to learn from a release.
   tests:
     uses: ./.github/workflows/tests.yml
+    with:
+      unpinned: ${{ github.event_name == 'schedule' }}
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
@@ -51,3 +56,35 @@ jobs:
         if-no-files-found: error
         retention-days: 1
         overwrite: true
+
+  # The nightly tests are the only run that sees a new upstream release. Their
+  # failure lands in one standing issue instead of blocking pull requests.
+  report:
+    name: report a failed nightly run
+    needs: [tests]
+    if: ${{ failure() && github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the nightly issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Nightly build against the newest dependencies failed"
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+            --search "\"$title\" in:title" --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --repo "$GITHUB_REPOSITORY" --body "Failed again: $RUN_URL"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --label bug --body "$(cat <<EOF
+          The scheduled tests install the newest releases of all dependencies instead of the
+          versions pinned in \`constraints.txt\`, and they failed: $RUN_URL
+
+          Pull requests keep installing the pinned versions, so they are not affected until the
+          next constraints refresh picks the release up. Fix the incompatibility, then close this
+          issue. The nightly run comments here while it keeps failing.
+          EOF
+          )"
+          fi
