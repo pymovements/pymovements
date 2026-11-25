@@ -688,7 +688,9 @@ def bcea(
     >>> print(confidence, k)
     0.6826894921370859 2.295748928898636
 
-    For sequences with fewer than 2 samples, or when the variance of either
+    Samples with a null in either component are left out of :math:`n`, the means,
+    the variances and the correlation.
+    For sequences with fewer than 2 complete samples, or when the variance of either
     component is zero, this measure returns ``None`` since statistics
     (variance, correlation) cannot be meaningfully computed.
 
@@ -710,13 +712,18 @@ def bcea(
             f'but got: {confidence}',
         )
 
-    x_position = pl.col(column).list.get(0)
-    y_position = pl.col(column).list.get(1)
+    x_component = pl.col(column).list.get(0)
+    y_component = pl.col(column).list.get(1)
+
+    # Missing samples must not count towards n, or the variances come out too small.
+    is_complete = x_component.is_not_null() & y_component.is_not_null()
+    x_position = x_component.filter(is_complete)
+    y_position = y_component.filter(is_complete)
 
     x_mean = x_position.mean()
     y_mean = y_position.mean()
 
-    n_minus_one = pl.len() - 1
+    n_minus_one = x_position.len() - 1
 
     x_centered = x_position - x_mean
     y_centered = y_position - y_mean
