@@ -928,10 +928,7 @@ class Events:
         ]
         if wrong_unit_cols:
             self.frame = self.frame.with_columns(
-                [
-                    normalize_duration_to_us(c, self.frame.schema[c].time_unit)
-                    for c in wrong_unit_cols
-                ],
+                [normalize_duration_to_us(c, self.frame.schema[c]) for c in wrong_unit_cols],
             )
 
         offsets_inclusive, offsets_inclusive_source = _resolve_offset_convention(

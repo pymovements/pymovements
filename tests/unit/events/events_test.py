@@ -531,6 +531,47 @@ def test_init_rounds_sub_microsecond_duration_input():
     assert events.frame['duration'].dt.total_microseconds().to_list() == [1]
 
 
+@pytest.mark.parametrize(
+    ('onset_ns', 'expected_us'),
+    [
+        pytest.param(500, 0, id='tie_down_to_even_zero'),
+        pytest.param(1500, 2, id='tie_up_to_even'),
+        pytest.param(2500, 2, id='tie_down_to_even'),
+        pytest.param(-1500, -2, id='negative_tie_to_even'),
+        pytest.param(-2600, -3, id='negative_rounds_to_nearest'),
+        pytest.param(2**53 * 1000 + 1500, 2**53 + 2, id='tie_beyond_float_precision'),
+        pytest.param(2**63 - 1, 9_223_372_036_854_776, id='max_nanoseconds'),
+    ],
+)
+def test_init_rounds_nanosecond_duration_input_half_to_even(onset_ns, expected_us):
+    events = Events(
+        pl.DataFrame({
+            'name': ['fixation'],
+            'onset': pl.Series([onset_ns], dtype=pl.Duration('ns')),
+            'offset': pl.Series([onset_ns], dtype=pl.Duration('ns')),
+        }),
+    )
+
+    assert events.frame['onset'].dt.total_microseconds().to_list() == [expected_us]
+
+
+def test_init_normalizes_mixed_duration_units_per_column():
+    # Each Duration column is normalized by its own unit.
+    events = Events(
+        pl.DataFrame({
+            'name': ['fixation'],
+            'onset': pl.Series([5], dtype=pl.Duration('ms')),
+            'offset': pl.Series([7_500_600], dtype=pl.Duration('ns')),  # 7500.6 us -> 7501 us
+        }),
+    )
+
+    assert events.frame.schema['onset'] == pl.Duration('us')
+    assert events.frame.schema['offset'] == pl.Duration('us')
+    assert events.frame['onset'].dt.total_microseconds().to_list() == [5000]
+    assert events.frame['offset'].dt.total_microseconds().to_list() == [7501]
+    assert events.frame['duration'].dt.total_microseconds().to_list() == [2501]
+
+
 def test_init_normalizes_large_duration_input_without_overflow():
     # A Duration('ms') beyond ~292 years has no nanosecond representation. The normalization
     # must stay exact for such values instead of overflowing to null or wrapping.

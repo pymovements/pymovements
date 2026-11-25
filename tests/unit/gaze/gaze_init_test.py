@@ -1123,6 +1123,26 @@ def test_init_rounds_sub_microsecond_duration_time():
     assert gaze.samples['time'].dt.total_microseconds().to_list() == [2, 3, 4]
 
 
+def test_init_normalizes_large_duration_time_without_overflow():
+    # A Duration('ms') beyond ~292 years has no nanosecond representation. The normalization
+    # must stay exact for such values instead of overflowing to null or wrapping.
+    time_ms = 400 * 365 * 24 * 3600 * 1000  # 400 years in milliseconds
+    gaze = Gaze(
+        pl.DataFrame({
+            'time': pl.Series([time_ms, time_ms + 1], dtype=pl.Duration('ms')),
+            'x': [1.0, 2.0],
+            'y': [1.0, 2.0],
+        }),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+    )
+
+    assert gaze.samples.schema['time'] == pl.Duration('us')
+    assert gaze.samples['time'].dt.total_microseconds().to_list() == [
+        time_ms * 1000, (time_ms + 1) * 1000,
+    ]
+
+
 @pytest.mark.parametrize(
     ('init_kwargs', 'expected_experiment'),
     [

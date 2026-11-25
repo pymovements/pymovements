@@ -103,20 +103,20 @@ def numeric_to_duration_us(column: str | pl.Expr, time_unit: str) -> pl.Expr:
     ).round().cast(pl.Duration('us'))
 
 
-def normalize_duration_to_us(column: str | pl.Expr, time_unit: str) -> pl.Expr:
+def normalize_duration_to_us(column: str | pl.Expr, dtype: pl.Duration) -> pl.Expr:
     """Return an expression normalizing a ``polars.Duration`` column to microseconds.
 
-    Millisecond input is converted exactly. Nanosecond input is rounded to the nearest
-    microsecond rather than truncated, with exact half-microsecond ties rounded to the nearest
-    even microsecond (polars ``round`` semantics).
+    Millisecond and microsecond input is converted exactly. Nanosecond input is rounded to the
+    nearest microsecond rather than truncated, with exact half-microsecond ties rounded to the
+    nearest even microsecond. The rounding is exact over the whole nanosecond range.
 
     Parameters
     ----------
     column: str | pl.Expr
         A Duration column, given as an expression or a column name.
-    time_unit: str
-        The unit of the input Duration column: ``'ns'``, ``'us'`` or ``'ms'``, as given by
-        ``polars.Duration.time_unit``.
+    dtype: pl.Duration
+        The dtype of the input column, as found in the frame schema. It carries the unit the
+        values are stored in.
 
     Returns
     -------
@@ -124,15 +124,16 @@ def normalize_duration_to_us(column: str | pl.Expr, time_unit: str) -> pl.Expr:
         The column cast to ``polars.Duration('us')`` with sub-microsecond values rounded.
     """
     expr = pl.col(column) if isinstance(column, str) else column
-    if time_unit != 'ns':
+    if dtype.time_unit != 'ns':
         # Coarser units hold whole microseconds, so a plain cast is exact.
         return expr.cast(pl.Duration('us'))
-    # Work from whole microseconds and add only the sub-microsecond remainder: dividing the
-    # whole nanosecond count as a float would lose precision beyond 2**53 nanoseconds. Both
-    # counts are taken from a nanosecond Duration, so neither can overflow Int64.
-    whole_us = expr.dt.total_microseconds()
-    remainder_ns = expr.dt.total_nanoseconds() - whole_us * 1000
-    return (whole_us + remainder_ns / 1000).round().cast(pl.Int64).cast(pl.Duration('us'))
+    # Round half to even in integer arithmetic: a float division would lose precision beyond
+    # 2**53 microseconds. The nanosecond count is the stored value, so it cannot overflow.
+    nanoseconds = expr.dt.total_nanoseconds()
+    whole_us = nanoseconds // 1000
+    remainder_ns = nanoseconds - whole_us * 1000
+    round_up = (remainder_ns > 500) | ((remainder_ns == 500) & (whole_us % 2 == 1))
+    return (whole_us + round_up.cast(pl.Int64)).cast(pl.Duration('us'))
 
 
 def time_column_to_duration_us(frame: pl.DataFrame, time_unit: str = 'ms') -> pl.DataFrame:
@@ -158,7 +159,7 @@ def time_column_to_duration_us(frame: pl.DataFrame, time_unit: str = 'ms') -> pl
     dtype = frame.schema['time']
     if isinstance(dtype, pl.Duration):
         if dtype != pl.Duration('us'):
-            return frame.with_columns(normalize_duration_to_us('time', dtype.time_unit))
+            return frame.with_columns(normalize_duration_to_us('time', dtype))
         return frame
     return frame.with_columns(numeric_to_duration_us('time', time_unit))
 
