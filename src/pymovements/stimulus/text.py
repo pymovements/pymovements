@@ -20,6 +20,7 @@
 """Module for the TextDataFrame."""
 from __future__ import annotations
 
+import importlib
 import math
 import warnings
 from collections.abc import Sequence
@@ -30,14 +31,16 @@ from pathlib import Path
 from typing import Any
 from typing import ClassVar
 from typing import Literal
+from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import polars as pl
-from matplotlib import patches
 
 from pymovements._utils import checks
 from pymovements._utils.html import repr_html
 from pymovements._utils.sources import add_source
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
 
 
 @dataclass(frozen=True)
@@ -178,6 +181,9 @@ class TextStimulus:
         A stimulus dataframe.
     aoi_column: str
         Name of the column that contains the content of the aois.
+    word_column: str | None
+        Name of the column that groups sub-word AOI rows, e.g. one row per character,
+        into words. (default: None)
     start_x_column: str
         Name of the column which contains the x coordinate's start position of the
         areas of interest.
@@ -213,6 +219,7 @@ class TextStimulus:
             aois: pl.DataFrame,
             *,
             aoi_column: str,
+            word_column: str | None = None,
             start_x_column: str,
             start_y_column: str,
             width_column: str | None = None,
@@ -227,6 +234,7 @@ class TextStimulus:
 
         self.aois = aois.clone()
         self.aoi_column = aoi_column
+        self.word_column = word_column
         self.width_column = width_column
         self.height_column = height_column
         self.start_x_column = start_x_column
@@ -263,6 +271,7 @@ class TextStimulus:
             TextStimulus(
                 aois=df,
                 aoi_column=self.aoi_column,
+                word_column=self.word_column,
                 width_column=self.width_column,
                 height_column=self.height_column,
                 start_x_column=self.start_x_column,
@@ -365,6 +374,7 @@ class TextStimulus:
             path: str | Path,
             *,
             aoi_column: str,
+            word_column: str | None = None,
             start_x_column: str,
             start_y_column: str,
             width_column: str | None = None,
@@ -385,6 +395,9 @@ class TextStimulus:
             Path to file to be read.
         aoi_column: str
             Name of column that contains the content of the aois.
+        word_column: str | None
+            Name of the column that groups sub-word AOI rows, e.g. one row per
+            character, into words. (default: None)
         start_x_column: str
             Name of column which contains the x coordinate's start position of the
             areas of interest.
@@ -480,6 +493,7 @@ class TextStimulus:
         return TextStimulus(
             aois=stimulus_df,
             aoi_column=aoi_column,
+            word_column=word_column,
             start_x_column=start_x_column,
             start_y_column=start_y_column,
             width_column=width_column,
@@ -694,6 +708,9 @@ class TextStimulus:
             If the configured writing system is not horizontal
             left-to-right.
         """
+        plt = importlib.import_module('matplotlib.pyplot')
+        patches = importlib.import_module('matplotlib.patches')
+
         if (
             self.writing_system.directionality != 'left-to-right'
             or self.writing_system.axis != 'horizontal'
@@ -797,6 +814,7 @@ def from_file(
         aoi_path: str | Path,
         *,
         aoi_column: str,
+        word_column: str | None = None,
         start_x_column: str,
         start_y_column: str,
         width_column: str | None = None,
@@ -817,6 +835,9 @@ def from_file(
         Path to file to be read.
     aoi_column: str
         Name of the column that contains the content of the aois.
+    word_column: str | None
+        Name of the column that groups sub-word AOI rows, e.g. one row per character,
+        into words. (default: None)
     start_x_column: str
         Name of the column which contains the x coordinate's start position of the
         areas of interest.
@@ -889,6 +910,7 @@ def from_file(
     return TextStimulus.from_csv(
         path=aoi_path,
         aoi_column=aoi_column,
+        word_column=word_column,
         start_x_column=start_x_column,
         start_y_column=start_y_column,
         width_column=width_column,

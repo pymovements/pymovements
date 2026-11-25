@@ -49,7 +49,10 @@ positions. Available
 algorithms are listed under :ref:`Drift Correction Algorithms <drift-correction-algorithms>`.
 The most convenient way to correct fixations is via the
 :py:meth:`Events.correct_fixations` and
-:py:meth:`Dataset.correct_fixations` methods.
+:py:meth:`Dataset.correct_fixations` methods. Character-level AOIs, e.g. one row per
+character, additionally require the column grouping those rows into words to be configured
+via the ``word_column`` attribute of
+:py:class:`~pymovements.stimulus.TextStimulus`.
 
 .. currentmodule:: pymovements.events.correction
 

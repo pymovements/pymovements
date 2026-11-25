@@ -20,10 +20,10 @@
 """Module for numpy transformation functions."""
 from __future__ import annotations
 
+import importlib
 from typing import Any
 
 import numpy as np
-from scipy.signal import savgol_filter
 
 from pymovements._utils import checks
 
@@ -177,7 +177,7 @@ def pos2acc(
         mode: str = 'interp',
         cval: float = 0.0,
 ) -> np.ndarray:
-    """Compute velocity time series from 2-dimensional position time series.
+    """Compute acceleration time series from 2-dimensional position time series.
 
     Parameters
     ----------
@@ -197,7 +197,7 @@ def pos2acc(
     Returns
     -------
     np.ndarray
-        Velocity time series in input_unit / sec
+        Acceleration time series in input_unit / sec^2
 
     Examples
     --------
@@ -207,13 +207,15 @@ def pos2acc(
     ...    sampling_rate=1000,
     ...    window_length=5,
     ... )
-    array([[2000., 2000.],
-           [2000., 2000.],
-           [2000., 2000.],
-           [2000., 2000.],
-           [2000., 2000.],
-           [2000., 2000.]])
+    array([[2000000., 2000000.],
+           [2000000., 2000000.],
+           [2000000., 2000000.],
+           [2000000., 2000000.],
+           [2000000., 2000000.],
+           [2000000., 2000000.]])
     """
+    scipy_signal = importlib.import_module('scipy.signal')
+
     if sampling_rate <= 0:
         raise ValueError('sampling_rate needs to be above zero')
 
@@ -226,12 +228,14 @@ def pos2acc(
         )
 
     acc = np.zeros(arr.shape)
+    delta = 1 / sampling_rate
 
-    # transform to velocities
+    # transform to accelerations
     if arr.ndim == 1:
-        acc = savgol_filter(
+        acc = scipy_signal.savgol_filter(
             x=arr,
             deriv=2,
+            delta=delta,
             window_length=window_length,
             polyorder=degree,
             mode=mode,
@@ -240,15 +244,15 @@ def pos2acc(
     else:  # we already checked for error cases
 
         for channel_id in range(arr.shape[1]):
-            acc[:, channel_id] = savgol_filter(
+            acc[:, channel_id] = scipy_signal.savgol_filter(
                 x=arr[:, channel_id],
                 deriv=2,
+                delta=delta,
                 window_length=window_length,
                 polyorder=degree,
                 mode=mode,
                 cval=cval,
             )
-    acc *= sampling_rate
 
     return acc
 
@@ -365,13 +369,15 @@ def pos2vel(
         v[1:N] = (arr[1:N] - arr[0:N - 1]) * sampling_rate
 
     elif method == 'savitzky_golay':
+        scipy_signal = importlib.import_module('scipy.signal')
+
         # transform to velocities
         if arr.ndim == 1:
-            v = savgol_filter(x=arr, deriv=1, **kwargs)
+            v = scipy_signal.savgol_filter(x=arr, deriv=1, **kwargs)
         else:  # we already checked for error cases
 
             for channel_id in range(arr.shape[1]):
-                v[:, channel_id] = savgol_filter(
+                v[:, channel_id] = scipy_signal.savgol_filter(
                     x=arr[:, channel_id], deriv=1, **kwargs,
                 )
         v *= sampling_rate
