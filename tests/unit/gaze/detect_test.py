@@ -1741,6 +1741,22 @@ def test_detect_selects_group_events_for_multiple_trial_columns():
         ),
         pytest.param(
             pl.DataFrame({
+                'trial': [1] * 50 + [2] * 50,
+                'position': [[0.0, 0.0]] * 100,
+            }),
+            pl.DataFrame(
+                {
+                    'trial': [1, 1, 2],
+                    'name': ['fixation', 'saccade', 'fixation'],
+                    'onset': [0, 25, 50],
+                    'offset': [24, 49, 99],
+                }, schema_overrides={'trial': pl.UInt32},
+            ),
+            [2, 1],
+            id='int64_samples_uint32_events',
+        ),
+        pytest.param(
+            pl.DataFrame({
                 'trial': ['a'] * 50 + ['b'] * 50,
                 'position': [[0.0, 0.0]] * 100,
             }),
