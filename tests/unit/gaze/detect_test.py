@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Gaze detect method."""
+# pylint: disable=too-many-lines
 import warnings
 from datetime import timedelta
 
