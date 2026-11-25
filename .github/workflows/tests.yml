@@ -4,11 +4,6 @@ on:
   pull_request:
     branches: [main]
   workflow_call:
-    inputs:
-      unpinned:
-        description: Install the newest dependencies instead of the pinned ones
-        type: boolean
-        default: false
     secrets:
       CODECOV_TOKEN:
         required: true
@@ -54,11 +49,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      # The cached environment holds the pinned versions, an unpinned run
-      # resolves from scratch.
       - name: Restore cached environment
         id: cache-restore
-        if: ${{ !inputs.unpinned }}
         uses: actions/cache/restore@v4
         with:
           key:
@@ -75,18 +67,12 @@ jobs:
       - name: Install tox
         run: python -m pip install tox
 
-      # An empty PIP_CONSTRAINT makes tox skip the constraints file, see tox.ini.
-      - name: Drop the constraints file
-        if: ${{ inputs.unpinned }}
-        shell: bash
-        run: echo "PIP_CONSTRAINT=" >> "$GITHUB_ENV"
-
       - name: Setup test environment
         run: tox -vv --notest -e ${{ matrix.python }}
 
       - name: Cache environment
         uses: actions/cache/save@v4
-        if: github.ref == 'refs/heads/main' && !inputs.unpinned
+        if: github.ref == 'refs/heads/main'
         with:
           key:
             ${{ steps.cache-restore.outputs.cache-primary-key }}
@@ -115,7 +101,6 @@ jobs:
 
       - name: Restore cached environment
         id: cache-restore
-        if: ${{ !inputs.unpinned }}
         uses: actions/cache/restore@v4
         with:
           key:
@@ -132,17 +117,12 @@ jobs:
       - name: Install tox
         run: python -m pip install tox
 
-      - name: Drop the constraints file
-        if: ${{ inputs.unpinned }}
-        shell: bash
-        run: echo "PIP_CONSTRAINT=" >> "$GITHUB_ENV"
-
       - name: Setup test environment
         run: tox -vv --notest -e pylint
 
       - name: Cache environment
         uses: actions/cache/save@v4
-        if: github.ref == 'refs/heads/main' && !inputs.unpinned
+        if: github.ref == 'refs/heads/main'
         with:
           key:
             ${{ steps.cache-restore.outputs.cache-primary-key }}
@@ -225,7 +205,6 @@ jobs:
 
       - name: Restore cached environment
         id: cache-restore
-        if: ${{ !inputs.unpinned }}
         uses: actions/cache/restore@v4
         with:
           key:
@@ -247,17 +226,12 @@ jobs:
       - name: Install tox
         run: python -m pip install tox
 
-      - name: Drop the constraints file
-        if: ${{ inputs.unpinned }}
-        shell: bash
-        run: echo "PIP_CONSTRAINT=" >> "$GITHUB_ENV"
-
       - name: Setup test environment
         run: tox -vv --notest -e docs
 
       - name: Cache environment
         uses: actions/cache/save@v4
-        if: github.ref == 'refs/heads/main' && !inputs.unpinned
+        if: github.ref == 'refs/heads/main'
         with:
           key:
             ${{ steps.cache-restore.outputs.cache-primary-key }}
