@@ -564,8 +564,8 @@ def test_map_to_aois_key_dtype_mismatch_raises(
         events.map_to_aois(stimulus_with_trials)
 
 
-def test_map_to_aois_valid_key_still_matches(stimulus_with_trials: TextStimulus) -> None:
-    """A key that casts to the AOI dtype unchanged still matches its AOIs."""
+def test_map_to_aois_same_dtype_integer_key_matches(stimulus_with_trials: TextStimulus) -> None:
+    """An integer key of the AOI key dtype matches its AOIs."""
     df = pl.DataFrame(
         {
             'name': ['fixation'],

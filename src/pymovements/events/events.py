@@ -1843,6 +1843,8 @@ class Events:
             are not both defined or both ``None``.
         ValueError
             If the events frame is empty.
+        ValueError
+            If an events key column and the AOI column of the same name differ in dtype.
         """
         if verbose is not None:
             warnings.warn(
@@ -2145,9 +2147,9 @@ class Events:
         ------
         ValueError
             If ``stimulus`` is a dict and ``group_columns`` is empty, the dict is empty, the
-            events have no first group column, the keys cannot be cast to that column's dtype,
-            an entry's own sequence column differs from its key, or a sequence of the events has
-            no entry.
+            events have no first group column, that column is neither integer nor string-like,
+            a key's type does not match that column's dtype, an entry's own sequence column
+            differs from its key in dtype or value, or a sequence of the events has no entry.
 
         Warns
         -----
@@ -2278,10 +2280,11 @@ class Events:
         # column, string keys for a string-like column.
         sequence_dtype = frame.schema[sequence_column]
         key_type: type
+        keys_dtype: polars.PolarsDataType
         if sequence_dtype.is_integer():
-            key_type = int
+            key_type, keys_dtype = int, sequence_dtype
         elif _is_string_like(sequence_dtype):
-            key_type = str
+            key_type, keys_dtype = str, polars.String
         else:
             raise ValueError(
                 f'stimulus dict keys cannot be matched against the fixation column '
@@ -2295,11 +2298,7 @@ class Events:
                     f'column {sequence_column!r} has dtype {sequence_dtype}. Cast one side so '
                     'the keys and the column share the same type.',
                 )
-        keys = polars.Series(
-            sequence_column,
-            list(stimuli),
-            dtype=sequence_dtype if key_type is int else polars.String,
-        )
+        keys = polars.Series(sequence_column, list(stimuli), dtype=keys_dtype)
 
         mapped_frames = []
         aois = {}

@@ -298,6 +298,13 @@ def fixture_int_trial_events():
             'dtype String. Cast one side so the keys and the column share the same type.',
             id='int-key-str-column',
         ),
+        pytest.param(
+            'int_trial_events',
+            True,
+            "stimulus dict key True has type bool but the fixation column 'trial' has "
+            'dtype Int64. Cast one side so the keys and the column share the same type.',
+            id='bool-key-int-column',
+        ),
     ],
 )
 def test_events_measure_reading_multiple_stimuli_key_type_mismatch_raises(
@@ -306,6 +313,20 @@ def test_events_measure_reading_multiple_stimuli_key_type_mismatch_raises(
     events = request.getfixturevalue(events_fixture)
     stimuli = {key: _make_stimulus(['The', 'quick', 'brown'], trial=key)}
 
+    with pytest.raises(ValueError, match=re.escape(message)):
+        events.measure_reading(stimuli, group_columns=['trial'])
+
+
+def test_events_measure_reading_multiple_stimuli_unsupported_column_dtype_raises(
+        int_trial_events,
+):
+    events = Events(int_trial_events.frame.with_columns(pl.col('trial').cast(pl.Float64)))
+    stimuli = {1.0: _make_stimulus(['The', 'quick', 'brown'], trial=None)}
+
+    message = (
+        "stimulus dict keys cannot be matched against the fixation column 'trial' of dtype "
+        'Float64: only integer and string-like columns are supported.'
+    )
     with pytest.raises(ValueError, match=re.escape(message)):
         events.measure_reading(stimuli, group_columns=['trial'])
 
