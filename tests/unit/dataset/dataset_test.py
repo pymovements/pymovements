@@ -1498,7 +1498,7 @@ def test_detect_events_attribute_error(gaze_dataset_configuration):
             (
                 "Column 'position' not found. Available columns are: "
                 "['time', 'task', 'trial', 'pixel', 'custom_position', 'velocity']."
-                " Use pix2deg() to compute position from pixel coordinates."
+                ' Use pix2deg() to compute position from pixel coordinates.'
             ),
             id='no_position',
         ),
@@ -1511,7 +1511,7 @@ def test_detect_events_attribute_error(gaze_dataset_configuration):
             (
                 "Column 'velocity' not found. Available columns are: "
                 "['time', 'task', 'trial', 'pixel', 'position', 'custom_velocity']."
-                " Use pos2vel() to compute velocity from the position column."
+                ' Use pos2vel() to compute velocity from the position column.'
             ),
             id='no_velocity',
         ),
