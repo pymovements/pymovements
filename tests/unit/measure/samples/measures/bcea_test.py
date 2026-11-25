@@ -169,6 +169,30 @@ def test_bcea_confidence_invalid_type_raises_type_error(confidence):
             id='bcea_four_samples_perfect_correlation',
         ),
         pytest.param(
+            {},
+            pl.DataFrame(
+                {'position': [[0.1, 0.51], [0.2, 0.52], [0.3, 0.53]]},
+                schema={'position': pl.List(pl.Float64)},
+            ),
+            pl.DataFrame(
+                {'bcea': [0.0]},
+                schema={'bcea': pl.Float64},
+            ),
+            id='bcea_perfect_correlation_rounding_above_one',
+        ),
+        pytest.param(
+            {},
+            pl.DataFrame(
+                {'position': [[0.1, 0.11], [0.2, 0.12], [0.3, 0.13]]},
+                schema={'position': pl.List(pl.Float64)},
+            ),
+            pl.DataFrame(
+                {'bcea': [0.0]},
+                schema={'bcea': pl.Float64},
+            ),
+            id='bcea_perfect_correlation_rounding_below_one',
+        ),
+        pytest.param(
             {'column': 'gaze_pos'},
             pl.DataFrame(
                 {'gaze_pos': [[10, 20], [10, 20]]},

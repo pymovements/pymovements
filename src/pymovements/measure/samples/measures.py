@@ -694,6 +694,9 @@ def bcea(
     component is zero, this measure returns ``None`` since statistics
     (variance, correlation) cannot be meaningfully computed.
 
+    For perfectly correlated samples the BCEA is zero. Floating-point rounding can
+    leave a value close to zero instead, but it never makes the value negative or ``NaN``.
+
     :py:func:`rms_s2s` is closely proportional to the average velocity of the signal
     during fixations, making it a good indicator of slowest detectable eye
     movements. Unlike :py:func:`std_rms`, which measures spatial spread, :py:func:`rms_s2s` captures
@@ -771,7 +774,8 @@ def bcea(
         * pl.lit(pi)
         * sigma_x
         * sigma_y
-        * (1.0 - rho_sq).sqrt(),
+        # Rounding can push rho_sq just above 1 for perfectly correlated samples.
+        * (1.0 - rho_sq).clip(lower_bound=0.0).sqrt(),
     )
 
     return result.alias('bcea')

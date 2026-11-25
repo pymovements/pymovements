@@ -41,6 +41,7 @@ def fixture_imported_modules():
         pytest.param('pandas', id='pandas'),
         pytest.param('PIL', id='PIL'),
         pytest.param('pyreadr', id='pyreadr'),
+        pytest.param('scipy.interpolate', id='scipy.interpolate'),
         pytest.param('scipy.optimize', id='scipy.optimize'),
         pytest.param('scipy.signal', id='scipy.signal'),
         pytest.param('scipy.stats', id='scipy.stats'),

@@ -127,6 +127,17 @@ def fixture_fixations():
     return Events(name=['fixation'] * 2, onsets=[0, 300], offsets=[250, 560], time_unit='ms')
 
 
+@pytest.fixture(name='contiguous_events')
+def fixture_contiguous_events():
+    """Return a gap-free sequence of a fixation, a saccade and a smooth pursuit."""
+    return Events(
+        name=['fixation', 'saccade', 'smooth_pursuit'],
+        onsets=[0, 200, 240],
+        offsets=[200, 240, 640],
+        time_unit='ms',
+    )
+
+
 @pytest.fixture(name='isolated_registry')
 def fixture_isolated_registry():
     """Restore both generator registries after the test, so registrations do not leak."""
