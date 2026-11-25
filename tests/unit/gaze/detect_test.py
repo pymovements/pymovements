@@ -1391,7 +1391,8 @@ def test_gaze_detect_custom_method_no_arguments():
             },
             pm.gaze.Gaze(None, pm.Experiment(1024, 768, 38, 30, 60, 'center', 10)),
             pl.exceptions.ColumnNotFoundError,
-            "Column 'velocity' not found. Available columns are: ['time']",
+            "Column 'velocity' not found. Available columns are: ['time']."
+            ' Use pos2vel() to compute velocity from the position column.',
             id='ivt_no_velocity_raises_column_not_found_error',
         ),
 
@@ -1489,7 +1490,8 @@ def test_gaze_detect_custom_method_no_arguments():
             },
             pm.gaze.Gaze(None, pm.Experiment(1024, 768, 38, 30, 60, 'center', 10)),
             pl.exceptions.ColumnNotFoundError,
-            "Column 'position' not found. Available columns are: ['time']",
+            "Column 'position' not found. Available columns are: ['time']."
+            ' Use pix2deg() to compute position from pixel coordinates.',
             id='idt_no_position_raises_column_not_found_error',
         ),
 
