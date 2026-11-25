@@ -54,7 +54,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           key:
-            test-${{ matrix.os }}-py${{ matrix.python }}-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/tests.yml') }}
+            test-${{ matrix.os }}-py${{ matrix.python }}-${{ hashFiles('tox.ini', 'pyproject.toml', 'constraints.txt', '.github/workflows/tests.yml') }}
           path: |
             ~/.cache
             ~/.tox
@@ -104,7 +104,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           key:
-            pylint-ubuntu-latest-py311-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/tests.yml') }}
+            pylint-ubuntu-latest-py311-${{ hashFiles('tox.ini', 'pyproject.toml', 'constraints.txt', '.github/workflows/tests.yml') }}
           path: |
             ~/.cache
             ~/.tox
@@ -137,6 +137,10 @@ jobs:
   minimum-requirements:
     name: minimum requirements
     runs-on: ubuntu-latest
+    env:
+      # The pinned versions are the newest ones, they would contradict the
+      # minimum requirements.
+      PIP_CONSTRAINT: ''
     steps:
       - uses: actions/checkout@v4
         with:
@@ -204,7 +208,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           key:
-            docs-${{ matrix.os }}-py313-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/tests.yml') }}
+            docs-${{ matrix.os }}-py313-${{ hashFiles('tox.ini', 'pyproject.toml', 'constraints.txt', '.github/workflows/tests.yml') }}
           path: |
             ~/.cache
             ~/.tox
