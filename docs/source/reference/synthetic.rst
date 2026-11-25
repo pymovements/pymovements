@@ -16,6 +16,15 @@ Synthetic
     SampleGeneratorRegistry
     Range
 
+.. rubric:: Sample Generators
+
+.. autosummary::
+    :toctree: api
+    :nosignatures:
+    :template: class.rst
+
+    StatisticalSampleGenerator
+
 .. rubric:: Functions
 
 .. autosummary::
