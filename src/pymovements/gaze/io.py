@@ -424,7 +424,7 @@ def from_asc(
         add_columns: dict[str, str] | None = None,
         column_schema_overrides: dict[str, Any] | None = None,
         encoding: str | None = None,
-        events: bool = False,
+        events: bool | str | list[str] = False,
         messages: bool | list[str] = False,
         metadata: dict[str, Any] | None = None,
         extend_resolution: bool | None = None,
@@ -465,8 +465,10 @@ def from_asc(
         Text encoding of the file. If None, the locale encoding is used.
         Only applies to file paths and binary file objects; text file objects
         are already decoded. (default: None)
-    events: bool
-        Flag indicating if events should be parsed from the asc file. (default: False)
+    events: bool | str | list[str]
+        Flag indicating if events should be parsed from the asc file. If ``True``, all
+        fixations, saccades and blinks are parsed. Pass one of ``'fixation'``, ``'saccade'``
+        and ``'blink'``, or a list of them, to parse only these event types. (default: False)
     messages: bool | list[str]
         Flag indicating if any additional messages should be parsed from the asc file
         and stored in :py:class:`pymovements.gaze.experiment.Experiment`.
@@ -617,6 +619,7 @@ def from_asc(
         encoding=encoding,
         messages=messages,
         extend_resolution=extend_resolution,
+        events=events,
     )
 
     if add_columns is not None:

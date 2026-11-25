@@ -978,6 +978,52 @@ def test_from_asc_example_file_has_expected_events(
     assert_frame_equal(gaze.events.frame, expected_event_frame, check_column_order=False)
 
 
+@pytest.mark.parametrize(
+    ('events', 'expected_names'),
+    [
+        pytest.param('blink', ['blink_eyelink'] * 2, id='single_type'),
+        pytest.param(['blink'], ['blink_eyelink'] * 2, id='single_type_list'),
+        pytest.param(
+            ['fixation', 'saccade'],
+            ['fixation_eyelink'] * 2 + ['saccade_eyelink'] * 2 + ['fixation_eyelink'] * 2,
+            id='two_types',
+        ),
+        pytest.param(
+            ['fixation', 'saccade', 'blink'],
+            ['fixation_eyelink'] * 2 + ['blink_eyelink'] * 2 + ['saccade_eyelink'] * 2
+            + ['fixation_eyelink'] * 2,
+            id='all_types',
+        ),
+    ],
+)
+def test_from_asc_parses_selected_event_types(events, expected_names, make_example_file):
+    filepath = make_example_file('eyelink_binocular_example.asc')
+    gaze = from_asc(filepath, events=events)
+    all_events = from_asc(filepath, events=True).events.frame
+
+    assert gaze.events.frame['name'].to_list() == expected_names
+    assert_frame_equal(
+        gaze.events.frame,
+        all_events.filter(pl.col('name').is_in(expected_names)),
+    )
+
+
+@pytest.mark.parametrize('events', [[], False])
+def test_from_asc_parses_no_events(events, make_example_file):
+    filepath = make_example_file('eyelink_binocular_example.asc')
+    gaze = from_asc(filepath, events=events)
+
+    assert gaze.events.frame.is_empty()
+
+
+@pytest.mark.parametrize('events', ['microsaccade', ['fixation', 'Blink']])
+def test_from_asc_unknown_event_type_raises(events, make_example_file):
+    filepath = make_example_file('eyelink_binocular_example.asc')
+
+    with pytest.raises(ValueError, match='unknown event types'):
+        from_asc(filepath, events=events)
+
+
 def test_from_asc_events_declare_inclusive_offsets(make_example_file):
     # Interim: the parsed offset column stays until the parser takes the reported DUR as the
     # duration and keeps the offsets only on request.

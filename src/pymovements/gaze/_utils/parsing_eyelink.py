@@ -115,6 +115,8 @@ BLINK_STOP_REGEX = (
     r'(?P<timestamp_end>(\d+[.]?\d*))\s+(?P<duration_ms>(\d+[.]?\d*))\s*'
 )
 
+EYELINK_EVENT_TYPES = ('fixation', 'saccade', 'blink')
+
 CALIBRATION_TIMESTAMP_REGEX = r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+!CAL\s*\n'
 
 CALIBRATION_REGEX = (
@@ -296,33 +298,41 @@ def _check_samples_config_key(
     return value
 
 
-def parse_eyelink_event_start(line: str) -> tuple[str, str, float] | None:
+def parse_eyelink_event_start(
+        line: str,
+        event_types: Sequence[str] = EYELINK_EVENT_TYPES,
+) -> tuple[str, str, float] | None:
     """Check if the line contains the start of an event and return the event name, eye and time.
 
     Returns a tuple (event_name, eye, timestamp) where eye is 'left' or 'right'.
     Example: ('fixation', 'left', 100.0)
+    Only the event types in ``event_types`` are matched.
     """
-    if match := _match_regex(FIXATION_START_REGEX, line):
+    if 'fixation' in event_types and (match := _match_regex(FIXATION_START_REGEX, line)):
         eye = match.group('eye').upper()
         eye_str = 'left' if eye == 'L' else 'right'
         return 'fixation', eye_str, float(match.group('timestamp'))
-    if match := _match_regex(SACCADE_START_REGEX, line):
+    if 'saccade' in event_types and (match := _match_regex(SACCADE_START_REGEX, line)):
         eye = match.group('eye').upper()
         eye_str = 'left' if eye == 'L' else 'right'
         return 'saccade', eye_str, float(match.group('timestamp'))
-    if match := _match_regex(BLINK_START_REGEX, line):
+    if 'blink' in event_types and (match := _match_regex(BLINK_START_REGEX, line)):
         eye = match.group('eye').upper()
         eye_str = 'left' if eye == 'L' else 'right'
         return 'blink', eye_str, float(match.group('timestamp'))
     return None
 
 
-def parse_eyelink_event_end(line: str) -> tuple[str, str, float, float] | None:
+def parse_eyelink_event_end(
+        line: str,
+        event_types: Sequence[str] = EYELINK_EVENT_TYPES,
+) -> tuple[str, str, float, float] | None:
     """Check if the line contains the end of an event and return the event name, eye and times.
 
     Returns a tuple (event_name, eye, onset, offset). Example: ('fixation', 'left', 123.0, 130.0)
+    Only the event types in ``event_types`` are matched.
     """
-    if match := _match_regex(FIXATION_STOP_REGEX, line):
+    if 'fixation' in event_types and (match := _match_regex(FIXATION_STOP_REGEX, line)):
         eye = match.group('eye').upper()
         eye_str = 'left' if eye == 'L' else 'right'
         return (
@@ -331,7 +341,7 @@ def parse_eyelink_event_end(line: str) -> tuple[str, str, float, float] | None:
             float(match.group('timestamp_start')),
             float(match.group('timestamp_end')),
         )
-    if match := _match_regex(SACCADE_STOP_REGEX, line):
+    if 'saccade' in event_types and (match := _match_regex(SACCADE_STOP_REGEX, line)):
         eye = match.group('eye').upper()
         eye_str = 'left' if eye == 'L' else 'right'
         return (
@@ -340,7 +350,7 @@ def parse_eyelink_event_end(line: str) -> tuple[str, str, float, float] | None:
             float(match.group('timestamp_start')),
             float(match.group('timestamp_end')),
         )
-    if match := _match_regex(BLINK_STOP_REGEX, line):
+    if 'blink' in event_types and (match := _match_regex(BLINK_STOP_REGEX, line)):
         eye = match.group('eye').upper()
         eye_str = 'left' if eye == 'L' else 'right'
         return (
@@ -585,6 +595,7 @@ def parse_eyelink(
         encoding: str | None = None,
         messages: bool | Sequence[str] = False,
         extend_resolution: bool | None = None,
+        events: bool | str | Sequence[str] = True,
 ) -> tuple[pl.DataFrame, pl.DataFrame, dict[str, Any], pl.DataFrame | None]:
     """Parse EyeLink asc file.
 
@@ -618,6 +629,11 @@ def parse_eyelink(
         Flag indicating if the screen resolution should be extended by 1 pixel.
         If None, the resolution is extended unless the file was recorded by libeyelink.py.
         (default: None)
+    events: bool | str | Sequence[str]
+        Event types to parse from the asc file. If True, fixations, saccades and blinks are
+        parsed, if False, no events are parsed. Pass one of ``'fixation'``, ``'saccade'`` and
+        ``'blink'``, or a list of them, to parse only these event types. Lines of other event
+        types are not matched at all. (default: True)
 
     Returns
     -------
@@ -632,7 +648,8 @@ def parse_eyelink(
     TypeError
         If the `file` parameter is not a string, Path, or file-like object.
     ValueError
-        If the `messages` parameter is not bool or a list of strings.
+        If the `messages` parameter is not bool or a list of strings, or if `events` names an
+        unknown event type.
 
     Notes
     -----
@@ -673,7 +690,7 @@ def parse_eyelink(
         'pupil': [],
         **{additional_column: [] for additional_column in additional_columns},
     }
-    events: dict[str, list[Any]] = {
+    event_columns: dict[str, list[Any]] = {
         'name': [],
         'eye': [],
         'onset': [],
@@ -725,6 +742,19 @@ def parse_eyelink(
             'Make sure to pass either a bool or a list of regular expressions '
             f'as strings. Received {messages}.',
         )
+
+    if isinstance(events, bool):
+        event_types: tuple[str, ...] = EYELINK_EVENT_TYPES if events else ()
+    else:
+        event_types = (events,) if isinstance(events, str) else tuple(events)
+        unknown = [
+            event_type for event_type in event_types if event_type not in EYELINK_EVENT_TYPES
+        ]
+        if unknown:
+            raise ValueError(
+                f'unknown event types {unknown} for events, '
+                f'supported are: {list(EYELINK_EVENT_TYPES)}',
+            )
 
     messages_list: list[tuple[float, str]] = []
     num_negative_message_times = 0
@@ -818,12 +848,12 @@ def parse_eyelink(
 
         # Collect event starts/ends for deterministic matching
         # Store context BEFORE processing this line's patterns (context is from previous lines)
-        if start_event := parse_eyelink_event_start(line):
+        if start_event := parse_eyelink_event_start(line, event_types):
             event_name, eye, timestamp = start_event
             event_starts.append((event_name, eye, timestamp))
             context_timeline[timestamp] = {**current_additional}
 
-        elif end_event := parse_eyelink_event_end(line):
+        elif end_event := parse_eyelink_event_end(line, event_types):
             event_name, eye, onset, offset = end_event
             event_ends.append((event_name, eye, onset, offset))
             context_timeline[offset] = {**current_additional}
@@ -1006,7 +1036,7 @@ def parse_eyelink(
     )
     for event in matched_events:
         for key, value in event.items():
-            events[key].append(value)
+            event_columns[key].append(value)
 
     # the actual tracked eye is in the samples config, not in the recording config
     # the recording config contains the eyes that were recorded
@@ -1079,7 +1109,7 @@ def parse_eyelink(
         event_schema_overrides.update(schema)
 
     gaze_df = pl.from_dict(data=samples).cast(gaze_schema_overrides)
-    event_df = pl.from_dict(data=events).cast(event_schema_overrides)
+    event_df = pl.from_dict(data=event_columns).cast(event_schema_overrides)
 
     # Only return messages if `messages` not False or []. Otherwise, return None.
     if messages:
