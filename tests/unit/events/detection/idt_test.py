@@ -837,6 +837,22 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             ),
             id='nan_window_keeps_last_sample',
         ),
+        pytest.param(
+            {
+                'sampling_rate': 1000,
+                'positions': np.tile([[0, 0], [1, 0]], (5, 1)),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[9],
+                offsets_inclusive=True,
+                sampling_rate=1000,
+            ),
+            id='dispersion_at_threshold_single_fixation',
+        ),
     ],
 )
 def test_idt_detects_fixations(kwargs, expected):
