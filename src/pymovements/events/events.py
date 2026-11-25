@@ -253,12 +253,6 @@ _AOI_MATCH_ORDER = '__pymovements_aoi_match_order'
 _AOI_X = '__pymovements_aoi_x'
 _AOI_Y = '__pymovements_aoi_y'
 _AOI_NAME = '__pymovements_aoi_name'
-_AOI_JOIN_KEY_PREFIX = '__pymovements_aoi_join_key_'
-
-
-def _aoi_join_key_name(column: str) -> str:
-    """Return the reserved name of the cast join-key column for ``column``."""
-    return f'{_AOI_JOIN_KEY_PREFIX}{column}'
 
 
 def _is_numeric_like(dtype: polars.PolarsDataType) -> bool:
@@ -275,28 +269,28 @@ def _is_string_like(dtype: polars.PolarsDataType) -> bool:
     )
 
 
-def _key_cast_is_valid(
-        original: polars.Expr,
-        source_dtype: polars.PolarsDataType,
-        target_dtype: polars.PolarsDataType,
-) -> polars.Expr:
-    """Return whether a key value survives casting to the AOI key dtype unchanged.
+def _check_aoi_key_dtypes(
+        frame: polars.DataFrame,
+        aoi_dataframe: TextStimulus,
+        key_columns: list[str],
+) -> None:
+    """Raise when an events key column and the AOI column of the same name differ in dtype.
 
-    Nulls are wildcards and stay valid. A value that cannot be cast, like the string ``'x'``
-    against an integer column, matches no AOI, as in the per-row lookup. A numeric value must
-    also survive the cast back, so precision loss (for example ``1.5`` against an integer
-    column) matches no AOI either.
+    The keys are joined without a cast, so a mismatch would silently match nothing or guess at
+    matches. The user casts one side instead. An events column of dtype ``Null`` holds only
+    nulls, which are wildcards that never reach the join, so it passes.
     """
-    if source_dtype == target_dtype:
-        return polars.lit(True)
-    if _is_string_like(source_dtype) and _is_string_like(target_dtype):
-        return polars.lit(True)
-    cast = original.cast(target_dtype, strict=False)
-    is_valid = cast.is_not_null()
-    if _is_numeric_like(source_dtype):
-        round_trip = cast.cast(source_dtype, strict=False)
-        is_valid = is_valid & (round_trip == original)
-    return original.is_null() | is_valid
+    for column in key_columns:
+        events_dtype = frame.schema[column]
+        if events_dtype == polars.Null:
+            continue
+        aoi_dtype = aoi_dataframe.aois.schema[column]
+        if events_dtype != aoi_dtype:
+            raise ValueError(
+                f'events key column {column!r} has dtype {events_dtype} but the AOI column '
+                f'{column!r} has dtype {aoi_dtype}. Cast one side so both key columns share '
+                'the same dtype.',
+            )
 
 
 def _event_coordinate_expr(
@@ -341,6 +335,7 @@ def _map_fixations_to_aois(
         for column in (aoi_dataframe.trial_column, aoi_dataframe.page_column)
         if column is not None and column in frame.columns
     ]
+    _check_aoi_key_dtypes(frame, aoi_dataframe, key_columns)
 
     x_expr, x_is_numeric = _event_coordinate_expr(frame, 'x')
     y_expr, y_is_numeric = _event_coordinate_expr(frame, 'y')
@@ -350,13 +345,12 @@ def _map_fixations_to_aois(
         polars.col('name').alias(_AOI_NAME),
         x_expr.alias(_AOI_X),
         y_expr.alias(_AOI_Y),
-        # Keep the original key values for the null-wildcard lookup below.
-        *[polars.col(column) for column in key_columns],
-        # Cast to the AOI key dtypes so the join keys always share a common dtype.
+        # An all-null key column has dtype Null. It holds no value, so giving it the AOI dtype
+        # only lets the join accept the (empty) constrained frame.
         *[
-            polars.col(column)
-            .cast(aoi_dataframe.aois.schema[column], strict=False)
-            .alias(_aoi_join_key_name(column))
+            polars.col(column).cast(aoi_dataframe.aois.schema[column])
+            if frame.schema[column] == polars.Null
+            else polars.col(column)
             for column in key_columns
         ],
     )
@@ -387,22 +381,11 @@ def _map_fixations_to_aois(
 
     # Rows whose configured key columns contain null are matched against all AOIs of the
     # respective other key (legacy behavior); handle them via the per-row lookup below.
-    # Non-null keys that do not survive the cast match no AOI, as in the per-row lookup.
     if key_columns:
         keys_present = polars.all_horizontal(
             [polars.col(column).is_not_null() for column in key_columns],
         )
-        keys_valid = polars.all_horizontal(
-            [
-                _key_cast_is_valid(
-                    polars.col(column),
-                    frame.schema[column],
-                    aoi_dataframe.aois.schema[column],
-                )
-                for column in key_columns
-            ],
-        )
-        constrained = candidates.filter(keys_present & keys_valid)
+        constrained = candidates.filter(keys_present)
         wildcard = candidates.filter(~keys_present)
     else:
         constrained = candidates
@@ -412,13 +395,7 @@ def _map_fixations_to_aois(
         polars.int_range(polars.len()).alias(_AOI_MATCH_ORDER),
     )
     if key_columns:
-        matches = constrained.join(
-            aois,
-            left_on=[_aoi_join_key_name(column) for column in key_columns],
-            right_on=key_columns,
-            how='inner',
-            suffix='_aoi',
-        )
+        matches = constrained.join(aois, on=key_columns, how='inner', suffix='_aoi')
     else:
         matches = constrained.join(aois, how='cross', suffix='_aoi')
 
@@ -1822,9 +1799,8 @@ class Events:
         - A null value in a configured key column is a wildcard: that fixation is matched
           against all AOIs for the other key(s), using the per-row
           :meth:`~pymovements.stimulus.TextStimulus.get_aoi` lookup.
-        - A non-null key is cast to the AOI key dtype, so the string ``'02'`` matches the
-          integer key ``2``. A key that cannot be cast without changing its value (for
-          example ``'x'`` or ``1.5`` against an integer column) matches no AOI.
+        - An events key column must have the same dtype as the AOI column of the same name,
+          otherwise a ``ValueError`` asks to cast one side.
 
         Overlapping AOIs:
 
@@ -1867,6 +1843,8 @@ class Events:
             are not both defined or both ``None``.
         ValueError
             If the events frame is empty.
+        ValueError
+            If an events key column and the AOI column of the same name differ in dtype.
         """
         if verbose is not None:
             warnings.warn(
@@ -2169,9 +2147,9 @@ class Events:
         ------
         ValueError
             If ``stimulus`` is a dict and ``group_columns`` is empty, the dict is empty, the
-            events have no first group column, the keys cannot be cast to that column's dtype,
-            an entry's own sequence column differs from its key, or a sequence of the events has
-            no entry.
+            events have no first group column, that column is neither integer nor string-like,
+            a key's type does not match that column's dtype, an entry's own sequence column
+            differs from its key in dtype or value, or a sequence of the events has no entry.
 
         Warns
         -----
@@ -2298,37 +2276,48 @@ class Events:
                 f'{sequence_column!r} column.',
             )
 
-        # The keys are compared with the column, so they are cast to its dtype once, the same
-        # way compute_reading_measures does it.
+        # The keys are compared with the column without a cast: integer keys for an integer
+        # column, string keys for a string-like column.
         sequence_dtype = frame.schema[sequence_column]
-        try:
-            keys = polars.Series(sequence_column, list(stimuli)).cast(sequence_dtype)
-        except polars.exceptions.PolarsError as exception:
+        key_type: type
+        keys_dtype: polars.PolarsDataType
+        if sequence_dtype.is_integer():
+            key_type, keys_dtype = int, sequence_dtype
+        elif _is_string_like(sequence_dtype):
+            key_type, keys_dtype = str, polars.String
+        else:
             raise ValueError(
-                f'stimulus dict keys are not compatible with the fixation {sequence_column} '
-                f'dtype {sequence_dtype}: {exception}',
-            ) from exception
+                f'stimulus dict keys cannot be matched against the fixation column '
+                f'{sequence_column!r} of dtype {sequence_dtype}: only integer and string-like '
+                'columns are supported.',
+            )
+        for key in stimuli:
+            if not isinstance(key, key_type) or isinstance(key, bool):
+                raise ValueError(
+                    f'stimulus dict key {key!r} has type {type(key).__name__} but the fixation '
+                    f'column {sequence_column!r} has dtype {sequence_dtype}. Cast one side so '
+                    'the keys and the column share the same type.',
+                )
+        keys = polars.Series(sequence_column, list(stimuli), dtype=keys_dtype)
 
         mapped_frames = []
         aois = {}
-        for key, (original_key, stim) in zip(keys, stimuli.items()):
-            aois[original_key] = stim.aois
+        for key, stim in stimuli.items():
+            aois[key] = stim.aois
             if sequence_column in stim.aois.columns:
                 # map_to_aois still filters the entry's AOIs by this column, so values other
                 # than the key would leave every fixation of the sequence unmatched. AOI rows
                 # with a null value are ignored by the mapping and by this check.
-                values = (
-                    stim.aois[sequence_column].drop_nulls().cast(sequence_dtype, strict=False)
-                    .unique().to_list()
-                )
+                _check_aoi_key_dtypes(frame, stim, [sequence_column])
+                values = stim.aois[sequence_column].drop_nulls().unique().to_list()
                 if values != [key]:
                     raise ValueError(
-                        f'stimulus for key {original_key!r} has {sequence_column} values '
+                        f'stimulus for key {key!r} has {sequence_column} values '
                         f'{values} that differ from its dict key.',
                     )
                 # The dict key defines the sequence column, so it must not also live in the
                 # entry handed to compute_reading_measures.
-                aois[original_key] = stim.aois.drop(sequence_column)
+                aois[key] = stim.aois.drop(sequence_column)
             subset = Events._rebuild(
                 frame.filter(polars.col(sequence_column) == key),
                 trial_columns=self.trial_columns,

@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests for Events.measure_reading and Gaze.measure_reading."""
+import re
+
 import polars as pl
 import pytest
 
@@ -42,7 +44,7 @@ def _make_stimulus(words, trial='trial_1', start_x=None):
         'height': [20.0] * n,
     })
     if trial is not None:
-        aois = aois.with_columns(pl.lit(trial).alias('trial'))
+        aois = aois.with_columns(pl.Series('trial', [trial] * n))
     return TextStimulus(
         aois=aois,
         aoi_column='char',
@@ -272,19 +274,88 @@ def fixture_int_trial_events():
     )
 
 
-def test_events_measure_reading_multiple_stimuli_incompatible_key_dtype_raises(int_trial_events):
-    stimuli = {'trial_1': _make_stimulus(['The', 'quick', 'brown'], trial='trial_1')}
+@pytest.mark.parametrize(
+    ('events_fixture', 'key', 'message'),
+    [
+        pytest.param(
+            'int_trial_events',
+            'trial_1',
+            "stimulus dict key 'trial_1' has type str but the fixation column 'trial' has "
+            'dtype Int64. Cast one side so the keys and the column share the same type.',
+            id='str-key-int-column',
+        ),
+        pytest.param(
+            'int_trial_events',
+            '1',
+            "stimulus dict key '1' has type str but the fixation column 'trial' has "
+            'dtype Int64. Cast one side so the keys and the column share the same type.',
+            id='numeric-str-key-int-column',
+        ),
+        pytest.param(
+            'fixation_events',
+            1,
+            "stimulus dict key 1 has type int but the fixation column 'trial' has "
+            'dtype String. Cast one side so the keys and the column share the same type.',
+            id='int-key-str-column',
+        ),
+        pytest.param(
+            'int_trial_events',
+            True,
+            "stimulus dict key True has type bool but the fixation column 'trial' has "
+            'dtype Int64. Cast one side so the keys and the column share the same type.',
+            id='bool-key-int-column',
+        ),
+    ],
+)
+def test_events_measure_reading_multiple_stimuli_key_type_mismatch_raises(
+        events_fixture, key, message, request,
+):
+    events = request.getfixturevalue(events_fixture)
+    stimuli = {key: _make_stimulus(['The', 'quick', 'brown'], trial=key)}
 
-    with pytest.raises(ValueError, match='keys are not compatible with the fixation trial dtype'):
-        int_trial_events.measure_reading(stimuli, group_columns=['trial'])
+    with pytest.raises(ValueError, match=re.escape(message)):
+        events.measure_reading(stimuli, group_columns=['trial'])
 
 
-def test_events_measure_reading_multiple_stimuli_casts_keys_to_column_dtype(int_trial_events):
-    stimuli = {'1': _make_stimulus(['The', 'quick', 'brown'], trial=1)}
+def test_events_measure_reading_multiple_stimuli_unsupported_column_dtype_raises(
+        int_trial_events,
+):
+    events = Events(int_trial_events.frame.with_columns(pl.col('trial').cast(pl.Float64)))
+    stimuli = {1.0: _make_stimulus(['The', 'quick', 'brown'], trial=None)}
+
+    message = (
+        "stimulus dict keys cannot be matched against the fixation column 'trial' of dtype "
+        'Float64: only integer and string-like columns are supported.'
+    )
+    with pytest.raises(ValueError, match=re.escape(message)):
+        events.measure_reading(stimuli, group_columns=['trial'])
+
+
+def test_events_measure_reading_multiple_stimuli_integer_keys_match(int_trial_events):
+    stimuli = {1: _make_stimulus(['The', 'quick', 'brown'], trial=1)}
 
     result = int_trial_events.measure_reading(stimuli, group_columns=['trial'])
 
     assert result.frame['trial'].to_list() == [1, 1, 1]
+    assert result.frame['TFC'].to_list() == [1, 1, 0]
+
+
+@pytest.mark.parametrize(
+    'dtype',
+    [
+        pytest.param(pl.Categorical, id='categorical'),
+        pytest.param(pl.Enum(['trial_1']), id='enum'),
+    ],
+)
+def test_events_measure_reading_multiple_stimuli_string_keys_match_string_like_column(
+        fixation_events, dtype,
+):
+    events = Events(fixation_events.frame.with_columns(pl.col('trial').cast(dtype)))
+    stimuli = {'trial_1': _make_stimulus(['The', 'quick', 'brown'], trial=None)}
+
+    result = events.measure_reading(stimuli, group_columns=['trial'])
+
+    assert result.frame['trial'].to_list() == ['trial_1'] * 3
     assert result.frame['TFC'].to_list() == [1, 1, 0]
 
 
@@ -297,15 +368,18 @@ def test_events_measure_reading_multiple_stimuli_without_sequence_column(fixatio
     assert result.frame['TFC'].to_list() == [1, 1, 0]
 
 
-def test_events_measure_reading_multiple_stimuli_stimulus_column_dtype_differs(fixation_events):
+def test_events_measure_reading_multiple_stimuli_stimulus_column_dtype_differs_raises(
+        int_trial_events,
+):
     # the stimulus keeps its sequence column as a string while the key and the events are ints
-    events = Events(fixation_events.frame.with_columns(pl.lit(1).alias('trial')))
     stimuli = {1: _make_stimulus(['The', 'quick', 'brown'], trial='1')}
 
-    result = events.measure_reading(stimuli, group_columns=['trial'])
-
-    assert result.frame['trial'].to_list() == [1, 1, 1]
-    assert result.frame['TFC'].to_list() == [1, 1, 0]
+    message = (
+        "events key column 'trial' has dtype Int64 but the AOI column 'trial' has dtype "
+        'String. Cast one side so both key columns share the same dtype.'
+    )
+    with pytest.raises(ValueError, match=re.escape(message)):
+        int_trial_events.measure_reading(stimuli, group_columns=['trial'])
 
 
 def test_events_measure_reading_multiple_stimuli_key_mismatch_raises(fixation_events):
