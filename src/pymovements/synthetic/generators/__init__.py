@@ -18,9 +18,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides the concrete synthetic data generators."""
+from pymovements.synthetic.generators.geometrical import GeometricalSampleGenerator
 from pymovements.synthetic.generators.statistical import StatisticalSampleGenerator
 
 
 __all__ = [
+    'GeometricalSampleGenerator',
     'StatisticalSampleGenerator',
 ]
