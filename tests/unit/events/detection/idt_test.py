@@ -290,7 +290,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0, 50],
-                offsets=[49, 99],
+                offsets=[48, 99],
                 offsets_inclusive=True,
                 sampling_rate=1000,
             ),
@@ -311,7 +311,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0, 50],
-                offsets=[49, 99],
+                offsets=[48, 99],
                 offsets_inclusive=True,
                 sampling_rate=1000,
             ),
@@ -710,7 +710,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0, 8],
-                offsets=[4, 10],
+                offsets=[4, 11],
                 offsets_inclusive=True,
                 sampling_rate=1000,
             ),
@@ -783,6 +783,76 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             ),
             id='constant_position_single_fixation_with_repeated_timestep',
         ),
+        pytest.param(
+            {
+                'sampling_rate': 1000,
+                'positions': step_function(length=20, steps=[10], values=[(5, 0)]),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[0, 10],
+                offsets=[9, 19],
+                offsets_inclusive=True,
+                sampling_rate=1000,
+            ),
+            id='sample_exceeding_threshold_starts_next_fixation',
+        ),
+        pytest.param(
+            {
+                'sampling_rate': 1000,
+                'positions': step_function(
+                    length=20, steps=[3, 4, 10], values=[(np.nan, np.nan), (0, 0), (5, 0)],
+                ),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+                'include_nan': True,
+            },
+            Events(
+                name='fixation',
+                onsets=[0, 10],
+                offsets=[9, 19],
+                offsets_inclusive=True,
+                sampling_rate=1000,
+            ),
+            id='sample_exceeding_threshold_starts_next_fixation_with_nan',
+        ),
+        pytest.param(
+            {
+                'sampling_rate': 1000,
+                'positions': step_function(
+                    length=20, steps=[3, 4], values=[(np.nan, np.nan), (0, 0)],
+                ),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+                'include_nan': True,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[19],
+                offsets_inclusive=True,
+                sampling_rate=1000,
+            ),
+            id='nan_window_keeps_last_sample',
+        ),
+        pytest.param(
+            {
+                'sampling_rate': 1000,
+                'positions': np.tile([[0, 0], [1, 0]], (5, 1)),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[9],
+                offsets_inclusive=True,
+                sampling_rate=1000,
+            ),
+            id='dispersion_at_threshold_single_fixation',
+        ),
     ],
 )
 def test_idt_detects_fixations(kwargs, expected):
@@ -806,10 +876,10 @@ def test_idt_onsets_and_offsets_on_a_constant_interval_grid():
 
     assert events.frame['onset'].to_list() == [timedelta(0), timedelta(milliseconds=50)]
     assert events.frame['offset'].to_list() == [
-        timedelta(milliseconds=49), timedelta(milliseconds=99),
+        timedelta(milliseconds=48), timedelta(milliseconds=99),
     ]
     assert events.frame['duration'].to_list() == [
-        timedelta(milliseconds=50), timedelta(milliseconds=50),
+        timedelta(milliseconds=49), timedelta(milliseconds=50),
     ]
 
 
