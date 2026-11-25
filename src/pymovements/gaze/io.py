@@ -413,50 +413,6 @@ def metadata_to_val_frame(metadata: dict[str, Any]) -> pl.DataFrame:
     )
 
 
-_EYELINK_EVENT_TYPES = ('fixation', 'saccade', 'blink')
-
-
-def _select_eyelink_events(
-        event_data: pl.DataFrame,
-        events: bool | str | list[str],
-) -> Events | None:
-    """Keep the parsed EyeLink events of the requested types.
-
-    Parameters
-    ----------
-    event_data: pl.DataFrame
-        Events parsed from the asc file.
-    events: bool | str | list[str]
-        ``True`` keeps all events, ``False`` keeps none. An event type or a list of event types
-        keeps only events of these types.
-
-    Returns
-    -------
-    Events | None
-        The selected events, or ``None`` if no events are requested.
-
-    Raises
-    ------
-    ValueError
-        If an unknown event type is requested.
-    """
-    if isinstance(events, bool):
-        return Events(event_data) if events else None
-
-    event_types = [events] if isinstance(events, str) else list(events)
-    unknown = [event_type for event_type in event_types if event_type not in _EYELINK_EVENT_TYPES]
-    if unknown:
-        raise ValueError(
-            f'unknown event types {unknown} for events, '
-            f'supported are: {list(_EYELINK_EVENT_TYPES)}',
-        )
-    if not event_types:
-        return None
-
-    names = [f'{event_type}_eyelink' for event_type in event_types]
-    return Events(event_data.filter(pl.col('name').is_in(names)))
-
-
 def from_asc(
         file: str | Path | IO[str] | IO[bytes],
         *,
@@ -516,12 +472,12 @@ def from_asc(
     messages: bool | list[str]
         Flag indicating if any additional messages should be parsed from the asc file
         and stored in :py:class:`pymovements.gaze.experiment.Experiment`.
-        The message format is 'MSG <timestamp> <content>'.
+        The message format is 'MSG <timestamp> [offset] <content>', see Notes.
         If True, all available messages will be parsed from the asc,
         alternatively, a list of regular expressions can be passed, and only the
         messages that match any of the regular expressions will be kept.
         Regular expressions are only applied to the message content,
-        implicitly parsing the `MSG <timestamp>` prefix.
+        implicitly parsing the `MSG <timestamp> [offset]` prefix.
         (default: False)
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. When ``file`` is a path, a ``Sources``
@@ -590,6 +546,25 @@ def from_asc(
     binocular recording. Per-recording metadata that tells the two cases apart is planned in
     `issue 1663 <https://github.com/pymovements/pymovements/issues/1663>`_.
 
+    Message lines can carry a timestamp offset, ``MSG <timestamp> [offset] <text>``. The offset is
+    a signed integer in milliseconds, and the message refers to an event at ``timestamp - offset``.
+    The parsed message time is this corrected time, and messages are sorted by it. Calibrations and
+    validations parsed from message lines also carry the corrected time. The offset is
+    removed from the content, so ``patterns`` and ``metadata_patterns`` match the text without it.
+
+    ==============================  ==========  ===============
+    Line                            Time        Content
+    ==============================  ==========  ===============
+    ``MSG 456119 -10 TRIAL 1``      456129      ``TRIAL 1``
+    ``MSG 1000 12``                 1000        ``12``
+    ``MSG 1000 3 trials left``      997         ``trials left``
+    ==============================  ==========  ===============
+
+    A leading integer counts as an offset only if more text follows. Message text that starts with
+    an integer followed by more text is therefore misread, as in the last row. If an offset is
+    larger than its timestamp, the corrected time is negative and a warning is raised. Columns
+    added by ``patterns`` change at the message's line in the file, not at its corrected time.
+
     Examples
     --------
     We can load an asc file stored at `tests/files/eyelink_monocular_example.asc` into a ``Gaze``:
@@ -644,6 +619,7 @@ def from_asc(
         encoding=encoding,
         messages=messages,
         extend_resolution=extend_resolution,
+        events=events,
     )
 
     if add_columns is not None:
@@ -686,10 +662,15 @@ def from_asc(
     calibrations = metadata_to_cal_frame(parsed_metadata)
     validations = metadata_to_val_frame(parsed_metadata)
 
+    # Interim: EyeLink end timestamps are the last sample of an event, but the durations stay
+    # end - start, one sampling interval short of that convention, so they are kept unchecked.
+    # This goes away once the parser takes the reported DUR as the duration.
+    event_data = event_data.with_columns((pl.col('offset') - pl.col('onset')).alias('duration'))
+
     gaze = Gaze(
         samples=samples,
         experiment=experiment,
-        events=_select_eyelink_events(event_data, events),
+        events=Events(event_data, offsets_inclusive=True, validate=False) if events else None,
         messages=messages_df,
         trial_columns=trial_columns,
         time_column='time',

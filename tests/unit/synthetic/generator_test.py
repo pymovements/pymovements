@@ -21,6 +21,7 @@
 import dataclasses
 import inspect
 import json
+import math
 from typing import Annotated
 from typing import ClassVar
 
@@ -266,6 +267,14 @@ def test_sample_generator_requires_a_sampling_rate(noise_sample_generator):
         pytest.param(
             0.0, ValueError, ('sampling_rate', 'greater than zero'),
             id='zero_sampling_rate_raises_value_error',
+        ),
+        pytest.param(
+            math.nan, ValueError, ('sampling_rate', 'finite', 'nan'),
+            id='nan_sampling_rate_raises_value_error',
+        ),
+        pytest.param(
+            math.inf, ValueError, ('sampling_rate', 'finite', 'inf'),
+            id='infinite_sampling_rate_raises_value_error',
         ),
         pytest.param(
             '1000', TypeError, ('sampling_rate', 'number', 'str'),

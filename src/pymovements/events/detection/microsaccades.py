@@ -27,6 +27,7 @@ import polars
 
 from pymovements._utils import checks
 from pymovements._utils.time import normalize_timesteps
+from pymovements._utils.time import sampling_interval_ms
 from pymovements.events._utils.filters import filter_candidates_remove_nans
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
@@ -43,6 +44,8 @@ def microsaccades(
         minimum_threshold: float = 1e-10,
         include_nan: bool = False,
         name: str = 'saccade',
+        *,
+        sampling_rate: float,
 ) -> Events:
     """Detect micro-saccades from velocity gaze sequence.
 
@@ -61,12 +64,12 @@ def microsaccades(
     timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None
         shape (N, )
         Corresponding continuous 1D timestep time series. Fractional (float) timesteps are
-        accepted. If None, sample based timesteps are assumed. (default: None)
+        accepted. If None, the timesteps are built from ``sampling_rate`` as a grid in milliseconds
+        starting at ``0``. (default: None)
     minimum_duration: int
         Minimum saccade duration. The duration is specified in the units used in ``timesteps``;
-         for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
-         None, then ``minimum_duration`` is specified in numbers of samples.
-         (default: 6)
+        for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
+        None, the unit is milliseconds. (default: 6)
     threshold: numpy.ndarray | tuple[float, float] | str
         If tuple of floats then use this as explicit elliptic threshold. If str, then use
         a data-driven velocity threshold method. Refer to
@@ -82,6 +85,10 @@ def microsaccades(
         (default: False)
     name: str
         Name for detected events in Events. (default: 'saccade')
+    sampling_rate: float
+        Sampling rate of the signal in Hz. Each sample covers the nominal interval
+        ``1000 / sampling_rate`` milliseconds, which is added to the duration of every event
+        and written to the sampling-rate entry of the events metadata.
 
     Returns
     -------
@@ -94,6 +101,7 @@ def microsaccades(
         If velocities is a polars Series and dtype not List
         If timesteps is neither a Duration series nor of a numeric dtype
     ValueError
+        If sampling_rate is not positive.
         If timesteps are not in ascending order.
         If `threshold` value is below `min_threshold` value.
         If passed `threshold` is either not two-dimensional or not a supported method.
@@ -116,26 +124,26 @@ def microsaccades(
 
     Apply event detection algorithm on numpy array:
 
-    >>> microsaccades(velocities)
+    >>> microsaccades(velocities, sampling_rate=1000)
     shape: (1, 4)
     ┌──────────────┬──────────────┬─────────┬──────────────┐
     │ onset        ┆ duration     ┆ name    ┆ offset       │
     │ ---          ┆ ---          ┆ ---     ┆ ---          │
     │ duration[μs] ┆ duration[μs] ┆ str     ┆ duration[μs] │
     ╞══════════════╪══════════════╪═════════╪══════════════╡
-    │ 2ms          ┆ 197ms        ┆ saccade ┆ 199ms        │
+    │ 2ms          ┆ 198ms        ┆ saccade ┆ 199ms        │
     └──────────────┴──────────────┴─────────┴──────────────┘
 
     Run saccade detection with custom parameters:
 
-    >>> microsaccades(velocities, minimum_duration=10, threshold=0.1)
+    >>> microsaccades(velocities, minimum_duration=10, threshold=0.1, sampling_rate=1000)
     shape: (1, 4)
     ┌──────────────┬──────────────┬─────────┬──────────────┐
     │ onset        ┆ duration     ┆ name    ┆ offset       │
     │ ---          ┆ ---          ┆ ---     ┆ ---          │
     │ duration[μs] ┆ duration[μs] ┆ str     ┆ duration[μs] │
     ╞══════════════╪══════════════╪═════════╪══════════════╡
-    │ 111ms        ┆ 38ms         ┆ saccade ┆ 149ms        │
+    │ 111ms        ┆ 39ms         ┆ saccade ┆ 149ms        │
     └──────────────┴──────────────┴─────────┴──────────────┘
 
     Polars series are also supported as input. Let's create a nested position series from our numpy
@@ -162,14 +170,14 @@ def microsaccades(
 
     Apply event detection algorithm on polars series:
 
-    >>> microsaccades(velocity_series)
+    >>> microsaccades(velocity_series, sampling_rate=1000)
     shape: (1, 4)
     ┌──────────────┬──────────────┬─────────┬──────────────┐
     │ onset        ┆ duration     ┆ name    ┆ offset       │
     │ ---          ┆ ---          ┆ ---     ┆ ---          │
     │ duration[μs] ┆ duration[μs] ┆ str     ┆ duration[μs] │
     ╞══════════════╪══════════════╪═════════╪══════════════╡
-    │ 2ms          ┆ 197ms        ┆ saccade ┆ 199ms        │
+    │ 2ms          ┆ 198ms        ┆ saccade ┆ 199ms        │
     └──────────────┴──────────────┴─────────┴──────────────┘
 
     We can also apply the detection on a :py:class:`~pymovements.Gaze` object.
@@ -178,6 +186,7 @@ def microsaccades(
     >>> gaze = from_numpy(
     ...    velocity=velocities.T,
     ...    time=np.arange(len(velocities)),
+    ...    experiment=Experiment(sampling_rate=1000),
     ... )
     >>> gaze  # doctest: +SKIP
     shape: (200, 2)
@@ -209,7 +218,7 @@ def microsaccades(
     │ ---          ┆ ---          ┆ ---     ┆ ---          │
     │ duration[μs] ┆ duration[μs] ┆ str     ┆ duration[μs] │
     ╞══════════════╪══════════════╪═════════╪══════════════╡
-    │ 2ms          ┆ 197ms        ┆ saccade ┆ 199ms        │
+    │ 2ms          ┆ 198ms        ┆ saccade ┆ 199ms        │
     └──────────────┴──────────────┴─────────┴──────────────┘
 
     Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
@@ -222,7 +231,7 @@ def microsaccades(
     │ ---          ┆ ---          ┆ ---          ┆ ---          │
     │ duration[μs] ┆ duration[μs] ┆ str          ┆ duration[μs] │
     ╞══════════════╪══════════════╪══════════════╪══════════════╡
-    │ 111ms        ┆ 38ms         ┆ microsaccade ┆ 149ms        │
+    │ 111ms        ┆ 39ms         ┆ microsaccade ┆ 149ms        │
     └──────────────┴──────────────┴──────────────┴──────────────┘
 
     """
@@ -236,8 +245,12 @@ def microsaccades(
     velocities = numpy.array(velocities)
     checks.check_shapes(velocities=velocities)
 
-    timesteps = normalize_timesteps(timesteps, length=len(velocities))
+    timesteps = normalize_timesteps(
+        timesteps, length=len(velocities), sampling_rate=sampling_rate,
+    )
     checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
+
+    sampling_interval = sampling_interval_ms(sampling_rate)
 
     if isinstance(threshold, str):
         threshold = compute_threshold(velocities, method=threshold)
@@ -272,20 +285,25 @@ def microsaccades(
     if include_nan:
         candidates = filter_candidates_remove_nans(candidates=candidates, values=velocities)
 
-    # Filter all candidates by minimum duration.
+    # Filter all candidates by minimum duration, each sample covering the nominal interval.
     candidates = [
         candidate for candidate in candidates
         if len(candidate) > 0
-        and timesteps[candidate[-1]] - timesteps[candidate[0]] >= minimum_duration
+        and timesteps[candidate[-1]] - timesteps[candidate[0]] + sampling_interval
+        >= minimum_duration
     ]
 
     # Onset of each event candidate is first index in candidate indices.
     onsets = timesteps[[candidate_indices[0] for candidate_indices in candidates]].flatten()
     # Offset of each event candidate is last event in candidate indices.
     offsets = timesteps[[candidate_indices[-1] for candidate_indices in candidates]].flatten()
+    # Each sample covers the nominal interval, so the duration reaches past the last sample.
+    durations = offsets - onsets + sampling_interval
 
-    # Create event dataframe from onsets and offsets.
-    events = Events(name=name, onsets=onsets, offsets=offsets)
+    events = Events(
+        name=name, onsets=onsets, durations=durations,
+        offsets=offsets, offsets_inclusive=True, sampling_rate=sampling_rate,
+    )
     return events
 
 

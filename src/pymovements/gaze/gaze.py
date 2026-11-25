@@ -46,6 +46,7 @@ from pymovements._utils.time import durations_to_ms
 from pymovements._utils.time import time_column_to_duration_us
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
+from pymovements.events.events import _carry_detected_entries
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.quality import DataQualityReport
 from pymovements.gaze.quality import run_report
@@ -81,6 +82,25 @@ _AOI_END_Y = '__pymovements_aoi_end_y'
 def _is_numeric_or_null(dtype: polars.DataType) -> bool:
     """Return whether coordinates of this dtype can be matched to AOIs without parsing."""
     return dtype.is_numeric() or dtype == polars.Null
+
+
+def _is_compatible_trial_dtype(
+        samples_dtype: polars.DataType,
+        events_dtype: polars.DataType,
+) -> bool:
+    """Return whether trial keys of these dtypes are compatible between samples and events.
+
+    Integer widths and string-like dtypes are interchangeable, and a null column in samples is
+    compatible with any dtype in events. Any other pair must be equal.
+    """
+    if samples_dtype in (events_dtype, polars.Null):
+        return True
+    if events_dtype == polars.Null:
+        return False
+    if samples_dtype.is_integer() and events_dtype.is_integer():
+        return True
+    string_like = (polars.String, polars.Categorical, polars.Enum)
+    return isinstance(samples_dtype, string_like) and isinstance(events_dtype, string_like)
 
 
 def _list_xy_exprs(column: str, eye: str) -> tuple[polars.Expr, polars.Expr]:
@@ -1357,11 +1377,18 @@ class Gaze:
     ) -> None:
         """Detect events by applying a specific event detection method.
 
+        A method that takes a ``sampling_rate`` keyword receives the sampling rate of the
+        experiment unless ``sampling_rate`` is passed in ``kwargs``, where ``None`` counts as
+        not passed. The entries of the detected events, the sampling rate and the offset
+        convention, are carried into the metadata of :py:attr:`~.Gaze.events`.
+
         Parameters
         ----------
         method: Callable[..., Events] | str
             The event detection method to be applied. A method that accepts an ``events``
-            argument must neither mutate nor return it.
+            argument must neither mutate nor return it. With trial columns, it receives only the
+            events of the current trial. As in :py:meth:`~.Gaze.split`, samples with a null
+            trial receive events with a null trial.
         eye: str
             Select which eye to choose. Valid options are ``auto``, ``left``, ``right`` or ``None``.
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
@@ -1371,21 +1398,46 @@ class Gaze:
             merged into the existing one. (default: False)
         **kwargs: Any
             Additional keyword arguments to be passed to the event detection method.
-        """
-        if self.events is None or clear:
-            self.clear_events()
 
+        Raises
+        ------
+        ValueError
+            If the method takes ``sampling_rate`` and neither ``kwargs`` nor the experiment
+            provide one. If the sampling rate or the offset convention of the detected events
+            differs from the entry already stored in :py:attr:`~.Gaze.events`, or if the
+            existing events carry an offset column without a convention entry, unless ``clear``
+            is ``True``.
+        polars.exceptions.ColumnNotFoundError
+            If the events lack any of the trial columns.
+        polars.exceptions.SchemaError
+            If a trial column has dtypes in samples and events that are not compatible, or values
+            in samples that do not fit its dtype in events.
+        """
         if isinstance(method, str):
             method = EventDetectionLibrary.get(method)
+
+        method_argspec = inspect.getfullargspec(method)
+        method_args = method_argspec.args + method_argspec.kwonlyargs
+
+        # The sampling rate is resolved before the events are cleared, so a missing rate
+        # leaves the existing events as they are.
+        if 'sampling_rate' in method_args and kwargs.get('sampling_rate') is None:
+            if self.experiment is None or self.experiment.sampling_rate is None:
+                raise ValueError(
+                    f"{getattr(method, '__name__', method)} requires a sampling_rate, but the "
+                    'gaze has no experiment sampling rate. Pass Experiment(sampling_rate=...) '
+                    'to the gaze or sampling_rate= to detect().',
+                )
+            kwargs['sampling_rate'] = self.experiment.sampling_rate
+
+        if self.events is None or clear:
+            self.clear_events()
 
         # Events detected from this gaze object share its source files. This also covers
         # events containers replaced after construction, e.g. by Dataset.clear_events().
         # Merging after method resolution keeps detect free of side effects when the
         # method name is invalid.
         self.events.metadata = merge_sources(self.events.metadata, self.metadata)
-
-        method_argspec = inspect.getfullargspec(method)
-        method_args = method_argspec.args + method_argspec.kwonlyargs
 
         if self.n_components is not None:
             eye_components = self._infer_eye_components(eye)
@@ -1403,6 +1455,7 @@ class Gaze:
             )
 
             new_events = method(**method_kwargs)
+            _carry_detected_entries(self.events, new_events)
 
             if len(new_events) == 0:
                 warn(
@@ -1430,19 +1483,45 @@ class Gaze:
                     f'available columns: {self.events.frame.columns}',
                 )
 
+            # Trials are matched to their events by key value, and the new events are
+            # concatenated to the existing ones. Keys of incompatible dtypes cannot be matched or
+            # concatenated.
+            for trial_column in self.trial_columns:
+                samples_dtype = self.samples.schema[trial_column]
+                events_dtype = self.events.frame.schema[trial_column]
+                if not _is_compatible_trial_dtype(samples_dtype, events_dtype):
+                    raise polars.exceptions.SchemaError(
+                        f"trial column '{trial_column}' has dtype {samples_dtype} in samples "
+                        f'but {events_dtype} in events, which are not compatible',
+                    )
+                # Compatible dtypes can still differ in range, for example Int64 and UInt8.
+                try:
+                    self.samples.get_column(trial_column).unique().cast(events_dtype)
+                except polars.exceptions.InvalidOperationError as exception:
+                    raise polars.exceptions.SchemaError(
+                        f"trial column '{trial_column}' has values in samples that do not fit "
+                        f'its dtype {events_dtype} in events',
+                    ) from exception
+
             # Only detectors that accept an ``events`` argument look at previously detected
-            # events. For all others the per-trial events selection can be skipped, and an empty
-            # events frame can be shared across trials instead of being filtered once per trial.
+            # events. For these, one partition of the events frame serves every trial, and
+            # trials without events share one empty Events.
             needs_events = 'events' in method_args
-            shared_empty_events = (
-                Events(
-                    self.events.frame,
-                    trial_columns=self.events.trial_columns,
-                    metadata=deepcopy(self.events.metadata),
-                    validate=False,
+            events_by_trial = (
+                self.events.frame.partition_by(
+                    self.trial_columns, maintain_order=True, include_key=True, as_dict=True,
                 )
-                if needs_events and self.events.frame.height == 0
-                else None
+                if needs_events
+                else {}
+            )
+            empty_events = (
+                Events._rebuild(  # pylint: disable=protected-access
+                    self.events.frame.clear(),
+                    trial_columns=self.events.trial_columns,
+                    metadata=self.events.metadata,
+                )
+                if needs_events
+                else self.events
             )
 
             new_events_grouped: list[polars.DataFrame] = []
@@ -1450,25 +1529,14 @@ class Gaze:
             for group_identifier, group_gaze in grouped_samples.items():
                 if not needs_events:
                     group_events = self.events
-                elif shared_empty_events is not None:
-                    group_events = shared_empty_events
-                else:
-                    # Create filter expression for selecting respective group rows.
-                    group_filter_expression = polars.col(
-                        self.trial_columns[0],
-                    ) == group_identifier[0]
-                    for name, value in zip(self.trial_columns[1:], group_identifier[1:]):
-                        group_filter_expression = group_filter_expression & (
-                            polars.col(name) == value
-                        )
-
-                    # Select group events.
-                    group_events = Events(
-                        self.events.frame.filter(group_filter_expression),
+                elif group_identifier in events_by_trial:
+                    group_events = Events._rebuild(  # pylint: disable=protected-access
+                        events_by_trial[group_identifier],
                         trial_columns=self.events.trial_columns,
-                        metadata=deepcopy(self.events.metadata),
-                        validate=False,
+                        metadata=self.events.metadata,
                     )
+                else:
+                    group_events = empty_events
 
                 method_kwargs = self._fill_event_detection_kwargs(
                     method,
@@ -1480,6 +1548,7 @@ class Gaze:
                 )
 
                 new_events = method(**method_kwargs)
+                _carry_detected_entries(self.events, new_events)
                 # add group identifiers as new columns
                 new_events.add_trial_column(self.trial_columns, group_identifier)
 
@@ -1492,8 +1561,17 @@ class Gaze:
                     stacklevel=2,
                 )
 
+            # The new events carry the trial keys in their own dtypes. Cast them to the dtypes
+            # of the existing events so that the concatenation does not fail.
+            trial_dtypes = {
+                trial_column: self.events.frame.schema[trial_column]
+                for trial_column in self.trial_columns
+            }
             self.events.frame = polars.concat(
-                [self.events.frame, *new_events_grouped],
+                [
+                    self.events.frame,
+                    *(frame.cast(trial_dtypes) for frame in new_events_grouped),
+                ],
                 how='diagonal',
             )
 

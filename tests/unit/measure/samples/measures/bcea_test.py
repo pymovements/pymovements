@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test module for bcea sample measure."""
+from math import nan
+
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
@@ -167,6 +169,30 @@ def test_bcea_confidence_invalid_type_raises_type_error(confidence):
             id='bcea_four_samples_perfect_correlation',
         ),
         pytest.param(
+            {},
+            pl.DataFrame(
+                {'position': [[0.1, 0.51], [0.2, 0.52], [0.3, 0.53]]},
+                schema={'position': pl.List(pl.Float64)},
+            ),
+            pl.DataFrame(
+                {'bcea': [0.0]},
+                schema={'bcea': pl.Float64},
+            ),
+            id='bcea_perfect_correlation_rounding_above_one',
+        ),
+        pytest.param(
+            {},
+            pl.DataFrame(
+                {'position': [[0.1, 0.11], [0.2, 0.12], [0.3, 0.13]]},
+                schema={'position': pl.List(pl.Float64)},
+            ),
+            pl.DataFrame(
+                {'bcea': [0.0]},
+                schema={'bcea': pl.Float64},
+            ),
+            id='bcea_perfect_correlation_rounding_below_one',
+        ),
+        pytest.param(
             {'column': 'gaze_pos'},
             pl.DataFrame(
                 {'gaze_pos': [[10, 20], [10, 20]]},
@@ -190,10 +216,91 @@ def test_bcea_confidence_invalid_type_raises_type_error(confidence):
             ),
             id='bcea_negative_positions',
         ),
+        pytest.param(
+            {},
+            pl.DataFrame(
+                {'position': [[-1, -1], [None, None], [1, 1], None, [-1, 1], [1, -1]]},
+                schema={'position': pl.List(pl.Float64)},
+            ),
+            pl.DataFrame(
+                {'bcea': [9.61668805750038]},
+                schema={'bcea': pl.Float64},
+            ),
+            id='bcea_missing_samples_are_not_counted',
+        ),
+        pytest.param(
+            {},
+            pl.DataFrame(
+                {'position': [[-1, -1], [5, None], [None, 5], [1, 1], [-1, 1], [1, -1]]},
+                schema={'position': pl.List(pl.Float64)},
+            ),
+            pl.DataFrame(
+                {'bcea': [9.61668805750038]},
+                schema={'bcea': pl.Float64},
+            ),
+            id='bcea_samples_missing_one_component_are_not_counted',
+        ),
+        pytest.param(
+            {},
+            pl.DataFrame(
+                {'position': [[1, 2], [None, None], [None, None]]},
+                schema={'position': pl.List(pl.Float64)},
+            ),
+            pl.DataFrame(
+                {'bcea': [None]},
+                schema={'bcea': pl.Float64},
+            ),
+            id='bcea_one_complete_sample_returns_none',
+        ),
+        pytest.param(
+            {},
+            pl.DataFrame(
+                {'position': [[None, None], None, [None, None]]},
+                schema={'position': pl.List(pl.Float64)},
+            ),
+            pl.DataFrame(
+                {'bcea': [None]},
+                schema={'bcea': pl.Float64},
+            ),
+            id='bcea_all_null_samples_returns_none',
+        ),
+        pytest.param(
+            {},
+            pl.DataFrame(
+                {'position': [[-1, -1], [nan, 1], [1, 1], [-1, 1], [1, -1]]},
+                schema={'position': pl.List(pl.Float64)},
+            ),
+            pl.DataFrame(
+                {'bcea': [nan]},
+                schema={'bcea': pl.Float64},
+            ),
+            id='bcea_nan_component_propagates',
+        ),
     ],
 )
 def test_bcea_has_expected_result(init_kwargs, input_df, expected_df):
     expression = bcea(**init_kwargs)
     result_df = input_df.select([expression])
+
+    assert_frame_equal(result_df, expected_df)
+
+
+def test_bcea_counts_complete_samples_per_group():
+    input_df = pl.DataFrame(
+        {
+            'trial': [1, 1, 1, 1, 1, 1, 2, 2, 2],
+            'position': [
+                [-1, -1], [None, None], [1, 1], [None, None], [-1, 1], [1, -1],
+                [1, 2], [None, None], [None, None],
+            ],
+        },
+        schema={'trial': pl.Int64, 'position': pl.List(pl.Float64)},
+    )
+    expected_df = pl.DataFrame(
+        {'trial': [1, 2], 'bcea': [9.61668805750038, None]},
+        schema={'trial': pl.Int64, 'bcea': pl.Float64},
+    )
+
+    result_df = input_df.group_by('trial', maintain_order=True).agg(bcea())
 
     assert_frame_equal(result_df, expected_df)

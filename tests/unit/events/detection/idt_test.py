@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests functionality of the IDT algorithm."""
+from datetime import timedelta
+
 import numpy as np
 import polars as pl
 import pytest
@@ -33,6 +35,7 @@ from pymovements.synthetic import step_function
     [
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': None,
                 'dispersion_threshold': 1,
                 'minimum_duration': 1,
@@ -43,6 +46,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': [[1, 2], [1, 2]],
                 'dispersion_threshold': None,
                 'minimum_duration': 1,
@@ -53,6 +57,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': [[1, 2], [1, 2]],
                 'dispersion_threshold': 1,
                 'minimum_duration': None,
@@ -63,6 +68,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': 1,
                 'dispersion_threshold': 1,
                 'minimum_duration': 1,
@@ -73,6 +79,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.arange(10, eager=True),
                 'dispersion_threshold': 1,
                 'minimum_duration': 1,
@@ -83,6 +90,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': [1, 2, 3],
                 'dispersion_threshold': 1,
                 'minimum_duration': 1,
@@ -93,6 +101,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': np.array([1, 2, 3]),
                 'dispersion_threshold': 1,
                 'minimum_duration': 1,
@@ -103,6 +112,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.repeat((1, 2, 3), 100, eager=True),
                 'dispersion_threshold': 1.,
                 'minimum_duration': 1,
@@ -113,6 +123,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': [[1, 2, 3], [1, 2, 3]],
                 'dispersion_threshold': 1,
                 'minimum_duration': 1,
@@ -123,6 +134,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.Series([[1], [1, 2], [1, 2, 3]]),
                 'dispersion_threshold': 1.,
                 'minimum_duration': 1,
@@ -133,6 +145,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': [[1, 2], [1, 2]],
                 'dispersion_threshold': 0,
                 'minimum_duration': 1,
@@ -143,6 +156,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': [[1, 2], [1, 2]],
                 'dispersion_threshold': 1,
                 'minimum_duration': 0,
@@ -164,6 +178,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
     [
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.select(
                     pl.concat_list(
                         [pl.arange(0, 200, 2, eager=True), pl.arange(0, 200, 2, eager=True)],
@@ -177,6 +192,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': np.stack([np.arange(0, 200, 2), np.arange(0, 200, 2)], axis=1),
                 'dispersion_threshold': 1,
                 'minimum_duration': 10,
@@ -186,6 +202,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.from_numpy(
                     step_function(length=100, steps=[0], values=[(0, 0)]),
                     schema=['x', 'y'],
@@ -197,11 +214,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0],
                 offsets=[99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
@@ -210,11 +230,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0],
                 offsets=[99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.from_numpy(
                     step_function(length=100, steps=[0], values=[(0, 0)]),
                     schema=['x', 'y'],
@@ -227,11 +250,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='custom_fixation',
                 onsets=[0],
                 offsets=[99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_custom_name',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
@@ -241,11 +267,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='custom_fixation',
                 onsets=[0],
                 offsets=[99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_custom_name_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.from_numpy(
                     step_function(
                         length=100,
@@ -261,12 +290,15 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0, 50],
-                offsets=[49, 99],
+                offsets=[48, 99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='three_steps_two_fixations',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(
                     length=100,
                     steps=[49, 50],
@@ -279,12 +311,15 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0, 50],
-                offsets=[49, 99],
+                offsets=[48, 99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='three_steps_two_fixations_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.from_numpy(
                     step_function(
                         length=100,
@@ -300,11 +335,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0, 20],
                 offsets=[9, 89],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='two_fixations_nan_delete_leading_ending',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(
                     length=100, steps=[10, 20, 90],
                     values=[
@@ -319,11 +357,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0, 20],
                 offsets=[9, 89],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='two_fixations_nan_delete_leading_ending_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.from_numpy(
                     step_function(
                         length=100,
@@ -340,11 +381,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0],
                 offsets=[89],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='one_fixation_nan_delete_leading_ending',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(
                     length=100,
                     steps=[10, 20, 90],
@@ -358,11 +402,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0],
                 offsets=[89],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='one_fixation_nan_delete_leading_ending_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.from_numpy(
                     step_function(length=100, steps=[0], values=[(0, 0)]),
                     schema=['x', 'y'],
@@ -375,11 +422,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[1000],
                 offsets=[1099],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'timesteps': np.arange(1000, 1100, dtype=int),
                 'dispersion_threshold': 1,
@@ -389,11 +439,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[1000],
                 offsets=[1099],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'timesteps': pl.Series(np.arange(1000, 1100)).cast(pl.Duration('ms')),
                 'dispersion_threshold': 1,
@@ -403,11 +456,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[1000],
                 offsets=[1099],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_duration_timesteps',
         ),
         pytest.param(
             {
+                'sampling_rate': 2000,
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'timesteps': pl.Series(np.arange(0, 50_000, 500)).cast(pl.Duration('us')),
                 'dispersion_threshold': 1,
@@ -417,11 +473,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0],
                 offsets=[49.5],
+                offsets_inclusive=True,
+                sampling_rate=2000,
             ),
             id='constant_position_single_fixation_with_2khz_duration_timesteps',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.from_numpy(
                     step_function(length=100, steps=[0], values=[(0, 0)]),
                     schema=['x', 'y'],
@@ -434,11 +493,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[1000],
                 offsets=[1099],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps_extra_dim',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'timesteps': np.reshape(np.arange(1000, 1100, dtype=int), (100, 1)),
                 'dispersion_threshold': 1,
@@ -448,11 +510,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[1000],
                 offsets=[1099],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps_extra_dim_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.from_numpy(
                     step_function(length=100, steps=[0], values=[(0, 0)]),
                     schema=['x', 'y'],
@@ -465,11 +530,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[1000],
                 offsets=[1099],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps_float_no_decimal',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'timesteps': np.arange(1000, 1100, dtype=float),
                 'dispersion_threshold': 1,
@@ -479,11 +547,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[1000],
                 offsets=[1099],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps_float_no_decimal_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.from_numpy(
                     step_function(length=100, steps=[0], values=[(0, 0)]),
                     schema=['x', 'y'],
@@ -496,11 +567,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[1000],
                 offsets=[1009.9],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps_float_with_decimal',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'timesteps': np.arange(1000, 1010, 0.1, dtype=float),
                 'dispersion_threshold': 1,
@@ -510,11 +584,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[1000],
                 offsets=[1009.9],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps_float_with_decimal_numpy',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'timesteps': pl.Series(np.arange(0, 10_000, 100)).cast(pl.Duration('us')),
                 'dispersion_threshold': 1,
@@ -524,11 +601,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0],
                 offsets=[9.9],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_10khz_duration_timesteps',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'timesteps': np.arange(0, 150, 1.5),
                 'dispersion_threshold': 1,
@@ -538,11 +618,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0],
                 offsets=[148.5],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps_interval_not_dividing_duration',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=10, steps=[0], values=[(0, 0)]),
                 'timesteps': np.concatenate([
                     np.arange(0, 5, dtype=int), np.arange(7, 12, dtype=int),
@@ -554,11 +637,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0],
                 offsets=[11],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_non_constant_timesteps_interval',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=3, steps=[0], values=[(0, 0)]),
                 'timesteps': [0, 50, 100],
                 'dispersion_threshold': 1,
@@ -568,11 +654,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0],
                 offsets=[100],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_sparse_timesteps_covering_duration',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=3, steps=[0], values=[(0, 0)]),
                 'timesteps': [0, 50, 99],
                 'dispersion_threshold': 1,
@@ -582,11 +671,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0],
                 offsets=[99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_sparse_timesteps_tail_covering_duration',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=3, steps=[0], values=[(0, 0)]),
                 'timesteps': [0, 50, 60],
                 'dispersion_threshold': 1,
@@ -597,6 +689,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=1, steps=[0], values=[(0, 0)]),
                 'dispersion_threshold': 1,
                 'minimum_duration': 1,
@@ -606,6 +699,7 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(
                     length=12, steps=[5, 6, 7, 8],
                     values=[(np.nan, np.nan), (0, 0), (np.nan, np.nan), (0, 0)],
@@ -616,12 +710,15 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
             Events(
                 name='fixation',
                 onsets=[0, 8],
-                offsets=[4, 10],
+                offsets=[4, 11],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='two_fixations_single_sample_between_nans_dropped',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=10, steps=[0], values=[(0, 0)]),
                 'timesteps': np.arange(0, 30, step=3, dtype=int),
                 'dispersion_threshold': 1,
@@ -631,11 +728,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0],
                 offsets=[27],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_timesteps_interval_longer_than_duration',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'dispersion_threshold': 1,
                 'minimum_duration': 1,
@@ -644,11 +744,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0],
                 offsets=[99],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_minimum_duration_one_interval',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'timesteps': np.arange(0, 50, 0.5),
                 'dispersion_threshold': 1,
@@ -658,11 +761,14 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0],
                 offsets=[49.5],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_float_minimum_duration',
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': step_function(length=10, steps=[0], values=[(0, 0)]),
                 'timesteps': [0, 1, 2, 2, 3, 4, 5, 6, 7, 8],
                 'dispersion_threshold': 1,
@@ -672,8 +778,80 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
                 name='fixation',
                 onsets=[0],
                 offsets=[8],
+                offsets_inclusive=True,
+                sampling_rate=1000,
             ),
             id='constant_position_single_fixation_with_repeated_timestep',
+        ),
+        pytest.param(
+            {
+                'sampling_rate': 1000,
+                'positions': step_function(length=20, steps=[10], values=[(5, 0)]),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[0, 10],
+                offsets=[9, 19],
+                offsets_inclusive=True,
+                sampling_rate=1000,
+            ),
+            id='sample_exceeding_threshold_starts_next_fixation',
+        ),
+        pytest.param(
+            {
+                'sampling_rate': 1000,
+                'positions': step_function(
+                    length=20, steps=[3, 4, 10], values=[(np.nan, np.nan), (0, 0), (5, 0)],
+                ),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+                'include_nan': True,
+            },
+            Events(
+                name='fixation',
+                onsets=[0, 10],
+                offsets=[9, 19],
+                offsets_inclusive=True,
+                sampling_rate=1000,
+            ),
+            id='sample_exceeding_threshold_starts_next_fixation_with_nan',
+        ),
+        pytest.param(
+            {
+                'sampling_rate': 1000,
+                'positions': step_function(
+                    length=20, steps=[3, 4], values=[(np.nan, np.nan), (0, 0)],
+                ),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+                'include_nan': True,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[19],
+                offsets_inclusive=True,
+                sampling_rate=1000,
+            ),
+            id='nan_window_keeps_last_sample',
+        ),
+        pytest.param(
+            {
+                'sampling_rate': 1000,
+                'positions': np.tile([[0, 0], [1, 0]], (5, 1)),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[9],
+                offsets_inclusive=True,
+                sampling_rate=1000,
+            ),
+            id='dispersion_at_threshold_single_fixation',
         ),
     ],
 )
@@ -684,11 +862,33 @@ def test_idt_detects_fixations(kwargs, expected):
     assert_frame_equal(events.frame, expected.frame)
 
 
+def test_idt_onsets_and_offsets_on_a_constant_interval_grid():
+    # Two fixations on a 1 ms grid: the sampling rate extends each duration by one interval
+    # and leaves the onset and offset samples where the dispersion window puts them.
+    positions = step_function(
+        length=100, steps=[49, 50], values=[(9, 9), (1, 1)], start_value=(0, 0),
+    )
+
+    events = idt(
+        positions, timesteps=np.arange(100), dispersion_threshold=1, minimum_duration=2,
+        sampling_rate=1000,
+    )
+
+    assert events.frame['onset'].to_list() == [timedelta(0), timedelta(milliseconds=50)]
+    assert events.frame['offset'].to_list() == [
+        timedelta(milliseconds=48), timedelta(milliseconds=99),
+    ]
+    assert events.frame['duration'].to_list() == [
+        timedelta(milliseconds=49), timedelta(milliseconds=50),
+    ]
+
+
 @pytest.mark.parametrize(
     ('kwargs', 'exception', 'exception_message'),
     [
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.repeat((1, 2), 100, eager=True),
                 'dispersion_threshold': 1.0,
                 'timesteps': pl.repeat('b', 10, eager=True),
@@ -699,6 +899,7 @@ def test_idt_detects_fixations(kwargs, expected):
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.repeat((1, 2), 10, eager=True),
                 'dispersion_threshold': 1.0,
                 'timesteps': ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'],
@@ -709,6 +910,7 @@ def test_idt_detects_fixations(kwargs, expected):
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.repeat((1, 2), 10, eager=True),
                 'dispersion_threshold': 1.0,
                 'timesteps': [0, 1, 2, 3, 4, 9, 8, 7, 6, 5],
@@ -719,6 +921,7 @@ def test_idt_detects_fixations(kwargs, expected):
         ),
         pytest.param(
             {
+                'sampling_rate': 1000,
                 'positions': pl.repeat((1, 2), 10, eager=True),
                 'dispersion_threshold': 1.0,
                 'timesteps': pl.Series(np.arange(9, -1, -1)),
