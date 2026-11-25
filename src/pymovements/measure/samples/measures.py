@@ -663,9 +663,6 @@ def bcea(
     This implementation uses sample variance (dividing by :math:`n-1`) for
     computing the variances and correlation coefficient.
 
-    For perfectly correlated samples the BCEA is zero. Floating-point rounding can
-    leave a value close to zero instead, but never a negative value or ``NaN``.
-
     The relationship between confidence level :math:`P` and scaling factor
     :math:`k` comes from the chi-square distribution. For a bivariate normal
     distribution, the contours of constant Mahalanobis distance form ellipses.
@@ -694,6 +691,9 @@ def bcea(
     For sequences with fewer than 2 samples, or when the variance of either
     component is zero, this measure returns ``None`` since statistics
     (variance, correlation) cannot be meaningfully computed.
+
+    For perfectly correlated samples the BCEA is zero. Floating-point rounding can
+    leave a value close to zero instead, but it never makes the value negative or ``NaN``.
 
     :py:func:`rms_s2s` is closely proportional to the average velocity of the signal
     during fixations, making it a good indicator of slowest detectable eye
