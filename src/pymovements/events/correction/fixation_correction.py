@@ -68,11 +68,13 @@ from pymovements.events.correction._utils import is_right_to_left
 from pymovements.events.correction._utils import line_index_to_y
 from pymovements.events.correction._utils import location_x
 from pymovements.events.correction._utils import nearest_line_index
+from pymovements.events.correction._utils import resolve_line_values
 from pymovements.events.correction.attach import attach
 from pymovements.events.correction.chain import chain
 from pymovements.events.correction.cluster import cluster
 from pymovements.events.correction.compare import compare
 from pymovements.events.correction.merge import merge
+from pymovements.events.correction.metrics import ensemble_agreement
 from pymovements.events.correction.regress import regress
 from pymovements.events.correction.segment import segment
 from pymovements.events.correction.slice import slice  # pylint: disable=redefined-builtin
@@ -237,24 +239,6 @@ def _resolve_algorithms(
     raise TypeError('algorithm must be a string or a list of strings.')
 
 
-def _resolve_line_values(aois: pl.DataFrame, word_locations: pl.Series | None) -> list[float]:
-    """Resolve the text line y-coordinates from the AOIs or the word locations."""
-    has_line_info = (
-        ('start_y' in aois.columns or 'top_left_y' in aois.columns)
-        and 'height' in aois.columns
-    )
-    if has_line_info:
-        return get_lines_of_text_from_aois(aois)
-    if word_locations is not None:
-        return (
-            word_locations.cast(pl.List(pl.Float64))
-            .list.get(1).unique().sort().to_list()
-        )
-    # Neither complete line information nor word locations are available: derive from
-    # the AOIs anyway so the resulting ValueError names the missing columns.
-    return get_lines_of_text_from_aois(aois)
-
-
 def _route_algorithm_kwargs(
     candidate_algos: list[str],
     algorithm_kwargs: dict[str, Any],
@@ -365,7 +349,7 @@ def _correct_ensemble(
 
     # Vote on line indices rather than raw y-coordinates so that candidate algorithms cannot
     # split votes through differing float representations of the same text line.
-    line_values = _resolve_line_values(aois, word_locations)
+    line_values = resolve_line_values(aois, word_locations)
 
     routed_kwargs = _route_algorithm_kwargs(candidate_algos, algorithm_kwargs, directionality)
 
@@ -383,12 +367,14 @@ def _correct_ensemble(
     votes = fixations.select(
         [location_x(location).alias('__location_x')] + vote_exprs,
     )
-    return votes.select(
+    corrected_locations = votes.select(
         pl.concat_list([
             pl.col('__location_x'),
             line_index_to_y(wisdom_of_the_crowd(candidate_algos), line_values),
         ]).alias('location'),
     ).to_series()
+    agreement = ensemble_agreement(votes.select(candidate_algos))
+    return corrected_locations, agreement
 
 
 def _fixation_location(fixations: pl.DataFrame, location_column: str) -> str | pl.Expr:
@@ -544,6 +530,27 @@ def correct_fixation_locations(
     'location_original' and 'correction_algorithm' bookkeeping columns, see
     :py:func:`~pymovements.events.correction.correct_fixations`.
     """
+    return _correct_fixation_locations_with_agreement(
+        events, aois, algorithm=algorithm, directionality=directionality,
+        word_locations=word_locations, algorithm_kwargs=algorithm_kwargs,
+        fixation_name=fixation_name, location_column=location_column,
+        character_level=character_level, word_column=word_column,
+    )[0]
+
+
+def _correct_fixation_locations_with_agreement(
+    events: pl.DataFrame,
+    aois: pl.DataFrame,
+    algorithm: str | list[str] = 'wisdom_of_the_crowd',
+    directionality: str = 'left-to-right',
+    word_locations: pl.Series | None = None,
+    algorithm_kwargs: dict[str, Any] | None = None,
+    fixation_name: str = 'fixation',
+    location_column: str = 'location',
+    character_level: bool = False,
+    word_column: str | None = None,
+) -> tuple[pl.Series, pl.Series]:
+    """Correct fixation locations and return per-fixation agreement values."""
     right_to_left = is_right_to_left(directionality)
     _check_word_column(character_level, word_column)
     if algorithm_kwargs is None:
@@ -563,21 +570,24 @@ def correct_fixation_locations(
     has_word_coords = word_locations is not None or has_word_x_coords(aois)
 
     candidate_algos, ensemble = _resolve_algorithms(algorithm, has_word_coords, right_to_left)
-    if not ensemble:
+    if ensemble:
+        corrected, agreement = _correct_ensemble(
+            fixations, aois, candidate_algos,
+            directionality=directionality, word_locations=word_locations,
+            algorithm_kwargs=algorithm_kwargs, location=location,
+            character_level=character_level, word_column=word_column,
+        )
+    else:
         corrected = _correct_single(
             fixations, aois, candidate_algos[0],
             directionality=directionality, word_locations=word_locations,
             algorithm_kwargs=algorithm_kwargs, location=location,
             character_level=character_level, word_column=word_column,
         )
-    else:
-        corrected = _correct_ensemble(
-            fixations, aois, candidate_algos,
-            directionality=directionality, word_locations=word_locations,
-            algorithm_kwargs=algorithm_kwargs, location=location,
-            character_level=character_level, word_column=word_column,
+        agreement = pl.Series(
+            'correction_agreement', [1.0] * corrected.len(), dtype=pl.Float64,
         )
-    return corrected.rename(location_column)
+    return corrected.rename(location_column), agreement
 
 
 def _check_not_already_corrected(events: pl.DataFrame, fixation_name: str) -> None:
@@ -595,7 +605,7 @@ def _check_not_already_corrected(events: pl.DataFrame, fixation_name: str) -> No
         )
 
 
-def _algorithm_label(algorithm: str | list[str]) -> tuple[str, set[str]]:
+def _algorithm_label(algorithm: str | list[str]) -> tuple[str, set[str], bool]:
     """Resolve and validate the bookkeeping algorithm name and the requested algorithms.
 
     Resolving with word coordinates assumed present and left-to-right reading excludes
@@ -606,8 +616,8 @@ def _algorithm_label(algorithm: str | list[str]) -> tuple[str, set[str]]:
         algorithm, has_word_coords=True, right_to_left=False,
     )
     if ensemble:
-        return 'wisdom_of_the_crowd', set(candidate_algos)
-    return candidate_algos[0], set(candidate_algos)
+        return 'wisdom_of_the_crowd', set(candidate_algos), ensemble
+    return candidate_algos[0], set(candidate_algos), ensemble
 
 
 def _trial_aois(
@@ -664,7 +674,7 @@ def _correct_trial(
             )
             return None
 
-    return correct_fixation_locations(
+    return _correct_fixation_locations_with_agreement(
         fixation_events, trial_aois, algorithm=algorithm,
         directionality=directionality, word_locations=word_locations,
         algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,
@@ -693,13 +703,17 @@ def _apply_corrections(
     indexed_events: pl.DataFrame,
     corrected_indices: list[int],
     corrected_locations: list[pl.Series],
+    corrected_agreements: list[pl.Series],
     algo_name: str,
+    *,
+    ensemble: bool,
     location_column: str,
 ) -> pl.DataFrame:
     """Join the corrected locations onto the events and update the location columns."""
     updates = pl.DataFrame({
         '__fixation_correction_index': pl.Series(corrected_indices, dtype=pl.UInt32),
         '__corrected_location': pl.concat(corrected_locations),
+        '__correction_agreement': pl.concat(corrected_agreements),
     })
     frame = (
         indexed_events
@@ -745,11 +759,21 @@ def _apply_corrections(
     update_columns.append(
         _preserved_column(events, 'correction_algorithm', pl.lit(algo_name), pl.Utf8),
     )
+    if ensemble:
+        update_columns.append(
+            _preserved_column(
+                events, 'correction_agreement',
+                pl.col('__correction_agreement'), pl.Float64,
+            ),
+        )
 
     return (
         frame
         .with_columns(update_columns)
-        .drop(['__fixation_correction_index', '__corrected_location'])
+        .drop([
+            '__fixation_correction_index', '__corrected_location',
+            '__correction_agreement',
+        ])
     )
 
 
@@ -772,6 +796,9 @@ def correct_fixations(
     locations are preserved in a 'location_original' column ('location_x_original' /
     'location_y_original' for split component columns) and the applied algorithm is
     recorded in a 'correction_algorithm' column, which is null for uncorrected rows.
+    Ensemble corrections also add a 'correction_agreement' bookkeeping column containing
+    the per-fixation vote agreement. Low-agreement fixations can be selected by filtering
+    this column, for example with ``pl.col('correction_agreement') >= 0.5``.
 
     Trials with too few fixations for the requested algorithms ('cluster' needs at least
     one fixation per text line, 'split' at least three fixations) are skipped with a
@@ -898,7 +925,7 @@ def correct_fixations(
             )
 
     _check_not_already_corrected(events, fixation_name)
-    algo_name, requested_algorithms = _algorithm_label(algorithm)
+    algo_name, requested_algorithms, ensemble = _algorithm_label(algorithm)
 
     aois = normalize_aois(aois)
     indexed_events = events.with_row_index('__fixation_correction_index')
@@ -912,6 +939,7 @@ def correct_fixations(
 
     corrected_indices: list[int] = []
     corrected_locations: list[pl.Series] = []
+    corrected_agreements: list[pl.Series] = []
     matched_fixation_count = 0
     for trial_events in trial_event_frames:
         trial_aois = _trial_aois(aois, trial_events, aoi_trial_columns)
@@ -927,7 +955,7 @@ def correct_fixations(
             }
             raise ValueError(f'no AOIs found for trial {trial_values}.')
 
-        corrected_locs = _correct_trial(
+        corrected_result = _correct_trial(
             fixation_events, trial_aois, algorithm=algorithm,
             requested_algorithms=requested_algorithms, trial_columns=trial_columns,
             directionality=directionality, word_locations=word_locations,
@@ -935,11 +963,13 @@ def correct_fixations(
             location_column=location_column, character_level=character_level,
             word_column=word_column,
         )
-        if corrected_locs is None:
+        if corrected_result is None:
             continue
+        corrected_locs, trial_agreement = corrected_result
 
         corrected_indices.extend(fixation_events['__fixation_correction_index'].to_list())
         corrected_locations.append(corrected_locs)
+        corrected_agreements.append(trial_agreement)
 
     if not corrected_indices:
         if events.height > 0 and matched_fixation_count == 0:
@@ -953,6 +983,7 @@ def correct_fixations(
         return events
 
     return _apply_corrections(
-        events, indexed_events, corrected_indices, corrected_locations, algo_name,
-        location_column,
+        events, indexed_events, corrected_indices, corrected_locations,
+        corrected_agreements, algo_name, ensemble=ensemble,
+        location_column=location_column,
     )
