@@ -532,8 +532,8 @@ def test_init_rounds_sub_microsecond_duration_input():
 
 
 def test_init_normalizes_large_duration_input_without_overflow():
-    # A Duration('ms') beyond ~292 years would overflow an intermediate nanosecond count; the
-    # normalization must stay exact for whole-microsecond values rather than silently wrapping.
+    # A Duration('ms') beyond ~292 years has no nanosecond representation. The normalization
+    # must stay exact for such values instead of overflowing to null or wrapping.
     onset_ms = 400 * 365 * 24 * 3600 * 1000  # 400 years in milliseconds
     events = Events(
         pl.DataFrame({
