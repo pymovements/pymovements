@@ -688,7 +688,9 @@ def bcea(
     >>> print(confidence, k)
     0.6826894921370859 2.295748928898636
 
-    For sequences with fewer than 2 samples, or when the variance of either
+    Samples with a null in either component are left out of :math:`n`, the means,
+    the variances and the correlation.
+    For sequences with fewer than 2 complete samples, or when the variance of either
     component is zero, this measure returns ``None`` since statistics
     (variance, correlation) cannot be meaningfully computed.
 
