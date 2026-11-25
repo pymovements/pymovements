@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795615231365,
+  "lastUpdate": 1795617942260,
   "repoUrl": "https://github.com/pymovements/pymovements",
   "entries": {
     "pytest-benchmark": [
@@ -1980,6 +1980,226 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0028137928650835017",
             "extra": "mean: 9.820711599979859 msec\nrounds: 10"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "daniel@krakowczyk.tech",
+            "name": "Daniel G. Krakowczyk",
+            "username": "dkrako"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8b84103062bb1f988aa41a362d267d7f0863c65a",
+          "message": "fix: apply EyeLink message timestamp offsets (#1805)",
+          "timestamp": "2026-11-25T14:36:40Z",
+          "tree_id": "857c048cfa2e3986f857ccfa3e16d25d3916513b",
+          "url": "https://github.com/pymovements/pymovements/commit/8b84103062bb1f988aa41a362d267d7f0863c65a"
+        },
+        "date": 1795617941775,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmark/event_properties_test.py::test_event_properties_benchmark[False-100]",
+            "value": 29.548295647657348,
+            "unit": "iter/sec",
+            "range": "stddev: 0.005867112177866498",
+            "extra": "mean: 33.84289950000152 msec\nrounds: 10"
+          },
+          {
+            "name": "tests/benchmark/event_properties_test.py::test_event_properties_benchmark[False-400]",
+            "value": 7.241156341906993,
+            "unit": "iter/sec",
+            "range": "stddev: 0.01274167812333241",
+            "extra": "mean: 138.0994903000044 msec\nrounds: 10"
+          },
+          {
+            "name": "tests/benchmark/event_properties_test.py::test_event_properties_benchmark[True-100]",
+            "value": 13.379149266698619,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00735736652715397",
+            "extra": "mean: 74.74316789999875 msec\nrounds: 10"
+          },
+          {
+            "name": "tests/benchmark/event_properties_test.py::test_event_properties_benchmark[True-400]",
+            "value": 3.075502991332935,
+            "unit": "iter/sec",
+            "range": "stddev: 0.031967927091510195",
+            "extra": "mean: 325.15006579999977 msec\nrounds: 10"
+          },
+          {
+            "name": "tests/benchmark/events_map_to_aois_test.py::test_events_map_to_aois_benchmark",
+            "value": 7.269752828243299,
+            "unit": "iter/sec",
+            "range": "stddev: 0.028179345110344693",
+            "extra": "mean: 137.55625860001146 msec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmark/events_map_to_aois_test.py::test_events_map_to_aois_keyed_benchmark",
+            "value": 7.399220394757818,
+            "unit": "iter/sec",
+            "range": "stddev: 0.016812866890184835",
+            "extra": "mean: 135.14937339999733 msec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmark/from_asc_test.py::test_from_asc_benchmark[monocular]",
+            "value": 0.7222319724100232,
+            "unit": "iter/sec",
+            "range": "stddev: 0.016470870448560444",
+            "extra": "mean: 1.3845966922000001 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmark/from_asc_test.py::test_from_asc_benchmark[binocular]",
+            "value": 0.4555906109670157,
+            "unit": "iter/sec",
+            "range": "stddev: 0.011084499852342443",
+            "extra": "mean: 2.1949530476000065 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmark/gaze_detect_test.py::test_gaze_detect_benchmark",
+            "value": 0.11517455927565975,
+            "unit": "iter/sec",
+            "range": "stddev: 0.06720475692800706",
+            "extra": "mean: 8.6824729896 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmark/gaze_detect_test.py::test_gaze_detect_fill_empty_events_benchmark",
+            "value": 0.14126729160389975,
+            "unit": "iter/sec",
+            "range": "stddev: 0.03850739266294653",
+            "extra": "mean: 7.078779444600002 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmark/gaze_map_to_aois_test.py::test_gaze_map_to_aois_benchmark[list]",
+            "value": 2.819351262684599,
+            "unit": "iter/sec",
+            "range": "stddev: 0.053571378878185534",
+            "extra": "mean: 354.69152539999413 msec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmark/gaze_map_to_aois_test.py::test_gaze_map_to_aois_benchmark[flat_direct]",
+            "value": 2.842972922872587,
+            "unit": "iter/sec",
+            "range": "stddev: 0.050283472068296704",
+            "extra": "mean: 351.7444685999976 msec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmark/gaze_map_to_aois_test.py::test_gaze_map_to_aois_benchmark[flat_average_lr]",
+            "value": 2.477405552256622,
+            "unit": "iter/sec",
+            "range": "stddev: 0.05125642875067229",
+            "extra": "mean: 403.64808219999304 msec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmark/gaze_measure_samples_test.py::test_gaze_measure_samples_benchmark[many_short_trials-location]",
+            "value": 33.98611298877901,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0035473644215429615",
+            "extra": "mean: 29.423782599974402 msec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmark/gaze_measure_samples_test.py::test_gaze_measure_samples_benchmark[many_short_trials-data_loss]",
+            "value": 35.46765831213951,
+            "unit": "iter/sec",
+            "range": "stddev: 0.004445774790998384",
+            "extra": "mean: 28.194700399990325 msec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmark/gaze_measure_samples_test.py::test_gaze_measure_samples_benchmark[few_long_trials-location]",
+            "value": 42.2413621588724,
+            "unit": "iter/sec",
+            "range": "stddev: 0.002972399849920515",
+            "extra": "mean: 23.673479000012776 msec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmark/gaze_measure_samples_test.py::test_gaze_measure_samples_benchmark[few_long_trials-data_loss]",
+            "value": 38.06744262631092,
+            "unit": "iter/sec",
+            "range": "stddev: 0.004697486458334624",
+            "extra": "mean: 26.26916680000022 msec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmark/gaze_transform_test.py::test_gaze_element_wise_transform_benchmark[1_trial-pix2deg]",
+            "value": 4.035453105222367,
+            "unit": "iter/sec",
+            "range": "stddev: 0.012628537535994392",
+            "extra": "mean: 247.80364780001491 msec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmark/gaze_transform_test.py::test_gaze_element_wise_transform_benchmark[1_trial-deg2pix]",
+            "value": 6.693999095027646,
+            "unit": "iter/sec",
+            "range": "stddev: 0.010071915892682333",
+            "extra": "mean: 149.3875313999979 msec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmark/gaze_transform_test.py::test_gaze_element_wise_transform_benchmark[200_trials-pix2deg]",
+            "value": 4.099009471819685,
+            "unit": "iter/sec",
+            "range": "stddev: 0.010124450630238193",
+            "extra": "mean: 243.96137820000376 msec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmark/gaze_transform_test.py::test_gaze_element_wise_transform_benchmark[200_trials-deg2pix]",
+            "value": 6.636089354242845,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0047602171728629164",
+            "extra": "mean: 150.69115959998953 msec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmark/gaze_transform_test.py::test_gaze_element_wise_transform_benchmark[2660_trials-pix2deg]",
+            "value": 4.134765428414445,
+            "unit": "iter/sec",
+            "range": "stddev: 0.019106715486103907",
+            "extra": "mean: 241.85168840000415 msec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmark/gaze_transform_test.py::test_gaze_element_wise_transform_benchmark[2660_trials-deg2pix]",
+            "value": 6.453438152037269,
+            "unit": "iter/sec",
+            "range": "stddev: 0.008396186324747581",
+            "extra": "mean: 154.956160800009 msec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmark/ihmm_test.py::test_ihmm_benchmark_viterbi_only",
+            "value": 35.58329997790393,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0010181923449013813",
+            "extra": "mean: 28.103070839999873 msec\nrounds: 50"
+          },
+          {
+            "name": "tests/benchmark/ihmm_test.py::test_ihmm_benchmark_with_reestimation",
+            "value": 0.8645106494491731,
+            "unit": "iter/sec",
+            "range": "stddev: 0.007319432797324798",
+            "extra": "mean: 1.1567237496000247 sec\nrounds: 20"
+          },
+          {
+            "name": "tests/benchmark/import_test.py::test_import_pymovements_subprocess",
+            "value": 2.5422490005783414,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0033406078212449195",
+            "extra": "mean: 393.35250000000315 msec\nrounds: 10"
+          },
+          {
+            "name": "tests/benchmark/sample_measures_test.py::test_null_ratio_benchmark",
+            "value": 148.32887204652604,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0016355218177755205",
+            "extra": "mean: 6.7417757999692185 msec\nrounds: 10"
+          },
+          {
+            "name": "tests/benchmark/sample_measures_test.py::test_data_loss_benchmark",
+            "value": 122.34326701933298,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00192946110723319",
+            "extra": "mean: 8.173723200002314 msec\nrounds: 10"
           }
         ]
       }
