@@ -1327,6 +1327,16 @@ class TestFromAscMessageTimeFormats:
         assert gaze.calibrations['time'].to_list() == [expected_time]
 
     def test_validation_time(self, prefix, expected_time):
+        content = (
+            _MONOCULAR_HEADER
+            + f'{prefix} !CAL VALIDATION HV9 L LEFT GOOD ERROR 0.5 avg. 0.9 max\n'
+        )
+
+        gaze = from_asc(io.StringIO(content))
+
+        assert gaze.validations['time'].to_list() == [expected_time]
+
+    def test_validation_aborted_time(self, prefix, expected_time):
         content = _MONOCULAR_HEADER + f'{prefix} !CAL VALIDATION L ABORTED\n'
 
         gaze = from_asc(io.StringIO(content))
