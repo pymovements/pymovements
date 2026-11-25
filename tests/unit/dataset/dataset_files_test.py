@@ -1854,6 +1854,15 @@ class TestLoadEventFilesWithoutExperimentRate:
             )
 
 
+def test_load_event_files_raises_on_sampling_rate_conflict(tmp_path):
+    files, paths = write_legacy_event_file(tmp_path)
+    files[0].metadata['sampling_rate'] = 500
+    definition = DatasetDefinition(experiment=Experiment(sampling_rate=1000))
+
+    with pytest.raises(ValueError, match='differs from the metadata entry'):
+        load_event_files(definition, files, paths, verbose=False)
+
+
 @pytest.mark.parametrize(
     ('kwargs', 'expected_offset_entry', 'expected_durations'),
     [
