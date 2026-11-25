@@ -147,6 +147,8 @@ Dependencies
   The helper is called directly only for the ``ValueError`` on a name the extra does not declare.
 - A change to the extras updates the Optional Dependencies section of the installation guide, and
   the pull request description states it.
+- A new extra follows the naming in the :doc:`Maintainer Guidelines <maintainer-guidelines>` and
+  is listed in ``all``.
 
 polars
 ------

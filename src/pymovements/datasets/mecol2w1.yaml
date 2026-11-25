@@ -10,6 +10,9 @@ description: |
   The participant is instructed to read texts and answer questions.
   Check the respective paper for details :cite:p:`MECOL2W1`.
 
+  .. note:: The reading measures are distributed as R data files. Loading them needs the
+     ``rdata`` extra, install it with ``pip install 'pymovements[rdata]'``.
+
 resources:
   - content: precomputed_events
     source:

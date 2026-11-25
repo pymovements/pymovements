@@ -1,17 +1,11 @@
 name: MECOL2W2
 long_name: Multilingual Eye-tracking Corpus second language reader second wave
-description: 'MECOL2W2 dataset :cite:p:`MECOL2W2`.
-
-
-  This dataset includes eye tracking data from several participants in a single
-
-  session. The participants read several paragraphs of texts.
-
-  The participant is instructed to read texts and answer questions.
-
-  Check the respective paper for details :cite:p:`MECOL2W2`.
-
-  '
+description: "MECOL2W2 dataset :cite:p:`MECOL2W2`.\n\nThis dataset includes eye tracking\
+  \ data from several participants in a single\nsession. The participants read several\
+  \ paragraphs of texts.\nThe participant is instructed to read texts and answer questions.\n\
+  Check the respective paper for details :cite:p:`MECOL2W2`.\n\n.. note:: The reading\
+  \ measures are distributed as R data files. Loading them needs the\n   ``rdata``\
+  \ extra, install it with ``pip install 'pymovements[rdata]'``.\n"
 resources:
 - content: precomputed_events
   source:
