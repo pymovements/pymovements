@@ -602,13 +602,16 @@ def test_output_runs_through_the_pipeline(
 ):
     """The positions go through the transforms and event detection without any conversion.
 
-    ``detect`` appends to the events the output already carries, so the detected ones are the
-    rows after the input's. The generator attaches an experiment with the sampling rate only, so
-    a screen is set on the output.
+    ``detect`` appends to the events the output already carries, so the input declares the offset
+    convention and the sampling rate that ``ivt`` declares, and the detected ones are the rows
+    after the input's. The generator attaches an experiment with the sampling rate only, so a
+    screen is set on the output.
     """
-    gaze = _generate(
-        _fixations(locations=locations), location_column_group=location_column_group,
+    events = Events(
+        _fixations(locations=locations).frame.drop('duration'),
+        offsets_inclusive=True, sampling_rate=1000.0,
     )
+    gaze = _generate(events, location_column_group=location_column_group)
     gaze.experiment = experiment
 
     for transform in transforms:
