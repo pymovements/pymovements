@@ -1491,11 +1491,10 @@ class Gaze:
                 else {}
             )
             empty_events = (
-                Events(
+                Events._rebuild(  # pylint: disable=protected-access
                     self.events.frame.clear(),
                     trial_columns=self.events.trial_columns,
-                    metadata=deepcopy(self.events.metadata),
-                    validate=False,
+                    metadata=self.events.metadata,
                 )
                 if needs_events
                 else self.events
@@ -1507,11 +1506,10 @@ class Gaze:
                 if not needs_events:
                     group_events = self.events
                 elif group_identifier in events_by_trial:
-                    group_events = Events(
+                    group_events = Events._rebuild(  # pylint: disable=protected-access
                         events_by_trial[group_identifier],
                         trial_columns=self.events.trial_columns,
-                        metadata=deepcopy(self.events.metadata),
-                        validate=False,
+                        metadata=self.events.metadata,
                     )
                 else:
                     group_events = empty_events
