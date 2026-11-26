@@ -24,11 +24,11 @@ import importlib
 from collections.abc import Sequence
 from functools import partial
 
+import numpy as np
 import polars as pl
 
 from pymovements.events.correction._utils import locations_to_lists
 from pymovements.events.correction._utils import map_locations
-from pymovements.events.correction._utils import nearest_index
 from pymovements.events.correction._utils import to_line_values
 
 
@@ -86,33 +86,43 @@ def _stretch_core(
     scipy_optimize = importlib.import_module('scipy.optimize')
 
     _, y_values = locations_to_lists(locations)
-    objective = partial(_snapping_error, y_values=y_values, line_values=line_values)
+    y_array = np.asarray(y_values, dtype=np.float64)
+    line_array = np.asarray(line_values, dtype=np.float64)
+    objective = partial(_snapping_error, y_values=y_array, line_values=line_array)
     best_fit = scipy_optimize.minimize(objective, [1, 0], bounds=[scale_bounds, offset_bounds])
-    return pl.Series(_snap_to_lines(best_fit.x, y_values=y_values, line_values=line_values))
+    return pl.Series(_snap_to_lines(best_fit.x, y_values=y_array, line_values=line_array))
+
+
+def _transform(y_values: np.ndarray, params: Sequence[float]) -> np.ndarray:
+    """Scale and offset the y-values."""
+    return y_values * params[0] + params[1]
+
+
+def _nearest_lines(transformed: np.ndarray, line_values: np.ndarray) -> np.ndarray:
+    """Return the nearest line value for each y-value, ties favoring the first line."""
+    if transformed.size == 0:
+        return np.empty(0, dtype=line_values.dtype)
+    nearest_indices = np.abs(transformed[:, None] - line_values[None, :]).argmin(axis=1)
+    return line_values[nearest_indices]
 
 
 def _snap_to_lines(
     params: Sequence[float],
     *,
-    y_values: list[float],
-    line_values: list[float],
-) -> list[float]:
+    y_values: np.ndarray,
+    line_values: np.ndarray,
+) -> np.ndarray:
     """Scale and offset the y-values, then snap them to the nearest lines."""
-    return [
-        line_values[nearest_index(line_values, y * params[0] + params[1])]
-        for y in y_values
-    ]
+    return _nearest_lines(_transform(y_values, params), line_values)
 
 
 def _snapping_error(
     params: Sequence[float],
     *,
-    y_values: list[float],
-    line_values: list[float],
+    y_values: np.ndarray,
+    line_values: np.ndarray,
 ) -> float:
     """Total snapping distance of the scaled and offset y-values to their nearest lines."""
-    corrected = _snap_to_lines(params, y_values=y_values, line_values=line_values)
-    return sum(
-        abs(y * params[0] + params[1] - line_y)
-        for y, line_y in zip(y_values, corrected)
-    )
+    transformed = _transform(y_values, params)
+    nearest = _nearest_lines(transformed, line_values)
+    return float(np.abs(transformed - nearest).sum())

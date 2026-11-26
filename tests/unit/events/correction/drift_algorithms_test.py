@@ -21,11 +21,17 @@
 # pylint: disable=redefined-outer-name
 from __future__ import annotations
 
+import importlib
+from functools import partial
+
 import numpy as np
 import polars as pl
 import pytest
 
 from pymovements.events import correction
+from pymovements.events.correction.stretch import _snap_to_lines
+from pymovements.events.correction.stretch import _snapping_error
+from pymovements.events.correction.stretch import _stretch_core
 
 
 def make_location_frame(x_values, y_values):
@@ -212,6 +218,109 @@ def test_stretch(sample_fixations_and_lines):
     fixations, line_ys = sample_fixations_and_lines
     res = corrected_y(fixations, correction.stretch(line_ys))
     assert res == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
+
+
+def reference_nearest_index(values, target):
+    """Return the index of the value closest to target, ties favoring the first."""
+    return min(range(len(values)), key=lambda index: abs(values[index] - target))
+
+
+def reference_snap_to_lines(params, y_values, line_values):
+    """Per-fixation reference implementation of the stretch snapping."""
+    return [
+        line_values[reference_nearest_index(line_values, y * params[0] + params[1])]
+        for y in y_values
+    ]
+
+
+def reference_snapping_error(params, y_values, line_values):
+    """Per-fixation reference implementation of the stretch snapping error."""
+    corrected = reference_snap_to_lines(params, y_values, line_values)
+    return sum(
+        abs(y * params[0] + params[1] - line_y)
+        for y, line_y in zip(y_values, corrected)
+    )
+
+
+def reference_stretch_core(y_values, line_values, scale_bounds, offset_bounds):
+    """Per-fixation reference implementation of the stretch core."""
+    scipy_optimize = importlib.import_module('scipy.optimize')
+    objective = partial(
+        reference_snapping_error, y_values=y_values, line_values=line_values,
+    )
+    best_fit = scipy_optimize.minimize(
+        objective, [1, 0], bounds=[scale_bounds, offset_bounds],
+    )
+    return reference_snap_to_lines(best_fit.x, y_values, line_values)
+
+
+def test_stretch_snapping_matches_per_fixation_reference():
+    rng = np.random.default_rng(42)
+    y_values = rng.uniform(90.0, 310.0, size=200)
+    line_values = np.array([100.0, 200.0, 300.0])
+    params = (1.03, -4.5)
+
+    snapped = _snap_to_lines(params, y_values=y_values, line_values=line_values)
+    expected_snapped = reference_snap_to_lines(
+        params, y_values.tolist(), line_values.tolist(),
+    )
+    np.testing.assert_array_equal(snapped, expected_snapped)
+
+    error = _snapping_error(params, y_values=y_values, line_values=line_values)
+    expected_error = reference_snapping_error(
+        params, y_values.tolist(), line_values.tolist(),
+    )
+    np.testing.assert_allclose(error, expected_error, rtol=1e-12)
+
+
+def test_stretch_snapping_ties_favor_first_line():
+    line_values = np.array([100.0, 200.0])
+    y_values = np.array([150.0, 250.0])
+
+    snapped = _snap_to_lines((1.0, 0.0), y_values=y_values, line_values=line_values)
+
+    assert snapped.tolist() == [100.0, 200.0]
+
+
+def test_stretch_snapping_empty_input():
+    line_values = np.array([100.0, 200.0])
+
+    snapped = _snap_to_lines(
+        (1.0, 0.0),
+        y_values=np.empty(0, dtype=np.float64),
+        line_values=line_values,
+    )
+
+    assert snapped.size == 0
+    assert snapped.dtype == line_values.dtype
+
+
+def test_stretch_core_matches_per_fixation_reference():
+    rng = np.random.default_rng(7)
+    line_values = np.array([100.0, 200.0, 300.0, 400.0])
+    line_indices = np.repeat(np.arange(len(line_values)), 50)
+    y_values = (
+        line_values[line_indices]
+        + 6.0
+        + 0.01 * rng.uniform(-400.0, 400.0, size=len(line_indices))
+        + rng.normal(0.0, 2.0, size=len(line_indices))
+    )
+    x_values = rng.uniform(80.0, 800.0, size=len(line_indices))
+    locations = make_location_frame(x_values, y_values).to_series()
+
+    scale_bounds = (0.9, 1.1)
+    offset_bounds = (-50.0, 50.0)
+    corrected = _stretch_core(
+        locations,
+        line_values=line_values.tolist(),
+        scale_bounds=scale_bounds,
+        offset_bounds=offset_bounds,
+    ).to_list()
+
+    expected = reference_stretch_core(
+        y_values.tolist(), line_values.tolist(), scale_bounds, offset_bounds,
+    )
+    assert corrected == expected
 
 
 def test_warp(sample_fixations_and_lines):
