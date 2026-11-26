@@ -56,7 +56,7 @@ def bridge_gaps(events: Events, *, max_gap: float | None = None) -> Events:
     TypeError
         If ``max_gap`` is not a number.
     ValueError
-        If ``max_gap`` is negative, or two events of a trial overlap.
+        If ``max_gap`` is negative or not finite, or two events of a trial overlap.
 
     Examples
     --------
