@@ -22,25 +22,33 @@ from __future__ import annotations
 
 import math
 
+import numpy as np
+
 
 def dynamic_time_warping_points(
     sequence1: list[list[float]],
     sequence2: list[list[float]],
 ) -> tuple[float, list[list[int]]]:
     """Calculate Dynamic Time Warping (DTW) cost and alignment path between two point lists."""
+    points1 = np.asarray(sequence1, dtype=np.float64)
+    points2 = np.asarray(sequence2, dtype=np.float64)
     n1 = len(sequence1)
     n2 = len(sequence2)
     cost = [[math.inf] * (n2 + 1) for _ in range(n1 + 1)]
     cost[0][0] = 0.0
+    n_dimensions = points1.shape[1]
     for i in range(n1):
+        # Accumulate the per-dimension squared differences in the same order as the
+        # scalar sum so that the step costs stay bitwise identical to the reference.
+        squared_distances = np.zeros(n2, dtype=np.float64)
+        for dimension in range(n_dimensions):
+            squared_distances += (points2[:, dimension] - points1[i, dimension]) ** 2
+        distance_row = np.sqrt(squared_distances).tolist()
+        previous_row = cost[i]
+        current_row = cost[i + 1]
         for j in range(n2):
-            step_cost = math.sqrt(
-                sum(
-                    (p - q) ** 2 for p, q in zip(sequence1[i], sequence2[j])
-                ),
-            )
-            cost[i + 1][j + 1] = step_cost + min(
-                cost[i][j + 1], cost[i + 1][j], cost[i][j],
+            current_row[j + 1] = distance_row[j] + min(
+                previous_row[j + 1], current_row[j], previous_row[j],
             )
 
     dtw_path: list[list[int]] = [[] for _ in range(n1)]
