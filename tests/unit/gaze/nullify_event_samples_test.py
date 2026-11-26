@@ -35,7 +35,7 @@ def test_basic_nullify_during_blink():
             'time': pl.Series(range(6), dtype=pl.Int64),
             'pixel': [[1.0, 2.0]] * 6,
         }),
-        events=pm.Events(name='blink', onsets=[2], offsets=[3]),
+        events=pm.Events(name='blink', onsets=[2], durations=[2]),
     )
     gaze.nullify_event_samples('blink', padding=0)
 
@@ -55,7 +55,7 @@ def test_with_symmetric_padding():
             'time': pl.Series(range(8), dtype=pl.Int64),
             'pixel': [[1.0, 2.0]] * 8,
         }),
-        events=pm.Events(name='blink', onsets=[3], offsets=[4]),
+        events=pm.Events(name='blink', onsets=[3], durations=[2]),
     )
     gaze.nullify_event_samples('blink', padding=1)
 
@@ -78,7 +78,7 @@ def test_with_asymmetric_padding():
             'time': pl.Series(range(10), dtype=pl.Int64),
             'pixel': [[1.0, 2.0]] * 10,
         }),
-        events=pm.Events(name='blink', onsets=[4], offsets=[5]),
+        events=pm.Events(name='blink', onsets=[4], durations=[2]),
     )
     gaze.nullify_event_samples('blink', padding=(2, 1))
 
@@ -105,7 +105,7 @@ def test_multi_trial():
         events=pm.Events(
             name='blink',
             onsets=[1],
-            offsets=[2],
+            durations=[2],
             trials=[1],
             trial_columns='trial',
         ),
@@ -147,7 +147,7 @@ def test_no_matching_events_raises():
             'time': pl.Series(range(5), dtype=pl.Int64),
             'pixel': [[1.0, 2.0]] * 5,
         }),
-        events=pm.Events(name='saccade', onsets=[1], offsets=[2]),
+        events=pm.Events(name='saccade', onsets=[1], durations=[2]),
     )
 
     with pytest.raises(ValueError, match="No events with name 'blink'"):
@@ -165,7 +165,7 @@ def test_only_specified_event_type_nullified():
             data=pl.DataFrame({
                 'name': ['blink', 'saccade'],
                 'onset': [2, 6],
-                'offset': [3, 8],
+                'duration': [2, 3],
             }),
         ),
     )
@@ -192,7 +192,7 @@ def test_time_and_trial_columns_preserved():
         events=pm.Events(
             name='blink',
             onsets=[1],
-            offsets=[2],
+            durations=[2],
             trials=[1],
             trial_columns='trial',
         ),
@@ -216,7 +216,7 @@ def test_multiple_data_columns_nullified():
             'position': [[0.5, 0.5]] * 5,
             'velocity': [[10.0, 10.0]] * 5,
         }),
-        events=pm.Events(name='blink', onsets=[1], offsets=[2]),
+        events=pm.Events(name='blink', onsets=[1], durations=[2]),
     )
     gaze.nullify_event_samples('blink', padding=0)
 
@@ -237,7 +237,7 @@ def test_scalar_columns_nullified():
                 'time': pl.Series(range(5), dtype=pl.Int64),
                 'pupil': [3.0, 3.5, 4.0, 3.5, 3.0],
             }),
-            events=pm.Events(name='blink', onsets=[1], offsets=[2]),
+            events=pm.Events(name='blink', onsets=[1], durations=[2]),
         )
     gaze.nullify_event_samples('blink', padding=0)
 
@@ -247,3 +247,47 @@ def test_scalar_columns_nullified():
     assert result[2] is None
     assert result[3] == 3.5
     assert result[4] == 3.0
+
+
+@pytest.mark.parametrize(
+    ('metadata', 'experiment', 'expected_nulls'),
+    [
+        # Δ/2 = 2 ms moves the end from 8 to 6, so the early sample at 7.9 stays.
+        pytest.param({'sampling_rate': 250}, None, [True, True, False], id='events_entry'),
+        pytest.param({}, pm.Experiment(sampling_rate=250), [True, True, False], id='experiment'),
+        pytest.param({}, None, [True, True, True], id='no_sampling_rate'),
+    ],
+)
+def test_sampling_rate_moves_event_end(metadata, experiment, expected_nulls):
+    gaze = pm.Gaze(
+        samples=pl.DataFrame({'time': [0.0, 4.0, 7.9], 'pixel': [[1.0, 2.0]] * 3}),
+        events=pm.Events(
+            pl.DataFrame({'name': ['blink'], 'onset': [0.0], 'duration': [8.0]}),
+            metadata=metadata,
+        ),
+        experiment=experiment,
+    )
+
+    gaze.nullify_event_samples('blink', padding=0)
+
+    assert [value is None for value in gaze.samples['pixel'].to_list()] == expected_nulls
+
+
+def test_detected_frame_without_offset_column():
+    velocities = [[0.0, 0.0]] * 5 + [[100.0, 100.0]] * 3 + [[0.0, 0.0]] * 6
+    gaze = pm.Gaze(
+        samples=pl.DataFrame({
+            'time': [float(i * 4) for i in range(14)],
+            'velocity': velocities,
+        }),
+        experiment=pm.Experiment(sampling_rate=250),
+    )
+    gaze.detect('ivt', velocity_threshold=20, minimum_duration=8)
+    gaze.events = pm.Events(gaze.events.frame.drop('offset'), metadata={'sampling_rate': 250})
+
+    gaze.nullify_event_samples('fixation', padding=0)
+
+    # Only the three saccade samples at index 5, 6 and 7 keep their values.
+    assert [value is None for value in gaze.samples['velocity'].to_list()] == (
+        [True] * 5 + [False] * 3 + [True] * 6
+    )

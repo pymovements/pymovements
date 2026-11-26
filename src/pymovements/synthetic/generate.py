@@ -132,7 +132,8 @@ def generate_samples(name: str, *, seed: int | None = None, **kwargs: Any) -> Ga
     ...     noise: float = 0.1
     ...
     ...     def _generate(self, *, rng, events):
-    ...         end = events.frame['offset'].dt.total_microseconds().max() / 1000
+    ...         ends = events.frame['onset'] + events.frame['duration']
+    ...         end = ends.dt.total_microseconds().max() / 1000
     ...         time = np.arange(0, end, 1000 / self.sampling_rate)
     ...         return pm.Gaze(
     ...             samples=pl.DataFrame({

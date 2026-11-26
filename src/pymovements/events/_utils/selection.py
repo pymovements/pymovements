@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
+from pymovements._utils.expressions import as_expr
 from pymovements._utils.time import sampling_interval_us
 
 if TYPE_CHECKING:
@@ -58,9 +59,7 @@ def selection_end(
     pl.Expr
         The end bound in microseconds.
     """
-    onset_expr = pl.col(onset) if isinstance(onset, str) else onset
-    duration_expr = pl.col(duration) if isinstance(duration, str) else duration
-    end = onset_expr + duration_expr
+    end = as_expr(onset) + as_expr(duration)
     if sampling_rate is None:
         return end
     # Half the interval the time columns carry.

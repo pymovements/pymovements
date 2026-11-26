@@ -26,6 +26,7 @@ import polars
 from pymovements._utils.time import event_times_to_ms
 from pymovements._utils.time import sampling_interval_ms
 from pymovements._utils.time import timesteps_to_numpy
+from pymovements.events._utils.selection import selection_end
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.transforms.numpy import consecutive
@@ -48,11 +49,12 @@ def fill(
         The already detected events.
     timesteps: list[int] | numpy.ndarray | polars.Series
         shape (N, )
-        Continuous 1D timestep time series. Each event covers the half-open interval
-        ``[onset, offset)``. The event ``onset`` and ``offset`` values must be in the same
-        unit as ``timesteps``. Without an ``offset`` column the event ends at
-        ``onset + duration``. When ``events`` stores ``polars.Duration`` time columns,
-        ``timesteps`` are expected to be in milliseconds.
+        Continuous 1D timestep time series. Each event covers the timesteps with
+        ``onset <= t < onset + duration - Δ/2``, with ``Δ`` the nominal sampling interval of
+        ``sampling_rate``. An event whose end falls exactly on a timestep less than half an
+        interval after its last timestep can lose that last timestep. The event ``onset`` and
+        ``duration`` values must be in the same unit as ``timesteps``. When ``events`` stores
+        ``polars.Duration`` time columns, ``timesteps`` are expected to be in milliseconds.
     minimum_duration: int
         Minimum fixation duration. The duration is specified in the units used in ``timesteps``.
         (default: 1)
@@ -82,18 +84,22 @@ def fill(
     # Create binary mask where each existing event is marked.
     events_mask = numpy.zeros(len(timesteps), dtype=bool)
 
-    # Convert the event times to milliseconds to match the timesteps unit. A frame
-    # without an offset column gets one from onset + duration.
-    events_frame = event_times_to_ms(events.frame)
+    # Compare in microseconds, the scale of the selection end. The timesteps and the event times
+    # are milliseconds. Events without an end select no timesteps.
+    timesteps_us = timesteps * 1000
+    events_frame = event_times_to_ms(events.frame).select(
+        (polars.col('onset') * 1000).alias('onset'),
+        (polars.col('duration') * 1000).alias('duration'),
+    ).select(
+        'onset',
+        selection_end('onset', 'duration', sampling_rate=sampling_rate).alias('end'),
+    ).drop_nulls()
 
-    for row in events_frame.iter_rows(named=True):
-        onset = row['onset']
-        offset = row['offset']
-
-        # Mark every timestep inside the half-open event interval ``[onset, offset)``.
+    for onset, end in events_frame.iter_rows():
+        # Mark every timestep inside the event selection ``[onset, end)``.
         # Matching by interval membership instead of exact timestep equality keeps this
         # robust to floating-point timesteps and to sample spacings other than one.
-        events_mask |= (timesteps >= onset) & (timesteps < offset)
+        events_mask |= (timesteps_us >= onset) & (timesteps_us < end)
 
     # Mask all indices where there is no event.
     candidate_mask = ~events_mask

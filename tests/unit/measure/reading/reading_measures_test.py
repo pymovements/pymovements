@@ -586,3 +586,32 @@ def test_skipped_empty_dataframe():
         'skipped': pl.Series([], dtype=pl.Int64),
     })
     assert_frame_equal(result, expected)
+
+
+@pytest.mark.parametrize(
+    ('measure', 'expected'),
+    [
+        pytest.param(first_reading_time(), 100, id='first_reading_time'),
+        pytest.param(first_pass_reading_time(), 100, id='first_pass_reading_time'),
+        pytest.param(rereading_time(), 250, id='rereading_time'),
+        pytest.param(regression_path_duration_inclusive(), 350, id='rpd_inclusive'),
+        pytest.param(regression_path_duration_exclusive(), 200, id='rpd_exclusive'),
+        pytest.param(right_bounded_reading_time(), 100, id='right_bounded_reading_time'),
+        pytest.param(non_aoi_fixation_duration_ratio(), 50 / 350, id='non_aoi_duration_ratio'),
+        # The first fixation has no duration, so it is not replaced by the next one.
+        pytest.param(first_duration(), None, id='first_duration'),
+        pytest.param(first_fixation_duration(), None, id='first_fixation_duration'),
+    ],
+)
+def test_duration_measures_with_null_duration(measure, expected):
+    fixations = pl.DataFrame({
+        'duration': [None, 100, 200, 50],
+        'run_id': [0, 0, 1, 1],
+        'is_first_pass': [True, True, False, False],
+        'word_idx': [0, 0, 1, None],
+        'regression_path_word': [0, 0, 0, 0],
+    })
+
+    result = fixations.select(measure).item()
+
+    assert result == pytest.approx(expected)

@@ -1263,6 +1263,11 @@ class Gaze:
         detected events of the specified type. This is useful for removing artifact
         data during events such as blinks, where gaze samples are unreliable.
 
+        The samples of an event are those with ``onset <= time < onset + duration``. With a
+        sampling rate, from the events metadata first and the experiment second, the end moves
+        half a sampling interval early, as described in
+        :py:func:`~pymovements.transforms.events2segmentation`.
+
         Parameters
         ----------
         name : str
@@ -1272,7 +1277,7 @@ class Gaze:
             Padding to extend each event interval, in the same units as the time
             column. If a single float, the same padding is applied symmetrically
             before and after each event. If a tuple ``(before, after)``, ``before``
-            is subtracted from the onset and ``after`` is added to the offset.
+            is subtracted from the onset and ``after`` is added to the end of the event.
             Both values must be non-negative. Default is ``(25, 25)``.
 
         Raises
@@ -1292,14 +1297,14 @@ class Gaze:
         ...         'time': polars.Series(range(6), dtype=polars.Int64),
         ...         'pixel': [[1.0, 2.0]] * 6,
         ...     }),
-        ...     events=pm.Events(name='blink', onsets=[2], offsets=[3]),
+        ...     events=pm.Events(name='blink', onsets=[2], durations=[2]),
         ... )
         >>> gaze.nullify_event_samples('blink', padding=0)
         >>> gaze.samples['pixel'].to_list()
         [[1.0, 2.0], [1.0, 2.0], None, None, [1.0, 2.0], [1.0, 2.0]]
         """
-        events_frame = self._require_events().frame
-        has_matching = events_frame.filter(polars.col('name') == name).height > 0
+        events = self._require_events()
+        has_matching = events.frame.filter(polars.col('name') == name).height > 0
 
         if not has_matching:
             raise ValueError(
@@ -1307,11 +1312,12 @@ class Gaze:
             )
 
         mask_expr = transforms.events2segmentation(
-            events_frame,
+            events.frame,
             name=name,
             time_column='time',
             trial_columns=self.trial_columns,
             padding=padding,
+            sampling_rate=resolve_sampling_rate(events, self.experiment),
         )
 
         # Determine columns to preserve (time + trial columns)
@@ -1849,27 +1855,29 @@ class Gaze:
         time_column: str = 'time',
         *,
         sampling_rate: float | None = None,
-        onset_column: str = 'onset',
-        offset_column: str = 'offset',
+        onset_column: str | None = None,
+        offset_column: str | None = None,
         trial_columns: list[str] | None = None,
+        onset: str | polars.Expr = 'onset',
+        duration: str | polars.Expr = 'duration',
     ) -> polars.Expr:
         r"""Calculate ratio of time associated with specific events.
 
         This method computes the ratio of time that is associated with events
-        having a specific name. It calculates the ratio from event durations (offset - onset).
-        Overlapping intervals of events with the matching ``name`` are merged before their
-        durations are summed, so each time point is counted only once and the resulting ratio
-        never exceeds 1.0.
+        having a specific name. It calculates the ratio from the event durations.
+        Overlapping intervals ``[onset, onset + duration)`` of events with the matching ``name``
+        are merged before their durations are summed, so each time point is counted only once
+        and the resulting ratio never exceeds 1.0. Events with a ``null`` duration contribute
+        nothing.
 
-        The ratio is calculated inclusively as:
+        The ratio is calculated as:
 
         .. math::
-            \frac{\sum_{i=1}^{m} (t_{\mathrm{offset},i} -
-            t_{\mathrm{onset},i} + \Delta t)}{t_{\mathrm{max}} -
-            t_{\mathrm{min}} + \Delta t}
+            \frac{\sum_{i=1}^{m} d_i}{t_{\mathrm{max}} - t_{\mathrm{min}} + \Delta t}
 
-        where the sum runs over the :math:`m` merged (non-overlapping) intervals and
-        :math:`\Delta t = 1000 / f_s`. If no sampling rate is available (neither
+        where the sum runs over the durations :math:`d_i` of the :math:`m` merged
+        (non-overlapping) intervals and :math:`\Delta t = 1000 / f_s`, since the samples span
+        one sampling interval past the last one. If no sampling rate is available (neither
         passed as `sampling_rate` nor via the experiment), :math:`\Delta t` is
         estimated as the mode of the sample time differences.
 
@@ -1882,15 +1890,28 @@ class Gaze:
         sampling_rate: float | None
             Sampling rate of the gaze data in Hz. If not provided, it will be
             taken from the experiment if available.
-        onset_column: str
-            Name of the column containing event onset times (default: 'onset').
-        offset_column: str
-            Name of the column containing event offset times (default: 'offset').
+        onset_column: str | None
+            Name of the column containing event onset times. (default: None)
+
+            .. deprecated:: v0.29.0
+                Please use ``onset`` instead.
+                This argument will be removed in v0.34.0.
+        offset_column: str | None
+            Name of the column containing inclusive event offset times. If given, each event
+            lasts ``offset - onset + Δt``. (default: None)
+
+            .. deprecated:: v0.29.0
+                Please use ``duration`` instead.
+                This argument will be removed in v0.34.0.
         trial_columns: list[str] | None
             Names of the columns identifying trials to use for grouping the ratio
             calculation. Defaults to :py:attr:`~.Gaze.trial_columns`. Pass an empty
             list ``[]`` to compute a single session-level ratio without any trial
             grouping. (default: the gaze's ``trial_columns``)
+        onset: str | polars.Expr
+            The event onset, as a column name or an expression. (default: 'onset')
+        duration: str | polars.Expr
+            The event duration, as a column name or an expression. (default: 'duration')
 
         Returns
         -------
@@ -1912,7 +1933,7 @@ class Gaze:
         ...     events=pm.Events(
         ...         name=['blink'],
         ...         onsets=[1],
-        ...         offsets=[3],
+        ...         durations=[3],
         ...     ),
         ... )
         >>> gaze.samples.select(gaze.measure_events_ratio('blink'))
@@ -1937,7 +1958,7 @@ class Gaze:
         ...         data=polars.DataFrame({
         ...             'name': ['blink'],
         ...             'onset': [1],
-        ...             'offset': [2],
+        ...             'duration': [2],
         ...             'trial': [1],
         ...         }),
         ...     ),
@@ -1981,10 +2002,9 @@ class Gaze:
         ------
         ValueError
             If `name` is not a non-empty string.
+            If `time_column` is not present in the samples DataFrame.
         TypeError
             If `time_column` is not a string.
-        KeyError
-            If `time_column` is not present in the samples DataFrame.
         """
         if not isinstance(name, str) or not name:
             raise ValueError(
@@ -2012,11 +2032,14 @@ class Gaze:
         if self.events is not None and not self.events.frame.is_empty():
             events_df = self.events.frame
         else:
+            time_columns = [onset_column or onset, offset_column or duration]
             events_df = polars.DataFrame(
                 schema={
                     'name': polars.String,
-                    onset_column: self.samples.schema[time_column],
-                    offset_column: self.samples.schema[time_column],
+                    **{
+                        column: self.samples.schema[time_column]
+                        for column in time_columns if isinstance(column, str)
+                    },
                     **(
                         {col: self.samples.schema[col] for col in trial_columns}
                         if trial_columns else {}
@@ -2033,6 +2056,8 @@ class Gaze:
             sampling_rate=sampling_rate,
             onset_column=onset_column,
             offset_column=offset_column,
+            onset=onset,
+            duration=duration,
         )
 
     @property

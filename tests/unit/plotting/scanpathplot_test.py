@@ -315,6 +315,20 @@ def test_scanpathplot_numeric_duration_events(make_gaze):
     assert len(ax.patches) == 1
 
 
+def test_scanpathplot_skips_null_duration(make_gaze):
+    gaze = make_gaze('2_fixations')
+    gaze.events.frame = gaze.events.frame.with_columns(
+        pl.when(pl.col('onset') == pl.duration(milliseconds=0))
+        .then(None)
+        .otherwise(pl.col('duration'))
+        .alias('duration'),
+    )
+
+    _, ax = scanpathplot(gaze=gaze, event_name='fixation')
+
+    assert len(ax.patches) == 1
+
+
 def test_scanpathplot_save(gaze, tmp_path):
     filepath = tmp_path / 'test.svg'
     assert not filepath.is_file()

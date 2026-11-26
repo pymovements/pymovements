@@ -239,16 +239,16 @@ def tsplot(
     ylims = _compute_ylims(arr, zero_centered_yaxis=zero_centered_yaxis)
 
     if show_events:
-        # Convert onset and offset to milliseconds so the shaded spans line up
-        # with the millisecond time axis. A frame without an offset column gets
-        # one from onset + duration.
+        # Convert onset and duration to milliseconds so the shaded spans line up
+        # with the millisecond time axis. Each span covers [onset, onset + duration).
         events = event_times_to_ms(gaze.events.frame)
         palette = plt.colormaps['tab10'].colors
         event_colors = {
             name: palette[i % len(palette)]
             for i, name in enumerate(sorted(events['name'].unique()))
         }
-        event_rows = events.rows(named=True)
+        # An event without a duration covers no time.
+        event_rows = events.drop_nulls(['onset', 'duration']).rows(named=True)
     else:
         event_colors = {}
         event_rows = []
@@ -308,7 +308,7 @@ def tsplot(
             for event in event_rows:
                 event_name = event['name']
                 ax.axvspan(
-                    event['onset'], event['offset'],
+                    event['onset'], event['onset'] + event['duration'],
                     alpha=0.5,
                     label=event_name if event_name in add_to_legend else None,
                     color=event_colors[event_name],
