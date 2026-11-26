@@ -29,15 +29,33 @@ from pymovements.exceptions import UnknownMeasure
 from pymovements.measure.events import duration
 from pymovements.measure.events import EventProcessor
 from pymovements.measure.events import EventSamplesProcessor
+from pymovements.measure.events import offset
 from pymovements.measure.samples import peak_velocity
 
 
 @pytest.mark.parametrize(
     ('args', 'kwargs', 'expected_measures'),
     [
-        pytest.param(['duration'], {}, [duration], id='arg_str_duration'),
-        pytest.param([['duration']], {}, [duration], id='arg_list_duration'),
-        pytest.param([], {'measures': 'duration'}, [duration], id='kwarg_measures_duration'),
+        pytest.param(
+            [('duration', {'offsets_inclusive': False})], {},
+            [duration(offsets_inclusive=False)],
+            id='arg_tuple_duration',
+        ),
+        pytest.param(
+            [[('duration', {'offsets_inclusive': False})]], {},
+            [duration(offsets_inclusive=False)],
+            id='arg_list_duration',
+        ),
+        pytest.param(
+            [], {'measures': ('offset', {'inclusive': True, 'sampling_rate': 1000})},
+            [offset(inclusive=True, sampling_rate=1000)],
+            id='kwarg_measures_offset',
+        ),
+        pytest.param(
+            [[('offset', {'inclusive': False}), ('duration', {'offsets_inclusive': False})]], {},
+            [offset(inclusive=False), duration(offsets_inclusive=False)],
+            id='arg_list_two_measures',
+        ),
     ],
 )
 def test_event_processor_init(args, kwargs, expected_measures):
@@ -45,7 +63,7 @@ def test_event_processor_init(args, kwargs, expected_measures):
 
     assert len(processor.measures) == len(expected_measures)
     for measure, expected_measure in zip(processor.measures, expected_measures):
-        assert str(measure) == str(expected_measure())
+        assert str(measure) == str(expected_measure)
 
 
 @pytest.mark.parametrize(
@@ -56,6 +74,30 @@ def test_event_processor_init(args, kwargs, expected_measures):
             UnknownMeasure,
             "Measure 'foo' is unknown.",
             id='unknown_measure',
+        ),
+        pytest.param(
+            ['duration'], {},
+            TypeError,
+            "missing 1 required keyword-only argument: 'offsets_inclusive'",
+            id='duration_without_keyword',
+        ),
+        pytest.param(
+            [('offset', {})], {},
+            TypeError,
+            "missing 1 required keyword-only argument: 'inclusive'",
+            id='offset_without_keyword',
+        ),
+        pytest.param(
+            [('offset', {'inclusive': True})], {},
+            ValueError,
+            'inclusive=True requires a sampling_rate',
+            id='offset_inclusive_without_rate',
+        ),
+        pytest.param(
+            [('duration', 'foo')], {},
+            TypeError,
+            'Second item of tuple must be a dictionary',
+            id='tuple_without_dict',
         ),
     ],
 )
@@ -68,28 +110,37 @@ def test_event_processor_init_exceptions(args, kwargs, exception, message):
     ('events', 'measures', 'expected_dataframe'),
     [
         pytest.param(
-            pl.DataFrame(schema={'onset': pl.Int64, 'offset': pl.Int64}),
-            'duration',
-            pl.DataFrame(schema={'duration': pl.Int64}),
+            pl.DataFrame(schema={'onset': pl.Duration('us'), 'offset': pl.Duration('us')}),
+            ('duration', {'offsets_inclusive': False}),
+            pl.DataFrame(schema={'duration': pl.Duration('us')}),
             id='duration_no_event',
         ),
         pytest.param(
             pl.DataFrame(
-                data={'onset': [0], 'offset': [1]},
-                schema={'onset': pl.Int64, 'offset': pl.Int64},
+                data={'onset': [0], 'offset': [1000]},
+                schema={'onset': pl.Duration('us'), 'offset': pl.Duration('us')},
             ),
-            'duration',
-            pl.DataFrame(data=[1], schema={'duration': pl.Int64}),
+            ('duration', {'offsets_inclusive': True, 'sampling_rate': 1000}),
+            pl.DataFrame(data=[2000], schema={'duration': pl.Duration('us')}),
             id='duration_single_event',
         ),
         pytest.param(
             pl.DataFrame(
-                data={'onset': [0, 100], 'offset': [1, 111]},
-                schema={'onset': pl.Int64, 'offset': pl.Int64},
+                data={'onset': [0, 100_000], 'offset': [1000, 111_000]},
+                schema={'onset': pl.Duration('us'), 'offset': pl.Duration('us')},
             ),
-            'duration',
-            pl.DataFrame(data=[1, 11], schema={'duration': pl.Int64}),
+            ('duration', {'offsets_inclusive': False}),
+            pl.DataFrame(data=[1000, 11_000], schema={'duration': pl.Duration('us')}),
             id='duration_two_events',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                data={'onset': [0, 100_000], 'duration': [1000, 11_000]},
+                schema={'onset': pl.Duration('us'), 'duration': pl.Duration('us')},
+            ),
+            ('offset', {'inclusive': True, 'sampling_rate': 1000}),
+            pl.DataFrame(data=[0, 110_000], schema={'offset': pl.Duration('us')}),
+            id='offset_inclusive',
         ),
     ],
 )
@@ -188,7 +239,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
     [
         pytest.param(
             pl.DataFrame(
-                schema={'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64},
+                schema={'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64},
             ),
             pl.from_dict(
                 {
@@ -201,7 +252,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             {'identifiers': None},
             pl.DataFrame(
                 schema={
-                    'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
                     'peak_velocity': pl.Float64,
                 },
             ),
@@ -213,8 +264,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'name': ['fixation'], 'onset': [0], 'offset': [4]},
-                schema={'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64},
+                {'name': ['fixation'], 'onset': [0], 'duration': [5]},
+                schema={'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64},
             ),
             pl.from_dict(
                 {
@@ -226,9 +277,9 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             {'measures': 'peak_velocity'},
             {'identifiers': None},
             pl.from_dict(
-                {'name': ['fixation'], 'onset': [0], 'offset': [4], 'peak_velocity': [0.0]},
+                {'name': ['fixation'], 'onset': [0], 'duration': [5], 'peak_velocity': [0.0]},
                 schema={
-                    'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
                     'peak_velocity': pl.Float64,
                 },
             ),
@@ -237,7 +288,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'name': ['fixation', 'saccade'], 'onset': [0, 5], 'offset': [4, 7]},
+                {'name': ['fixation', 'saccade'], 'onset': [0, 5], 'duration': [5, 3]},
             ),
             pl.from_dict({
                 'time': [0, 1, 2, 3, 4, 5, 6, 7],
@@ -247,7 +298,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             {'identifiers': None},
             pl.from_dict(
                 {
-                    'name': ['fixation', 'saccade'], 'onset': [0, 5], 'offset': [4, 7],
+                    'name': ['fixation', 'saccade'], 'onset': [0, 5], 'duration': [5, 3],
                     'peak_velocity': [0.0, sqrt(2)],
                 },
             ),
@@ -256,7 +307,10 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'name': ['fixation', 'saccade', 'blink'], 'onset': [0, 3, 7], 'offset': [2, 6, 7]},
+                {
+                    'name': ['fixation', 'saccade', 'blink'],
+                    'onset': [0, 3, 7], 'duration': [3, 4, 1],
+                },
             ),
             pl.from_dict({
                 'time': [0, 1, 2, 3, 4, 5, 6, 7],
@@ -267,7 +321,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {
                     'name': ['fixation', 'saccade', 'blink'],
-                    'onset': [0, 3, 7], 'offset': [2, 6, 7],
+                    'onset': [0, 3, 7], 'duration': [3, 4, 1],
                     'peak_velocity': [0.0, 1, sqrt(2)],
                 },
             ),
@@ -276,9 +330,10 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'subject_id': [1], 'name': ['saccade'], 'onset': [0], 'offset': [10]},
+                {'subject_id': [1], 'name': ['saccade'], 'onset': [0], 'duration': [11]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -296,14 +351,14 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': [1],
                     'name': ['saccade'],
                     'onset': [0],
-                    'offset': [10],
+                    'duration': [11],
                     'peak_velocity': [1],
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'peak_velocity': pl.Float64,
                 },
             ),
@@ -312,9 +367,10 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'subject_id': [1], 'name': ['saccade'], 'onset': [0], 'offset': [5]},
+                {'subject_id': [1], 'name': ['saccade'], 'onset': [0], 'duration': [6]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -338,14 +394,14 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': [1],
                     'name': ['saccade'],
                     'onset': [0],
-                    'offset': [5],
+                    'duration': [6],
                     'peak_velocity': [1],
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'peak_velocity': pl.Float64,
                 },
             ),
@@ -354,9 +410,10 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'subject_id': [1], 'name': ['fixation'], 'onset': [0], 'offset': [10]},
+                {'subject_id': [1], 'name': ['fixation'], 'onset': [0], 'duration': [11]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -381,14 +438,14 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': [1],
                     'name': ['fixation'],
                     'onset': [0],
-                    'offset': [10],
+                    'duration': [11],
                     'dispersion': [2],
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'dispersion': pl.Float64,
                 },
             ),
@@ -397,9 +454,10 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'subject_id': [1], 'name': ['saccade'], 'onset': [0], 'offset': [10]},
+                {'subject_id': [1], 'name': ['saccade'], 'onset': [0], 'duration': [11]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -423,14 +481,14 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': [1],
                     'name': ['saccade'],
                     'onset': [0],
-                    'offset': [10],
+                    'duration': [11],
                     'peak_velocity': [np.sqrt(2)],
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'peak_velocity': pl.Float64,
                 },
             ),
@@ -439,9 +497,10 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'offset': [10, 100]},
+                {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'duration': [11, 21]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -466,14 +525,14 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': [1, 1],
                     'name': ['A', 'B'],
                     'onset': [0, 80],
-                    'offset': [10, 100],
+                    'duration': [11, 21],
                     'peak_velocity': [np.sqrt(2), 2 * np.sqrt(2)],
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'peak_velocity': pl.Float64,
                 },
             ),
@@ -482,9 +541,10 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'offset': [10, 100]},
+                {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'duration': [11, 21]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -509,14 +569,14 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': [1],
                     'name': ['A'],
                     'onset': [0],
-                    'offset': [10],
+                    'duration': [11],
                     'peak_velocity': [np.sqrt(2)],
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'peak_velocity': pl.Float64,
                 },
             ),
@@ -525,9 +585,10 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'offset': [10, 100]},
+                {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'duration': [11, 21]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -552,14 +613,14 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': [1, 1],
                     'name': ['A', 'B'],
                     'onset': [0, 80],
-                    'offset': [10, 100],
+                    'duration': [11, 21],
                     'location': [[1, 1], [2, 2]],
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'location': pl.List(pl.Float64),
                 },
             ),
@@ -568,9 +629,10 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'offset': [10, 100]},
+                {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'duration': [11, 21]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -595,14 +657,14 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': [1, 1],
                     'name': ['A', 'B'],
                     'onset': [0, 80],
-                    'offset': [10, 100],
+                    'duration': [11, 21],
                     'location': [[1.0, 1.0], [11.9, 11.9]],
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'location': pl.List(pl.Float64),
                 },
             ),
@@ -611,9 +673,10 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'offset': [10, 100]},
+                {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'duration': [11, 21]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -638,14 +701,14 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': [1, 1],
                     'name': ['A', 'B'],
                     'onset': [0, 80],
-                    'offset': [10, 100],
+                    'duration': [11, 21],
                     'location': [[1, 1], [2, 2]],
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'location': pl.List(pl.Float64),
                 },
             ),
@@ -654,9 +717,10 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'offset': [10, 100]},
+                {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'duration': [11, 21]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -681,14 +745,14 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': [1, 1],
                     'name': ['A', 'B'],
                     'onset': [0, 80],
-                    'offset': [10, 100],
+                    'duration': [11, 21],
                     'location': [[1.0, 1.0], [11.9, 11.9]],
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'location': pl.List(pl.Float64),
                 },
             ),
@@ -699,11 +763,11 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {
                     'task': ['A', 'B'], 'trial': [0, 0],
-                    'name': ['fixation', 'saccade'], 'onset': [0, 7], 'offset': [3, 8],
+                    'name': ['fixation', 'saccade'], 'onset': [0, 7], 'duration': [4, 2],
                 },
                 schema={
                     'task': pl.Utf8, 'trial': pl.Int64,
-                    'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -726,12 +790,12 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {
                     'task': ['A', 'B'], 'trial': [0, 0],
-                    'name': ['fixation', 'saccade'], 'onset': [0, 7], 'offset': [3, 8],
+                    'name': ['fixation', 'saccade'], 'onset': [0, 7], 'duration': [4, 2],
                     'peak_velocity': [sqrt(2), 1],
                 },
                 schema={
                     'task': pl.Utf8, 'trial': pl.Int64,
-                    'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
                     'peak_velocity': pl.Float64,
                 },
             ),
@@ -743,11 +807,11 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 {
                     'task': ['A', 'A', 'B', 'B'], 'trial': [0, 1, 0, 1],
                     'name': ['fixation', 'saccade', 'fixation', 'saccade'],
-                    'onset': [0, 2, 5, 4], 'offset': [8, 6, 7, 9],
+                    'onset': [0, 2, 5, 4], 'duration': [9, 5, 3, 6],
                 },
                 schema={
                     'task': pl.Utf8, 'trial': pl.Int64,
-                    'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -773,12 +837,12 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 {
                     'task': ['A', 'A', 'B', 'B'], 'trial': [0, 1, 0, 1],
                     'name': ['fixation', 'saccade', 'fixation', 'saccade'],
-                    'onset': [0, 2, 5, 4], 'offset': [8, 6, 7, 9],
+                    'onset': [0, 2, 5, 4], 'duration': [9, 5, 3, 6],
                     'peak_velocity': [sqrt(2), 1, sqrt(2), 0],
                 },
                 schema={
                     'task': pl.Utf8, 'trial': pl.Int64,
-                    'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
                     'peak_velocity': pl.Float64,
                 },
             ),
@@ -787,9 +851,10 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'offset': [10, 100]},
+                {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'duration': [11, 21]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -811,14 +876,14 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': [1, 1],
                     'name': ['A', 'B'],
                     'onset': [0, 80],
-                    'offset': [10, 100],
+                    'duration': [11, 21],
                     'disposition': [sqrt(200), sqrt(722)],
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'disposition': pl.Float64,
                 },
             ),
@@ -829,10 +894,11 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {
                     'subject_id': [1, 1], 'name': ['A', 'B'],
-                    'onset': [0, 1000], 'offset': [10, 1004],
+                    'onset': [0, 1000], 'duration': [11, 5],
                 },
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -854,14 +920,14 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': [1, 1],
                     'name': ['A', 'B'],
                     'onset': [0, 1000],
-                    'offset': [10, 1004],
+                    'duration': [11, 5],
                     'dispersion': [0.0, None],
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'dispersion': pl.Float64,
                 },
             ),
@@ -872,10 +938,11 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {
                     'subject_id': [1, 1], 'name': ['fixation', 'fixation'],
-                    'onset': [0, 5], 'offset': [20, 10],
+                    'onset': [0, 5], 'duration': [21, 6],
                 },
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -897,7 +964,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': [1, 1],
                     'name': ['fixation', 'fixation'],
                     'onset': [0, 5],
-                    'offset': [20, 10],
+                    'duration': [21, 6],
                     'location': [[10.0, 10.0], [7.5, 7.5]],
                     'dispersion': [40.0, 10.0],
                     'disposition': [sqrt(800), sqrt(50)],
@@ -906,7 +973,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': pl.Int64,
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'location': pl.List(pl.Float64),
                     'dispersion': pl.Float64,
                     'disposition': pl.Float64,
@@ -919,10 +986,11 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {
                     'subject_id': [1, 1], 'name': ['fixation', 'saccade'],
-                    'onset': [0, 8], 'offset': [10, 20],
+                    'onset': [0, 8], 'duration': [11, 13],
                 },
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -944,7 +1012,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': [1, 1],
                     'name': ['fixation', 'saccade'],
                     'onset': [0, 8],
-                    'offset': [10, 20],
+                    'duration': [11, 13],
                     'location': [[5.0, 5.0], [14.0, 14.0]],
                     'dispersion': [20.0, 24.0],
                     'disposition': [sqrt(200), sqrt(288)],
@@ -953,7 +1021,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': pl.Int64,
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'location': pl.List(pl.Float64),
                     'dispersion': pl.Float64,
                     'disposition': pl.Float64,
@@ -966,10 +1034,11 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {
                     'subject_id': [1, 1], 'name': ['fixation', 'fixation'],
-                    'onset': [3, 3], 'offset': [7, 7],
+                    'onset': [3, 3], 'duration': [5, 5],
                 },
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -991,7 +1060,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': [1, 1],
                     'name': ['fixation', 'fixation'],
                     'onset': [3, 3],
-                    'offset': [7, 7],
+                    'duration': [5, 5],
                     'location': [[5.0, 5.0], [5.0, 5.0]],
                     'dispersion': [8.0, 8.0],
                     'disposition': [sqrt(32), sqrt(32)],
@@ -1000,7 +1069,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': pl.Int64,
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'location': pl.List(pl.Float64),
                     'dispersion': pl.Float64,
                     'disposition': pl.Float64,
@@ -1013,10 +1082,11 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {
                     'subject_id': [1, 1], 'name': ['fixation', 'fixation'],
-                    'onset': [0, 10], 'offset': [10, 20],
+                    'onset': [0, 10], 'duration': [11, 11],
                 },
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -1038,7 +1108,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': [1, 1],
                     'name': ['fixation', 'fixation'],
                     'onset': [0, 10],
-                    'offset': [10, 20],
+                    'duration': [11, 11],
                     'location': [[5.0, 5.0], [15.0, 15.0]],
                     'dispersion': [20.0, 20.0],
                     'disposition': [sqrt(200), sqrt(200)],
@@ -1047,7 +1117,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': pl.Int64,
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'location': pl.List(pl.Float64),
                     'dispersion': pl.Float64,
                     'disposition': pl.Float64,
@@ -1060,10 +1130,11 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {
                     'subject_id': [1, 1], 'name': ['A', 'B'],
-                    'onset': [0, 1000], 'offset': [10, 1010],
+                    'onset': [0, 1000], 'duration': [11, 11],
                 },
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -1085,7 +1156,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': [1, 1],
                     'name': ['A', 'B'],
                     'onset': [0, 1000],
-                    'offset': [10, 1010],
+                    'duration': [11, 11],
                     'location': [[5.0, 5.0], None],
                     'dispersion': [20.0, None],
                 },
@@ -1093,7 +1164,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': pl.Int64,
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'location': pl.List(pl.Float64),
                     'dispersion': pl.Float64,
                 },
@@ -1105,10 +1176,11 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {
                     'subject_id': [1, 1, 2], 'name': ['A', 'B', 'C'],
-                    'onset': [0, 5, 3], 'offset': [10, 15, 8],
+                    'onset': [0, 5, 3], 'duration': [11, 11, 6],
                 },
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -1133,7 +1205,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': [1, 1, 2],
                     'name': ['A', 'B', 'C'],
                     'onset': [0, 5, 3],
-                    'offset': [10, 15, 8],
+                    'duration': [11, 11, 6],
                     'location': [[5.0, 5.0], [10.0, 10.0], [105.5, 105.5]],
                     'dispersion': [20.0, 20.0, 10.0],
                     'disposition': [sqrt(200), sqrt(200), sqrt(50)],
@@ -1142,7 +1214,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': pl.Int64,
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'location': pl.List(pl.Float64),
                     'dispersion': pl.Float64,
                     'disposition': pl.Float64,
@@ -1153,8 +1225,8 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'name': ['A', 'B'], 'onset': [0, 5], 'offset': [10, 15]},
-                schema={'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64},
+                {'name': ['A', 'B'], 'onset': [0, 5], 'duration': [11, 11]},
+                schema={'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64},
             ),
             pl.from_dict(
                 {
@@ -1169,7 +1241,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 {
                     'name': ['A', 'B'],
                     'onset': [0, 5],
-                    'offset': [10, 15],
+                    'duration': [11, 11],
                     'location': [[5.0, 5.0], [10.0, 10.0]],
                     'dispersion': [20.0, 20.0],
                     'disposition': [sqrt(200), sqrt(200)],
@@ -1177,7 +1249,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 schema={
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'location': pl.List(pl.Float64),
                     'dispersion': pl.Float64,
                     'disposition': pl.Float64,
@@ -1190,10 +1262,11 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {
                     'subject_id': [1, 1, 1], 'name': ['A', 'B', 'C'],
-                    'onset': [0, 5, 1000], 'offset': [10, 15, 1010],
+                    'onset': [0, 5, 1000], 'duration': [11, 11, 11],
                 },
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(
@@ -1215,7 +1288,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': [1, 1, 1],
                     'name': ['A', 'B', 'C'],
                     'onset': [0, 5, 1000],
-                    'offset': [10, 15, 1010],
+                    'duration': [11, 11, 11],
                     'location': [[5.0, 5.0], [10.0, 10.0], None],
                     'dispersion': [20.0, 20.0, None],
                     'disposition': [sqrt(200), sqrt(200), None],
@@ -1224,13 +1297,313 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'subject_id': pl.Int64,
                     'name': pl.Utf8,
                     'onset': pl.Int64,
-                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                     'location': pl.List(pl.Float64),
                     'dispersion': pl.Float64,
                     'disposition': pl.Float64,
                 },
             ),
             id='overlapping_events_and_event_without_samples',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {'name': ['fixation', 'saccade'], 'onset': [0, 5], 'duration': [5, None]},
+                schema={'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64},
+            ),
+            pl.from_dict(
+                {
+                    'time': [0, 1, 2, 3, 4, 5, 6, 7],
+                    'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 1], [0, 0], [0, 0]],
+                },
+                schema={'time': pl.Int64, 'velocity': pl.List(pl.Float64)},
+            ),
+            {'measures': 'peak_velocity'},
+            {'identifiers': None},
+            pl.from_dict(
+                {
+                    'name': ['fixation', 'saccade'],
+                    'onset': [0, 5],
+                    'duration': [5, None],
+                    'peak_velocity': [0.0, None],
+                },
+                schema={
+                    'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'peak_velocity': pl.Float64,
+                },
+            ),
+            id='null_duration_row_kept_with_null_properties',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {'name': ['fixation', 'saccade'], 'onset': [0, 5], 'duration': [5, 0]},
+                schema={'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64},
+            ),
+            pl.from_dict(
+                {
+                    'time': [0, 1, 2, 3, 4, 5, 6, 7],
+                    'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 1], [0, 0], [0, 0]],
+                },
+                schema={'time': pl.Int64, 'velocity': pl.List(pl.Float64)},
+            ),
+            {'measures': 'peak_velocity'},
+            {'identifiers': None},
+            pl.from_dict(
+                {
+                    'name': ['fixation', 'saccade'],
+                    'onset': [0, 5],
+                    'duration': [5, 0],
+                    'peak_velocity': [0.0, None],
+                },
+                schema={
+                    'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'peak_velocity': pl.Float64,
+                },
+            ),
+            id='zero_duration_row_selects_no_samples',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {'name': ['fixation', 'saccade'], 'onset': [0, 5], 'duration': [5, None]},
+                schema={'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64},
+            ),
+            pl.from_dict(
+                {
+                    'time': [0, 1, 2, 3, 4, 5, 6, 7],
+                    'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 1], [0, 0], [0, 0]],
+                },
+                schema={'time': pl.Int64, 'velocity': pl.List(pl.Float64)},
+            ),
+            {'measures': 'peak_velocity', 'sampling_rate': 1000},
+            {'identifiers': None},
+            pl.from_dict(
+                {
+                    'name': ['fixation', 'saccade'],
+                    'onset': [0, 5],
+                    'duration': [5, None],
+                    'peak_velocity': [0.0, None],
+                },
+                schema={
+                    'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'peak_velocity': pl.Float64,
+                },
+            ),
+            id='null_duration_row_kept_with_null_properties_with_sampling_rate',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {'name': ['fixation', 'saccade'], 'onset': [0, 5], 'duration': [5, 0]},
+                schema={'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64},
+            ),
+            pl.from_dict(
+                {
+                    'time': [0, 1, 2, 3, 4, 5, 6, 7],
+                    'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 1], [0, 0], [0, 0]],
+                },
+                schema={'time': pl.Int64, 'velocity': pl.List(pl.Float64)},
+            ),
+            {'measures': 'peak_velocity', 'sampling_rate': 1000},
+            {'identifiers': None},
+            pl.from_dict(
+                {
+                    'name': ['fixation', 'saccade'],
+                    'onset': [0, 5],
+                    'duration': [5, 0],
+                    'peak_velocity': [0.0, None],
+                },
+                schema={
+                    'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'peak_velocity': pl.Float64,
+                },
+            ),
+            id='zero_duration_row_selects_no_samples_with_sampling_rate',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {'name': ['fixation', 'saccade'], 'onset': [0, 5], 'duration': [5, 3]},
+                schema={'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64},
+            ),
+            pl.from_dict(
+                {
+                    'time': [0, 1, 2, 3, 4, 5, 6, 7],
+                    'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 1], [0, 0], [0, 0]],
+                },
+                schema={'time': pl.Int64, 'velocity': pl.List(pl.Float64)},
+            ),
+            {'measures': 'peak_velocity', 'sampling_rate': 1000},
+            {'identifiers': None},
+            pl.from_dict(
+                {
+                    'name': ['fixation', 'saccade'],
+                    'onset': [0, 5],
+                    'duration': [5, 3],
+                    'peak_velocity': [0.0, sqrt(2)],
+                },
+                schema={
+                    'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'peak_velocity': pl.Float64,
+                },
+            ),
+            id='nominal_grid_with_sampling_rate',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {'name': ['fixation', 'saccade'], 'onset': [0, 4], 'duration': [4, 4]},
+                schema={'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64},
+            ),
+            pl.from_dict(
+                {
+                    'time': [0, 1, 2, 3, 3.9, 5, 6, 7],
+                    'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [9, 9], [0, 0], [0, 0], [0, 0]],
+                },
+                schema={'time': pl.Float64, 'velocity': pl.List(pl.Float64)},
+            ),
+            {'measures': 'peak_velocity', 'sampling_rate': 1000},
+            {'identifiers': None},
+            pl.from_dict(
+                {
+                    'name': ['fixation', 'saccade'],
+                    'onset': [0, 4],
+                    'duration': [4, 4],
+                    'peak_velocity': [0.0, 0.0],
+                },
+                schema={
+                    'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'peak_velocity': pl.Float64,
+                },
+            ),
+            id='jittered_early_sample_stays_out_with_sampling_rate',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {'name': ['fixation', 'saccade'], 'onset': [0, 4], 'duration': [4, 4]},
+                schema={'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64},
+            ),
+            pl.from_dict(
+                {
+                    'time': [0, 1, 2, 3, 3.9, 5, 6, 7],
+                    'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [9, 9], [0, 0], [0, 0], [0, 0]],
+                },
+                schema={'time': pl.Float64, 'velocity': pl.List(pl.Float64)},
+            ),
+            {'measures': 'peak_velocity'},
+            {'identifiers': None},
+            pl.from_dict(
+                {
+                    'name': ['fixation', 'saccade'],
+                    'onset': [0, 4],
+                    'duration': [4, 4],
+                    'peak_velocity': [sqrt(162), 0.0],
+                },
+                schema={
+                    'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'peak_velocity': pl.Float64,
+                },
+            ),
+            id='jittered_early_sample_stays_in_without_sampling_rate',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {'name': ['fixation', 'saccade'], 'onset': [0, 4], 'duration': [4, 4]},
+                schema={'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64},
+            ),
+            pl.from_dict(
+                {
+                    'time': [0, 1, 2, 3, 4, 5, 6, 7],
+                    'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [1, 1], [0, 0], [0, 0], [0, 0]],
+                },
+                schema={'time': pl.Int64, 'velocity': pl.List(pl.Float64)},
+            ),
+            {'measures': 'peak_velocity', 'sampling_rate': 1000},
+            {'identifiers': None},
+            pl.from_dict(
+                {
+                    'name': ['fixation', 'saccade'],
+                    'onset': [0, 4],
+                    'duration': [4, 4],
+                    'peak_velocity': [0.0, sqrt(2)],
+                },
+                schema={
+                    'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'peak_velocity': pl.Float64,
+                },
+            ),
+            id='adjacent_events_share_no_sample_with_sampling_rate',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {'name': ['fixation', 'saccade'], 'onset': [0, 4], 'duration': [4, 4]},
+                schema={'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64},
+            ),
+            pl.from_dict(
+                {
+                    'time': [0, 1, 2, 3, 4, 5, 6, 7],
+                    'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [1, 1], [0, 0], [0, 0], [0, 0]],
+                },
+                schema={'time': pl.Int64, 'velocity': pl.List(pl.Float64)},
+            ),
+            {'measures': 'peak_velocity'},
+            {'identifiers': None},
+            pl.from_dict(
+                {
+                    'name': ['fixation', 'saccade'],
+                    'onset': [0, 4],
+                    'duration': [4, 4],
+                    'peak_velocity': [0.0, sqrt(2)],
+                },
+                schema={
+                    'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
+                    'peak_velocity': pl.Float64,
+                },
+            ),
+            id='adjacent_events_share_no_sample_without_sampling_rate',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1], 'name': ['fixation', 'saccade'],
+                    'onset': [0, 2], 'duration': [8, 4],
+                },
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
+                },
+            ),
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1, 1, 1, 1, 1, 1, 1],
+                    'time': [0, 1, 2, 3, 4, 5.9, 6, 7],
+                    'velocity': [[0, 0], [0, 0], [1, 0], [1, 0], [1, 0], [9, 0], [0, 0], [0, 0]],
+                },
+                schema={
+                    'subject_id': pl.Int64, 'time': pl.Float64, 'velocity': pl.List(pl.Float64),
+                },
+            ),
+            {'measures': 'peak_velocity', 'sampling_rate': 1000},
+            {'identifiers': 'subject_id'},
+            pl.from_dict(
+                {
+                    'subject_id': [1, 1],
+                    'name': ['fixation', 'saccade'],
+                    'onset': [0, 2],
+                    'duration': [8, 4],
+                    'peak_velocity': [9.0, 1.0],
+                },
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64,
+                    'duration': pl.Int64, 'peak_velocity': pl.Float64,
+                },
+            ),
+            id='overlapping_events_jittered_early_sample_stays_out_with_sampling_rate',
         ),
     ],
 )
@@ -1245,8 +1618,8 @@ def test_event_samples_processor_process_correct_result(
 def test_event_samples_processor_process_duration_time_column():
     """A Duration sample time column is converted to milliseconds before measures run."""
     events = pl.from_dict(
-        {'name': ['fixation', 'saccade'], 'onset': [0, 5000], 'offset': [4000, 7000]},
-        schema={'name': pl.Utf8, 'onset': pl.Duration('us'), 'offset': pl.Duration('us')},
+        {'name': ['fixation', 'saccade'], 'onset': [0, 5000], 'duration': [5000, 3000]},
+        schema={'name': pl.Utf8, 'onset': pl.Duration('us'), 'duration': pl.Duration('us')},
     )
     samples = pl.from_dict(
         {
@@ -1279,9 +1652,9 @@ def test_event_samples_processor_process_coerces_mixed_dtypes(event_dtype, time_
     events = pl.from_dict(
         {
             'name': ['fixation', 'saccade'], 'onset': [0, 5 * event_scale],
-            'offset': [4 * event_scale, 7 * event_scale],
+            'duration': [5 * event_scale, 3 * event_scale],
         },
-        schema={'name': pl.Utf8, 'onset': event_dtype, 'offset': event_dtype},
+        schema={'name': pl.Utf8, 'onset': event_dtype, 'duration': event_dtype},
     )
     time_scale = 1000 if time_dtype == pl.Duration('us') else 1
     samples = pl.from_dict(
@@ -1302,7 +1675,7 @@ def test_event_samples_processor_process_coerces_mixed_dtypes(event_dtype, time_
 def test_event_samples_processor_process_duration_time_no_events():
     """The empty-events schema still resolves when the sample time column is a Duration."""
     events = pl.DataFrame(
-        schema={'name': pl.Utf8, 'onset': pl.Duration('us'), 'offset': pl.Duration('us')},
+        schema={'name': pl.Utf8, 'onset': pl.Duration('us'), 'duration': pl.Duration('us')},
     )
     samples = pl.from_dict(
         {
@@ -1315,7 +1688,7 @@ def test_event_samples_processor_process_duration_time_no_events():
     processor = EventSamplesProcessor(measures='peak_velocity')
     result = processor.process(events, samples, identifiers=None)
 
-    assert result.columns == ['name', 'onset', 'offset', 'peak_velocity']
+    assert result.columns == ['name', 'onset', 'duration', 'peak_velocity']
     assert len(result) == 0
 
 
@@ -1324,7 +1697,7 @@ def test_event_samples_processor_process_duration_time_no_events():
     [
         pytest.param(
             pl.DataFrame(
-                schema={'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64},
+                schema={'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64},
             ),
             pl.from_dict(
                 {
@@ -1342,9 +1715,10 @@ def test_event_samples_processor_process_duration_time_no_events():
 
         pytest.param(
             pl.from_dict(
-                {'subject_id': [1, 1], 'name': 'abcdef', 'onset': [0, 80], 'offset': [10, 100]},
+                {'subject_id': [1, 1], 'name': 'abcdef', 'onset': [0, 80], 'duration': [11, 21]},
                 schema={
-                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'subject_id': pl.Int64, 'name': pl.Utf8,
+                    'onset': pl.Int64, 'duration': pl.Int64,
                 },
             ),
             pl.from_dict(

@@ -54,10 +54,10 @@ def _synthetic_events_and_samples(
             'trial': np.repeat(np.arange(n_trials), events_per_trial),
             'name': 'fixation',
             'onset': np.tile(event_starts, n_trials),
-            'offset': np.tile(event_starts + _EVENT_SAMPLES - 1, n_trials),
+            'duration': np.full(n_trials * events_per_trial, _EVENT_SAMPLES),
         },
         schema={
-            'trial': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+            'trial': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'duration': pl.Int64,
         },
     )
     samples_frame = (

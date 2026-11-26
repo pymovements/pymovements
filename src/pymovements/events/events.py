@@ -42,6 +42,7 @@ from pymovements._utils.nulls import row_is_null
 from pymovements._utils.sources import merge_sources
 from pymovements._utils.time import normalize_duration_to_us
 from pymovements._utils.time import numeric_to_duration_us
+from pymovements._utils.time import sampling_interval_us
 from pymovements.events.correction import fixation_correction
 from pymovements.measure.reading import compute_reading_measures
 from pymovements.measure.reading import ReadingMeasures
@@ -1100,8 +1101,7 @@ class Events:
 
         sampling_interval = None
         if sampling_rate is not None:
-            # Rounded to microseconds like numeric time input, so residuals compare exactly.
-            sampling_interval = round(1_000_000 / sampling_rate)
+            sampling_interval = sampling_interval_us(sampling_rate)
 
         if not durations_supplied or durations_from_offsets:
             if offsets_inclusive and sampling_interval is None:

@@ -41,6 +41,7 @@ Measures
     :template: function.rst
 
     duration
+    offset
 
 .. autosummary::
     :toctree: api

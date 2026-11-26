@@ -24,6 +24,8 @@ from collections.abc import Callable
 
 import polars as pl
 
+from pymovements._utils.time import sampling_interval_us
+
 EVENT_MEASURES: dict[str, Callable] = {}
 
 
@@ -45,15 +47,93 @@ def register_event_measure(function: Callable) -> Callable:
 
 
 @register_event_measure
-def duration() -> pl.Expr:
-    """Duration of an event.
+def duration(*, offsets_inclusive: bool, sampling_rate: float | None = None) -> pl.Expr:
+    """Duration of an event, derived from its onset and offset.
 
-    The duration is defined as the difference between offset time and onset time.
+    The duration is ``offset - onset``, plus one sampling interval when the offset is the
+    timestamp of the last sample. It is written as a ``polars.Duration('us')`` column from the
+    onset and offset columns of an events frame, overwriting a stored duration. With the same
+    convention on both, :py:func:`offset` followed by this measure returns the stored durations
+    for every event lasting at least one sampling interval. An impulse has no inclusive offset,
+    so its ``null`` inclusive offset gives a ``null`` duration.
+
+    Parameters
+    ----------
+    offsets_inclusive: bool
+        The convention of the offset column, as declared on
+        :py:class:`~pymovements.Events`: ``True`` if the offset is the timestamp of the last
+        sample, which needs the sampling rate, ``False`` if it is the end of the event.
+    sampling_rate: float | None
+        The sampling rate in Hz. Required with ``offsets_inclusive=True``, ignored otherwise.
+        (default: None)
 
     Returns
     -------
     pl.Expr
         The duration of the event.
+
+    Raises
+    ------
+    ValueError
+        If ``offsets_inclusive`` is ``True`` and no ``sampling_rate`` is given.
     """
     result = pl.col('offset') - pl.col('onset')
+    if offsets_inclusive:
+        if sampling_rate is None:
+            raise ValueError(
+                'offsets_inclusive=True requires a sampling_rate: '
+                'duration = offset - onset + 1 / sampling_rate.',
+            )
+        result = result + pl.duration(microseconds=sampling_interval_us(sampling_rate))
     return result.alias('duration')
+
+
+@register_event_measure
+def offset(*, inclusive: bool, sampling_rate: float | None = None) -> pl.Expr:
+    """Offset of an event, derived from its onset and duration.
+
+    The offset is the timestamp of the last sample of the event, ``onset + duration`` minus one
+    sampling interval, or the end of the event, ``onset + duration``, one past the last sample.
+    Both are written as a ``polars.Duration('us')`` column from the onset and duration columns
+    of an events frame.
+
+    Parameters
+    ----------
+    inclusive: bool
+        If ``True``, the offset is the timestamp of the last sample, which needs the sampling
+        rate. An event with a duration of ``0`` or ``null`` has no last sample, so its offset
+        is ``null``. If ``False``, the offset is the end of the event, which is the onset
+        itself for a duration of ``0`` and needs no sampling rate. Use ``inclusive=False``
+        for exact-boundary events, whose start and end times are exact and not tied to
+        samples.
+    sampling_rate: float | None
+        The sampling rate in Hz. Required with ``inclusive=True``, ignored otherwise.
+        (default: None)
+
+    Returns
+    -------
+    pl.Expr
+        The offset of the event.
+
+    Raises
+    ------
+    ValueError
+        If ``inclusive`` is ``True`` and no ``sampling_rate`` is given.
+    """
+    end = pl.col('onset') + pl.col('duration')
+    if not inclusive:
+        return end.alias('offset')
+    if sampling_rate is None:
+        raise ValueError(
+            'inclusive=True requires a sampling_rate: the inclusive offset is '
+            'onset + duration - 1 / sampling_rate.',
+        )
+    # The same rounded interval the constructor adds, so the round trip through the duration
+    # measure is exact.
+    sampling_interval = pl.duration(microseconds=sampling_interval_us(sampling_rate))
+    result = (
+        pl.when(pl.col('duration') > pl.duration(microseconds=0))
+        .then(end - sampling_interval)
+        .otherwise(None)
+    )
+    return result.alias('offset')

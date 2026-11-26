@@ -23,12 +23,14 @@ import pytest
 
 from pymovements.measure.events import duration
 from pymovements.measure.events import EVENT_MEASURES
+from pymovements.measure.events import offset
 
 
 @pytest.mark.parametrize(
     ('measure_function', 'measure_name'),
     [
         pytest.param(duration, 'duration', id='duration'),
+        pytest.param(offset, 'offset', id='offset'),
     ],
 )
 def test_measure_registered(measure_function, measure_name):
@@ -37,6 +39,16 @@ def test_measure_registered(measure_function, measure_name):
     assert EVENT_MEASURES[measure_name].__name__ == measure_name
 
 
-@pytest.mark.parametrize('measure_function', EVENT_MEASURES.values())
-def test_measure_returns_polars_expression(measure_function):
-    assert isinstance(measure_function(), pl.Expr)
+@pytest.mark.parametrize(
+    ('measure_name', 'kwargs'),
+    [
+        pytest.param('duration', {'offsets_inclusive': False}, id='duration'),
+        pytest.param('offset', {'inclusive': False}, id='offset'),
+    ],
+)
+def test_measure_returns_polars_expression(measure_name, kwargs):
+    assert isinstance(EVENT_MEASURES[measure_name](**kwargs), pl.Expr)
+
+
+def test_every_registered_measure_is_covered():
+    assert set(EVENT_MEASURES) == {'duration', 'offset'}
