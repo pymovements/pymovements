@@ -57,7 +57,7 @@ def ivt(
     ----------
     velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series
         shape (N, 2)
-        Corresponding continuous 2D velocity time series.
+        Corresponding continuous 2D velocity time series in velocity units (e.g., deg/s or px/s).
     timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None
         shape (N, )
         Corresponding continuous 1D timestep time series. Fractional (float) timesteps are
@@ -68,8 +68,9 @@ def ivt(
         for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
         None, the unit is milliseconds. (default: 100)
     velocity_threshold: float
-        Threshold for a point to be classified as a fixation. If the
-        velocity is below the threshold, the point is classified as a fixation. (default: 20.0)
+        Threshold for a point to be classified as a fixation, in the same unit as ``velocities``
+        (typically deg/s). If the velocity is below the threshold, the point is classified as a
+        fixation. (default: 20.0)
     include_nan: bool
         Indicator, whether we want to split events on missing/corrupt value (numpy.nan)
         (default: False)

@@ -260,7 +260,7 @@ class Experiment:
         Returns
         -------
         np.ndarray
-            Velocity time series in input_unit / sec
+            Velocity time series in input position units per second (e.g., deg/s or px/s).
 
         Raises
         ------

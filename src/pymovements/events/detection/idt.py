@@ -46,7 +46,7 @@ def dispersion(positions: list[list[float]] | numpy.ndarray) -> float:
     Returns
     -------
     float
-        Dispersion of the group of points.
+        Dispersion of the group of points, in the same unit as ``positions``.
     """
     return sum(numpy.nanmax(positions, axis=0) - numpy.nanmin(positions, axis=0))
 
@@ -80,7 +80,8 @@ def idt(
     ----------
     positions: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series
         shape (N, 2)
-        Continuous 2D position time series
+        Continuous 2D position time series in position units (e.g., degrees of visual angle or
+        pixels).
     timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None
         shape (N, )
         Corresponding continuous 1D timestep time series. Fractional (float) timesteps are
@@ -93,8 +94,8 @@ def idt(
         the units used in ``timesteps``. For a ``polars.Duration`` timesteps series the unit is
         milliseconds. If ``timesteps`` is None, the unit is milliseconds. (default: 100)
     dispersion_threshold: float
-        Threshold for dispersion for a group of consecutive samples to be identified as fixation.
-        (default: 1.0)
+        Threshold for dispersion for a group of consecutive samples to be identified as fixation,
+        in the same unit as ``positions`` (typically degrees of visual angle). (default: 1.0)
     include_nan: bool
         Indicator, whether we want to split events on missing/corrupt value (numpy.nan).
         (default: False)

@@ -184,20 +184,21 @@ def pos2acc(
     arr: list[float] | list[list[float]] | np.ndarray
         Continuous 2D position time series
     sampling_rate: float
-        Sampling rate of input time series.
+        Sampling rate of input time series in Hz.
     window_length: int
-        The window size to use. (default: 7)
+        The window size to use in number of samples. (default: 7)
     degree: int
         The degree of the polynomial to use. (default: 2)
     mode: str
         The padding mode to use. (default: 'interp')
     cval: float
-        A constant value for padding. (default: 0.0)
+        A constant value for padding, in the same unit as ``arr``. (default: 0.0)
 
     Returns
     -------
     np.ndarray
-        Acceleration time series in input_unit / sec^2
+        Acceleration time series in input position units per second squared (e.g., deg/s^2 or
+        px/s^2).
 
     Examples
     --------
@@ -273,7 +274,7 @@ def pos2vel(
     arr: list[float] | list[list[float]] | np.ndarray
         Continuous 2D position time series
     sampling_rate: float
-        Sampling rate of input time series. (default: 1000)
+        Sampling rate of input time series in Hz. (default: 1000)
     method: str
         Following methods are available:
         * *smooth*: velocity is calculated from the difference of the mean values
@@ -289,7 +290,7 @@ def pos2vel(
     Returns
     -------
     np.ndarray
-        Velocity time series in input_unit / sec
+        Velocity time series in input position units per second (e.g., deg/s or px/s).
 
     Raises
     ------
@@ -407,7 +408,7 @@ def norm(arr: np.ndarray, axis: int | None = None) -> np.ndarray | Any:
     Returns
     -------
     np.ndarray | Any
-        Norm of input array.
+        Norm of input array, in the same unit as ``arr``.
 
     Raises
     ------
@@ -456,7 +457,7 @@ def split(
     arr: np.ndarray
         Input sequence of shape (N, L, C).
     window_size: int
-        size of subsequences
+        Size of subsequences in number of samples.
     keep_padded: bool
         If True, last subsequence (if not of length `window_size`) is kept in the output array and
         padded with np.nan. (default: True)

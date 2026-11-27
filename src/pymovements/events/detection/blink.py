@@ -77,9 +77,9 @@ def blink(
         from ``sampling_rate`` as a grid in milliseconds starting at ``0``.
         (default: None)
     delta: float | None
-        Threshold on absolute pupil difference for flagging rapid changes. If None, it is
-        auto-estimated as ``5 * numpy.nanpercentile(abs_diff, 95)`` from valid absolute
-        differences.
+        Threshold on absolute pupil difference for flagging rapid changes, in the same unit as
+        ``pupil``. If None, it is auto-estimated as ``5 * numpy.nanpercentile(abs_diff, 95)`` from
+        valid absolute differences.
         (default: None)
     minimum_duration: int
         Minimum blink duration. The duration is specified in the units used in ``timesteps``;
