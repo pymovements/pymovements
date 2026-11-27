@@ -24,7 +24,6 @@ The generator implements the velocity profiles of the eye movement simulator in 
 """
 from __future__ import annotations
 
-import dataclasses
 import importlib
 import warnings
 from typing import cast
@@ -56,7 +55,6 @@ EVENT_TYPES = ('fixation', 'saccade', 'smooth_pursuit')
 
 
 @register_generator
-@dataclasses.dataclass
 class StatisticalSampleGenerator(SampleGenerator):
     """Generates velocity norms from parametrised profiles of fixations, saccades and pursuits.
 

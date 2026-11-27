@@ -26,7 +26,6 @@ between follows the mapping step in section 3.7 of :cite:p:`FuhlKasneci2018`.
 """
 from __future__ import annotations
 
-import dataclasses
 import importlib
 import math
 import numbers
@@ -58,7 +57,6 @@ LOCATION_COLUMN = 'location'
 
 
 @register_generator
-@dataclasses.dataclass
 class GeometricalSampleGenerator(SampleGenerator):
     """Generates gaze positions that hold each fixation's location and move between them.
 

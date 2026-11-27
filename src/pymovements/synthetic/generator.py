@@ -24,7 +24,6 @@ import abc
 import dataclasses
 import inspect
 import numbers
-import re
 import secrets
 from collections.abc import Callable
 from typing import Any
@@ -35,6 +34,7 @@ from typing import TypeVar
 from warnings import warn
 
 import numpy as np
+from typing_extensions import dataclass_transform
 
 from pymovements._version import __version__
 from pymovements.events.events import Events
@@ -48,19 +48,11 @@ PROVENANCE_KEY = 'synthetic'
 
 OutputT = TypeVar('OutputT', Events, Gaze)
 
-_CLASS_VAR_PATTERN = re.compile(r'(?:\w+\.)?ClassVar\b')
 
-
-def _is_class_var(annotation: Any) -> bool:
-    """Return whether an annotation declares a class variable rather than a dataclass field.
-
-    The annotation is matched as a string, since postponed annotations are strings that cannot
-    always be evaluated. Like ``dataclasses``, only a leading ``ClassVar``, optionally qualified by
-    a module, counts, so that ``ClassVariant`` or ``Annotated[int, 'ClassVar']`` stay fields.
-    """
-    return _CLASS_VAR_PATTERN.match(str(annotation).strip('\'"')) is not None
-
-
+@dataclass_transform(
+    kw_only_default=True,
+    field_specifiers=(dataclasses.field, dataclasses.Field),
+)
 class _Generator(abc.ABC, Generic[OutputT]):
     """Shared behaviour of event and sample generators."""
 
@@ -70,6 +62,20 @@ class _Generator(abc.ABC, Generic[OutputT]):
 
     # Each level declares the abstract method; concrete generators narrow its run parameters.
     _generate: Callable[..., OutputT]
+
+    def __init_subclass__(cls, **dataclass_kwargs: Any) -> None:
+        """Apply ``dataclasses.dataclass`` to every generator subclass automatically."""
+        super().__init_subclass__()
+        # Leave EventGenerator undecorated so subclasses can opt into frozen=True.
+        if cls.__module__ == __name__ and cls.__name__ == 'EventGenerator':
+            return
+        dataclass_kwargs.setdefault('kw_only', True)
+        if 'frozen' not in dataclass_kwargs and any(
+            getattr(getattr(base, '__dataclass_params__', None), 'frozen', False)
+            for base in cls.__mro__[1:]
+        ):
+            dataclass_kwargs['frozen'] = True
+        dataclasses.dataclass(**dataclass_kwargs)(cls)
 
     def to_dict(self) -> dict[str, Any]:
         """Return the parameters the generator was constructed with.
@@ -83,12 +89,6 @@ class _Generator(abc.ABC, Generic[OutputT]):
         -------
         dict[str, Any]
             The hyperparameters, keyed by name.
-
-        Raises
-        ------
-        TypeError
-            If the generator is not a dataclass, or one of its classes annotates fields without
-            being one.
         """
         return {
             field.name: getattr(self, field.name)
@@ -120,8 +120,7 @@ class _Generator(abc.ABC, Generic[OutputT]):
         Raises
         ------
         TypeError
-            If the generator is not a dataclass, one of its classes annotates fields without being
-            one, it has no ``name``, the seed is not an integer,
+            If the generator has no ``name``, the seed is not an integer,
             or a run parameter is unknown to the generator or missing.
         ValueError
             If the seed is negative, or the samples a sample generator made carry an experiment
@@ -219,35 +218,7 @@ class _Generator(abc.ABC, Generic[OutputT]):
         return {**defaults, **run}
 
     def _fields(self) -> tuple[dataclasses.Field[Any], ...]:
-        """Return the dataclass fields, rejecting a generator whose hyperparameters are unknown."""
-        if not dataclasses.is_dataclass(self):
-            raise TypeError(
-                f'{type(self).__name__} must be a dataclass, so that its hyperparameters are '
-                'recorded and the run can be reproduced; decorate it with @dataclasses.dataclass',
-            )
-
-        # A subclass inherits the dataclass check above, so a class without the decorator passes
-        # it, and the fields it annotates would be left out of the constructor and the record.
-        for generator_class in type(self).__mro__:
-            # A plain mixin is no generator, and _Generator annotates the _generate hook, no field.
-            if (
-                not issubclass(generator_class, _Generator)
-                or generator_class is _Generator
-                or '__dataclass_fields__' in vars(generator_class)
-            ):
-                continue
-
-            undeclared = [
-                name for name, annotation in inspect.get_annotations(generator_class).items()
-                if not _is_class_var(annotation)
-            ]
-            if undeclared:
-                raise TypeError(
-                    f'{generator_class.__name__} annotates {undeclared} without being a dataclass '
-                    'itself, so they are no hyperparameters and the run cannot be reproduced; '
-                    'decorate it with @dataclasses.dataclass',
-                )
-
+        """Return the dataclass fields of the generator."""
         return dataclasses.fields(self)
 
     def _record_run(self, run: dict[str, Any]) -> dict[str, Any]:
@@ -324,10 +295,8 @@ class EventGenerator(_Generator[Events]):
     --------
     A generator that fills the requested duration with fixations of equal length:
 
-    >>> import dataclasses
     >>> import pymovements as pm
     >>> @pm.synthetic.register_generator
-    ... @dataclasses.dataclass
     ... class EvenFixations(pm.synthetic.EventGenerator):
     ...     name = 'even_fixations'
     ...     fixation_duration: float = 250.0
@@ -369,7 +338,6 @@ class EventGenerator(_Generator[Events]):
         """
 
 
-@dataclasses.dataclass(kw_only=True)
 class SampleGenerator(_Generator[Gaze]):
     """Base class for generators that produce gaze samples.
 
@@ -383,8 +351,8 @@ class SampleGenerator(_Generator[Gaze]):
     ``_generate`` attached one, which then carries the same rate or none.
 
     A generator built for one sampling rate redefines the field with that rate as its default,
-    under ``@dataclasses.dataclass(kw_only=True)`` so that the field stays keyword-only, and
-    rejects other values in its ``__post_init__``. A subclass that defines ``__post_init__`` calls
+    with keyword-only fields applied automatically by the base class, and rejects other values
+    in its ``__post_init__``. A subclass that defines ``__post_init__`` calls
     ``super().__post_init__()`` first, so the sampling rate is checked.
 
     Attributes
@@ -407,12 +375,10 @@ class SampleGenerator(_Generator[Gaze]):
     A generator that renders each event as gaze resting at the origin, with noise. It declares
     ``events`` as its run parameter:
 
-    >>> import dataclasses
     >>> import numpy as np
     >>> import polars as pl
     >>> import pymovements as pm
     >>> @pm.synthetic.register_generator
-    ... @dataclasses.dataclass
     ... class StillGaze(pm.synthetic.SampleGenerator):
     ...     name = 'still_gaze'
     ...     noise: float = 0.1

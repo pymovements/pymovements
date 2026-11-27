@@ -21,8 +21,6 @@
 
 The toy generators here exist for the tests only; they implement no published method.
 """
-import dataclasses
-
 import numpy as np
 import polars as pl
 import pytest
@@ -36,7 +34,6 @@ from pymovements.synthetic import SampleGenerator
 from pymovements.synthetic import SampleGeneratorRegistry
 
 
-@dataclasses.dataclass
 class NoiseSampleGenerator(SampleGenerator):
     """Draws white-noise positions, ten samples per conditioning event or ten without events."""
 
@@ -58,7 +55,6 @@ class NoiseSampleGenerator(SampleGenerator):
         )
 
 
-@dataclasses.dataclass
 class RangedNoiseSampleGenerator(NoiseSampleGenerator):
     """The noise generator with a shift that is drawn from a range, in degrees."""
 
@@ -79,7 +75,6 @@ class RangedNoiseSampleGenerator(NoiseSampleGenerator):
         return gaze
 
 
-@dataclasses.dataclass
 class UniformEventGenerator(EventGenerator):
     """Fills the duration with fixations whose durations are drawn uniformly, in ms."""
 
