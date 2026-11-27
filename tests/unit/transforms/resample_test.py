@@ -566,6 +566,45 @@ from pymovements.transforms import resample
             ),
             id='upsample_500_to_1000_fill_backward_one_component_with_none_values',
         ),
+        pytest.param(
+            {
+                'resampling_rate': 1000,
+                'fill_null_strategy': None,
+            },
+            pl.DataFrame(
+                {
+                    'time': [0, 2, 4],
+                    'pixel': [None, 2, 4],
+                },
+            ),
+            pl.DataFrame(
+                {
+                    'time': [0, 1, 2, 3, 4],
+                    'pixel': [None, None, 2., None, 4.],
+                },
+            ),
+            id='upsample_500_to_1000_no_fill_one_component_with_none_values',
+        ),
+        pytest.param(
+            {
+                'resampling_rate': 1000,
+                'fill_null_strategy': None,
+                'n_components': 2,
+            },
+            pl.DataFrame(
+                {
+                    'time': [0, 2, 4],
+                    'pixel': [[None, 1], [2, 3], [4, 5]],
+                },
+            ),
+            pl.DataFrame(
+                {
+                    'time': [0, 1, 2, 3, 4],
+                    'pixel': [[None, 1.], [None, None], [2., 3.], [None, None], [4., 5.]],
+                },
+            ),
+            id='upsample_500_to_1000_no_fill_two_components_with_none_values',
+        ),
         # Test for handling large timestamps (e.g. millis since unix epoch)
         pytest.param(
             {
