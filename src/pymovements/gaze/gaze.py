@@ -2849,6 +2849,33 @@ class Gaze:
 
         return eye_components
 
+    @staticmethod
+    def _missing_detection_column_hint(column: str, available_columns: list[str]) -> str:
+        """Build a context-aware recovery hint for a missing event-detection column."""
+        has_pixel = 'pixel' in available_columns
+        has_position = 'position' in available_columns
+        if column == 'position':
+            if has_pixel:
+                return ' Use pix2deg() to compute position from pixel coordinates.'
+            return (
+                ' No pixel column is available to compute position from.'
+                ' Specify position_columns or pixel_columns when creating the Gaze.'
+            )
+        if column == 'velocity':
+            if has_position:
+                return ' Use pos2vel() to compute velocity from the position column.'
+            if has_pixel:
+                return (
+                    ' Use pix2deg() and then pos2vel() to compute velocity'
+                    ' from pixel coordinates.'
+                )
+            return (
+                ' No position or pixel column is available to compute velocity from.'
+                ' Specify velocity_columns, position_columns, or pixel_columns'
+                ' when creating the Gaze.'
+            )
+        return ''
+
     def _fill_event_detection_kwargs(
             self,
             method: Callable[..., Events],
@@ -2883,10 +2910,10 @@ class Gaze:
         # Automatically infer eye to use for event detection.
         if 'positions' in method_args:
             if 'position' not in samples.columns:
+                hint = self._missing_detection_column_hint('position', samples.columns)
                 raise polars.exceptions.ColumnNotFoundError(
                     f'Column \'position\' not found.'
-                    f' Available columns are: {samples.columns}.'
-                    ' Use pix2deg() to compute position from pixel coordinates.',
+                    f' Available columns are: {samples.columns}.{hint}',
                 )
 
             if eye_components is None:
@@ -2898,10 +2925,10 @@ class Gaze:
 
         if 'velocities' in method_args:
             if 'velocity' not in samples.columns:
+                hint = self._missing_detection_column_hint('velocity', samples.columns)
                 raise polars.exceptions.ColumnNotFoundError(
                     f'Column \'velocity\' not found.'
-                    f' Available columns are: {samples.columns}.'
-                    ' Use pos2vel() to compute velocity from the position column.',
+                    f' Available columns are: {samples.columns}.{hint}',
                 )
 
             if eye_components is None:
