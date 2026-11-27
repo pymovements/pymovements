@@ -42,13 +42,13 @@ def pos2acc(
     Parameters
     ----------
     sampling_rate: float
-        Sampling rate of input time series.
+        Sampling rate of input time series in Hz.
     n_components: int
         Number of components in the input column.
     degree: int
         The degree of the polynomial to use. (default: 2)
     window_length: int
-        The window size to use. (default: 7)
+        The window size to use in number of samples. (default: 7)
     padding: str | float | int | None
         The padding method to use. See ``savitzky_golay`` for details. (default: 'nearest')
     position_column: str
@@ -59,7 +59,8 @@ def pos2acc(
     Returns
     -------
     pl.Expr
-        The respective polars expression.
+        The respective polars expression computing accelerations in input position units per second
+        squared (e.g., deg/s^2 or px/s^2).
     """
     return savitzky_golay(
         window_length=window_length,

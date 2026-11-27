@@ -38,12 +38,12 @@ def pos2vel(
         position_column: str = 'position',
         velocity_column: str = 'velocity',
 ) -> pl.Expr:
-    """Compute velocitiy data from positional data.
+    """Compute velocity data from positional data.
 
     Parameters
     ----------
     sampling_rate: float
-        Sampling rate of input time series.
+        Sampling rate of input time series in Hz.
     method: str
         The method to use for velocity calculation.
     n_components: int
@@ -52,10 +52,10 @@ def pos2vel(
         The degree of the polynomial to use. This has only an effect if using ``savitzky_golay`` as
         calculation method. (default: None)
     window_length: int | None
-        The window size to use. This has only an effect if using ``savitzky_golay`` as calculation
-        method. (default: None)
+        The window size to use in number of samples. This has only an effect if using
+        ``savitzky_golay`` as calculation method. (default: None)
     padding: str | float | int | None
-        The padding to use.  This has only an effect if using ``savitzky_golay`` as calculation
+        The padding to use. This has only an effect if using ``savitzky_golay`` as calculation
         method. (default: 'nearest')
     position_column: str
         The input position column name. (default: 'position')
@@ -65,10 +65,14 @@ def pos2vel(
     Returns
     -------
     pl.Expr
-        The respective polars expression.
+        The respective polars expression computing velocities in input position units per second
+        (e.g., deg/s or px/s).
 
     Notes
     -----
+    Velocity is computed using ``sampling_rate`` (in Hz), so the resulting time unit is seconds
+    regardless of the unit of any ``time`` column.
+
     There are three methods available for velocity calculation:
 
     * ``savitzky_golay``: velocity is calculated by a polynomial of fixed degree and window length.

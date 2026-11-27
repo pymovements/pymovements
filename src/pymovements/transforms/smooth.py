@@ -48,9 +48,9 @@ def smooth(
     method: str
         The method to use for smoothing. See Notes for more details.
     window_length: int
-        For ``moving_average`` this is the window size to calculate the mean of the subsequent
-        samples. For ``savitzky_golay`` this is the window size to use for the polynomial fit.
-        For ``exponential_moving_average`` this is the span parameter.
+        Window size in number of samples. For ``moving_average`` this is the number of samples used
+        to calculate the mean. For ``savitzky_golay`` this is the window size in samples for the
+        polynomial fit. For ``exponential_moving_average`` this is the span parameter in samples.
     n_components: int
         Number of components in the input column.
     degree: int | None
@@ -63,14 +63,15 @@ def smooth(
         This determines the type of extension to use for the padded signal to
         which the filter is applied.
         When passing ``None``, no extension padding is used.
-        When passing a scalar value, data will be padded using the passed value.
+        When passing a scalar value, data will be padded using the passed value, in the same unit
+        as ``column``.
         See the Notes for more details on the padding methods.
         (default: 'nearest')
 
     Returns
     -------
     pl.Expr
-        The respective polars expression.
+        The respective polars expression in the same unit as ``column``.
 
     Notes
     -----

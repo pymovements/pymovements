@@ -967,9 +967,9 @@ class Gaze:
         Parameters
         ----------
         lower_bound : int | float | None
-            Lower bound of the clipped column.
+            Lower bound of the clipped column, in the same unit as ``input_column``.
         upper_bound : int | float | None
-            Upper bound of the clipped column.
+            Upper bound of the clipped column, in the same unit as ``input_column``.
         input_column : str
             Name of the input column.
         output_column : str
@@ -1016,7 +1016,8 @@ class Gaze:
 
         This method requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
 
-        After success, :py:attr:`~.Gaze.samples` is extended by the resulting dva position columns.
+        After success, :py:attr:`~.Gaze.samples` is extended by the resulting pixel position
+        columns.
 
         Parameters
         ----------
@@ -1051,14 +1052,15 @@ class Gaze:
 
         This method requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
 
-        After success, :py:attr:`~.Gaze.samples` is extended by the resulting velocity columns.
+        After success, :py:attr:`~.Gaze.samples` is extended by the resulting acceleration
+        columns.
 
         Parameters
         ----------
         degree: int
             The degree of the polynomial to use. (default: 2)
         window_length: int
-            The window size to use. (default: 7)
+            The window size to use in number of samples. (default: 7)
         padding: str | float | int | None
             The padding method to use. See ``savitzky_golay`` for details. (default: 'nearest')
 
@@ -1111,7 +1113,7 @@ class Gaze:
         Parameters
         ----------
         resampling_rate: float
-            The new sampling rate.
+            The new sampling rate in Hz.
         columns: str | list[str]
             The columns to apply the fill null strategy. Specify a single column name or a list of
             column names. If 'all' is specified, the fill null strategy is applied to all columns.
@@ -1214,9 +1216,10 @@ class Gaze:
             See :func:`~pymovements.transforms.smooth()` for details.
             (default: 'savitzky_golay')
         window_length: int
-            For ``moving_average`` this is the window size to calculate the mean of the subsequent
-            samples. For ``savitzky_golay`` this is the window size to use for the polynomial fit.
-            For ``exponential_moving_average`` this is the span parameter. (default: 7)
+            Window size in number of samples. For ``moving_average`` this is the number of samples
+            used to calculate the mean. For ``savitzky_golay`` this is the window size in samples
+            for the polynomial fit. For ``exponential_moving_average`` this is the span parameter
+            in samples. (default: 7)
         degree: int
             The degree of the polynomial to use. This has only an effect if using
             ``savitzky_golay`` as smoothing method. `degree` must be less than `window_length`.
@@ -1229,7 +1232,8 @@ class Gaze:
             This determines the type of extension to use for the padded signal to
             which the filter is applied.
             When passing ``None``, no extension padding is used.
-            When passing a scalar value, sample series will be padded using the passed value.
+            When passing a scalar value, sample series will be padded using the passed value, in
+            the same unit as ``column``.
             See :func:`~pymovements.transforms.smooth()` for details on the padding methods.
             (default: 'nearest')
         **kwargs: int | float | str

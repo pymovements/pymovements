@@ -842,8 +842,8 @@ def _compute_hmm(
 
     hmm_parameters_dict : dict | None
         Dictionary containing custom HMM parameters with keys:
-        - 'mu': list of 2 means
-        - 'sigma': list of 2 standard deviations
+        - 'mu': list of 2 means, in the same unit as ``velocities``
+        - 'sigma': list of 2 standard deviations, in the same unit as ``velocities``
         - 'init': list of 2 initial probabilities
         - 'trans': 2x2 transition probability matrix
         If None, uses data-driven defaults based on velocity percentiles.
@@ -1090,7 +1090,7 @@ def ihmm(
     Parameters
     ----------
     velocities : list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series
-        Velocity data. Can be:
+        Velocity data in velocity units (e.g., deg/s or px/s). Can be:
         - 2D array of shape (T, 2) containing x and y velocity components
         - List of (vx, vy) tuples or lists
         - polars Series of 2-element lists
@@ -1110,7 +1110,7 @@ def ihmm(
         (default: 100)
 
     mu : list[float] | numpy.ndarray | None
-        Mean velocity for each state (Gaussian emissions).
+        Mean velocity for each state (Gaussian emissions), in the same unit as ``velocities``.
         Shape: (2,), typically [fixation_mean, saccade_mean].
         The state order is normalized internally by ascending mean, so the
         lowest-mean state is always treated as the fixation state (state 0)
@@ -1118,7 +1118,7 @@ def ihmm(
         If None, uses data-driven defaults or hmm_parameters_dict. (default: None)
 
     sigma : list[float] | numpy.ndarray | None
-        Standard deviation of velocity for each state.
+        Standard deviation of velocity for each state, in the same unit as ``velocities``.
         Shape: (2,), typically [fixation_std, saccade_std].
         If None, uses data-driven defaults or hmm_parameters_dict. (default: None)
 
@@ -1145,8 +1145,8 @@ def ihmm(
 
     hmm_parameters_dict : dict | None
         Dictionary containing custom HMM parameters with keys:
-        - 'mu': list of 2 means
-        - 'sigma': list of 2 standard deviations
+        - 'mu': list of 2 means, in the same unit as ``velocities``
+        - 'sigma': list of 2 standard deviations, in the same unit as ``velocities``
         - 'init': list of 2 initial probabilities
         - 'trans': 2x2 transition probability matrix
         Overridden by explicit mu, sigma, init_state, transition_probabilities. (default: None)

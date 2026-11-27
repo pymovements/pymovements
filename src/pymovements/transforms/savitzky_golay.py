@@ -49,15 +49,15 @@ def savitzky_golay(
     Parameters
     ----------
     window_length: int
-        The length of the filter window (i.e., the number of coefficients).
+        The length of the filter window in number of samples (i.e., the number of coefficients).
         If `padding` is ``None``, `window_length` must be less than or equal
         to the length of the input.
     degree: int
         The degree of the polynomial used to fit the samples.
         `degree` must be less than `window_length`.
     sampling_rate: float
-        The spacing of the samples to which the filter will be applied.
-        This is only used if deriv > 0. Default is 1.0.
+        Sampling rate of the input time series in Hz. Used to set the sample spacing
+        ``delta = 1 / sampling_rate`` in seconds when ``derivative > 0``.
     n_components: int
         Number of components in input column.
     input_column: str
@@ -75,14 +75,16 @@ def savitzky_golay(
         When passing ``None``, no extension padding is used. Instead, a degree `degree` polynomial
         is fit to the last ``window_length`` values of the edges, and this polynomial is used to
         evaluate the last ``window_length // 2`` output values.
-        When passing a scalar value, data will be padded using the passed value.
+        When passing a scalar value, data will be padded using the passed value, in the same unit
+        as ``input_column``.
         See the Notes for more details on the padding methods ``mirror``, ``nearest`` or ``wrap``.
         (default: 'nearest')
 
     Returns
     -------
     pl.Expr
-        The respective polars expression
+        The respective polars expression. For ``derivative=0`` the output keeps the unit of
+        ``input_column``; for ``derivative > 0`` the unit is ``input_unit / s^derivative``.
 
     Notes
     -----

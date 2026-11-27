@@ -764,9 +764,9 @@ class Dataset:
         Parameters
         ----------
         lower_bound : int | float | None
-            Lower bound of the clipped column.
+            Lower bound of the clipped column, in the same unit as ``input_column``.
         upper_bound : int | float | None
-            Upper bound of the clipped column.
+            Upper bound of the clipped column, in the same unit as ``input_column``.
         input_column : str
             Name of the input column.
         output_column : str
@@ -814,7 +814,7 @@ class Dataset:
         Parameters
         ----------
         resampling_rate: float
-            The new sampling rate.
+            The new sampling rate in Hz.
         columns: str | list[str]
             The columns to apply the fill null strategy. Specify a single column name or a list of
             column names. If 'all' is specified, the fill null strategy is applied to all columns.
@@ -874,7 +874,7 @@ class Dataset:
 
         This method requires a properly initialized ``experiment`` attribute.
 
-        After success, the gaze dataframe is extended by the resulting dva columns.
+        After success, the gaze dataframe is extended by the resulting pixel position columns.
 
         Parameters
         ----------
@@ -926,7 +926,7 @@ class Dataset:
         degree: int
             The degree of the polynomial to use. (default: 2)
         window_length: int
-            The window size to use. (default: 7)
+            The window size to use in number of samples. (default: 7)
         padding: str | float | int | None
             The padding method to use. See ``savitzky_golay`` for details. (default: 'nearest')
         verbose: bool

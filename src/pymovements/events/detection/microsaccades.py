@@ -60,7 +60,7 @@ def microsaccades(
     ----------
     velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series
         shape (N, 2)
-        x and y velocities of N samples in chronological order
+        x and y velocities of N samples in chronological order (e.g., in deg/s or px/s).
     timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None
         shape (N, )
         Corresponding continuous 1D timestep time series. Fractional (float) timesteps are
@@ -71,15 +71,15 @@ def microsaccades(
         for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
         None, the unit is milliseconds. (default: 6)
     threshold: numpy.ndarray | tuple[float, float] | str
-        If tuple of floats then use this as explicit elliptic threshold. If str, then use
-        a data-driven velocity threshold method. Refer to
+        If tuple of floats then use this as explicit elliptic threshold in the same unit as
+        ``velocities``. If str, then use a data-driven velocity threshold method. Refer to
         :func:`~pymovements.events.detection.microsaccades.compute_threshold`
         for valid methods. (default: 'engbert2015')
     threshold_factor: float
         factor for relative velocity threshold computation. (default: 6)
     minimum_threshold: float
-        minimal threshold value. Raises ValueError if calculated threshold is too low.
-        (default: 1e-10)
+        minimal threshold value in the same unit as ``velocities``. Raises ValueError if
+        calculated threshold is too low. (default: 1e-10)
     include_nan: bool
         Indicator, whether we want to split events on missing/corrupt value (numpy.nan)
         (default: False)
@@ -327,7 +327,7 @@ def compute_threshold(arr: numpy.ndarray, method: str = 'engbert2015') -> numpy.
     Returns
     -------
     numpy.ndarray
-        Threshold values for horizontal and vertical direction.
+        Threshold values for horizontal and vertical direction, in the same unit as ``arr``.
 
     Raises
     ------

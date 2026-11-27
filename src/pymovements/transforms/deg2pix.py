@@ -64,7 +64,7 @@ def deg2pix(
     Returns
     -------
     pl.Expr
-        The respective polars expression.
+        The respective polars expression converting degrees of visual angle to pixel coordinates.
     """
     _check_screen_resolution(screen_resolution)
     _check_screen_size(screen_size)

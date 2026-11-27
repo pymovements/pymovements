@@ -54,7 +54,7 @@ def resample(
     samples: pl.DataFrame
         The samples DataFrame to resample.
     resampling_rate: float
-        The new sampling rate.
+        The new sampling rate in Hz.
     columns: str | list[str]
         The columns to apply the fill null strategy. Specify a single column name or a list of
         column names. If 'all' is specified, the fill null strategy is applied to all columns.

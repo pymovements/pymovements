@@ -39,9 +39,9 @@ def clip(
     Parameters
     ----------
     lower_bound : int | float | None
-        Lower bound of the clipped column.
+        Lower bound of the clipped column, in the same unit as ``input_column``.
     upper_bound : int | float | None
-        Upper bound of the clipped column.
+        Upper bound of the clipped column, in the same unit as ``input_column``.
     input_column : str
         Name of the input column.
     output_column : str
@@ -52,7 +52,7 @@ def clip(
     Returns
     -------
     pl.Expr
-        The respective polars expression.
+        The respective polars expression in the same unit as ``input_column``.
     """
     return pl.concat_list(
         [
