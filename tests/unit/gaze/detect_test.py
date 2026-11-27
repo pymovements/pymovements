@@ -1391,8 +1391,48 @@ def test_gaze_detect_custom_method_no_arguments():
             },
             pm.gaze.Gaze(None, pm.Experiment(1024, 768, 38, 30, 60, 'center', 10)),
             pl.exceptions.ColumnNotFoundError,
-            "Column 'velocity' not found. Available columns are: ['time']",
+            "Column 'velocity' not found. Available columns are: ['time']."
+            ' No position or pixel column is available to compute velocity from.'
+            ' Specify velocity_columns, position_columns, or pixel_columns'
+            ' when creating the Gaze.',
             id='ivt_no_velocity_raises_column_not_found_error',
+        ),
+
+        pytest.param(
+            'ivt',
+            {
+                'velocity_threshold': 1,
+                'minimum_duration': 2,
+                'eye': 'auto',
+            },
+            pm.gaze.from_numpy(
+                pixel=step_function(length=100, steps=[0], values=[(0, 0)]),
+                orient='row',
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 10),
+            ),
+            pl.exceptions.ColumnNotFoundError,
+            "Column 'velocity' not found. Available columns are: ['time', 'pixel']."
+            ' Use pix2deg() and then pos2vel() to compute velocity'
+            ' from pixel coordinates.',
+            id='ivt_no_velocity_with_pixel_raises_column_not_found_error',
+        ),
+
+        pytest.param(
+            'ivt',
+            {
+                'velocity_threshold': 1,
+                'minimum_duration': 2,
+                'eye': 'auto',
+            },
+            pm.gaze.from_numpy(
+                position=step_function(length=100, steps=[0], values=[(0, 0)]),
+                orient='row',
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 10),
+            ),
+            pl.exceptions.ColumnNotFoundError,
+            "Column 'velocity' not found. Available columns are: ['time', 'position']."
+            ' Use pos2vel() to compute velocity from the position column.',
+            id='ivt_no_velocity_with_position_raises_column_not_found_error',
         ),
 
         pytest.param(
@@ -1489,8 +1529,27 @@ def test_gaze_detect_custom_method_no_arguments():
             },
             pm.gaze.Gaze(None, pm.Experiment(1024, 768, 38, 30, 60, 'center', 10)),
             pl.exceptions.ColumnNotFoundError,
-            "Column 'position' not found. Available columns are: ['time']",
+            "Column 'position' not found. Available columns are: ['time']."
+            ' No pixel column is available to compute position from.'
+            ' Specify position_columns or pixel_columns when creating the Gaze.',
             id='idt_no_position_raises_column_not_found_error',
+        ),
+
+        pytest.param(
+            'idt',
+            {
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            pm.gaze.from_numpy(
+                pixel=step_function(length=100, steps=[0], values=[(0, 0)]),
+                orient='row',
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 10),
+            ),
+            pl.exceptions.ColumnNotFoundError,
+            "Column 'position' not found. Available columns are: ['time', 'pixel']."
+            ' Use pix2deg() to compute position from pixel coordinates.',
+            id='idt_no_position_with_pixel_raises_column_not_found_error',
         ),
 
     ],
