@@ -164,10 +164,8 @@ def register_generator(generator: type[GeneratorT]) -> type[GeneratorT]:
     --------
     The decorator sorts the class into the registry of its level:
 
-    >>> import dataclasses
     >>> import pymovements as pm
     >>> @pm.synthetic.register_generator
-    ... @dataclasses.dataclass
     ... class EqualFixations(pm.synthetic.EventGenerator):
     ...     name = 'equal_fixations'
     ...     fixation_duration: float = 250.0

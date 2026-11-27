@@ -130,22 +130,21 @@ def test_entry_point_warns_at_its_caller(entry_point, name, kwargs):
     assert record[0].filename == __file__
 
 
-def test_generate_events_rejects_a_generator_that_is_no_dataclass():
-    """The entry point routes every keyword to the run, and generate() names the problem."""
-    class PlainGenerator(pm.synthetic.EventGenerator):
-        name = 'test_plain'
+def test_generate_events_for_undecorated_generator(uniform_event_generator):
+    """An undecorated generator is a dataclass automatically, so its fields are hyperparameters."""
+    class CustomEventGenerator(uniform_event_generator):
+        name = 'test_custom_undecorated'
+        extra: float = 2.0
 
-        def _generate(self, *, rng, duration):  # pylint: disable=arguments-differ
-            raise AssertionError('_generate must not run for a generator that is rejected')
+    register_generator(CustomEventGenerator)
 
-    register_generator(PlainGenerator)
+    events = pm.synthetic.generate_events(
+        'test_custom_undecorated', duration=1.0, seed=42, extra=5.0,
+    )
 
-    with pytest.raises(TypeError) as excinfo:
-        pm.synthetic.generate_events('test_plain', duration=1.0, seed=42)
-
-    msg, = excinfo.value.args
-    for msg_substring in ('PlainGenerator', 'dataclass'):
-        assert msg_substring in msg
+    assert events.metadata['synthetic']['hyperparameters'] == {
+        'min_duration': 100.0, 'max_duration': 300.0, 'extra': 5.0,
+    }
 
 
 @pytest.mark.parametrize(

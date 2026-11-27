@@ -61,10 +61,8 @@ def generate_events(name: str, *, seed: int | None = None, **kwargs: Any) -> Eve
     ``fixation_duration`` is a field of the generator below, so it goes to the constructor.
     ``duration`` is not, so it goes to ``generate()``:
 
-    >>> import dataclasses
     >>> import pymovements as pm
     >>> @pm.synthetic.register_generator
-    ... @dataclasses.dataclass
     ... class RegularFixations(pm.synthetic.EventGenerator):
     ...     name = 'regular_fixations'
     ...     fixation_duration: float = 250.0
@@ -121,12 +119,10 @@ def generate_samples(name: str, *, seed: int | None = None, **kwargs: Any) -> Ga
     ``sampling_rate`` and ``noise`` are fields of the generator below, so they go to the
     constructor. ``events`` is not, so it goes to ``generate()``:
 
-    >>> import dataclasses
     >>> import numpy as np
     >>> import polars as pl
     >>> import pymovements as pm
     >>> @pm.synthetic.register_generator
-    ... @dataclasses.dataclass
     ... class RestingGaze(pm.synthetic.SampleGenerator):
     ...     name = 'resting_gaze'
     ...     noise: float = 0.1
@@ -163,10 +159,7 @@ def _split_kwargs(
         kwargs: dict[str, Any],
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Return the keyword arguments split into hyperparameters and run parameters."""
-    fields = (
-        {field.name for field in dataclasses.fields(generator_class) if field.init}
-        if dataclasses.is_dataclass(generator_class) else set()
-    )
+    fields = {field.name for field in dataclasses.fields(generator_class) if field.init}
     hyperparameters = {key: value for key, value in kwargs.items() if key in fields}
     run = {key: value for key, value in kwargs.items() if key not in fields}
     return hyperparameters, run
