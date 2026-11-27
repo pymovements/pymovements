@@ -387,7 +387,9 @@ def test_to_dict_returns_the_dataclass_fields(uniform_event_generator):
 def test_to_dict_leaves_out_fields_without_init(noise_sample_generator):
     class WeightedGenerator(noise_sample_generator):
         weights_path: str = 'weights.npz'
-        weights: list = dataclasses.field(init=False, default_factory=lambda: [0.1, 0.2])
+        weights: list[float] = dataclasses.field(  # pylint: disable=invalid-field-call
+            init=False, default_factory=lambda: [0.1, 0.2],
+        )
 
     generator = WeightedGenerator(sampling_rate=1000.0)
 
@@ -486,7 +488,7 @@ def test_undecorated_subclass_is_a_dataclass_with_keyword_only_fields(
 
 
 def test_abstract_subclass_without_annotations_is_a_dataclass():
-    class AbstractSubGenerator(EventGenerator):
+    class AbstractSubGenerator(EventGenerator):  # pylint: disable=abstract-method
         pass
 
     assert dataclasses.is_dataclass(AbstractSubGenerator)
@@ -539,7 +541,9 @@ class _ClassVariant:
 
 def test_non_class_var_annotations_become_fields(uniform_event_generator):
     class FieldAnnotationsGenerator(uniform_event_generator):
-        variant: _ClassVariant = dataclasses.field(default_factory=_ClassVariant)
+        variant: _ClassVariant = dataclasses.field(  # pylint: disable=invalid-field-call
+            default_factory=_ClassVariant,
+        )
         extra: Annotated[float, 'ClassVar'] = 2.0
 
     field_names = {field.name for field in dataclasses.fields(FieldAnnotationsGenerator)}
